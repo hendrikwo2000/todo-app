@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ToDo-Liste</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1>ToDo-Liste</h1>
+      <button id="addCatBtn" class="btn add-cat">＋ Bereich</button>
+      <span id="saveStatus" class="save-status"></span>
+      <button id="themeBtn" class="btn icon-only" title="Dunkles Design">☾</button>
+    </header>
+
+    <main id="board" class="board"><!-- Spalten werden per JS eingefuegt --></main>
+  </div>
+
+  <div id="snackbar" class="snackbar" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
