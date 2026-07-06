@@ -147,7 +147,7 @@ function nextOrder(catId) {
   return orders.length ? Math.max(...orders) + 1 : 0;
 }
 
-function addTodoTo(categoryId, text, due) {
+function addTodoTo(categoryId, text, due, note) {
   text = (text || "").trim();
   if (!text) return false;
   const todo = {
@@ -155,6 +155,7 @@ function addTodoTo(categoryId, text, due) {
     categoryId: categoryId,
     text: text,
     due: due || null,
+    note: (note && note.trim()) ? note.trim() : null,
     done: false,
     createdAt: new Date().toISOString(),
     completedAt: null,
@@ -302,7 +303,8 @@ function commitAddFromDOM() {
   if (!widget) return;
   const text = widget.querySelector(".add-text").value;
   const due = widget.querySelector(".add-date").value;
-  if (text.trim()) addTodoTo(addingCat, text, due);
+  const note = widget.querySelector(".add-note").value;
+  if (text.trim()) addTodoTo(addingCat, text, due, note);
   else closeAdd();
 }
 
@@ -553,10 +555,12 @@ function renderAddArea(cat) {
       <button type="button" class="preset" data-days="1">Morgen</button>
       <button type="button" class="preset" data-days="7">+1 Woche</button>
     </div>
-    <input type="date" class="add-date" title="Termin" hidden>`;
+    <input type="date" class="add-date" title="Termin" hidden>
+    <textarea class="add-note" placeholder="Notiz (optional) …" rows="2"></textarea>`;
 
   const textInput = add.querySelector(".add-text");
   const dateInput = add.querySelector(".add-date");
+  const noteInput = add.querySelector(".add-note");
   const calBtn = add.querySelector(".add-cal");
   const presets = [...add.querySelectorAll(".preset")];
 
@@ -564,7 +568,13 @@ function renderAddArea(cat) {
     presets.forEach(p => p.classList.toggle("active", days !== null && +p.dataset.days === days));
 
   textInput.addEventListener("keydown", e => {
-    if (e.key === "Enter") addTodoTo(cat.id, textInput.value, dateInput.value);
+    if (e.key === "Enter") addTodoTo(cat.id, textInput.value, dateInput.value, noteInput.value);
+    else if (e.key === "Escape") closeAdd();
+  });
+
+  // Notizfeld: Strg/Cmd+Enter uebernimmt, Escape bricht ab (Enter = Zeilenumbruch).
+  noteInput.addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) addTodoTo(cat.id, textInput.value, dateInput.value, noteInput.value);
     else if (e.key === "Escape") closeAdd();
   });
 
