@@ -54,6 +54,10 @@ html, body {
   max-width: 1900px;
   margin: 0 auto;
   padding: 24px 26px 56px;
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-left: max(26px, env(safe-area-inset-left));
+  padding-right: max(26px, env(safe-area-inset-right));
+  padding-bottom: max(56px, env(safe-area-inset-bottom));
 }
 
 /* ---------- Kopf ---------- */
@@ -104,7 +108,12 @@ html, body {
 }
 .btn.add-cat:hover { color: var(--accent); background: var(--row); border-color: var(--line); }
 .btn.icon-only { padding: 7px 10px; font-size: 16px; line-height: 1; }
-#themeBtn { position: fixed; top: 16px; right: 16px; z-index: 30; }
+#themeBtn {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 30;
+}
 
 input[type="text"],
 input[type="date"] {
