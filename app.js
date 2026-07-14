@@ -21,6 +21,10 @@ const JSONBIN_ID  = "6a4bf236da38895dfe36c173";
 const JSONBIN_KEY = "$2a$10$BGeFi/PYFCLdZs0Bzu8PHeijV91l8JX.izcEgvuptBkIeXwePMKSu";
 const API_BASE = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
 
+// ---------- Zusatz-Sicherung (Google Apps Script -> Google Drive) ----------
+const DASHBOARD_URL    = "https://script.google.com/macros/s/AKfycbysdgbe0ayb_0dTS1WYihnWJqVy2HTCl-Ihp7Msy2G819ilK7-q18slYhys7kNg5t9fzA/exec";
+const DASHBOARD_SECRET = "hwDash_9Kq2mVt7xL";
+
 let state = { categories: [], todos: [] };
 let editingId = null;      // id des ToDos, das gerade bearbeitet wird
 let draggedId = null;      // id des ToDos, das gerade gezogen wird
@@ -118,12 +122,28 @@ async function save() {
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     setStatus("Gespeichert ✓", "ok");
+    syncToDashboard();
   } catch (e) {
     setStatus("⚠ Nicht gespeichert", "err");
   } finally {
     saving = false;
     if (pendingSave) { pendingSave = false; save(); }
   }
+}
+
+// Speicherstand zusaetzlich an das Google Apps Script schicken, das ihn nach
+// Google Drive schreibt. Wegen mode "no-cors" ist die Antwort nicht lesbar;
+// Fehler bleiben bewusst folgenlos, die App speichert normal in JSONBin.
+async function syncToDashboard() {
+  if (!DASHBOARD_URL) return;
+  try {
+    await fetch(DASHBOARD_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ secret: DASHBOARD_SECRET, todos: state.todos })
+    });
+  } catch (e) { /* optional, App läuft normal weiter */ }
 }
 
 let statusTimer = null;
