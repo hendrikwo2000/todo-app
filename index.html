@@ -28,6 +28,19 @@
 
   <div id="snackbar" class="snackbar" aria-live="polite"></div>
 
+  <div id="lock" class="lock hidden">
+    <form id="lockForm" class="lock-box">
+      <div class="lock-icon">🔒</div>
+      <h2 id="lockTitle">ToDo-Liste entsperren</h2>
+      <p class="lock-hint" id="lockHint">Einmal pro Gerät eingeben — wird gespeichert.</p>
+      <input type="password" id="lockPass" placeholder="Passwort" autocomplete="current-password">
+      <input type="password" id="lockPass2" placeholder="Passwort wiederholen"
+             autocomplete="new-password" hidden>
+      <button type="submit">Entsperren</button>
+      <div id="lockMsg" class="lock-msg" aria-live="polite"></div>
+    </form>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

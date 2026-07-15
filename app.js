@@ -10,7 +10,8 @@
    - Heller / dunkler Modus
    Daten liegen in einem JSONBin.io-Bin (siehe Konstanten unten) und
    werden bei jeder Aenderung dorthin zurueckgeschrieben, damit alle
-   Geraete denselben Stand sehen.
+   Geraete denselben Stand sehen. Sie sind mit einem Passwort
+   verschluesselt (siehe Abschnitt "Verschluesselung").
    ==================================================================== */
 
 // ---------- Cloud-Speicher (JSONBin.io) ----------
@@ -114,8 +115,131 @@ function toggleTheme() {
   applyTheme(next);
 }
 
+// ---------- Verschluesselung ----------
+// Gleiches Format wie beim Schul-Dashboard: AES-GCM, Schluessel per PBKDF2 aus
+// dem Passwort. Im Bin liegt dadurch nur Chiffretext — der oeffentlich
+// sichtbare Access-Key oben gibt niemandem Zugriff auf die Inhalte. Das
+// Passwort steht nirgends im Code, es bleibt auf dem Geraet.
+const LOCK_KEY = "todoPass";
+const ITERATIONS = 250000;
+
+let password = null;
+// Erst speichern, wenn der vorhandene Stand wirklich gelesen wurde. Sonst
+// wuerde die erste Aenderung nach einem Ladefehler das Board leer ueberschreiben.
+let canSave = false;
+let migrated = false;
+
+function toB64(bytes) {
+  let s = "";
+  for (const b of new Uint8Array(bytes)) s += String.fromCharCode(b);
+  return btoa(s);
+}
+function fromB64(s) { return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
+
+async function deriveKey(pass, salt, iterations, usages) {
+  const material = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: salt, iterations: iterations, hash: "SHA-256" },
+    material, { name: "AES-GCM", length: 256 }, false, usages);
+}
+
+async function encryptPayload(data, pass) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const key  = await deriveKey(pass, salt, ITERATIONS, ["encrypt"]);
+  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key,
+    new TextEncoder().encode(JSON.stringify(data)));
+  return { encrypted: true, v: 1, iterations: ITERATIONS,
+           salt: toB64(salt), iv: toB64(iv), data: toB64(cipher) };
+}
+
+async function decryptPayload(payload, pass) {
+  const key = await deriveKey(pass, fromB64(payload.salt), payload.iterations, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: fromB64(payload.iv) }, key, fromB64(payload.data));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+// ---------- Sperrbildschirm ----------
+// Fragt das Passwort ab und liefert die entschluesselten Daten. Ein gemerktes
+// Passwort wird still probiert; nur wenn es nicht passt, erscheint die Abfrage.
+function unlock(payload) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById("lock");
+    const form    = document.getElementById("lockForm");
+    const input   = document.getElementById("lockPass");
+    const msg     = document.getElementById("lockMsg");
+
+    const attempt = async (pass, silent) => {
+      try {
+        const data = await decryptPayload(payload, pass);
+        localStorage.setItem(LOCK_KEY, pass);
+        password = pass;
+        overlay.classList.add("hidden");
+        resolve(data);
+        return true;
+      } catch (e) {
+        localStorage.removeItem(LOCK_KEY);
+        if (!silent) { msg.textContent = "Falsches Passwort"; input.value = ""; input.focus(); }
+        return false;
+      }
+    };
+
+    const showPrompt = () => {
+      // Overlay teilt sich die Maske mit askNewPassword() — Beschriftung und
+      // Wiederhol-Feld gehoeren daher zurueckgesetzt.
+      document.getElementById("lockTitle").textContent = "ToDo-Liste entsperren";
+      document.getElementById("lockHint").textContent = "Einmal pro Gerät eingeben — wird gespeichert.";
+      document.getElementById("lockPass2").hidden = true;
+      overlay.classList.remove("hidden");
+      input.focus();
+      form.onsubmit = e => { e.preventDefault(); if (input.value) attempt(input.value, false); };
+    };
+
+    const saved = localStorage.getItem(LOCK_KEY);
+    if (saved) attempt(saved, true).then(ok => { if (!ok) showPrompt(); });
+    else showPrompt();
+  });
+}
+
+// Einmalige Einrichtung, solange im Bin noch Klartext liegt. Das Passwort wird
+// zweimal abgefragt: ein Tippfehler wuerde die Daten sonst unlesbar machen.
+function askNewPassword() {
+  return new Promise(resolve => {
+    const overlay = document.getElementById("lock");
+    const form    = document.getElementById("lockForm");
+    const input   = document.getElementById("lockPass");
+    const repeat  = document.getElementById("lockPass2");
+    const msg     = document.getElementById("lockMsg");
+
+    document.getElementById("lockTitle").textContent = "Passwort festlegen";
+    document.getElementById("lockHint").textContent =
+      "Nimm dasselbe Passwort wie im Schul-Dashboard, dann kann es die ToDos weiter anzeigen.";
+    repeat.hidden = false;
+    overlay.classList.remove("hidden");
+    input.focus();
+
+    form.onsubmit = e => {
+      e.preventDefault();
+      if (!input.value) return;
+      if (input.value !== repeat.value) {
+        msg.textContent = "Die Passwörter stimmen nicht überein";
+        repeat.value = ""; repeat.focus();
+        return;
+      }
+      localStorage.setItem(LOCK_KEY, input.value);
+      password = input.value;
+      repeat.hidden = true;
+      overlay.classList.add("hidden");
+      resolve();
+    };
+  });
+}
+
 // ---------- Laden & Speichern ----------
 async function loadState() {
+  let payload;
   try {
     const res = await fetch(`${API_BASE}/latest`, {
       headers: { "X-Access-Key": JSONBIN_KEY },
@@ -123,29 +247,46 @@ async function loadState() {
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const json = await res.json();
-    state = json.record;
+    payload = json.record;
   } catch (e) {
+    // canSave bleibt false: lieber nichts speichern als den Cloud-Stand
+    // mit einem leeren Board ueberschreiben.
     setStatus("⚠ Cloud-Speicher nicht erreichbar", "err");
     state = { categories: [], todos: [] };
+    return;
   }
+
+  if (payload && payload.encrypted) {
+    state = await unlock(payload);
+  } else {
+    // Altbestand im Klartext: Passwort festlegen, init() schreibt gleich
+    // verschluesselt zurueck.
+    await askNewPassword();
+    state = payload || {};
+    migrated = true;
+  }
+  canSave = true;
+
   if (!Array.isArray(state.categories)) state.categories = [];
   if (!Array.isArray(state.todos)) state.todos = [];
 }
 
 let saving = false, pendingSave = false;
 async function save() {
+  if (!canSave || !password) return;
   if (saving) { pendingSave = true; return; }
   saving = true;
   setStatus("Speichere …", "");
   try {
+    const payload = await encryptPayload(state, password);
     const res = await fetch(API_BASE, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "X-Access-Key": JSONBIN_KEY },
-      body: JSON.stringify(state),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     setStatus("Gespeichert ✓", "ok");
-    syncToDashboard();
+    syncToDashboard(payload);
   } catch (e) {
     setStatus("⚠ Nicht gespeichert", "err");
   } finally {
@@ -155,16 +296,16 @@ async function save() {
 }
 
 // Speicherstand zusaetzlich an das Google Apps Script schicken, das ihn nach
-// Google Drive schreibt. Wegen mode "no-cors" ist die Antwort nicht lesbar;
-// Fehler bleiben bewusst folgenlos, die App speichert normal in JSONBin.
-async function syncToDashboard() {
+// Google Drive schreibt — ebenfalls nur verschluesselt. Wegen mode "no-cors"
+// ist die Antwort nicht lesbar; Fehler bleiben bewusst folgenlos.
+async function syncToDashboard(payload) {
   if (!DASHBOARD_URL) return;
   try {
     await fetch(DASHBOARD_URL, {
       method: "POST",
       mode: "no-cors",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ secret: DASHBOARD_SECRET, todos: state.todos })
+      body: JSON.stringify({ secret: DASHBOARD_SECRET, todos: payload })
     });
   } catch (e) { /* optional, App läuft normal weiter */ }
 }
@@ -837,4 +978,5 @@ applyTheme(
 (async function init() {
   await loadState();
   render();
+  if (migrated) save();   // Klartext-Altbestand sofort verschluesselt ersetzen
 })();

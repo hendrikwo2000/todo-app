@@ -499,6 +499,59 @@ input[type="date"]:focus {
 }
 .board > .empty { width: 100%; text-align: center; padding: 30px; }
 
+/* ---------- Sperrbildschirm ---------- */
+.lock {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+.lock.hidden { display: none; }
+.lock-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(320px, 90vw);
+  padding: 28px 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--row);
+  text-align: center;
+}
+.lock-icon { font-size: 32px; line-height: 1; }
+.lock-box h2 { margin: 0; font-size: 18px; }
+.lock-hint { margin: 0; font-size: 12.5px; color: var(--muted); }
+.lock-box input[type="password"] {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font: inherit;
+  text-align: center;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.lock-box input[type="password"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.lock-box button {
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lock-box button:hover { filter: brightness(1.06); }
+.lock-msg { min-height: 1.2em; font-size: 12.5px; color: var(--red); }
+
 /* Rückgängig-Hinweis */
 .snackbar {
   position: fixed;
