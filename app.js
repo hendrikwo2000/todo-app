@@ -2,7 +2,8 @@
 
 /* ====================================================================
    ToDo-Liste – Board-Ansicht (Cloud-Version)
-   - Eigenes, einklappbares Eingabefeld pro Spalte (+ Termin-Schnellwahl)
+   - Eigenes, einklappbares Eingabefeld pro Spalte (Termin per Kalender-Icon)
+   - Bereichsname und ToDo werden per Doppelklick bearbeitet
    - Erledigte ToDos unten in jeder Spalte (einklappbar, aufräumbar)
    - Verschieben zwischen Bereichen UND Umsortieren termin-loser ToDos
      per Drag & Drop
@@ -27,6 +28,7 @@ const DASHBOARD_SECRET = "hwDash_9Kq2mVt7xL";
 
 let state = { categories: [], todos: [] };
 let editingId = null;      // id des ToDos, das gerade bearbeitet wird
+let editingCat = null;     // id des Bereichs, dessen Name gerade bearbeitet wird
 let draggedId = null;      // id des ToDos, das gerade gezogen wird
 let draggedCat = null;     // id des Bereichs, der gerade umsortiert wird
 let addingCat = null;      // Bereich, dessen Eingabefeld gerade aufgeklappt ist
@@ -63,6 +65,13 @@ function formatDate(iso) {
   return `${d}.${m}.${y}`;
 }
 
+// Kurzform fuer das Kalender-Icon, z. B. "15.07."
+function formatDateShort(iso) {
+  if (!iso) return "";
+  const [, m, d] = iso.split("-");
+  return `${d}.${m}.`;
+}
+
 function dueInfo(iso) {
   if (!iso) return null;
   const today = todayStr();
@@ -70,6 +79,20 @@ function dueInfo(iso) {
   if (iso === today) return { cls: "today", badge: "Heute" };
   if (iso === addDaysStr(1)) return { cls: "", badge: "Morgen" };
   return { cls: "", badge: "" };
+}
+
+// Dringlich = ueberfaellig, heute oder morgen faellig. Steuert die Ampelfarben
+// (Streifen am ToDo und Zaehler neben der Bereichs-Ueberschrift).
+function isUrgent(iso) { return !!iso && iso <= addDaysStr(1); }
+
+// Nativen Kalender-Dialog eines Datumsfelds oeffnen. Das Feld selbst bleibt
+// unsichtbar (siehe .date-field im CSS), showPicker braucht es aber im Layout.
+function openDatePicker(input) {
+  if (typeof input.showPicker === "function") {
+    try { input.showPicker(); return; } catch (e) { /* Fallback unten */ }
+  }
+  input.focus();
+  input.click();
 }
 
 function escapeHtml(s) {
@@ -269,14 +292,29 @@ function addCategory() {
   save();
 }
 
-function renameCategory(catId) {
+// Bereichsname per Doppelklick direkt in der Ueberschrift bearbeiten.
+function startRenameCategory(catId) {
+  editingCat = catId;
+  render();
+  const input = document.querySelector(`[data-edit-cat="${catId}"]`);
+  if (input) { input.focus(); input.select(); }
+}
+
+function saveCategoryName(catId) {
   const cat = state.categories.find(c => c.id === catId);
-  if (!cat) return;
-  const name = (prompt("Bereich umbenennen:", cat.name) || "").trim();
-  if (!name) return;
+  const input = document.querySelector(`[data-edit-cat="${catId}"]`);
+  if (!cat || !input) return;
+  const name = input.value.trim();
+  editingCat = null;
+  if (!name || name === cat.name) { render(); return; }
   cat.name = name;
   render();
   save();
+}
+
+function cancelRenameCategory() {
+  editingCat = null;
+  render();
 }
 
 function deleteCategory(catId) {
@@ -297,14 +335,17 @@ function deleteCategory(catId) {
   save();
 }
 
+// Ohne Nachfrage loeschen – die Rueckgaengig-Meldung ist das Sicherheitsnetz.
 function clearDone(catId) {
-  const cat = state.categories.find(c => c.id === catId);
-  const n = state.todos.filter(t => t.categoryId === catId && t.done).length;
-  if (!cat || !n) return;
-  if (!confirm(`Alle ${n} erledigten ToDo(s) in „${cat.name}“ endgültig löschen?`)) return;
+  const removed = state.todos.filter(t => t.categoryId === catId && t.done);
+  if (!removed.length) return;
   state.todos = state.todos.filter(t => !(t.categoryId === catId && t.done));
   render();
   save();
+  showUndo(
+    removed.length === 1 ? "1 erledigtes ToDo gelöscht" : `${removed.length} erledigte ToDos gelöscht`,
+    () => { state.todos.push(...removed); render(); save(); }
+  );
 }
 
 function toggleDoneCollapse(catId) {
@@ -394,6 +435,7 @@ function sortDone(a, b) {
 // ---------- Rendern ----------
 function render() {
   if (addingCat && !state.categories.some(c => c.id === addingCat)) addingCat = null;
+  if (editingCat && !state.categories.some(c => c.id === editingCat)) editingCat = null;
   board.innerHTML = "";
 
   if (!state.categories.length) {
@@ -425,35 +467,46 @@ function renderColumn(cat) {
   // --- Kopf ---
   const head = document.createElement("div");
   head.className = "col-head";
-  head.innerHTML = `
-    <h2 class="col-title">
-      <span class="name">${escapeHtml(cat.name)}</span>
-      <span class="col-count">${open.length}</span>
-    </h2>
-    <div class="col-actions">
-      <button class="act" title="Bereich umbenennen" data-act="rename">✏️</button>
-      <button class="act del" title="Bereich löschen" data-act="del">🗑️</button>
-    </div>`;
-  head.querySelector('[data-act="rename"]').addEventListener("click", () => renameCategory(cat.id));
-  head.querySelector('[data-act="del"]').addEventListener("click", () => deleteCategory(cat.id));
-
-  // Spalte am Titel anfassen und umsortieren.
-  const title = head.querySelector(".col-title");
-  title.draggable = true;
-  title.title = "Ziehen, um den Bereich zu verschieben";
-  title.addEventListener("dragstart", e => {
-    draggedCat = cat.id;
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", "cat:" + cat.id);
-    col.classList.add("col-dragging");
-  });
-  title.addEventListener("dragend", () => {
-    draggedCat = null;
-    col.classList.remove("col-dragging");
-    render();
-  });
-
   col.appendChild(head);
+
+  if (editingCat === cat.id) {
+    head.innerHTML = `<input type="text" class="cat-edit" data-edit-cat="${cat.id}"
+                             value="${escapeHtml(cat.name)}" autocomplete="off">`;
+    const input = head.querySelector(".cat-edit");
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") saveCategoryName(cat.id);
+      else if (e.key === "Escape") cancelRenameCategory();
+    });
+  } else {
+    // Ampel am Zaehler: 0 = grau, offene ToDos = blau, etwas Dringendes = rot.
+    const countCls = !open.length ? "zero" : (open.some(t => isUrgent(t.due)) ? "urgent" : "normal");
+    head.innerHTML = `
+      <h2 class="col-title">
+        <span class="name">${escapeHtml(cat.name)}</span>
+        <span class="col-count ${countCls}">${open.length}</span>
+      </h2>
+      <div class="col-actions">
+        <button class="act del" title="Bereich löschen" data-act="del">🗑️</button>
+      </div>`;
+    head.querySelector('[data-act="del"]').addEventListener("click", () => deleteCategory(cat.id));
+
+    // Spalte am Titel anfassen und umsortieren, per Doppelklick umbenennen.
+    const title = head.querySelector(".col-title");
+    title.draggable = true;
+    title.title = "Doppelklick zum Umbenennen · ziehen, um den Bereich zu verschieben";
+    title.addEventListener("dblclick", () => startRenameCategory(cat.id));
+    title.addEventListener("dragstart", e => {
+      draggedCat = cat.id;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", "cat:" + cat.id);
+      col.classList.add("col-dragging");
+    });
+    title.addEventListener("dragend", () => {
+      draggedCat = null;
+      col.classList.remove("col-dragging");
+      render();
+    });
+  }
 
   // --- Eingabe: eingeklappt eine schmale Zeile, die zum Tippen aufklappt ---
   col.appendChild(renderAddArea(cat));
@@ -568,24 +621,22 @@ function renderAddArea(cat) {
     <div class="add-line">
       <input type="text" class="add-text" data-add="${cat.id}"
              placeholder="Neues ToDo …" autocomplete="off">
-      <button type="button" class="add-icon add-cal" title="Eigenes Datum">📅</button>
+      <span class="date-field">
+        <button type="button" class="add-icon add-cal">📅</button>
+        <input type="date" class="add-date" tabindex="-1" aria-label="Termin">
+      </span>
+      <button type="button" class="add-icon date-clear" title="Termin entfernen" hidden>✕</button>
     </div>
-    <div class="add-presets">
-      <button type="button" class="preset" data-days="0">Heute</button>
-      <button type="button" class="preset" data-days="1">Morgen</button>
-      <button type="button" class="preset" data-days="7">+1 Woche</button>
-    </div>
-    <input type="date" class="add-date" title="Termin" hidden>
     <textarea class="add-note" placeholder="Notiz (optional) …" rows="2"></textarea>`;
 
   const textInput = add.querySelector(".add-text");
   const dateInput = add.querySelector(".add-date");
   const noteInput = add.querySelector(".add-note");
-  const calBtn = add.querySelector(".add-cal");
-  const presets = [...add.querySelectorAll(".preset")];
+  const calBtn    = add.querySelector(".add-cal");
+  const clearBtn  = add.querySelector(".date-clear");
 
-  const setPresetActive = days =>
-    presets.forEach(p => p.classList.toggle("active", days !== null && +p.dataset.days === days));
+  const syncDateUi = () => updateDateButton(calBtn, clearBtn, dateInput.value);
+  syncDateUi();
 
   textInput.addEventListener("keydown", e => {
     if (e.key === "Enter") addTodoTo(cat.id, textInput.value, dateInput.value, noteInput.value);
@@ -598,36 +649,27 @@ function renderAddArea(cat) {
     else if (e.key === "Escape") closeAdd();
   });
 
-  calBtn.addEventListener("click", () => {
-    dateInput.hidden = !dateInput.hidden;
-    calBtn.classList.toggle("active", !dateInput.hidden);
-    if (!dateInput.hidden) { dateInput.focus(); }
-    else { dateInput.value = ""; setPresetActive(null); }
-  });
-
-  presets.forEach(p => p.addEventListener("click", () => {
-    if (p.classList.contains("active")) {
-      dateInput.value = ""; dateInput.hidden = true;
-      setPresetActive(null); calBtn.classList.remove("active");
-    } else {
-      dateInput.value = addDaysStr(+p.dataset.days);
-      dateInput.hidden = false;
-      setPresetActive(+p.dataset.days); calBtn.classList.add("active");
-    }
-    textInput.focus();
-  }));
-
-  dateInput.addEventListener("change", () => {
-    const match = presets.find(p => addDaysStr(+p.dataset.days) === dateInput.value);
-    setPresetActive(match ? +match.dataset.days : null);
-  });
+  calBtn.addEventListener("click", () => openDatePicker(dateInput));
+  clearBtn.addEventListener("click", () => { dateInput.value = ""; syncDateUi(); textInput.focus(); });
+  dateInput.addEventListener("change", syncDateUi);
 
   return add;
 }
 
+// Kalender-Icon zeigt den gewaehlten Termin an; das ✕ raeumt ihn wieder weg.
+function updateDateButton(calBtn, clearBtn, value) {
+  const has = !!value;
+  calBtn.classList.toggle("active", has);
+  calBtn.textContent = has ? `📅 ${formatDateShort(value)}` : "📅";
+  calBtn.title = has ? `Termin ${formatDate(value)} – zum Ändern klicken` : "Termin wählen";
+  clearBtn.hidden = !has;
+}
+
 function renderTodo(t) {
   const li = document.createElement("li");
-  li.className = "todo" + (t.done ? " is-done" : "");
+  // Streifen-Ampel: blau ohne Termin, gelb mit Termin, rot wenn dringend.
+  const stripe = t.done ? "" : (isUrgent(t.due) ? " urgent" : (t.due ? " dated" : ""));
+  li.className = "todo" + (t.done ? " is-done" : stripe);
   li.dataset.id = t.id;
 
   // --- Bearbeiten-Modus ---
@@ -638,13 +680,27 @@ function renderTodo(t) {
       <input type="text" data-edit-text="${t.id}" value="${escapeHtml(t.text)}">
       <textarea data-edit-note placeholder="Notiz (optional)" rows="2"></textarea>
       <div class="edit-buttons">
-        <input type="date" data-edit-date="${t.id}" value="${t.due || ""}">
+        <span class="date-field">
+          <button type="button" class="add-icon add-cal" data-act="cal">📅</button>
+          <input type="date" data-edit-date="${t.id}" value="${t.due || ""}" tabindex="-1" aria-label="Termin">
+        </span>
+        <button type="button" class="add-icon date-clear" title="Termin entfernen" hidden>✕</button>
         <button class="btn primary" data-act="save">OK</button>
         <button class="btn" data-act="cancel">Abbrechen</button>
       </div>`;
     const textInput = wrap.querySelector(`[data-edit-text="${t.id}"]`);
     const noteInput = wrap.querySelector("[data-edit-note]");
+    const dateInput = wrap.querySelector(`[data-edit-date="${t.id}"]`);
+    const calBtn    = wrap.querySelector('[data-act="cal"]');
+    const clearBtn  = wrap.querySelector(".date-clear");
     noteInput.value = t.note || "";
+
+    const syncDateUi = () => updateDateButton(calBtn, clearBtn, dateInput.value);
+    syncDateUi();
+    calBtn.addEventListener("click", () => openDatePicker(dateInput));
+    clearBtn.addEventListener("click", () => { dateInput.value = ""; syncDateUi(); textInput.focus(); });
+    dateInput.addEventListener("change", syncDateUi);
+
     textInput.addEventListener("keydown", e => {
       if (e.key === "Enter") saveEdit(t.id);
       if (e.key === "Escape") cancelEdit();
@@ -721,13 +777,6 @@ function renderTodo(t) {
     reopen.textContent = "↩";
     reopen.addEventListener("click", () => toggleDone(t.id));
     actions.appendChild(reopen);
-  } else {
-    const edit = document.createElement("button");
-    edit.className = "act";
-    edit.title = "Bearbeiten";
-    edit.textContent = "✏️";
-    edit.addEventListener("click", () => startEdit(t.id));
-    actions.appendChild(edit);
   }
 
   const del = document.createElement("button");
@@ -772,7 +821,11 @@ document.addEventListener("mousedown", e => {
   }
   if (editingId) {
     const row = document.querySelector(".edit-row");
-    if (row && !row.contains(e.target)) commitEditFromDOM();
+    if (row && !row.contains(e.target)) { commitEditFromDOM(); return; }
+  }
+  if (editingCat) {
+    const input = document.querySelector(".cat-edit");
+    if (input && input !== e.target) saveCategoryName(editingCat);
   }
 });
 
