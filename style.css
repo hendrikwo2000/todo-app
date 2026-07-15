@@ -278,6 +278,23 @@ input[type="date"]:focus {
   opacity: 0;
   pointer-events: none;
 }
+
+/* Touch-Geraete: Auf iOS oeffnet showPicker() kein zusammengeschrumpftes Feld,
+   ein Tipp auf das Datumsfeld selbst dagegen immer. Deshalb liegt es hier
+   unsichtbar ueber dem Icon und faengt den Tipp ab; das Icon ist nur Optik. */
+@media (pointer: coarse) {
+  .date-field input[type="date"] {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    pointer-events: auto;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .date-field .add-cal { pointer-events: none; }
+}
 .col-add .add-note {
   width: 100%;
   font-family: inherit;
