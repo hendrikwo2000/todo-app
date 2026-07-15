@@ -198,7 +198,8 @@ input[type="date"]:focus {
 
 /* Bereichsname im Doppelklick-Bearbeitungsmodus */
 .cat-edit {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   font-size: 16px;
   font-weight: 700;
   font-family: inherit;
@@ -210,15 +211,13 @@ input[type="date"]:focus {
   outline: none;
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
+/* Loeschen erscheint nur im Bearbeiten-Modus (Doppelklick auf den Namen). */
 .col-actions {
   margin-left: auto;
   display: flex;
   gap: 2px;
   flex: none;
-  opacity: 0;
-  transition: opacity .12s;
 }
-.column:hover .col-actions { opacity: 1; }
 .col-actions .act { width: 28px; height: 28px; font-size: 13px; }
 
 /* ---------- Eingabe pro Spalte ---------- */
@@ -431,7 +430,6 @@ input[type="date"]:focus {
 }
 .act:hover { background: var(--hover); color: var(--text); }
 .act.del:hover { background: var(--del-soft); color: var(--red); }
-.act.reopen:hover { background: var(--accent-soft); color: var(--accent); }
 
 /* Inline-Bearbeiten */
 .edit-row { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
@@ -476,20 +474,6 @@ input[type="date"]:focus {
 .done-toggle:hover { color: var(--text); }
 .done-toggle .arrow { transition: transform .15s; display: inline-block; font-size: 10px; }
 .done-toggle.collapsed .arrow { transform: rotate(-90deg); }
-.done-clear {
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  width: 26px; height: 26px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  flex: none;
-  opacity: 0;
-  transition: opacity .12s, background .12s;
-}
-.column:hover .done-clear { opacity: 1; }
-.done-clear:hover { background: var(--del-soft); }
 
 .empty {
   color: var(--muted);

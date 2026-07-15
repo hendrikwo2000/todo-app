@@ -476,19 +476,6 @@ function deleteCategory(catId) {
   save();
 }
 
-// Ohne Nachfrage loeschen – die Rueckgaengig-Meldung ist das Sicherheitsnetz.
-function clearDone(catId) {
-  const removed = state.todos.filter(t => t.categoryId === catId && t.done);
-  if (!removed.length) return;
-  state.todos = state.todos.filter(t => !(t.categoryId === catId && t.done));
-  render();
-  save();
-  showUndo(
-    removed.length === 1 ? "1 erledigtes ToDo gelöscht" : `${removed.length} erledigte ToDos gelöscht`,
-    () => { state.todos.push(...removed); render(); save(); }
-  );
-}
-
 function toggleDoneCollapse(catId) {
   doneCollapsed[catId] = !doneCollapsed[catId];
   localStorage.setItem("doneCollapsed", JSON.stringify(doneCollapsed));
@@ -611,13 +598,21 @@ function renderColumn(cat) {
   col.appendChild(head);
 
   if (editingCat === cat.id) {
-    head.innerHTML = `<input type="text" class="cat-edit" data-edit-cat="${cat.id}"
-                             value="${escapeHtml(cat.name)}" autocomplete="off">`;
+    // Loeschen gibt es nur hier: wer den Bereich anfasst, hat ihn per
+    // Doppelklick bewusst geoeffnet.
+    head.className = "col-head editing";
+    head.innerHTML = `
+      <input type="text" class="cat-edit" data-edit-cat="${cat.id}"
+             value="${escapeHtml(cat.name)}" autocomplete="off">
+      <div class="col-actions">
+        <button type="button" class="act del" title="Bereich löschen" data-act="del">🗑️</button>
+      </div>`;
     const input = head.querySelector(".cat-edit");
     input.addEventListener("keydown", e => {
       if (e.key === "Enter") saveCategoryName(cat.id);
       else if (e.key === "Escape") cancelRenameCategory();
     });
+    head.querySelector('[data-act="del"]').addEventListener("click", () => deleteCategory(cat.id));
   } else {
     // Ampel am Zaehler: 0 = grau, offene ToDos = blau, etwas Dringendes = rot.
     const countCls = !open.length ? "zero" : (open.some(t => isUrgent(t.due)) ? "urgent" : "normal");
@@ -625,11 +620,7 @@ function renderColumn(cat) {
       <h2 class="col-title">
         <span class="name">${escapeHtml(cat.name)}</span>
         <span class="col-count ${countCls}">${open.length}</span>
-      </h2>
-      <div class="col-actions">
-        <button class="act del" title="Bereich löschen" data-act="del">🗑️</button>
-      </div>`;
-    head.querySelector('[data-act="del"]').addEventListener("click", () => deleteCategory(cat.id));
+      </h2>`;
 
     // Spalte am Titel anfassen und umsortieren, per Doppelklick umbenennen.
     const title = head.querySelector(".col-title");
@@ -665,7 +656,7 @@ function renderColumn(cat) {
     col.appendChild(empty);
   }
 
-  // --- Erledigte ToDos (einklappbar, aufräumbar) ---
+  // --- Erledigte ToDos (einklappbar) ---
   if (done.length) {
     const section = document.createElement("div");
     section.className = "done-section";
@@ -679,13 +670,6 @@ function renderColumn(cat) {
     toggle.innerHTML = `<span class="arrow">▾</span> Erledigt (${done.length})`;
     toggle.addEventListener("click", () => toggleDoneCollapse(cat.id));
     dhead.appendChild(toggle);
-
-    const clear = document.createElement("button");
-    clear.className = "done-clear";
-    clear.title = "Alle Erledigten löschen";
-    clear.textContent = "🧹";
-    clear.addEventListener("click", () => clearDone(cat.id));
-    dhead.appendChild(clear);
 
     section.appendChild(dhead);
 
@@ -908,17 +892,9 @@ function renderTodo(t) {
   li.appendChild(main);
 
   // --- Aktionen ---
+  // Erledigte oeffnet man wieder, indem man den Haken rausnimmt.
   const actions = document.createElement("div");
   actions.className = "actions";
-
-  if (t.done) {
-    const reopen = document.createElement("button");
-    reopen.className = "act reopen";
-    reopen.title = "Wieder öffnen";
-    reopen.textContent = "↩";
-    reopen.addEventListener("click", () => toggleDone(t.id));
-    actions.appendChild(reopen);
-  }
 
   const del = document.createElement("button");
   del.className = "act del";
@@ -965,8 +941,10 @@ document.addEventListener("mousedown", e => {
     if (row && !row.contains(e.target)) { commitEditFromDOM(); return; }
   }
   if (editingCat) {
-    const input = document.querySelector(".cat-edit");
-    if (input && input !== e.target) saveCategoryName(editingCat);
+    // Auf den ganzen Kopf pruefen, nicht nur auf das Eingabefeld: sonst wuerde
+    // ein Klick auf den Loeschen-Knopf erst neu rendern und ginge dabei verloren.
+    const head = document.querySelector(".col-head.editing");
+    if (head && !head.contains(e.target)) saveCategoryName(editingCat);
   }
 });
 
