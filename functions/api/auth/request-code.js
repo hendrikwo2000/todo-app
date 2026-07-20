@@ -106,8 +106,8 @@ export async function onRequestPost({ request, env }) {
   const versand = await sendeMail(env, {
     to: email,
     subject: "Anmelden bei der ToDo-Liste",
-    html: mailHtml(code),
-    text: mailText(code),
+    html: mailHtml(code, link),
+    text: mailText(code, link),
   });
   if (!versand.ok) return json({ error: versand.grund }, 502);
 
