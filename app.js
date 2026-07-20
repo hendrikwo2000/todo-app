@@ -157,12 +157,16 @@ function zeigeTurnstile(an) {
     turnstileId = window.turnstile.render(kasten, {
       sitekey: TURNSTILE_SITEKEY,
       theme: "auto",
+      // Unsichtbar: das Widget zeigt sich nur, wenn Turnstile jemanden
+      // wirklich pruefen will. Der Normalfall - stilles Durchwinken - laeuft
+      // ohne einen Pixel Oberflaeche ab. Das ist mehr als reine Optik: ein
+      // Kaestchen "Ich bin kein Roboter" ist fuer den Eintragenden eine
+      // zusaetzliche Huerde, die er in 99 % der Faelle gar nicht braucht.
+      appearance: "interaction-only",
     });
-    // Kein Ladehinweis mit Zeitschaltung hier: im Modus "Verwaltet" winkt
-    // Turnstile die meisten Besucher stillschweigend durch, ganz ohne
-    // sichtbares Widget. Ein fehlendes iframe ist also der Normalfall, kein
-    // Fehler. Ob es geklappt hat, zeigt allein das Token - und das wird
-    // beim Absenden geprueft.
+    // Kein Ladehinweis mit Zeitschaltung hier: ein fehlendes iframe ist der
+    // Normalfall, kein Fehler. Ob es geklappt hat, zeigt allein das Token -
+    // und das wird beim Absenden geprueft.
   } else {
     // Nach einem Absenden ist das Token verbraucht.
     window.turnstile.reset(turnstileId);
@@ -183,17 +187,46 @@ function login() {
     const name     = document.getElementById("lockName");
     const msg      = document.getElementById("lockMsg");
     const umschalt = document.getElementById("lockSwitch");
+    const erfolg   = document.getElementById("lockErfolg");
     const button   = form.querySelector("button[type=submit]");
     let schritt = "email";
     let aktuelleEmail = "";
+    let wartetAufLink = null;
 
     const setzeMeldung = (text, gut) => {
       msg.textContent = text;
       msg.classList.toggle("ok", !!gut);
     };
 
+    // Waehrend die Maske auf den Anmeldelink wartet, regelmaessig nachsehen,
+    // ob inzwischen eine Sitzung besteht. Wer den Link im selben Browser
+    // oeffnet, ist danach in einem zweiten Tab angemeldet - ohne diese
+    // Abfrage bliebe dieser hier auf der Anmeldemaske stehen und man muesste
+    // doch wieder den Code abtippen, obwohl der Link laengst geklickt wurde.
+    const hoerAufZuWarten = () => {
+      clearInterval(wartetAufLink);
+      wartetAufLink = null;
+    };
+
+    const warteAufLink = () => {
+      hoerAufZuWarten();
+      wartetAufLink = setInterval(async () => {
+        try {
+          const res = await fetch("/api/auth/status", { cache: "no-store" });
+          const daten = await res.json();
+          if (!daten.angemeldet) return;
+          hoerAufZuWarten();
+          overlay.classList.add("hidden");
+          resolve();
+        } catch (e) { /* offline oder kurz gestoert - beim naechsten Mal wieder */ }
+      }, 3000);
+    };
+
     const zeigeEmailSchritt = () => {
       schritt = "email";
+      hoerAufZuWarten();
+      erfolg.hidden = true;
+      form.hidden = false;
       document.getElementById("lockHint").textContent = "Mit deiner E-Mail-Adresse anmelden.";
       name.hidden = true;
       email.hidden = false;
@@ -213,6 +246,9 @@ function login() {
     // woandershin navigieren muessen.
     const zeigeWartelisteSchritt = () => {
       schritt = "warteliste";
+      hoerAufZuWarten();
+      erfolg.hidden = true;
+      form.hidden = false;
       document.getElementById("lockHint").textContent =
         "Trag dich ein — du bekommst eine Mail, sobald du freigeschaltet bist.";
       name.hidden = false;
@@ -233,8 +269,9 @@ function login() {
       // Sendedomain gern mal eine halbe Minute. Ohne den Hinweis wirkt das wie
       // ein Fehler, und man fordert unnoetig einen zweiten Code an.
       document.getElementById("lockHint").textContent =
-        `Mail an ${aktuelleEmail} geschickt. Klick dort auf „Jetzt anmelden“ — ` +
-        `oder tipp hier den Code aus der Mail ein.`;
+        `Mail an ${aktuelleEmail} geschickt — kann eine halbe Minute dauern. ` +
+        `Klick dort auf „Jetzt anmelden“, dann geht es hier von selbst weiter.`;
+      warteAufLink();
       name.hidden = true;
       email.hidden = true;
       code.hidden = false;
@@ -262,6 +299,8 @@ function login() {
       if (schritt === "warteliste") zeigeEmailSchritt();
       else zeigeWartelisteSchritt();
     };
+
+    document.getElementById("lockErfolgZurueck").onclick = zeigeEmailSchritt;
 
     form.onsubmit = async e => {
       e.preventDefault();
@@ -305,8 +344,15 @@ function login() {
           // den Server eine kryptische Absage schicken zu lassen.
           const bot = turnstileToken();
           if (turnstileId !== null && !bot) {
-            setzeMeldung("Bot-Prüfung noch nicht fertig — kurz warten und nochmal. " +
-                         "Bleibt es dabei, blockiert sie vermutlich ein Werbeblocker.");
+            // Zwei ganz verschiedene Faelle, die sich nur daran unterscheiden
+            // lassen, ob das Widget Platz einnimmt: entweder Turnstile will
+            // wirklich etwas von einem (dann steht da ein Kaestchen und man
+            // muss es anklicken), oder es kommt gar nicht durch.
+            const sichtbar = document.getElementById("lockTurnstile").offsetHeight > 10;
+            setzeMeldung(sichtbar
+              ? "Bitte bestätige oben noch kurz, dass du kein Bot bist."
+              : "Die Bot-Prüfung ist noch nicht durch — kurz warten und nochmal. " +
+                "Bleibt es dabei, blockiert sie vermutlich ein Werbeblocker.");
             return;
           }
           const res = await fetch("/api/waitlist", {
@@ -319,7 +365,16 @@ function login() {
             return;
           }
           const daten = await res.json().catch(() => ({}));
-          setzeMeldung(daten.message || "Eingetragen.", true);
+          // Formular weg, Bestaetigung her. Vorher blieb die Maske stehen und
+          // nur eine kleine gruene Zeile darunter aenderte sich - zu wenig
+          // fuer den Abschluss eines Vorgangs.
+          document.getElementById("lockErfolgText").textContent =
+            daten.message ||
+            `Wir haben deine Anfrage für ${wunschEmail} bekommen. ` +
+            `Sobald du freigeschaltet bist, kommt eine Mail.`;
+          zeigeTurnstile(false);
+          form.hidden = true;
+          erfolg.hidden = false;
           name.value = "";
           if (turnstileId !== null && window.turnstile) window.turnstile.reset(turnstileId);
         } else {
@@ -336,6 +391,7 @@ function login() {
             code.focus();
             return;
           }
+          hoerAufZuWarten();
           overlay.classList.add("hidden");
           resolve();
         }

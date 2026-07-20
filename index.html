@@ -106,6 +106,17 @@
       <div id="lockMsg" class="lock-msg" aria-live="polite"></div>
       <button type="button" id="lockSwitch" class="lock-link">Noch keinen Zugang? Eintragen</button>
     </form>
+
+    <!-- Bestaetigung nach dem Eintragen in die Warteliste. Bewusst ein
+         eigener Kasten statt einer kleinen gruenen Zeile unter dem Formular:
+         das Eintragen ist fuer den Besucher der Abschluss des Vorgangs, und
+         ein stehengebliebenes Formular sieht aus, als waere nichts passiert. -->
+    <div id="lockErfolg" class="lock-box" hidden>
+      <div class="lock-icon lock-haken">✓</div>
+      <h2 id="lockErfolgTitel">Du stehst auf der Liste</h2>
+      <p class="lock-hint" id="lockErfolgText"></p>
+      <button type="button" id="lockErfolgZurueck" class="lock-link">Zurück zur Anmeldung</button>
+    </div>
   </div>
 
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"

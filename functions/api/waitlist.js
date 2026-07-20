@@ -69,7 +69,12 @@ export async function onRequestPost({ request, env }) {
     if (vorhanden) {
       // Bewusst dieselbe freundliche Antwort bei 'offen' und 'abgelehnt' -
       // eine Absage muss man niemandem ins Gesicht sagen.
-      return json({ ok: true, message: "Du stehst schon auf der Liste." });
+      //
+      // `message` steht nur hier, im Sonderfall. Im Normalfall unten schweigt
+      // der Server dazu, und die App schreibt ihren eigenen Text mit der
+      // eingetragenen Adresse darin - so sieht der Eintragende gleich, ob er
+      // sich vertippt hat.
+      return json({ ok: true, message: "Diese Adresse war schon eingetragen — wir melden uns." });
     }
 
     // Grobe Bremse gegen automatisiertes Zumuellen: hoechstens ein Eintrag
@@ -140,5 +145,5 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Datenbankfehler" }, 500);
   }
 
-  return json({ ok: true, message: "Eingetragen - du bekommst eine Mail, sobald du freigeschaltet bist." });
+  return json({ ok: true });
 }

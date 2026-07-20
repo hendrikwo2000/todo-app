@@ -513,7 +513,25 @@ input[type="date"]:focus {
   background: var(--row);
   text-align: center;
 }
+/* display:flex oben schlaegt sonst das eingebaute [hidden] des Browsers -
+   der Bestaetigungskasten waere immer sichtbar. */
+.lock-box[hidden] { display: none; }
 .lock-icon { font-size: 32px; line-height: 1; }
+/* Gruener Haken als Kreis statt Emoji: sieht auf allen Systemen gleich aus
+   und traegt die Bestaetigung deutlicher als ein Zeichen in Textgroesse. */
+.lock-haken {
+  align-self: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .lock-box h2 { margin: 0; font-size: 18px; }
 .lock-hint { margin: 0; font-size: 12.5px; color: var(--muted); }
 .lock-box input {
@@ -723,9 +741,11 @@ input[type="date"]:focus {
 }
 #kontoLoeschenEmail:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--del-soft); }
 
-/* Turnstile-Kasten in der Anmeldemaske. Das Widget bringt eigene Masse mit,
-   hier nur zentrieren und Platz schaffen. */
-.lock-turnstile { display: flex; justify-content: center; min-height: 65px; }
+/* Turnstile-Kasten in der Anmeldemaske. Kein Mindestmass mehr: das Widget
+   laeuft unsichtbar (appearance "interaction-only"), reservierter Platz waere
+   ein Loch im Formular. Muss Turnstile doch mal fragen, bringt das Widget
+   seine eigenen Masse mit und der Kasten waechst mit. */
+.lock-turnstile { display: flex; justify-content: center; }
 .lock-turnstile[hidden] { display: none; }
 
 /* "Du" in der Nutzerliste - graugruen statt blau, damit es sich von der
