@@ -65,6 +65,7 @@ export async function onRequestGet({ request, env }) {
       admin: nutzer.role === "admin",
       // Fuer die Anzeige im Konto-Menue und den Abgleich beim Loeschen.
       email: nutzer.email,
+      name: nutzer.name,
       categories: listen.results.map(l => ({ id: l.id, name: l.name })),
       todos: todos.results.map(t => ({
         id: t.id,

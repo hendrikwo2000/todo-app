@@ -5,12 +5,14 @@
  * entsprechend vorsichtig: nur zwei Felder, beide laengenbegrenzt, und ein
  * Mindestabstand zwischen Eintragungen.
  *
- * Bewusst OHNE Bot-Schutz (kein Turnstile). Solange die Adresse nirgends
- * verlinkt ist, ist das Risiko gering; kommt Muell an, waere Turnstile der
- * naechste Schritt - it-wolf.org nutzt es bereits.
+ * Durch Cloudflare Turnstile gegen Bots geschuetzt. Zusaetzlich hoechstens
+ * ein Eintrag pro Minute ueber alle Adressen - falls Turnstile mal ausfaellt
+ * oder umgangen wird, bremst das immer noch.
  */
 
 import { sendeMail, huelle, absatz, kasten, knopf, fussnote } from "../_lib/mail.js";
+import { pruefeTurnstile } from "../_lib/turnstile.js";
+import { hashHex, neuesToken } from "../_lib/session.js";
 
 const MAX_NAME = 80;
 const MAX_EMAIL = 254;   // RFC-Obergrenze fuer Mailadressen
@@ -49,6 +51,10 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Das sieht nicht nach einer E-Mail-Adresse aus." }, 400);
   }
 
+  const botFehler = await pruefeTurnstile(
+    env, body?.turnstile, request.headers.get("CF-Connecting-IP"));
+  if (botFehler) return json({ error: botFehler }, 400);
+
   try {
     // Schon freigeschaltet? Dann gehoert die Person nicht auf die Warteliste,
     // sondern soll sich einfach anmelden.
@@ -76,10 +82,21 @@ export async function onRequestPost({ request, env }) {
       return json({ error: "Gerade zu viele Anfragen. Bitte kurz warten." }, 429);
     }
 
-    await env.DB.prepare("INSERT INTO waitlist (name, email) VALUES (?, ?)")
-      .bind(name, email).run();
+    const eingefuegt = await env.DB.prepare(
+      "INSERT INTO waitlist (name, email) VALUES (?, ?)"
+    ).bind(name, email).run();
 
     const url = new URL(request.url).origin;
+
+    // Einmal-Link, mit dem die Anfrage direkt aus der Mail freigeschaltet
+    // werden kann - ohne Umweg ueber das Dashboard. Sieben Tage gueltig,
+    // danach bleibt der Weg ueber die Verwaltung.
+    const freiToken = neuesToken();
+    await env.DB.prepare(
+      `INSERT INTO admin_tokens (zweck, waitlist_id, token_hash, expires_at)
+       VALUES ('freischalten', ?, ?, datetime('now', '+7 days'))`
+    ).bind(eingefuegt.meta.last_row_id, await hashHex(freiToken)).run();
+    const freiLink = `${url}/freischalten?t=${freiToken}`;
 
     // Bestaetigung an den Eintragenden. Ohne sie steht man da und weiss
     // nicht, ob das Formular ueberhaupt etwas getan hat.
@@ -111,10 +128,12 @@ export async function onRequestPost({ request, env }) {
         subject: `Neue Wartelisten-Anfrage: ${name}`,
         html: huelle("Neue Wartelisten-Anfrage",
           kasten(`<strong>${escape(name)}</strong><br>${escape(email)}`) +
-          absatz("Im Dashboard kannst du die Anfrage freischalten oder ablehnen.") +
-          knopf("Zur Verwaltung", `${url}/admin`) +
+          knopf("Freischalten", freiLink) +
+          absatz(`<span style="color:#8b8e96;font-size:13px;">Der Link gilt 7 Tage.
+                  Ablehnen oder später entscheiden geht in der
+                  <a href="${url}/admin" style="color:#4f63d2;">Verwaltung</a>.</span>`) +
           fussnote("Diese Mail geht an die hinterlegte Verwaltungsadresse.")),
-        text: `Neue Wartelisten-Anfrage:\n\n${name}\n${email}\n\nDashboard: ${url}/admin`,
+        text: `Neue Wartelisten-Anfrage:\n\n${name}\n${email}\n\nFreischalten: ${freiLink}\n(7 Tage gueltig)\n\nVerwaltung: ${url}/admin`,
       });
     }
   } catch (e) {

@@ -37,12 +37,18 @@ der Betreiber kann die Inhalte lesen.
 
 ### Login
 
-E-Mail-Code statt Passwort: wer sich anmelden darf, steht in der Tabelle
+Anmeldelink statt Passwort: wer sich anmelden darf, steht in der Tabelle
 `users` — das ist zugleich die ganze Zugangsbeschränkung, es gibt keine
 Registrierung. Ablauf: Adresse eintragen → `/api/auth/request-code` verschickt
-einen sechsstelligen Code über [Resend](https://resend.com) →
-`/api/auth/verify-code` prüft ihn und setzt ein `HttpOnly`-Sitzungscookie
-(30 Tage). Codes und Sitzungstoken liegen nur gehasht in der Datenbank.
+über [Resend](https://resend.com) eine Mail mit **Link** (ein Klick, fertig)
+und einem sechsstelligen **Code** als Ausweg für den Gerätewechsel. Der Link
+geht an `/api/auth/link`, der Code an `/api/auth/verify-code`; beide zeigen auf
+denselben Datenbankeintrag, was zuerst benutzt wird, verbraucht beide.
+
+Danach ein `HttpOnly`-Sitzungscookie. Sitzungen laufen **nicht von selbst ab** —
+nur Abmelden oder Kontolöschung beendet sie. Das Cookie selbst ist auf 400 Tage
+gesetzt, weil Browser längere Werte stillschweigend kürzen. Codes und
+Sitzungstoken liegen nur gehasht in der Datenbank.
 Abmelden über `/api/auth/logout` löscht die Sitzung serverseitig, nicht nur
 das Cookie — ein abgegriffenes Token wird damit ebenfalls ungültig.
 
@@ -58,6 +64,7 @@ Nötige Secrets unter *Pages → Settings → Environment variables*:
 | --- | --- |
 | `RESEND_KEY` | Resend-API-Key mit Sending-Zugriff auf `mail.it-wolf.org` |
 | `ADMIN_MAIL` | optional: Adresse für Wartelisten-Benachrichtigungen. Ohne sie gehen sie an alle Konten mit `role='admin'` |
+| `TURNSTILE_SECRET` | Geheimer Schlüssel des Turnstile-Widgets. Fehlt er, findet **keine** Bot-Prüfung statt |
 
 Absenderadresse ist `login@mail.it-wolf.org` (fest im Code, keine Mailbox
 nötig — Resend verschickt nur, empfängt nichts). Die Domain-DNS-Einträge
@@ -88,10 +95,20 @@ in `/api/admin/*`: ohne Adminrechte antwortet der Endpunkt mit **404** (nicht
 Die Rolle wird bei jeder Anfrage frisch aus der Datenbank gelesen, nicht aus
 dem Cookie — sonst behielte jemand entzogene Adminrechte bis zu 30 Tage.
 
-Das öffentliche Formular hat **keinen Bot-Schutz**. Solange die Adresse
-nirgends verlinkt ist, ist das Risiko gering; kommt Müll an, wäre Turnstile
-der nächste Schritt (it-wolf.org nutzt es bereits). Als grobe Bremse gilt
+Das öffentliche Formular ist durch **Cloudflare Turnstile** geschützt
+(Widget „todo.it-wolf.org Warteliste", Sitekey steht offen in `app.js`, der
+geheime Schlüssel als `TURNSTILE_SECRET`). Ohne gesetztes Secret wird **nicht**
+geprüft — das hält die lokale Entwicklung ohne Schlüssel am Laufen, heißt in
+der Produktion aber: Variable vergessen = Formular ungeschützt. Zusätzlich gilt
 höchstens ein Eintrag pro Minute über alle Adressen.
+
+Der Sitekey erlaubt nur `todo.it-wolf.org`. Lokal rendert das Widget deshalb
+nicht; die Function lässt ohne Secret trotzdem durch.
+
+**Freischalten direkt aus der Mail:** Die Benachrichtigung enthält einen
+Einmal-Link (7 Tage gültig) auf `/freischalten`. Das bloße Öffnen tut nichts —
+erst der Klick auf den Knopf schaltet frei. Grund: Mailprogramme und
+Sicherheitsscanner öffnen Links teilweise von sich aus.
 
 **Adminrechte** vergibt man im Dashboard in der Nutzerliste („Zum Admin
 machen"). Man kann sie sich nicht selbst entziehen — sonst sperrt sich der

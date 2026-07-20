@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Freischalten · ToDo-Liste</title>
+  <link rel="icon" href="icon-192.png">
+  <meta name="theme-color" content="#4f63d2">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="lock">
+    <div class="lock-box">
+      <div id="ladeAnzeige">
+        <p class="lock-hint">Einen Moment …</p>
+      </div>
+
+      <div id="frage" hidden>
+        <div class="lock-icon">👋</div>
+        <h2>Freischalten?</h2>
+        <p class="lock-hint" id="wer"></p>
+        <button type="button" id="jaKnopf" class="btn primary">Ja, freischalten</button>
+      </div>
+
+      <div id="fertig" hidden>
+        <div class="lock-icon">✅</div>
+        <h2 id="fertigTitel">Freigeschaltet</h2>
+        <p class="lock-hint" id="fertigText"></p>
+        <a href="/admin" class="btn">Zur Verwaltung</a>
+      </div>
+
+      <div id="fehler" hidden>
+        <div class="lock-icon">⚠️</div>
+        <h2>Geht nicht</h2>
+        <p class="lock-hint" id="fehlerText"></p>
+        <a href="/admin" class="btn">Zur Verwaltung</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="freischalten.js"></script>
+</body>
+</html>

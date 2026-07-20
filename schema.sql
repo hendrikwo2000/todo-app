@@ -75,13 +75,29 @@ CREATE TABLE waitlist (
 -- Codes werden gehasht gespeichert (wie ein Passwort), nicht im Klartext -
 -- falls die Datenbank je ausgelesen wird, sind angeforderte, noch gueltige
 -- Codes damit nicht direkt nutzbar.
+-- token_hash gehoert zum Anmeldelink in derselben Mail. Link und Code sind
+-- zwei Wege zum selben Eintrag: was zuerst benutzt wird, verbraucht beide.
 CREATE TABLE login_codes (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   email      TEXT NOT NULL,
   code_hash  TEXT NOT NULL,
+  token_hash TEXT,
   attempts   INTEGER NOT NULL DEFAULT 0,
   expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Einmal-Links fuer die Verwaltung (Freischalten direkt aus der
+-- Benachrichtigungsmail). Getrennt von login_codes, weil hier nicht die
+-- Person selbst handelt, sondern ein Admin ueber sie.
+CREATE TABLE admin_tokens (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  zweck       TEXT NOT NULL CHECK (zweck IN ('freischalten')),
+  waitlist_id INTEGER NOT NULL,
+  token_hash  TEXT NOT NULL UNIQUE,
+  expires_at  TEXT NOT NULL,
+  used_at     TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- token_hash ist der Primaerschluessel: das Cookie traegt den Klartext-Token,
@@ -101,4 +117,6 @@ CREATE INDEX idx_lists_user     ON lists(user_id, position);
 CREATE INDEX idx_todos_list     ON todos(list_id);
 CREATE INDEX idx_waitlist_st    ON waitlist(status, created_at);
 CREATE INDEX idx_login_codes_em ON login_codes(email, created_at);
+CREATE INDEX idx_login_codes_tk ON login_codes(token_hash);
 CREATE INDEX idx_sessions_user  ON sessions(user_id);
+CREATE INDEX idx_admin_tokens   ON admin_tokens(token_hash);

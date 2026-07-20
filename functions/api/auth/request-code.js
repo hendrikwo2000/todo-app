@@ -10,8 +10,8 @@
  * gehoert die generische Antwort zurueck.
  */
 
-import { hashHex } from "../../_lib/session.js";
-import { sendeMail, huelle, absatz, kasten, fussnote } from "../../_lib/mail.js";
+import { hashHex, neuesToken } from "../../_lib/session.js";
+import { sendeMail, huelle, absatz, knopf, fussnote } from "../../_lib/mail.js";
 
 const GUELTIG_MINUTEN = 10;
 
@@ -32,24 +32,30 @@ function neuerCode() {
 // Der Code steht bewusst NICHT im Betreff: der taucht sonst in
 // Push-Benachrichtigungen auf dem Sperrbildschirm und in jeder
 // Postfach-Uebersicht auf.
-function mailHtml(code) {
-  return huelle("Dein Anmeldecode",
-    kasten(code, true) +
-    absatz(`Gib den Code in der ToDo-Liste ein. Er gilt ${GUELTIG_MINUTEN} Minuten
-            und lässt sich nur einmal verwenden.`) +
-    fussnote("Du hast das nicht angefordert? Dann ignoriere diese Mail einfach — ohne den Code passiert nichts.")
+//
+// Der Link ist der Hauptweg - ein Klick, angemeldet. Der Code darunter ist
+// der Ausweg fuer den Geraetewechsel: wer die Mail auf dem Handy liest, sich
+// aber am Laptop anmelden will, kann ihn abtippen.
+function mailHtml(code, link) {
+  return huelle("Anmelden",
+    knopf("Jetzt anmelden", link) +
+    absatz(`Der Link gilt ${GUELTIG_MINUTEN} Minuten und funktioniert einmal.`) +
+    absatz(`<span style="color:#8b8e96;font-size:13px;">Anderes Gerät? Gib stattdessen diesen Code ein:
+            <strong style="color:#1c1d21;letter-spacing:2px;">${code}</strong></span>`) +
+    fussnote("Du hast das nicht angefordert? Dann ignoriere diese Mail einfach — ohne Link und Code passiert nichts.")
   );
 }
 
-function mailText(code) {
-  return `Dein Anmeldecode fuer die ToDo-Liste:
+function mailText(code, link) {
+  return `Zum Anmelden diesen Link oeffnen:
 
-${code}
+${link}
 
-Gueltig ${GUELTIG_MINUTEN} Minuten, nur einmal verwendbar.
+Gueltig ${GUELTIG_MINUTEN} Minuten, funktioniert einmal.
 
-Du hast das nicht angefordert? Dann ignoriere diese Mail einfach -
-ohne den Code passiert nichts.`;
+Anderes Geraet? Dann stattdessen diesen Code eingeben: ${code}
+
+Du hast das nicht angefordert? Dann ignoriere diese Mail einfach.`;
 }
 
 export async function onRequestPost({ request, env }) {
@@ -90,6 +96,8 @@ export async function onRequestPost({ request, env }) {
   }
 
   const code = neuerCode();
+  const linkToken = neuesToken();
+  const link = `${new URL(request.url).origin}/api/auth/link?t=${linkToken}`;
 
   // Erst verschicken, DANACH speichern: schlaegt der Mailversand fehl, darf
   // kein gueltiger, aber nie zugestellter Code liegen bleiben - der wuerde
@@ -97,7 +105,7 @@ export async function onRequestPost({ request, env }) {
   // Versuch verhindern, obwohl noch gar keine Mail unterwegs war.
   const versand = await sendeMail(env, {
     to: email,
-    subject: "Dein Anmeldecode für die ToDo-Liste",
+    subject: "Anmelden bei der ToDo-Liste",
     html: mailHtml(code),
     text: mailText(code),
   });
@@ -105,9 +113,9 @@ export async function onRequestPost({ request, env }) {
 
   try {
     await env.DB.prepare(
-      `INSERT INTO login_codes (email, code_hash, expires_at)
-       VALUES (?, ?, datetime('now', '+${GUELTIG_MINUTEN} minutes'))`
-    ).bind(email, await hashHex(code)).run();
+      `INSERT INTO login_codes (email, code_hash, token_hash, expires_at)
+       VALUES (?, ?, ?, datetime('now', '+${GUELTIG_MINUTEN} minutes'))`
+    ).bind(email, await hashHex(code), await hashHex(linkToken)).run();
   } catch (e) {
     return json({ error: "Datenbankfehler" }, 500);
   }

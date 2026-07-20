@@ -13,7 +13,6 @@ const API = "/api/admin/waitlist";
 const inhalt     = document.getElementById("inhalt");
 const keinZugang = document.getElementById("kseinZugang");
 const offenEl    = document.getElementById("offen");
-const erledigtEl = document.getElementById("erledigt");
 const nutzerEl   = document.getElementById("nutzer");
 const offenZahl  = document.getElementById("offenZahl");
 const nutzerZahl = document.getElementById("nutzerZahl");
@@ -122,7 +121,6 @@ async function bearbeite(id, aktion, knopfEl, extra = {}) {
 
 function zeichne(daten) {
   const offen = daten.warteliste.filter(w => w.status === "offen");
-  const erledigt = daten.warteliste.filter(w => w.status !== "offen");
 
   offenZahl.textContent = offen.length;
   nutzerZahl.textContent = daten.nutzer.length;
@@ -143,6 +141,9 @@ function zeichne(daten) {
   nutzerEl.replaceChildren();
   for (const n of daten.nutzer) {
     const aktionen = [];
+    // Das eigene Konto klar kennzeichnen - vorher war es nur daran zu
+    // erkennen, dass die Knoepfe fehlen, und das ist kein Hinweis.
+    if (n.id === daten.ichSelbst) aktionen.push(marke("Du", "du"));
     if (n.role === "admin") aktionen.push(marke("Admin", "admin"));
     // Beim eigenen Konto kein Knopf: sich selbst die Rechte zu entziehen
     // sperrt einen aus, sobald man der einzige Admin ist. Der Server
@@ -161,20 +162,6 @@ function zeichne(daten) {
     nutzerEl.append(zeile(n, aktionen));
   }
 
-  erledigtEl.replaceChildren();
-  if (!erledigt.length) {
-    const leer = document.createElement("p");
-    leer.className = "admin-leer";
-    leer.textContent = "Noch nichts bearbeitet.";
-    erledigtEl.append(leer);
-  }
-  for (const w of erledigt) {
-    erledigtEl.append(zeile(w, [
-      w.status === "freigeschaltet"
-        ? marke("Freigeschaltet", "gut")
-        : marke("Abgelehnt", "schlecht"),
-    ]));
-  }
 }
 
 async function laden() {

@@ -5,7 +5,7 @@
  * Browser unsichtbar, anders als das fruehere Passwort in localStorage).
  */
 
-import { hashHex, zeitgleich, neuesToken, setzeSessionCookie } from "../../_lib/session.js";
+import { hashHex, zeitgleich, neuesToken, setzeSessionCookie, SESSION_ABLAUF_SQL } from "../../_lib/session.js";
 
 function json(body, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
@@ -64,7 +64,8 @@ export async function onRequestPost({ request, env }) {
 
     const token = neuesToken();
     await env.DB.prepare(
-      "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, datetime('now', '+30 days'))"
+      `INSERT INTO sessions (token_hash, user_id, expires_at)
+       VALUES (?, ?, ${SESSION_ABLAUF_SQL})`
     ).bind(await hashHex(token), nutzer.id).run();
 
     return json({ ok: true }, 200, { "Set-Cookie": setzeSessionCookie(request, token) });

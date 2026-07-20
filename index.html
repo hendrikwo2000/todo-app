@@ -65,7 +65,7 @@
     <div class="admin-popup-box">
       <div id="kontoAuswahl">
         <div class="admin-popup-icon">👤</div>
-        <h2>Konto</h2>
+        <h2 id="kontoName">Konto</h2>
         <p id="kontoAdresse"></p>
         <button type="button" id="kontoAbmelden" class="btn primary">Abmelden</button>
         <button type="button" id="kontoLoeschenStart" class="btn gefahr">Konto löschen</button>
@@ -101,12 +101,15 @@
       <input type="email" id="lockEmail" placeholder="E-Mail-Adresse" autocomplete="email">
       <input type="text" id="lockCode" placeholder="6-stelliger Code" inputmode="numeric"
              pattern="[0-9]*" autocomplete="one-time-code" hidden>
-      <button type="submit">Code anfordern</button>
+      <div id="lockTurnstile" class="lock-turnstile" hidden></div>
+      <button type="submit">Anmeldelink anfordern</button>
       <div id="lockMsg" class="lock-msg" aria-live="polite"></div>
       <button type="button" id="lockSwitch" class="lock-link">Noch keinen Zugang? Eintragen</button>
     </form>
   </div>
 
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          async defer></script>
   <script src="app.js"></script>
 </body>
 </html>

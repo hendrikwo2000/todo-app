@@ -8,20 +8,15 @@
    - Verschieben zwischen Bereichen UND Umsortieren termin-loser ToDos
      per Drag & Drop
    - Heller / dunkler Modus
-   Daten liegen in einem JSONBin.io-Bin (siehe Konstanten unten) und
-   werden bei jeder Aenderung dorthin zurueckgeschrieben, damit alle
-   Geraete denselben Stand sehen. Sie sind mit einem Passwort
-   verschluesselt (siehe Abschnitt "Verschluesselung").
+   Daten liegen in einer Cloudflare-D1-Datenbank und werden bei jeder
+   Aenderung ueber /api/todos zurueckgeschrieben, damit alle Geraete
+   denselben Stand sehen.
    ==================================================================== */
 
 // ---------- Cloud-Speicher ----------
-// Gespeichert wird weiterhin in einem JSONBin-Bin, aber nicht mehr direkt von
-// hier aus: Bin-ID und Access-Key standen frueher als Konstanten in dieser
-// Datei und waren damit fuer jeden Besucher lesbar. Beides liegt jetzt als
-// Secret im Cloudflare-Pages-Projekt; /api/todos reicht die Anfragen durch
-// (siehe functions/api/todos.js). Die Zweitsicherung nach Google Drive stoesst
-// dieselbe Function nach jedem Schreiben selbst an — auch ihr Geheimnis ist
-// damit aus dem oeffentlichen Quelltext verschwunden.
+// Alles laeuft ueber /api/todos (siehe functions/api/todos.js). Die App kennt
+// weder Datenbank noch Zugangsdaten - wer angemeldet ist, entscheidet das
+// Sitzungs-Cookie, und der Server liefert nur die eigenen Daten aus.
 const API_BASE = "/api/todos";
 
 let state = { categories: [], todos: [] };
@@ -46,6 +41,12 @@ const snackbar     = document.getElementById("snackbar");
 const titel        = document.getElementById("titel");
 const adminPopup   = document.getElementById("adminPopup");
 const kontoPopup   = document.getElementById("kontoPopup");
+
+// Oeffentlicher Sitekey des Turnstile-Widgets fuer todo.it-wolf.org. Darf im
+// Quelltext stehen - der geheime Schluessel liegt als TURNSTILE_SECRET im
+// Pages-Projekt und verlaesst den Server nie.
+const TURNSTILE_SITEKEY = "0x4AAAAAAD59Ii7T3CeedSfa";
+let turnstileId = null;
 
 // Werden beim Laden aus der Server-Antwort gesetzt. istAdmin ist nur fuer
 // die Optik - /api/admin/* prueft die Rolle selbst nochmal.
@@ -122,7 +123,7 @@ function toggleTheme() {
 }
 
 // ---------- Zugang ----------
-// Login per E-Mail-Code statt Passwort - Server-Endpunkte in
+// Login per Anmeldelink (Code als Ausweg) statt Passwort - Endpunkte in
 // functions/api/auth/. Die Sitzung lebt in einem HttpOnly-Cookie, das der
 // Browser bei jeder gleichseitigen Anfrage von selbst mitschickt; anders als
 // das fruehere Passwort in localStorage kommt kein Skript im Browser mehr
@@ -134,9 +135,52 @@ function toggleTheme() {
 let canSave = false;
 
 // ---------- Anmeldemaske ----------
-// Zwei Schritte in derselben Maske: erst die Adresse (Code anfordern), dann
-// der sechsstellige Code (anmelden). Loest sich auf, sobald der Server die
-// Sitzung angelegt hat.
+// Normalfall: Adresse eintragen, Mail oeffnen, Link klicken - fertig. Diese
+// Maske bleibt dabei stehen; angemeldet wird man durch den Link im anderen
+// Tab. Das Codefeld ist der Ausweg fuer den Geraetewechsel.
+// Turnstile-Widget nur im Wartelisten-Schritt zeigen. Der Login braucht es
+// nicht: dort kommen ohnehin nur bekannte Adressen durch.
+//
+// Das Skript laedt async - wenn der Nutzer schneller ist, wird spaeter
+// nachgeholt. Ohne geladenes Skript bleibt turnstileId null; die Function
+// laesst dann durch, solange sie kein Token erwartet.
+function zeigeTurnstile(an) {
+  const kasten = document.getElementById("lockTurnstile");
+  kasten.hidden = !an;
+  if (!an) return;
+  if (!window.turnstile) {
+    // Skript noch unterwegs - gleich nochmal versuchen.
+    setTimeout(() => { if (!kasten.hidden) zeigeTurnstile(true); }, 400);
+    return;
+  }
+  if (turnstileId === null) {
+    turnstileId = window.turnstile.render(kasten, {
+      sitekey: TURNSTILE_SITEKEY,
+      theme: "auto",
+    });
+    // Werbeblocker und strenge Netzwerke schlucken das Widget manchmal:
+    // render() meldet keinen Fehler, es erscheint nur nie ein iframe. Ohne
+    // Hinweis stuende man dann vor einem Formular, das der Server wortlos
+    // ablehnt.
+    setTimeout(() => {
+      if (kasten.hidden || kasten.querySelector("iframe")) return;
+      const hinweis = document.createElement("p");
+      hinweis.className = "lock-hint";
+      hinweis.textContent = "Die Bot-Prüfung lädt nicht — vermutlich blockiert " +
+        "sie ein Werbeblocker. Schreib mir sonst einfach eine Mail.";
+      kasten.replaceChildren(hinweis);
+    }, 6000);
+  } else {
+    // Nach einem Absenden ist das Token verbraucht.
+    window.turnstile.reset(turnstileId);
+  }
+}
+
+function turnstileToken() {
+  if (turnstileId === null || !window.turnstile) return "";
+  return window.turnstile.getResponse(turnstileId) || "";
+}
+
 function login() {
   return new Promise(resolve => {
     const overlay  = document.getElementById("lock");
@@ -161,7 +205,8 @@ function login() {
       name.hidden = true;
       email.hidden = false;
       code.hidden = true;
-      button.textContent = "Code anfordern";
+      zeigeTurnstile(false);
+      button.textContent = "Anmeldelink anfordern";
       umschalt.hidden = false;
       umschalt.textContent = "Noch keinen Zugang? Eintragen";
       setzeMeldung("");
@@ -181,6 +226,7 @@ function login() {
       email.hidden = false;
       code.hidden = true;
       button.textContent = "Eintragen";
+      zeigeTurnstile(true);
       umschalt.hidden = false;
       umschalt.textContent = "Zurück zur Anmeldung";
       setzeMeldung("");
@@ -194,11 +240,13 @@ function login() {
       // Sendedomain gern mal eine halbe Minute. Ohne den Hinweis wirkt das wie
       // ein Fehler, und man fordert unnoetig einen zweiten Code an.
       document.getElementById("lockHint").textContent =
-        `Code an ${aktuelleEmail} geschickt. Kann bis zu einer Minute dauern — schau notfalls im Spam-Ordner.`;
+        `Mail an ${aktuelleEmail} geschickt. Klick dort auf „Jetzt anmelden“ — ` +
+        `oder tipp hier den Code aus der Mail ein.`;
       name.hidden = true;
       email.hidden = true;
       code.hidden = false;
       code.value = "";
+      zeigeTurnstile(false);
       button.textContent = "Anmelden";
       // Auf dem Code-Schritt waere der Umschalter nur verwirrend - hier geht
       // es nicht mehr um die Frage, ob man einen Zugang hat.
@@ -262,7 +310,9 @@ function login() {
           const res = await fetch("/api/waitlist", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: wunschName, email: wunschEmail }),
+            body: JSON.stringify({
+              name: wunschName, email: wunschEmail, turnstile: turnstileToken(),
+            }),
           });
           if (!res.ok) {
             setzeMeldung(await serverMeldung(res, "Eintragen hat nicht geklappt."));
@@ -271,6 +321,7 @@ function login() {
           const daten = await res.json().catch(() => ({}));
           setzeMeldung(daten.message || "Eingetragen.", true);
           name.value = "";
+          if (turnstileId !== null && window.turnstile) window.turnstile.reset(turnstileId);
         } else {
           const eingegeben = code.value.trim();
           if (!/^\d{6}$/.test(eingegeben)) { setzeMeldung("Sechsstelligen Code eingeben."); return; }
@@ -299,6 +350,19 @@ function login() {
     };
 
     zeigeEmailSchritt();
+
+    // /api/auth/link leitet bei einem abgelaufenen oder schon benutzten Link
+    // hierher zurueck. Ohne Hinweis stuende man wieder vor der Maske und
+    // wuesste nicht, warum der Klick nichts gebracht hat.
+    const grund = new URLSearchParams(location.search).get("login");
+    if (grund) {
+      setzeMeldung(grund === "abgelaufen"
+        ? "Der Link ist abgelaufen oder wurde schon benutzt. Fordere einen neuen an."
+        : "Die Anmeldung über den Link hat nicht geklappt.");
+      // Aus der Adresszeile nehmen, damit ein Neuladen den Hinweis nicht
+      // wiederholt.
+      history.replaceState(null, "", location.pathname);
+    }
   });
 }
 
@@ -392,6 +456,9 @@ async function loadState() {
     canSave = true;
     istAdmin = state.admin === true;
     eigeneEmail = state.email || "";
+    // Name als Ueberschrift, Adresse darunter - "Konto" sagt niemandem, um
+    // welches Konto es geht.
+    document.getElementById("kontoName").textContent = state.name || "Konto";
     document.getElementById("kontoAdresse").textContent = eigeneEmail;
     // Der Titel bekommt nur fuer Admins einen Hinweis-Cursor - sonst wuerde
     // er einen Doppelklick andeuten, der bei allen anderen nichts tut.

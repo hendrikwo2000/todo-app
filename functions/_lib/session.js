@@ -6,7 +6,16 @@
  */
 
 export const COOKIE_NAME = "todo_session";
-const SESSION_TAGE = 30;
+
+// Sitzungen laufen nicht von selbst ab - nur Abmelden oder Kontoloeschung
+// beendet sie. In der Datenbank steht dafuer ein weit entferntes Datum,
+// damit die Abfrage "expires_at > now" einfach bleiben kann.
+export const SESSION_ABLAUF_SQL = "datetime('now', '+100 years')";
+
+// Browser deckeln Cookies inzwischen bei 400 Tagen (Chrome und Safari
+// kuerzen laengere Werte stillschweigend). Laenger anzugeben bringt also
+// nichts; nach 400 Tagen ohne Besuch meldet man sich einmal neu an.
+const COOKIE_TAGE = 400;
 
 export async function hashHex(text) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -44,7 +53,7 @@ function secureFlag(request) {
 }
 
 export function setzeSessionCookie(request, token) {
-  const maxAge = SESSION_TAGE * 24 * 60 * 60;
+  const maxAge = COOKIE_TAGE * 24 * 60 * 60;
   return `${COOKIE_NAME}=${token}; Path=/; HttpOnly;${secureFlag(request)} SameSite=Lax; Max-Age=${maxAge}`;
 }
 
