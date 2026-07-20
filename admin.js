@@ -78,6 +78,13 @@ async function bearbeite(id, aktion, knopfEl, extra = {}) {
   if (aktion === "ablehnen" && !confirm("Diese Anfrage wirklich ablehnen?")) return;
   if (aktion === "rolle" && extra.rolle === "admin"
       && !confirm("Diesem Nutzer Adminrechte geben? Er kann dann alle Anfragen und Nutzer verwalten.")) return;
+  // Zwei Rueckfragen beim Loeschen: der Vorgang nimmt fremde ToDos mit und
+  // laesst sich nicht rueckgaengig machen.
+  if (aktion === "nutzerLoeschen") {
+    const wer = `${extra.name || extra.email} (${extra.email})`;
+    if (!confirm(`${wer} löschen?\n\nAlle Bereiche und ToDos dieser Person werden unwiderruflich entfernt.`)) return;
+    if (!confirm("Wirklich sicher? Das lässt sich nicht rückgängig machen.")) return;
+  }
   knopfEl.disabled = true;
   try {
     const res = await fetch(API, {
@@ -99,6 +106,10 @@ async function bearbeite(id, aktion, knopfEl, extra = {}) {
         : "Freigeschaltet, Willkommensmail verschickt.");
     } else if (aktion === "rolle") {
       melde(extra.rolle === "admin" ? "Adminrechte vergeben." : "Adminrechte entzogen.");
+    } else if (aktion === "nutzerLoeschen") {
+      melde(daten.mailVerschickt === false
+        ? "Gelöscht — aber die Benachrichtigung ging nicht raus."
+        : "Gelöscht, Benachrichtigung verschickt.");
     } else {
       melde("Abgelehnt.");
     }
@@ -143,7 +154,9 @@ function zeichne(daten) {
         "still",
         () => bearbeite(n.id, "rolle", b, { rolle: zielRolle })
       );
-      aktionen.push(b);
+      const del = knopf("Löschen", "gefahr",
+        () => bearbeite(n.id, "nutzerLoeschen", del, { name: n.name, email: n.email }));
+      aktionen.push(b, del);
     }
     nutzerEl.append(zeile(n, aktionen));
   }

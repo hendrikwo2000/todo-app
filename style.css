@@ -699,3 +699,26 @@ input[type="date"]:focus {
   cursor: pointer;
 }
 .admin-popup-box .lock-link:hover { color: var(--text); }
+
+/* Loeschen und andere unwiderrufliche Aktionen. Bewusst kein gefuelltes Rot:
+   der Knopf soll warnen, aber nicht staerker ziehen als der harmlose
+   Hauptknopf daneben. Erst beim Hovern wird er voll rot. */
+.btn.gefahr { color: var(--red); border-color: var(--del-soft); }
+.btn.gefahr:hover { background: var(--red); border-color: var(--red); color: #fff; filter: none; }
+
+/* Konto-Menue: die drei Ansichten teilen sich einen Dialog. */
+#kontoPopup .admin-popup-box > div { display: flex; flex-direction: column; gap: 10px; }
+#kontoPopup .admin-popup-box > div[hidden] { display: none; }
+#kontoPopup .btn { width: 100%; justify-content: center; }
+#kontoAdresse { word-break: break-all; }
+#kontoLoeschenEmail {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font: inherit;
+  text-align: center;
+  outline: none;
+}
+#kontoLoeschenEmail:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--del-soft); }

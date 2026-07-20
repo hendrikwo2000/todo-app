@@ -11,6 +11,7 @@
 
 import { angemeldeterAdmin } from "../../_lib/session.js";
 import { sendeMail, huelle, absatz, knopf, fussnote } from "../../_lib/mail.js";
+import { loescheKonto, istLetzterAdmin, meldeLoeschung } from "../../_lib/loeschen.js";
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -60,6 +61,30 @@ export async function onRequestPost({ request, env }) {
 
   const id = Number(body?.id);
   const aktion = String(body?.aktion || "");
+
+  // ---- Nutzer loeschen (betrifft users, nicht die Warteliste) ----
+  if (aktion === "nutzerLoeschen") {
+    if (!Number.isInteger(id)) return json({ error: "Ungueltige Anfrage" }, 400);
+    // Das eigene Konto loescht man ueber den Weg in der App - dort wird die
+    // Adresse abgefragt. Hier waere es ein Klick zu wenig fuer die Wirkung.
+    if (id === admin.id) {
+      return json({ error: "Dein eigenes Konto löschst du in der App unter Abmelden." }, 400);
+    }
+    try {
+      const ziel = await env.DB.prepare(
+        "SELECT id, email, name, role FROM users WHERE id = ?"
+      ).bind(id).first();
+      if (!ziel) return json({ error: "Nutzer nicht gefunden" }, 404);
+      if (await istLetzterAdmin(env, ziel)) {
+        return json({ error: "Das ist der einzige Admin - erst jemand anderen zum Admin machen." }, 409);
+      }
+      await loescheKonto(env, ziel);
+      const versand = await meldeLoeschung(env, ziel, true);
+      return json({ ok: true, mailVerschickt: versand.ok });
+    } catch (e) {
+      return json({ error: "Datenbankfehler" }, 500);
+    }
+  }
 
   // ---- Rolle aendern (betrifft users, nicht die Warteliste) ----
   if (aktion === "rolle") {

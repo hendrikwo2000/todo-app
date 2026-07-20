@@ -59,6 +59,39 @@
     </div>
   </div>
 
+  <!-- Konto-Menue hinter dem Abmelden-Knopf. Drei Ansichten in einem
+       Dialog: Auswahl, Abmelde-Rueckfrage, Loesch-Bestaetigung. -->
+  <div id="kontoPopup" class="admin-popup" hidden>
+    <div class="admin-popup-box">
+      <div id="kontoAuswahl">
+        <div class="admin-popup-icon">👤</div>
+        <h2>Konto</h2>
+        <p id="kontoAdresse"></p>
+        <button type="button" id="kontoAbmelden" class="btn primary">Abmelden</button>
+        <button type="button" id="kontoLoeschenStart" class="btn gefahr">Konto löschen</button>
+      </div>
+
+      <div id="kontoAbmeldenFrage" hidden>
+        <div class="admin-popup-icon">👋</div>
+        <h2>Abmelden?</h2>
+        <p>Du musst dich beim nächsten Mal per E-Mail-Code neu anmelden.</p>
+        <button type="button" id="kontoAbmeldenJa" class="btn primary">Ja, abmelden</button>
+      </div>
+
+      <div id="kontoLoeschenFrage" hidden>
+        <div class="admin-popup-icon">⚠️</div>
+        <h2>Konto löschen</h2>
+        <p>Alle Bereiche und ToDos werden unwiderruflich gelöscht.
+           Tipp zur Bestätigung deine Adresse ein.</p>
+        <input type="email" id="kontoLoeschenEmail" placeholder="E-Mail-Adresse" autocomplete="off">
+        <button type="button" id="kontoLoeschenJa" class="btn gefahr">Endgültig löschen</button>
+        <div id="kontoMsg" class="lock-msg" aria-live="polite"></div>
+      </div>
+
+      <button type="button" id="kontoPopupZu" class="lock-link">Abbrechen</button>
+    </div>
+  </div>
+
   <div id="lock" class="lock hidden">
     <form id="lockForm" class="lock-box">
       <div class="lock-icon">🔒</div>

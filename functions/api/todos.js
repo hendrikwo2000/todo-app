@@ -63,6 +63,8 @@ export async function onRequestGet({ request, env }) {
       // Die App blendet den Verwaltungs-Zugang danach ein oder aus. Das ist
       // reine Optik - /api/admin/* prueft selbst nochmal.
       admin: nutzer.role === "admin",
+      // Fuer die Anzeige im Konto-Menue und den Abgleich beim Loeschen.
+      email: nutzer.email,
       categories: listen.results.map(l => ({ id: l.id, name: l.name })),
       todos: todos.results.map(t => ({
         id: t.id,

@@ -45,10 +45,12 @@ const logoutBtn    = document.getElementById("logoutBtn");
 const snackbar     = document.getElementById("snackbar");
 const titel        = document.getElementById("titel");
 const adminPopup   = document.getElementById("adminPopup");
+const kontoPopup   = document.getElementById("kontoPopup");
 
-// Wird beim Laden aus der Server-Antwort gesetzt. Nur fuer die Optik -
-// /api/admin/* prueft die Rolle selbst nochmal.
+// Werden beim Laden aus der Server-Antwort gesetzt. istAdmin ist nur fuer
+// die Optik - /api/admin/* prueft die Rolle selbst nochmal.
 let istAdmin = false;
+let eigeneEmail = "";
 
 // ---------- Hilfsfunktionen ----------
 function uid() {
@@ -313,6 +315,59 @@ async function logout() {
   location.reload();
 }
 
+// ---------- Konto-Menue ----------
+// Drei Ansichten in einem Dialog: Auswahl, Abmelde-Rueckfrage,
+// Loesch-Bestaetigung. Beide Wege verlangen eine zweite Bestaetigung -
+// Loeschen zusaetzlich die abgetippte Adresse, weil es die ToDos mitnimmt.
+const kontoAnsichten = {
+  auswahl:  document.getElementById("kontoAuswahl"),
+  abmelden: document.getElementById("kontoAbmeldenFrage"),
+  loeschen: document.getElementById("kontoLoeschenFrage"),
+};
+
+function zeigeKonto(ansicht) {
+  for (const [name, el] of Object.entries(kontoAnsichten)) el.hidden = name !== ansicht;
+  document.getElementById("kontoMsg").textContent = "";
+  kontoPopup.hidden = false;
+  if (ansicht === "loeschen") {
+    const feld = document.getElementById("kontoLoeschenEmail");
+    feld.value = "";
+    feld.focus();
+  }
+}
+
+async function kontoLoeschen() {
+  const feld = document.getElementById("kontoLoeschenEmail");
+  const msg = document.getElementById("kontoMsg");
+  const eingabe = feld.value.trim().toLowerCase();
+  // Auch der Server prueft das nochmal - hier nur, um den Fehler sofort zu
+  // zeigen statt nach einer Serverrunde.
+  if (eingabe !== eigeneEmail.toLowerCase()) {
+    msg.textContent = "Die Adresse stimmt nicht.";
+    feld.focus();
+    return;
+  }
+  const knopf = document.getElementById("kontoLoeschenJa");
+  knopf.disabled = true;
+  try {
+    const res = await fetch("/api/auth/account", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: eingabe }),
+    });
+    if (!res.ok) {
+      const daten = await res.json().catch(() => ({}));
+      msg.textContent = daten.error || "Löschen hat nicht geklappt.";
+      knopf.disabled = false;
+      return;
+    }
+    location.reload();
+  } catch (e) {
+    msg.textContent = "Server nicht erreichbar.";
+    knopf.disabled = false;
+  }
+}
+
 // ---------- Laden & Speichern ----------
 async function loadState() {
   while (true) {
@@ -336,6 +391,8 @@ async function loadState() {
     state = (await res.json()) || {};
     canSave = true;
     istAdmin = state.admin === true;
+    eigeneEmail = state.email || "";
+    document.getElementById("kontoAdresse").textContent = eigeneEmail;
     // Der Titel bekommt nur fuer Admins einen Hinweis-Cursor - sonst wuerde
     // er einen Doppelklick andeuten, der bei allen anderen nichts tut.
     titel.classList.toggle("klickbar", istAdmin);
@@ -980,7 +1037,23 @@ function renderTodo(t) {
 // ---------- Ereignisse ----------
 addCatBtn.addEventListener("click", addCategory);
 themeBtn.addEventListener("click", toggleTheme);
-logoutBtn.addEventListener("click", logout);
+
+// Der Knopf meldet nicht mehr direkt ab, sondern oeffnet das Konto-Menue.
+logoutBtn.addEventListener("click", () => zeigeKonto("auswahl"));
+document.getElementById("kontoAbmelden")
+  .addEventListener("click", () => zeigeKonto("abmelden"));
+document.getElementById("kontoAbmeldenJa").addEventListener("click", logout);
+document.getElementById("kontoLoeschenStart")
+  .addEventListener("click", () => zeigeKonto("loeschen"));
+document.getElementById("kontoLoeschenJa").addEventListener("click", kontoLoeschen);
+document.getElementById("kontoLoeschenEmail").addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); kontoLoeschen(); }
+});
+document.getElementById("kontoPopupZu")
+  .addEventListener("click", () => { kontoPopup.hidden = true; });
+kontoPopup.addEventListener("click", e => {
+  if (e.target === kontoPopup) kontoPopup.hidden = true;
+});
 
 // Verwaltung: absichtlich versteckt hinter einem Doppelklick auf den Titel.
 // Ein sichtbarer Knopf waere fuer den taeglichen Gebrauch nur im Weg, und
@@ -996,7 +1069,9 @@ adminPopup.addEventListener("click", e => {
   if (e.target === adminPopup) adminPopup.hidden = true;
 });
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && !adminPopup.hidden) adminPopup.hidden = true;
+  if (e.key !== "Escape") return;
+  if (!adminPopup.hidden) adminPopup.hidden = true;
+  if (!kontoPopup.hidden) kontoPopup.hidden = true;
 });
 
 // Spalten umsortieren: Board ist die Ablagezone fuer Bereichs-Drags.

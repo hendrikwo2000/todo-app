@@ -99,6 +99,22 @@ einzige Admin aus. Der Zugang zum Dashboard versteckt sich in der App hinter
 einem **Doppelklick auf die Überschrift „ToDo-Liste"**; bei Nicht-Admins
 passiert dabei nichts.
 
+### Konten löschen
+
+Nutzer löschen ihr eigenes Konto in der App über den Abmelden-Knopf →
+„Konto löschen"; zur Bestätigung muss die eigene Adresse abgetippt werden.
+Admins löschen fremde Konten im Dashboard. Beide Wege verschicken eine
+Benachrichtigung an die betroffene Adresse.
+
+Gelöscht werden Nutzer, Bereiche, ToDos, Sitzungen, offene Codes **und der
+Wartelisten-Eintrag** — letzterer, damit die Person sich neu bewerben kann;
+sonst hinge sie zwischen „kein Konto" und „steht schon auf der Liste" fest.
+Alles in einer Transaktion, Kindtabellen ausdrücklich zuerst (nicht auf
+`ON DELETE CASCADE` verlassen, das hängt an `PRAGMA foreign_keys`).
+
+**Der letzte Admin lässt sich nicht löschen** und sich auch selbst nicht
+degradieren — sonst käme niemand mehr an die Verwaltung.
+
 Ein Nutzer lässt sich auch direkt anlegen, ohne Warteliste:
 
 ```sql
