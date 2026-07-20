@@ -508,7 +508,7 @@ input[type="date"]:focus {
 .lock-icon { font-size: 32px; line-height: 1; }
 .lock-box h2 { margin: 0; font-size: 18px; }
 .lock-hint { margin: 0; font-size: 12.5px; color: var(--muted); }
-.lock-box input[type="password"] {
+.lock-box input {
   border: 1px solid var(--line);
   background: var(--bg);
   color: var(--text);
@@ -519,7 +519,7 @@ input[type="date"]:focus {
   outline: none;
   transition: border-color .15s, box-shadow .15s;
 }
-.lock-box input[type="password"]:focus {
+.lock-box input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }

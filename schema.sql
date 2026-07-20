@@ -66,9 +66,39 @@ CREATE TABLE waitlist (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- ------------------------------------------------------------ Anmeldung ---
+-- Login per E-Mail-Code statt Passwort: kein Hashing, kein
+-- Zuruecksetzen-Flow, keine vergessenen Passwoerter. Wer sich anmelden darf,
+-- steht in `users` - das IST hier die Zugangsbeschraenkung, es gibt bewusst
+-- keine Registrierung.
+--
+-- Codes werden gehasht gespeichert (wie ein Passwort), nicht im Klartext -
+-- falls die Datenbank je ausgelesen wird, sind angeforderte, noch gueltige
+-- Codes damit nicht direkt nutzbar.
+CREATE TABLE login_codes (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  email      TEXT NOT NULL,
+  code_hash  TEXT NOT NULL,
+  attempts   INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- token_hash ist der Primaerschluessel: das Cookie traegt den Klartext-Token,
+-- die Datenbank kennt nur seinen Hash - wie bei den Codes, falls die
+-- Datenbank je ausgelesen wird.
+CREATE TABLE sessions (
+  token_hash TEXT PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- ----------------------------------------------------------------- Index ---
 -- Das Board laedt immer "alle Bereiche eines Nutzers in Reihenfolge" und
 -- danach "alle ToDos dieser Bereiche". Genau dafuer die beiden Indizes.
-CREATE INDEX idx_lists_user  ON lists(user_id, position);
-CREATE INDEX idx_todos_list  ON todos(list_id);
-CREATE INDEX idx_waitlist_st ON waitlist(status, created_at);
+CREATE INDEX idx_lists_user     ON lists(user_id, position);
+CREATE INDEX idx_todos_list     ON todos(list_id);
+CREATE INDEX idx_waitlist_st    ON waitlist(status, created_at);
+CREATE INDEX idx_login_codes_em ON login_codes(email, created_at);
+CREATE INDEX idx_sessions_user  ON sessions(user_id);

@@ -113,125 +113,146 @@ function toggleTheme() {
 }
 
 // ---------- Zugang ----------
-// Uebergangsloesung, bis es einen richtigen Login gibt: ein gemeinsames
-// Passwort, das die Function gegen ein Secret prueft.
+// Login per E-Mail-Code statt Passwort - Server-Endpunkte in
+// functions/api/auth/. Die Sitzung lebt in einem HttpOnly-Cookie, das der
+// Browser bei jeder gleichseitigen Anfrage von selbst mitschickt; anders als
+// das fruehere Passwort in localStorage kommt kein Skript im Browser mehr
+// an das Sitzungstoken heran.
 //
-// Frueher stand hier AES-GCM. Die ToDos lagen verschluesselt im Bin und dieses
-// Passwort war der Schluessel - der Server konnte nichts lesen. Seit sie als
-// echte Spalten in D1 liegen (damit sortiert, gefiltert und spaeter geteilt
-// werden kann), geht das nicht mehr: Spalten, die niemand lesen kann, kann
-// auch niemand sortieren. Der Schutz ist deshalb vom Inhalt an den Zugang
-// gewandert.
-//
-// Wichtig dabei: eine Pruefung HIER waere wertlos, sie ist in den
-// Entwicklertools in Sekunden umgangen. Das Passwort geht darum bei jeder
-// Anfrage als Header mit, und die Function entscheidet.
-const LOCK_KEY = "todoPass";
-
-let password = null;
-// Erst speichern, wenn der vorhandene Stand wirklich gelesen wurde. Sonst
-// wuerde die erste Aenderung nach einem Ladefehler das Board leer ueberschreiben.
+// canSave bleibt false, bis der vorhandene Stand wirklich gelesen wurde -
+// sonst wuerde die erste Aenderung nach einem Ladefehler das Board leer
+// ueberschreiben.
 let canSave = false;
 
-// ---------- Sperrbildschirm ----------
-// Fragt das Passwort ab, bis der Server eines akzeptiert. Ein gemerktes wird
-// still probiert; nur wenn es nicht passt, erscheint die Maske.
-//
-// pruefe(pass) liefert true/false - oder wirft, wenn der Server gar nicht
-// antwortet. Der Unterschied ist wichtig: bei einer Stoerung darf NICHT nach
-// dem Passwort gefragt werden, sonst tippt man es dreimal ein, waehrend in
-// Wahrheit die Datenbank klemmt.
-function askPassword(pruefe) {
-  return new Promise((resolve, reject) => {
-    const overlay = document.getElementById("lock");
-    const form    = document.getElementById("lockForm");
-    const input   = document.getElementById("lockPass");
-    const msg     = document.getElementById("lockMsg");
+// ---------- Anmeldemaske ----------
+// Zwei Schritte in derselben Maske: erst die Adresse (Code anfordern), dann
+// der sechsstellige Code (anmelden). Loest sich auf, sobald der Server die
+// Sitzung angelegt hat.
+function login() {
+  return new Promise(resolve => {
+    const overlay  = document.getElementById("lock");
+    const form     = document.getElementById("lockForm");
+    const email    = document.getElementById("lockEmail");
+    const code     = document.getElementById("lockCode");
+    const msg      = document.getElementById("lockMsg");
+    const button   = form.querySelector("button[type=submit]");
+    let schritt = "email";
+    let aktuelleEmail = "";
 
-    const versuch = async (pass, still) => {
-      let ok;
-      try {
-        ok = await pruefe(pass);
-      } catch (e) {
-        overlay.classList.add("hidden");
-        reject(e);
-        return true;   // fertig - nicht weiter nach dem Passwort fragen
-      }
-      if (ok) {
-        localStorage.setItem(LOCK_KEY, pass);
-        password = pass;
-        overlay.classList.add("hidden");
-        resolve(pass);
-        return true;
-      }
-      localStorage.removeItem(LOCK_KEY);
-      if (!still) { msg.textContent = "Falsches Passwort"; input.value = ""; input.focus(); }
-      return false;
-    };
-
-    const zeige = () => {
-      document.getElementById("lockTitle").textContent = "ToDo-Liste entsperren";
-      document.getElementById("lockHint").textContent =
-        "Einmal pro Gerät eingeben — wird gespeichert.";
-      document.getElementById("lockPass2").hidden = true;
+    const zeigeEmailSchritt = () => {
+      schritt = "email";
+      document.getElementById("lockHint").textContent = "Mit deiner E-Mail-Adresse anmelden.";
+      email.hidden = false;
+      code.hidden = true;
+      button.textContent = "Code anfordern";
+      msg.textContent = "";
       overlay.classList.remove("hidden");
-      input.focus();
-      form.onsubmit = e => { e.preventDefault(); if (input.value) versuch(input.value, false); };
+      email.focus();
     };
 
-    const gemerkt = localStorage.getItem(LOCK_KEY);
-    if (gemerkt) versuch(gemerkt, true).then(ok => { if (!ok) zeige(); });
-    else zeige();
+    const zeigeCodeSchritt = () => {
+      schritt = "code";
+      document.getElementById("lockHint").textContent = `Code an ${aktuelleEmail} geschickt.`;
+      email.hidden = true;
+      code.hidden = false;
+      code.value = "";
+      button.textContent = "Anmelden";
+      msg.textContent = "";
+      code.focus();
+    };
+
+    form.onsubmit = async e => {
+      e.preventDefault();
+      msg.textContent = "";
+      button.disabled = true;
+      try {
+        if (schritt === "email") {
+          aktuelleEmail = email.value.trim();
+          if (!aktuelleEmail) return;
+          const res = await fetch("/api/auth/request-code", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: aktuelleEmail }),
+          });
+          if (res.status === 429) { msg.textContent = "Bitte kurz warten."; return; }
+          if (!res.ok) { msg.textContent = "Code konnte nicht verschickt werden."; return; }
+          zeigeCodeSchritt();
+        } else {
+          const eingegeben = code.value.trim();
+          if (!/^\d{6}$/.test(eingegeben)) { msg.textContent = "Sechsstelligen Code eingeben."; return; }
+          const res = await fetch("/api/auth/verify-code", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: aktuelleEmail, code: eingegeben }),
+          });
+          if (!res.ok) {
+            msg.textContent = "Falscher oder abgelaufener Code.";
+            code.value = "";
+            code.focus();
+            return;
+          }
+          overlay.classList.add("hidden");
+          resolve();
+        }
+      } finally {
+        button.disabled = false;
+      }
+    };
+
+    zeigeEmailSchritt();
   });
 }
 
 // ---------- Laden & Speichern ----------
-// 200 = Daten, 401 = falsches Passwort, alles andere ist eine echte Stoerung
-// und fliegt als Ausnahme weiter.
-async function hole(pass) {
-  const res = await fetch(API_BASE, {
-    headers: { "X-Todo-Passwort": pass },
-    cache: "no-store",
-  });
-  if (res.status === 401) return null;
-  if (!res.ok) throw new Error("HTTP " + res.status);
-  return res.json();
-}
-
 async function loadState() {
-  let daten = null;
-  try {
-    await askPassword(async pass => {
-      daten = await hole(pass);
-      return daten !== null;
-    });
-  } catch (e) {
-    // canSave bleibt false: lieber nichts speichern als den Server-Stand mit
-    // einem leeren Board ueberschreiben.
-    setStatus("⚠ Server nicht erreichbar", "err");
-    state = { categories: [], todos: [] };
+  while (true) {
+    let res;
+    try {
+      res = await fetch(API_BASE, { cache: "no-store" });
+    } catch (e) {
+      // canSave bleibt false: lieber nichts speichern als den Server-Stand
+      // mit einem leeren Board ueberschreiben.
+      setStatus("⚠ Server nicht erreichbar", "err");
+      state = { categories: [], todos: [] };
+      return;
+    }
+    if (res.status === 401) { await login(); continue; }
+    if (!res.ok) {
+      setStatus("⚠ Server nicht erreichbar", "err");
+      state = { categories: [], todos: [] };
+      return;
+    }
+
+    state = (await res.json()) || {};
+    canSave = true;
+    if (!Array.isArray(state.categories)) state.categories = [];
+    if (!Array.isArray(state.todos)) state.todos = [];
     return;
   }
-
-  state = daten || {};
-  canSave = true;
-
-  if (!Array.isArray(state.categories)) state.categories = [];
-  if (!Array.isArray(state.todos)) state.todos = [];
 }
 
 let saving = false, pendingSave = false;
 async function save() {
-  if (!canSave || !password) return;
+  if (!canSave) return;
   if (saving) { pendingSave = true; return; }
   saving = true;
   setStatus("Speichere …", "");
   try {
-    const res = await fetch(API_BASE, {
+    let res = await fetch(API_BASE, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "X-Todo-Passwort": password },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(state),
     });
+    // Sitzung inzwischen abgelaufen (z. B. ein sehr lange offener Tab) -
+    // einmal neu anmelden und den Speicherversuch wiederholen.
+    if (res.status === 401) {
+      await login();
+      res = await fetch(API_BASE, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(state),
+      });
+    }
     if (!res.ok) throw new Error("HTTP " + res.status);
     setStatus("Gespeichert ✓", "ok");
   } catch (e) {

@@ -5,7 +5,7 @@ Läuft auch als App auf dem Handy (zum Startbildschirm hinzufügen).
 
 **→ [todo.it-wolf.org](https://todo.it-wolf.org/)**
 
-Beim ersten Öffnen einmal das Passwort eingeben – das Gerät merkt es sich.
+Beim ersten Öffnen die E-Mail-Adresse eingeben, dann den Code aus der Mail.
 
 ## Bedienung
 
@@ -30,29 +30,44 @@ rot, welche ohne Termin blau. Mit ☾ / ☀ wechselt das Design.
 Läuft als Cloudflare-Pages-Projekt auf `todo.it-wolf.org`, deployt automatisch
 aus diesem Repo (Branch `main`, kein Build-Schritt).
 
-Die Daten liegen verschlüsselt in einem JSONBin-Bin. Die App spricht JSONBin
-**nicht** direkt an, sondern über `/api/todos` — die Zugangsdaten stehen sonst
-im ausgelieferten `app.js` und damit für jeden lesbar da. Nötige Secrets unter
-*Pages → Settings → Environment variables*:
+Die Daten liegen in einer Cloudflare-D1-Datenbank (Bindung `DB`, Schema in
+[schema.sql](schema.sql)) — nicht mehr verschlüsselt: echte Spalten statt
+Chiffretext erlauben Sortieren, Filtern und später geteilte Listen. Der Preis:
+der Betreiber kann die Inhalte lesen.
+
+### Login
+
+E-Mail-Code statt Passwort: wer sich anmelden darf, steht in der Tabelle
+`users` — das ist zugleich die ganze Zugangsbeschränkung, es gibt keine
+Registrierung. Ablauf: Adresse eintragen → `/api/auth/request-code` verschickt
+einen sechsstelligen Code über [Resend](https://resend.com) →
+`/api/auth/verify-code` prüft ihn und setzt ein `HttpOnly`-Sitzungscookie
+(30 Tage). Codes und Sitzungstoken liegen nur gehasht in der Datenbank.
+
+Nötige Secrets unter *Pages → Settings → Environment variables*:
 
 | Variable | Zweck |
 | --- | --- |
-| `JSONBIN_ID` | Bin-ID |
-| `JSONBIN_KEY` | Access-Key, nur auf dieses Bin berechtigt |
-| `DASHBOARD_URL` | optional: Apps-Script-Endpunkt der Zweitsicherung |
-| `DASHBOARD_SECRET` | optional: gemeinsames Geheimnis dafür |
+| `RESEND_KEY` | Resend-API-Key mit Sending-Zugriff auf `mail.it-wolf.org` |
 
-Lokal testen:
+Absenderadresse ist `login@mail.it-wolf.org` (fest im Code, keine Mailbox
+nötig — Resend verschickt nur, empfängt nichts). Die Domain-DNS-Einträge
+(DKIM/SPF/MX) liegen unter `mail.it-wolf.org`, getrennt von den
+Zoho-MX-Einträgen der Hauptdomain.
+
+Lokal testen (RESEND_KEY nur nötig, wenn der Mailversand selbst getestet
+werden soll — ohne gültigen Key schlägt nur der Versand fehl, alles andere
+funktioniert):
 
 ```
-npx wrangler pages dev . --binding JSONBIN_ID=... JSONBIN_KEY=...
+npx wrangler pages dev . --d1 DB=todo --binding RESEND_KEY=...
 ```
 
-### Offene Schwachstelle
+### Nutzer hinzufügen
 
-`/api/todos` prüft nicht, **wer** schreibt. Mitlesen bringt nichts — die ToDos
-sind auf dem Gerät mit AES-GCM verschlüsselt, der Server sieht nur Chiffretext.
-Ein PUT von außen könnte den Stand aber überschreiben. Mit dem früher
-öffentlichen Access-Key ging das genauso, schlechter ist es also nicht
-geworden; behoben ist es trotzdem nicht. Sauber wäre ein aus dem Passwort
-abgeleitetes Token, das die Function gegen ein Secret prüft.
+Es gibt keine Warteliste und keine Selbstregistrierung. Ein weiterer Nutzer
+ist ein `INSERT` in die `users`-Tabelle (per D1-Konsole im Dashboard):
+
+```sql
+INSERT INTO users (email, name, role) VALUES ('adresse@example.com', 'Name', 'user');
+```

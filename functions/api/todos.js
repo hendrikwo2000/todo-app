@@ -11,21 +11,13 @@
  * { categories, todos }, PUT nimmt dasselbe entgegen. Die App muss die Form
  * ihres Zustands also nicht kennen lernen, nur den Weg dorthin.
  *
- * ACHTUNG - ZWEI PROVISORIEN, die mit dem echten Login verschwinden:
- *
- *   1. NUTZER_ID ist fest auf 1 verdrahtet. Es gibt noch keine Anmeldung,
- *      also gibt es auch niemanden zu erkennen. Sobald Sitzungen existieren,
- *      kommt die ID aus der Sitzung - und erst DANN ist die Mehrbenutzer-
- *      Trennung echt. Bis dahin sieht jeder, der reinkommt, Nutzer 1.
- *
- *   2. Ein gemeinsames Passwort statt einzelner Konten (TODO_PASSWORT).
- *      Frueher schuetzte die Verschluesselung die Inhalte; die ist mit echten
- *      Spalten weg, also muss der Schutz hier sitzen. Eine Pruefung im
- *      Browser waere wertlos - in den Entwicklertools ist sie in Sekunden
- *      umgangen. Deshalb entscheidet der Server, bei jeder Anfrage.
+ * Der Zugriff laeuft ueber die Sitzung (siehe functions/_lib/session.js und
+ * functions/api/auth/) - die Nutzer-ID kommt aus dem Sitzungs-Cookie, nicht
+ * mehr aus einer festen Konstante. Damit ist die Mehrbenutzer-Trennung echt:
+ * jede Sitzung sieht nur die Bereiche und ToDos ihres eigenen Nutzers.
  */
 
-const NUTZER_ID = 1;
+import { angemeldeterNutzer } from "../_lib/session.js";
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -39,43 +31,23 @@ function json(body, status = 200) {
   });
 }
 
-// Vergleich ohne fruehen Ausstieg. Ein normales === verraet ueber die
-// Antwortzeit, wie viele Zeichen am Anfang schon stimmen; damit laesst sich
-// ein Passwort Zeichen fuer Zeichen erraten. Dass die Laenge durchsickert,
-// ist hier hinnehmbar.
-function zeitgleich(a, b) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-// "unkonfiguriert" | "falsch" | "ok"
-function pruefeZugang(request, env) {
-  if (!env.TODO_PASSWORT) return "unkonfiguriert";
-  const gesendet = request.headers.get("X-Todo-Passwort") || "";
-  return zeitgleich(gesendet, env.TODO_PASSWORT) ? "ok" : "falsch";
-}
-
-// Gibt eine Fehlerantwort zurueck, oder null wenn alles in Ordnung ist.
-function zugangsFehler(request, env) {
-  if (!env.DB) return json({ error: "D1-Bindung DB fehlt im Pages-Projekt" }, 500);
-  const zugang = pruefeZugang(request, env);
-  if (zugang === "unkonfiguriert") {
-    return json({ error: "TODO_PASSWORT fehlt im Pages-Projekt" }, 500);
-  }
-  if (zugang !== "ok") return json({ error: "Falsches Passwort" }, 401);
-  return null;
+// Liefert entweder die Nutzer-ID der aktuellen Sitzung oder eine fertige
+// Fehlerantwort.
+async function angemeldetOderFehler(request, env) {
+  if (!env.DB) return { fehler: json({ error: "D1-Bindung DB fehlt im Pages-Projekt" }, 500) };
+  const nutzerId = await angemeldeterNutzer(request, env);
+  if (!nutzerId) return { fehler: json({ error: "Nicht angemeldet" }, 401) };
+  return { nutzerId };
 }
 
 export async function onRequestGet({ request, env }) {
-  const fehler = zugangsFehler(request, env);
+  const { nutzerId, fehler } = await angemeldetOderFehler(request, env);
   if (fehler) return fehler;
 
   try {
     const listen = await env.DB.prepare(
       "SELECT id, name FROM lists WHERE user_id = ? ORDER BY position, name"
-    ).bind(NUTZER_ID).all();
+    ).bind(nutzerId).all();
 
     const todos = await env.DB.prepare(
       `SELECT t.id, t.list_id, t.text, t.note, t.due, t.done, t.position,
@@ -83,7 +55,7 @@ export async function onRequestGet({ request, env }) {
          FROM todos t
          JOIN lists l ON l.id = t.list_id
         WHERE l.user_id = ?`
-    ).bind(NUTZER_ID).all();
+    ).bind(nutzerId).all();
 
     // Zurueck in die Form, die die App seit jeher kennt: Bereiche heissen dort
     // "categories", die Zugehoerigkeit "categoryId", die Reihenfolge "order".
@@ -107,7 +79,7 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPut({ request, env }) {
-  const fehler = zugangsFehler(request, env);
+  const { nutzerId, fehler } = await angemeldetOderFehler(request, env);
   if (fehler) return fehler;
 
   let zustand;
@@ -138,8 +110,8 @@ export async function onRequestPut({ request, env }) {
   const anweisungen = [
     env.DB.prepare(
       "DELETE FROM todos WHERE list_id IN (SELECT id FROM lists WHERE user_id = ?)"
-    ).bind(NUTZER_ID),
-    env.DB.prepare("DELETE FROM lists WHERE user_id = ?").bind(NUTZER_ID),
+    ).bind(nutzerId),
+    env.DB.prepare("DELETE FROM lists WHERE user_id = ?").bind(nutzerId),
   ];
 
   // Die Reihenfolge der Spalten steckt im Array, nicht in den Daten - beim
@@ -148,7 +120,7 @@ export async function onRequestPut({ request, env }) {
     anweisungen.push(
       env.DB.prepare(
         "INSERT INTO lists (id, user_id, name, position) VALUES (?, ?, ?, ?)"
-      ).bind(c.id, NUTZER_ID, c.name, i)
+      ).bind(c.id, nutzerId, c.name, i)
     );
   });
 
