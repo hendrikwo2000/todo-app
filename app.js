@@ -153,7 +153,12 @@ function login() {
 
     const zeigeCodeSchritt = () => {
       schritt = "code";
-      document.getElementById("lockHint").textContent = `Code an ${aktuelleEmail} geschickt.`;
+      // Der Hinweis auf die Wartezeit ist wichtiger, als er aussieht: die
+      // Zustellung haengt an Gmail und dauert bei einer frisch eingerichteten
+      // Sendedomain gern mal eine halbe Minute. Ohne den Hinweis wirkt das wie
+      // ein Fehler, und man fordert unnoetig einen zweiten Code an.
+      document.getElementById("lockHint").textContent =
+        `Code an ${aktuelleEmail} geschickt. Kann bis zu einer Minute dauern — schau notfalls im Spam-Ordner.`;
       email.hidden = true;
       code.hidden = false;
       code.value = "";
@@ -166,6 +171,8 @@ function login() {
       e.preventDefault();
       msg.textContent = "";
       button.disabled = true;
+      const beschriftung = button.textContent;
+      button.textContent = schritt === "email" ? "Wird verschickt …" : "Prüfe …";
       try {
         if (schritt === "email") {
           aktuelleEmail = email.value.trim();
@@ -208,6 +215,11 @@ function login() {
         }
       } finally {
         button.disabled = false;
+        // Nur zuruecksetzen, wenn der Schrittwechsel die Beschriftung nicht
+        // ohnehin schon neu gesetzt hat.
+        if (button.textContent === "Wird verschickt …" || button.textContent === "Prüfe …") {
+          button.textContent = beschriftung;
+        }
       }
     };
 
