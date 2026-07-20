@@ -32,36 +32,43 @@ export async function onRequestPost({ request, env }) {
   const code = String(body?.code || "").trim();
   if (!email || !/^\d{6}$/.test(code)) return json({ error: "Ungueltige Eingabe" }, 400);
 
-  const nutzer = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
-  // Generische Fehlermeldung, egal ob die Adresse existiert oder der Code
-  // falsch ist - siehe request-code.js fuer die gleiche Ueberlegung.
-  if (!nutzer) return json({ error: "Falscher oder abgelaufener Code" }, 401);
+  // Alle Datenbankzugriffe abgesichert: ein Fehler hier hat die Function
+  // frueher abstuerzen lassen (Cloudflare-Fehler 1101 statt lesbarer Meldung).
+  try {
+    const nutzer = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
+    // Hier bleibt die Meldung bewusst generisch - anders als beim Anfordern
+    // des Codes. Wer schon einen Code eintippt, kennt die Adresse ohnehin;
+    // was er nicht erfahren soll, ist WARUM es nicht klappt, weil das beim
+    // Durchraten von Codes hilft.
+    if (!nutzer) return json({ error: "Falscher oder abgelaufener Code" }, 401);
 
-  const eintrag = await env.DB.prepare(
-    `SELECT id, code_hash, attempts FROM login_codes
-      WHERE email = ? AND expires_at > datetime('now')
-      ORDER BY created_at DESC LIMIT 1`
-  ).bind(email).first();
-  if (!eintrag) return json({ error: "Falscher oder abgelaufener Code" }, 401);
-  if (eintrag.attempts >= 5) {
-    return json({ error: "Zu viele Versuche - fordere einen neuen Code an" }, 401);
+    const eintrag = await env.DB.prepare(
+      `SELECT id, code_hash, attempts FROM login_codes
+        WHERE email = ? AND expires_at > datetime('now')
+        ORDER BY created_at DESC LIMIT 1`
+    ).bind(email).first();
+    if (!eintrag) return json({ error: "Falscher oder abgelaufener Code" }, 401);
+    if (eintrag.attempts >= 5) {
+      return json({ error: "Zu viele Versuche - fordere einen neuen Code an" }, 401);
+    }
+
+    const hash = await hashHex(code);
+    if (!zeitgleich(hash, eintrag.code_hash)) {
+      await env.DB.prepare("UPDATE login_codes SET attempts = attempts + 1 WHERE id = ?")
+        .bind(eintrag.id).run();
+      return json({ error: "Falscher oder abgelaufener Code" }, 401);
+    }
+
+    // Verbraucht - loeschen, damit derselbe Code nicht zweimal funktioniert.
+    await env.DB.prepare("DELETE FROM login_codes WHERE id = ?").bind(eintrag.id).run();
+
+    const token = neuesToken();
+    await env.DB.prepare(
+      "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, datetime('now', '+30 days'))"
+    ).bind(await hashHex(token), nutzer.id).run();
+
+    return json({ ok: true }, 200, { "Set-Cookie": setzeSessionCookie(request, token) });
+  } catch (e) {
+    return json({ error: "Datenbankfehler" }, 500);
   }
-
-  const hash = await hashHex(code);
-  if (!zeitgleich(hash, eintrag.code_hash)) {
-    await env.DB.prepare("UPDATE login_codes SET attempts = attempts + 1 WHERE id = ?")
-      .bind(eintrag.id).run();
-    return json({ error: "Falscher oder abgelaufener Code" }, 401);
-  }
-
-  // Verbraucht - loeschen, damit derselbe Code nicht zweimal funktioniert.
-  await env.DB.prepare("DELETE FROM login_codes WHERE id = ?").bind(eintrag.id).run();
-
-  const token = neuesToken();
-  const tokenHash = await hashHex(token);
-  await env.DB.prepare(
-    "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, datetime('now', '+30 days'))"
-  ).bind(tokenHash, nutzer.id).run();
-
-  return json({ ok: true }, 200, { "Set-Cookie": setzeSessionCookie(request, token) });
 }

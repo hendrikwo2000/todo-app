@@ -41,6 +41,7 @@ const board        = document.getElementById("board");
 const addCatBtn    = document.getElementById("addCatBtn");
 const saveStatusEl = document.getElementById("saveStatus");
 const themeBtn     = document.getElementById("themeBtn");
+const logoutBtn    = document.getElementById("logoutBtn");
 const snackbar     = document.getElementById("snackbar");
 
 // ---------- Hilfsfunktionen ----------
@@ -174,8 +175,19 @@ function login() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: aktuelleEmail }),
           });
-          if (res.status === 429) { msg.textContent = "Bitte kurz warten."; return; }
-          if (!res.ok) { msg.textContent = "Code konnte nicht verschickt werden."; return; }
+          if (!res.ok) {
+            // Meldung vom Server nehmen, wenn es eine gibt - der weiss
+            // genauer, was schiefging (unbekannte Adresse, zu schnell
+            // nachgefragt, Mailversand gestoert).
+            let text = "Code konnte nicht verschickt werden.";
+            try {
+              const daten = await res.json();
+              if (daten && daten.error) text = daten.error;
+            } catch (e) { /* keine JSON-Antwort - Standardtext behalten */ }
+            msg.textContent = text;
+            email.focus();
+            return;
+          }
           zeigeCodeSchritt();
         } else {
           const eingegeben = code.value.trim();
@@ -203,6 +215,19 @@ function login() {
   });
 }
 
+// Abmelden: Sitzung serverseitig loeschen, dann die Seite neu laden. Der
+// Neustart ist Absicht - er wirft den Board-Zustand aus dem Speicher, statt
+// die fremden ToDos bis zum naechsten Login sichtbar zu lassen.
+async function logout() {
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+  } catch (e) {
+    // Auch wenn der Aufruf scheitert, neu laden - dann greift spaetestens
+    // die Sitzungspruefung beim naechsten Abruf.
+  }
+  location.reload();
+}
+
 // ---------- Laden & Speichern ----------
 async function loadState() {
   while (true) {
@@ -225,6 +250,9 @@ async function loadState() {
 
     state = (await res.json()) || {};
     canSave = true;
+    // Erst jetzt anzeigen: vorher wuerde der Knopf auch auf dem
+    // Sperrbildschirm stehen, wo es nichts abzumelden gibt.
+    logoutBtn.hidden = false;
     if (!Array.isArray(state.categories)) state.categories = [];
     if (!Array.isArray(state.todos)) state.todos = [];
     return;
@@ -863,6 +891,7 @@ function renderTodo(t) {
 // ---------- Ereignisse ----------
 addCatBtn.addEventListener("click", addCategory);
 themeBtn.addEventListener("click", toggleTheme);
+logoutBtn.addEventListener("click", logout);
 
 // Spalten umsortieren: Board ist die Ablagezone fuer Bereichs-Drags.
 board.addEventListener("dragover", e => {

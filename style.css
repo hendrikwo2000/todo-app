@@ -116,6 +116,14 @@ html, body {
   right: max(16px, env(safe-area-inset-right));
   z-index: 30;
 }
+/* Links neben dem Design-Schalter. 42px = dessen Breite plus Abstand. */
+#logoutBtn {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  right: calc(max(16px, env(safe-area-inset-right)) + 42px);
+  z-index: 30;
+}
+#logoutBtn[hidden] { display: none; }
 
 input[type="text"],
 input[type="date"] {

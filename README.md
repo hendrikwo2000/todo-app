@@ -43,6 +43,14 @@ Registrierung. Ablauf: Adresse eintragen → `/api/auth/request-code` verschickt
 einen sechsstelligen Code über [Resend](https://resend.com) →
 `/api/auth/verify-code` prüft ihn und setzt ein `HttpOnly`-Sitzungscookie
 (30 Tage). Codes und Sitzungstoken liegen nur gehasht in der Datenbank.
+Abmelden über `/api/auth/logout` löscht die Sitzung serverseitig, nicht nur
+das Cookie — ein abgegriffenes Token wird damit ebenfalls ungültig.
+
+Unbekannte Adressen bekommen eine klare Absage („Diese Adresse ist nicht
+freigeschaltet"). Das verrät, welche Adressen registriert sind — bei einer
+Handvoll bekannter Leute ohne offene Registrierung ist das vertretbar. Käme je
+eine öffentliche Registrierung dazu, gehört hier die generische Antwort
+zurück.
 
 Nötige Secrets unter *Pages → Settings → Environment variables*:
 
