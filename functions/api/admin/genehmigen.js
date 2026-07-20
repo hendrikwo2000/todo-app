@@ -15,7 +15,7 @@
  */
 
 import { hashHex } from "../../_lib/session.js";
-import { sendeMail, huelle, absatz, knopf, fussnote } from "../../_lib/mail.js";
+import { sendeWillkommen } from "../../_lib/willkommen.js";
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -88,17 +88,10 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Konto konnte nicht angelegt werden - existiert die Adresse schon?" }, 409);
   }
 
-  const url = new URL(request.url).origin;
-  const versand = await sendeMail(env, {
-    to: eintrag.email,
-    subject: "Du bist freigeschaltet",
-    html: huelle("Willkommen!",
-      absatz(`Hallo ${eintrag.name}, dein Zugang zur ToDo-Liste ist da.
-              Klick unten, gib deine Adresse ein und du bekommst einen
-              Anmeldelink — ein Passwort brauchst du nicht.`) +
-      knopf("Zur ToDo-Liste", url) +
-      fussnote("Fragen? Antworte einfach auf diese Mail.")),
-    text: `Hallo ${eintrag.name},\n\ndein Zugang zur ToDo-Liste ist da:\n${url}\n\nGib dort deine Adresse ein, dann bekommst du einen Anmeldelink. Ein Passwort brauchst du nicht.`,
+  const versand = await sendeWillkommen(env, {
+    name: eintrag.name,
+    email: eintrag.email,
+    url: new URL(request.url).origin,
   });
 
   return json({ ok: true, name: eintrag.name, email: eintrag.email, mailVerschickt: versand.ok });

@@ -10,7 +10,7 @@
  */
 
 import { angemeldeterAdmin } from "../../_lib/session.js";
-import { sendeMail, huelle, absatz, knopf, fussnote } from "../../_lib/mail.js";
+import { sendeWillkommen } from "../../_lib/willkommen.js";
 import { loescheKonto, istLetzterAdmin, meldeLoeschung } from "../../_lib/loeschen.js";
 
 function json(body, status = 200) {
@@ -149,19 +149,13 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Konto konnte nicht angelegt werden - existiert die Adresse schon?" }, 409);
   }
 
-  // Willkommensmail. Ein Fehler hier darf die Freischaltung nicht
-  // zurueckdrehen: das Konto steht, die Person kann sich anmelden.
-  const url = new URL(request.url).origin;
-  const versand = await sendeMail(env, {
-    to: eintrag.email,
-    subject: "Du bist freigeschaltet",
-    html: huelle("Willkommen!",
-      absatz(`Hallo ${eintrag.name}, dein Zugang zur ToDo-Liste ist da.
-              Melde dich einfach mit dieser Mailadresse an - du bekommst dann
-              jedes Mal einen kurzen Code per Mail, ein Passwort brauchst du nicht.`) +
-      knopf("Zur ToDo-Liste", url) +
-      fussnote("Fragen? Antworte einfach auf diese Mail.")),
-    text: `Hallo ${eintrag.name},\n\ndein Zugang zur ToDo-Liste ist da. Melde dich mit dieser Mailadresse an:\n${url}\n\nEin Passwort brauchst du nicht - du bekommst jedes Mal einen kurzen Code per Mail.`,
+  // Willkommensmail mit Anmeldelink darin. Ein Fehler hier darf die
+  // Freischaltung nicht zurueckdrehen: das Konto steht, die Person kann sich
+  // auch ohne Mail ganz normal anmelden.
+  const versand = await sendeWillkommen(env, {
+    name: eintrag.name,
+    email: eintrag.email,
+    url: new URL(request.url).origin,
   });
 
   return json({ ok: true, mailVerschickt: versand.ok });
