@@ -71,10 +71,28 @@ funktioniert):
 npx wrangler pages dev . --d1 DB=todo --binding RESEND_KEY=...
 ```
 
-### Nutzer hinzufügen
+### Warteliste und Verwaltung
 
-Es gibt keine Warteliste und keine Selbstregistrierung. Ein weiterer Nutzer
-ist ein `INSERT` in die `users`-Tabelle (per D1-Konsole im Dashboard):
+Auf dem Anmeldebildschirm führt „Noch keinen Zugang? Eintragen" zu einem
+Formular (Name + Adresse) → `/api/waitlist`. Der Eintrag landet in der
+Tabelle `waitlist`, und alle Konten mit `role='admin'` bekommen eine Mail.
+
+Unter **[/admin](https://todo.it-wolf.org/admin)** stehen offene Anfragen,
+Nutzer und der Verlauf. Freischalten legt das Konto an und verschickt eine
+Willkommensmail; Ablehnen setzt nur den Status — bewusst ohne Mail.
+
+`admin.html` ist eine statische Datei, die jeder laden kann. Die Sperre sitzt
+in `/api/admin/*`: ohne Adminrechte antwortet der Endpunkt mit **404** (nicht
+403 — wer keine Rechte hat, muss nicht erfahren, dass es hier etwas gibt).
+Die Rolle wird bei jeder Anfrage frisch aus der Datenbank gelesen, nicht aus
+dem Cookie — sonst behielte jemand entzogene Adminrechte bis zu 30 Tage.
+
+Das öffentliche Formular hat **keinen Bot-Schutz**. Solange die Adresse
+nirgends verlinkt ist, ist das Risiko gering; kommt Müll an, wäre Turnstile
+der nächste Schritt (it-wolf.org nutzt es bereits). Als grobe Bremse gilt
+höchstens ein Eintrag pro Minute über alle Adressen.
+
+Ein Nutzer lässt sich auch direkt anlegen, ohne Warteliste:
 
 ```sql
 INSERT INTO users (email, name, role) VALUES ('adresse@example.com', 'Name', 'user');

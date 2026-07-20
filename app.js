@@ -135,20 +135,48 @@ function login() {
     const form     = document.getElementById("lockForm");
     const email    = document.getElementById("lockEmail");
     const code     = document.getElementById("lockCode");
+    const name     = document.getElementById("lockName");
     const msg      = document.getElementById("lockMsg");
+    const umschalt = document.getElementById("lockSwitch");
     const button   = form.querySelector("button[type=submit]");
     let schritt = "email";
     let aktuelleEmail = "";
 
+    const setzeMeldung = (text, gut) => {
+      msg.textContent = text;
+      msg.classList.toggle("ok", !!gut);
+    };
+
     const zeigeEmailSchritt = () => {
       schritt = "email";
       document.getElementById("lockHint").textContent = "Mit deiner E-Mail-Adresse anmelden.";
+      name.hidden = true;
       email.hidden = false;
       code.hidden = true;
       button.textContent = "Code anfordern";
-      msg.textContent = "";
+      umschalt.hidden = false;
+      umschalt.textContent = "Noch keinen Zugang? Eintragen";
+      setzeMeldung("");
       overlay.classList.remove("hidden");
       email.focus();
+    };
+
+    // Dritter Schritt: Warteliste. Kein eigener Bildschirm, sondern dieselbe
+    // Maske mit einem zusaetzlichen Namensfeld - wer hier landet, kam gerade
+    // von "Diese Adresse ist nicht freigeschaltet" und soll nicht erst
+    // woandershin navigieren muessen.
+    const zeigeWartelisteSchritt = () => {
+      schritt = "warteliste";
+      document.getElementById("lockHint").textContent =
+        "Trag dich ein — du bekommst eine Mail, sobald du freigeschaltet bist.";
+      name.hidden = false;
+      email.hidden = false;
+      code.hidden = true;
+      button.textContent = "Eintragen";
+      umschalt.hidden = false;
+      umschalt.textContent = "Zurück zur Anmeldung";
+      setzeMeldung("");
+      name.focus();
     };
 
     const zeigeCodeSchritt = () => {
@@ -159,20 +187,39 @@ function login() {
       // ein Fehler, und man fordert unnoetig einen zweiten Code an.
       document.getElementById("lockHint").textContent =
         `Code an ${aktuelleEmail} geschickt. Kann bis zu einer Minute dauern — schau notfalls im Spam-Ordner.`;
+      name.hidden = true;
       email.hidden = true;
       code.hidden = false;
       code.value = "";
       button.textContent = "Anmelden";
-      msg.textContent = "";
+      // Auf dem Code-Schritt waere der Umschalter nur verwirrend - hier geht
+      // es nicht mehr um die Frage, ob man einen Zugang hat.
+      umschalt.hidden = true;
+      setzeMeldung("");
       code.focus();
+    };
+
+    // Meldung des Servers uebernehmen, wenn es eine gibt - der weiss genauer,
+    // was schiefging als jeder pauschale Text hier.
+    const serverMeldung = async (res, standard) => {
+      try {
+        const daten = await res.json();
+        if (daten && daten.error) return daten.error;
+      } catch (e) { /* keine JSON-Antwort */ }
+      return standard;
+    };
+
+    umschalt.onclick = () => {
+      if (schritt === "warteliste") zeigeEmailSchritt();
+      else zeigeWartelisteSchritt();
     };
 
     form.onsubmit = async e => {
       e.preventDefault();
-      msg.textContent = "";
+      setzeMeldung("");
       button.disabled = true;
       const beschriftung = button.textContent;
-      button.textContent = schritt === "email" ? "Wird verschickt …" : "Prüfe …";
+      button.textContent = schritt === "code" ? "Prüfe …" : "Moment …";
       try {
         if (schritt === "email") {
           aktuelleEmail = email.value.trim();
@@ -183,29 +230,43 @@ function login() {
             body: JSON.stringify({ email: aktuelleEmail }),
           });
           if (!res.ok) {
-            // Meldung vom Server nehmen, wenn es eine gibt - der weiss
-            // genauer, was schiefging (unbekannte Adresse, zu schnell
-            // nachgefragt, Mailversand gestoert).
-            let text = "Code konnte nicht verschickt werden.";
-            try {
-              const daten = await res.json();
-              if (daten && daten.error) text = daten.error;
-            } catch (e) { /* keine JSON-Antwort - Standardtext behalten */ }
-            msg.textContent = text;
+            setzeMeldung(await serverMeldung(res, "Code konnte nicht verschickt werden."));
+            // Bei unbekannter Adresse liegt der naechste Schritt auf der Hand:
+            // eintragen. Der Umschalter steht direkt darunter.
+            if (res.status === 404) umschalt.textContent = "Auf die Warteliste eintragen";
             email.focus();
             return;
           }
           zeigeCodeSchritt();
+        } else if (schritt === "warteliste") {
+          const wunschName = name.value.trim();
+          const wunschEmail = email.value.trim();
+          if (!wunschName || !wunschEmail) {
+            setzeMeldung("Bitte Name und Adresse ausfüllen.");
+            return;
+          }
+          const res = await fetch("/api/waitlist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: wunschName, email: wunschEmail }),
+          });
+          if (!res.ok) {
+            setzeMeldung(await serverMeldung(res, "Eintragen hat nicht geklappt."));
+            return;
+          }
+          const daten = await res.json().catch(() => ({}));
+          setzeMeldung(daten.message || "Eingetragen.", true);
+          name.value = "";
         } else {
           const eingegeben = code.value.trim();
-          if (!/^\d{6}$/.test(eingegeben)) { msg.textContent = "Sechsstelligen Code eingeben."; return; }
+          if (!/^\d{6}$/.test(eingegeben)) { setzeMeldung("Sechsstelligen Code eingeben."); return; }
           const res = await fetch("/api/auth/verify-code", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: aktuelleEmail, code: eingegeben }),
           });
           if (!res.ok) {
-            msg.textContent = "Falscher oder abgelaufener Code.";
+            setzeMeldung("Falscher oder abgelaufener Code.");
             code.value = "";
             code.focus();
             return;
@@ -217,7 +278,7 @@ function login() {
         button.disabled = false;
         // Nur zuruecksetzen, wenn der Schrittwechsel die Beschriftung nicht
         // ohnehin schon neu gesetzt hat.
-        if (button.textContent === "Wird verschickt …" || button.textContent === "Prüfe …") {
+        if (button.textContent === "Moment …" || button.textContent === "Prüfe …") {
           button.textContent = beschriftung;
         }
       }

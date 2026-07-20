@@ -543,6 +543,23 @@ input[type="date"]:focus {
 }
 .lock-box button:hover { filter: brightness(1.06); }
 .lock-msg { min-height: 1.2em; font-size: 12.5px; color: var(--red); }
+.lock-msg.ok { color: var(--green); }
+/* Umschalter zwischen Anmelden und Warteliste - sieht aus wie ein Link,
+   ist aber ein Knopf (Tastaturbedienung, kein Ziel-Dokument).
+   Mit .lock-box davor, sonst gewinnt die allgemeinere Regel
+   ".lock-box button" und macht daraus einen blauen Hauptknopf. */
+.lock-box .lock-link {
+  background: none;
+  border: 0;
+  padding: 4px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.lock-box .lock-link:hover { color: var(--text); }
+.lock-box .lock-link[hidden] { display: none; }
 
 /* Rückgängig-Hinweis */
 .snackbar {
@@ -576,3 +593,64 @@ input[type="date"]:focus {
   padding: 0;
 }
 .snack-undo:hover { text-decoration: underline; }
+
+/* ---------- Verwaltung (admin.html) ---------- */
+.admin-block { margin-bottom: 30px; }
+.admin-block h2 {
+  font-size: 15px;
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-block h2 .zahl {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--accent-soft);
+  border-radius: 20px;
+  padding: 1px 8px;
+}
+.admin-liste { display: flex; flex-direction: column; gap: 8px; }
+.admin-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  border: 1px solid var(--line);
+  background: var(--row);
+  border-radius: 11px;
+  padding: 12px 14px;
+}
+.admin-name { font-weight: 600; font-size: 14.5px; }
+.admin-meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; word-break: break-all; }
+.admin-aktionen { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.admin-leer { color: var(--muted); font-size: 13.5px; margin: 2px 0; }
+.admin-hinweis {
+  border: 1px solid var(--line);
+  background: var(--row);
+  border-radius: 12px;
+  padding: 22px;
+  text-align: center;
+}
+.admin-hinweis p { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+.admin-hinweis[hidden], #inhalt[hidden] { display: none; }
+
+.btn.primaer { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primaer:hover { filter: brightness(1.06); }
+.btn.still { color: var(--muted); }
+
+.admin-marke {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+.admin-marke.gut      { background: var(--accent-soft); color: var(--green); }
+.admin-marke.schlecht { background: var(--accent-soft); color: var(--muted); }
+.admin-marke.admin    { background: var(--accent-soft); color: var(--accent); }
+
+/* Der Zurueck-Link in der Kopfzeile ist ein <a>, kein <button> - .btn deckt
+   die Optik ab, die Textausrichtung fehlt dort aber. */
+.topbar a.btn { text-decoration: none; display: inline-flex; align-items: center; }

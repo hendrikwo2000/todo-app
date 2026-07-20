@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Verwaltung · ToDo-Liste</title>
+  <link rel="icon" href="icon-192.png">
+  <meta name="theme-color" content="#4f63d2">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1>Verwaltung</h1>
+      <a href="/" class="btn">← Zur Liste</a>
+    </header>
+
+    <!-- Nur ein Hinweis. Die eigentliche Sperre sitzt im Server: /api/admin/*
+         antwortet ohne Adminrechte mit 404, egal was hier angezeigt wird. -->
+    <div id="kseinZugang" class="admin-hinweis" hidden>
+      <p>Kein Zugriff. Melde dich mit einem Konto an, das Adminrechte hat.</p>
+      <a href="/" class="btn">Zur Anmeldung</a>
+    </div>
+
+    <div id="inhalt" hidden>
+      <section class="admin-block">
+        <h2>Offene Anfragen <span id="offenZahl" class="zahl">0</span></h2>
+        <div id="offen" class="admin-liste"></div>
+      </section>
+
+      <section class="admin-block">
+        <h2>Nutzer <span id="nutzerZahl" class="zahl">0</span></h2>
+        <div id="nutzer" class="admin-liste"></div>
+      </section>
+
+      <section class="admin-block">
+        <h2>Erledigte Anfragen</h2>
+        <div id="erledigt" class="admin-liste"></div>
+      </section>
+    </div>
+  </div>
+
+  <div id="snackbar" class="snackbar" aria-live="polite"></div>
+  <script src="admin.js"></script>
+</body>
+</html>

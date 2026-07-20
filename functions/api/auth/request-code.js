@@ -11,8 +11,8 @@
  */
 
 import { hashHex } from "../../_lib/session.js";
+import { sendeMail, huelle, absatz, kasten, fussnote } from "../../_lib/mail.js";
 
-const ABSENDER = "ToDo-Liste <login@mail.it-wolf.org>";
 const GUELTIG_MINUTEN = 10;
 
 function json(body, status = 200) {
@@ -29,49 +29,16 @@ function neuerCode() {
   return String(n).padStart(6, "0");
 }
 
-// Tabellen-Layout und Inline-Styles, weil Mailprogramme kein modernes CSS
-// koennen (Outlook rendert mit Word). Der Code steht bewusst NICHT im
-// Betreff: der taucht sonst in Push-Benachrichtigungen auf dem Sperrbildschirm
-// und in jeder Postfach-Uebersicht auf.
+// Der Code steht bewusst NICHT im Betreff: der taucht sonst in
+// Push-Benachrichtigungen auf dem Sperrbildschirm und in jeder
+// Postfach-Uebersicht auf.
 function mailHtml(code) {
-  return `<!doctype html>
-<html lang="de">
-<body style="margin:0;padding:0;background:#f4f5f7;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-         style="background:#f4f5f7;padding:32px 12px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-             style="max-width:420px;background:#ffffff;border-radius:14px;
-                    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-        <tr><td style="padding:28px 28px 0;">
-          <div style="font-size:13px;font-weight:600;color:#4f63d2;letter-spacing:.4px;">TODO-LISTE</div>
-          <h1 style="margin:14px 0 0;font-size:20px;line-height:1.3;color:#1c1d21;font-weight:700;">
-            Dein Anmeldecode
-          </h1>
-        </td></tr>
-        <tr><td style="padding:22px 28px 0;">
-          <div style="background:#f4f5f7;border-radius:10px;padding:18px;text-align:center;
-                      font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
-                      font-size:30px;font-weight:700;letter-spacing:7px;color:#1c1d21;">
-            ${code}
-          </div>
-        </td></tr>
-        <tr><td style="padding:18px 28px 0;font-size:14px;line-height:1.55;color:#5b5e66;">
-          Gib den Code in der ToDo-Liste ein. Er gilt ${GUELTIG_MINUTEN} Minuten
-          und lässt sich nur einmal verwenden.
-        </td></tr>
-        <tr><td style="padding:20px 28px 28px;">
-          <div style="border-top:1px solid #e6e7ea;padding-top:16px;font-size:12.5px;
-                      line-height:1.5;color:#8b8e96;">
-            Du hast das nicht angefordert? Dann ignoriere diese Mail einfach —
-            ohne den Code passiert nichts.
-          </div>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  return huelle("Dein Anmeldecode",
+    kasten(code, true) +
+    absatz(`Gib den Code in der ToDo-Liste ein. Er gilt ${GUELTIG_MINUTEN} Minuten
+            und lässt sich nur einmal verwenden.`) +
+    fussnote("Du hast das nicht angefordert? Dann ignoriere diese Mail einfach — ohne den Code passiert nichts.")
+  );
 }
 
 function mailText(code) {
@@ -128,28 +95,13 @@ export async function onRequestPost({ request, env }) {
   // kein gueltiger, aber nie zugestellter Code liegen bleiben - der wuerde
   // sonst die Ratenbegrenzung oben blockieren und einen sofortigen zweiten
   // Versuch verhindern, obwohl noch gar keine Mail unterwegs war.
-  let mail;
-  try {
-    mail = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.RESEND_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: ABSENDER,
-        to: [email],
-        subject: "Dein Anmeldecode für die ToDo-Liste",
-        html: mailHtml(code),
-        text: mailText(code),
-      }),
-    });
-  } catch (e) {
-    // fetch wirft, wenn Resend gar nicht erreichbar ist - ohne dieses catch
-    // stuerzt die Function ab, statt sauber zu antworten.
-    return json({ error: "Mailversand nicht erreichbar" }, 502);
-  }
-  if (!mail.ok) return json({ error: "Mail konnte nicht verschickt werden" }, 502);
+  const versand = await sendeMail(env, {
+    to: email,
+    subject: "Dein Anmeldecode für die ToDo-Liste",
+    html: mailHtml(code),
+    text: mailText(code),
+  });
+  if (!versand.ok) return json({ error: versand.grund }, 502);
 
   try {
     await env.DB.prepare(
