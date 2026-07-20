@@ -29,7 +29,7 @@ async function adminOderFehler(request, env) {
 }
 
 export async function onRequestGet({ request, env }) {
-  const { fehler } = await adminOderFehler(request, env);
+  const { admin, fehler } = await adminOderFehler(request, env);
   if (fehler) return fehler;
 
   try {
@@ -39,14 +39,16 @@ export async function onRequestGet({ request, env }) {
     const nutzer = await env.DB.prepare(
       "SELECT id, email, name, role, created_at FROM users ORDER BY created_at"
     ).all();
-    return json({ warteliste: warteliste.results, nutzer: nutzer.results });
+    // ichSelbst, damit die Oberflaeche den eigenen Rollen-Knopf ausgraut
+    // statt in den Fehler oben zu laufen.
+    return json({ warteliste: warteliste.results, nutzer: nutzer.results, ichSelbst: admin.id });
   } catch (e) {
     return json({ error: "Datenbankfehler" }, 500);
   }
 }
 
 export async function onRequestPost({ request, env }) {
-  const { fehler } = await adminOderFehler(request, env);
+  const { admin, fehler } = await adminOderFehler(request, env);
   if (fehler) return fehler;
 
   let body;
@@ -58,6 +60,28 @@ export async function onRequestPost({ request, env }) {
 
   const id = Number(body?.id);
   const aktion = String(body?.aktion || "");
+
+  // ---- Rolle aendern (betrifft users, nicht die Warteliste) ----
+  if (aktion === "rolle") {
+    const rolle = String(body?.rolle || "");
+    if (!Number.isInteger(id) || !["admin", "user"].includes(rolle)) {
+      return json({ error: "Ungueltige Anfrage" }, 400);
+    }
+    // Sich selbst die Rechte zu entziehen wuerde einen aussperren, sobald man
+    // der einzige Admin ist - und genau das passiert im Zweifel spaetabends.
+    if (id === admin.id && rolle !== "admin") {
+      return json({ error: "Du kannst dir nicht selbst die Adminrechte entziehen." }, 400);
+    }
+    try {
+      const treffer = await env.DB.prepare("UPDATE users SET role = ? WHERE id = ?")
+        .bind(rolle, id).run();
+      if (!treffer.meta.changes) return json({ error: "Nutzer nicht gefunden" }, 404);
+    } catch (e) {
+      return json({ error: "Datenbankfehler" }, 500);
+    }
+    return json({ ok: true });
+  }
+
   if (!Number.isInteger(id) || !["freischalten", "ablehnen"].includes(aktion)) {
     return json({ error: "Ungueltige Anfrage" }, 400);
   }

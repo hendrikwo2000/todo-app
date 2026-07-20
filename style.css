@@ -553,12 +553,13 @@ input[type="date"]:focus {
   border: 0;
   padding: 4px;
   font: inherit;
-  font-size: 12.5px;
-  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
   text-decoration: underline;
   cursor: pointer;
 }
-.lock-box .lock-link:hover { color: var(--text); }
+.lock-box .lock-link:hover { color: var(--accent); }
 .lock-box .lock-link[hidden] { display: none; }
 
 /* Rückgängig-Hinweis */
@@ -654,3 +655,47 @@ input[type="date"]:focus {
 /* Der Zurueck-Link in der Kopfzeile ist ein <a>, kein <button> - .btn deckt
    die Optik ab, die Textausrichtung fehlt dort aber. */
 .topbar a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+
+/* ---------- Verwaltungs-Popup (Doppelklick auf den Titel) ---------- */
+#titel.klickbar { cursor: pointer; }
+.admin-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .45);
+  padding: 20px;
+}
+.admin-popup[hidden] { display: none; }
+.admin-popup-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(320px, 100%);
+  padding: 26px 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--row);
+  text-align: center;
+}
+.admin-popup-icon { font-size: 30px; line-height: 1; }
+.admin-popup-box h2 { margin: 0; font-size: 18px; }
+.admin-popup-box p { margin: 0; font-size: 13px; color: var(--muted); }
+.admin-popup-box .btn {
+  text-decoration: none;
+  display: inline-flex;
+  justify-content: center;
+  padding: 10px 12px;
+}
+.admin-popup-box .lock-link {
+  background: none;
+  border: 0;
+  padding: 4px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.admin-popup-box .lock-link:hover { color: var(--text); }

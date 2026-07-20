@@ -57,6 +57,7 @@ Nötige Secrets unter *Pages → Settings → Environment variables*:
 | Variable | Zweck |
 | --- | --- |
 | `RESEND_KEY` | Resend-API-Key mit Sending-Zugriff auf `mail.it-wolf.org` |
+| `ADMIN_MAIL` | optional: Adresse für Wartelisten-Benachrichtigungen. Ohne sie gehen sie an alle Konten mit `role='admin'` |
 
 Absenderadresse ist `login@mail.it-wolf.org` (fest im Code, keine Mailbox
 nötig — Resend verschickt nur, empfängt nichts). Die Domain-DNS-Einträge
@@ -91,6 +92,12 @@ Das öffentliche Formular hat **keinen Bot-Schutz**. Solange die Adresse
 nirgends verlinkt ist, ist das Risiko gering; kommt Müll an, wäre Turnstile
 der nächste Schritt (it-wolf.org nutzt es bereits). Als grobe Bremse gilt
 höchstens ein Eintrag pro Minute über alle Adressen.
+
+**Adminrechte** vergibt man im Dashboard in der Nutzerliste („Zum Admin
+machen"). Man kann sie sich nicht selbst entziehen — sonst sperrt sich der
+einzige Admin aus. Der Zugang zum Dashboard versteckt sich in der App hinter
+einem **Doppelklick auf die Überschrift „ToDo-Liste"**; bei Nicht-Admins
+passiert dabei nichts.
 
 Ein Nutzer lässt sich auch direkt anlegen, ohne Warteliste:
 

@@ -52,29 +52,28 @@ export function loescheSessionCookie(request) {
   return `${COOKIE_NAME}=; Path=/; HttpOnly;${secureFlag(request)} SameSite=Lax; Max-Age=0`;
 }
 
-// Liefert die Nutzer-ID der aktuellen Sitzung, oder null.
-export async function angemeldeterNutzer(request, env) {
-  const token = liesCookie(request, COOKIE_NAME);
-  if (!token) return null;
-  const hash = await hashHex(token);
-  const row = await env.DB.prepare(
-    "SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > datetime('now')"
-  ).bind(hash).first();
-  return row ? row.user_id : null;
-}
-
 /**
- * Liefert { id, email, role } der aktuellen Sitzung, oder null.
+ * Liefert { id, email, name, role } der aktuellen Sitzung, oder null.
  *
  * Die Rolle kommt bei JEDER Anfrage frisch aus der Datenbank statt aus dem
  * Cookie. Sonst behielte jemand, dem man Adminrechte entzogen hat, sie bis
  * zum Ablauf seiner Sitzung - bis zu 30 Tage.
  */
+export async function angemeldeterNutzer(request, env) {
+  const token = liesCookie(request, COOKIE_NAME);
+  if (!token) return null;
+  const hash = await hashHex(token);
+  const sitzung = await env.DB.prepare(
+    "SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > datetime('now')"
+  ).bind(hash).first();
+  if (!sitzung) return null;
+  return await env.DB.prepare(
+    "SELECT id, email, name, role FROM users WHERE id = ?"
+  ).bind(sitzung.user_id).first();
+}
+
+// Wie oben, aber null fuer alle ohne Adminrechte.
 export async function angemeldeterAdmin(request, env) {
-  const nutzerId = await angemeldeterNutzer(request, env);
-  if (!nutzerId) return null;
-  const row = await env.DB.prepare(
-    "SELECT id, email, role FROM users WHERE id = ?"
-  ).bind(nutzerId).first();
-  return row && row.role === "admin" ? row : null;
+  const nutzer = await angemeldeterNutzer(request, env);
+  return nutzer && nutzer.role === "admin" ? nutzer : null;
 }

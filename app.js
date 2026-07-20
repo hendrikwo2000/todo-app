@@ -43,6 +43,12 @@ const saveStatusEl = document.getElementById("saveStatus");
 const themeBtn     = document.getElementById("themeBtn");
 const logoutBtn    = document.getElementById("logoutBtn");
 const snackbar     = document.getElementById("snackbar");
+const titel        = document.getElementById("titel");
+const adminPopup   = document.getElementById("adminPopup");
+
+// Wird beim Laden aus der Server-Antwort gesetzt. Nur fuer die Optik -
+// /api/admin/* prueft die Rolle selbst nochmal.
+let istAdmin = false;
 
 // ---------- Hilfsfunktionen ----------
 function uid() {
@@ -230,11 +236,17 @@ function login() {
             body: JSON.stringify({ email: aktuelleEmail }),
           });
           if (!res.ok) {
-            setzeMeldung(await serverMeldung(res, "Code konnte nicht verschickt werden."));
-            // Bei unbekannter Adresse liegt der naechste Schritt auf der Hand:
-            // eintragen. Der Umschalter steht direkt darunter.
-            if (res.status === 404) umschalt.textContent = "Auf die Warteliste eintragen";
-            email.focus();
+            const text = await serverMeldung(res, "Code konnte nicht verschickt werden.");
+            // Unbekannte Adresse: direkt in den Wartelisten-Modus wechseln,
+            // statt es dem Nutzer als Sackgasse zu praesentieren. Die Adresse
+            // bleibt stehen, es fehlt nur noch der Name.
+            if (res.status === 404) {
+              zeigeWartelisteSchritt();
+              setzeMeldung(text + " Trag dich ein, dann schalte ich dich frei.");
+            } else {
+              setzeMeldung(text);
+              email.focus();
+            }
             return;
           }
           zeigeCodeSchritt();
@@ -323,6 +335,10 @@ async function loadState() {
 
     state = (await res.json()) || {};
     canSave = true;
+    istAdmin = state.admin === true;
+    // Der Titel bekommt nur fuer Admins einen Hinweis-Cursor - sonst wuerde
+    // er einen Doppelklick andeuten, der bei allen anderen nichts tut.
+    titel.classList.toggle("klickbar", istAdmin);
     // Erst jetzt anzeigen: vorher wuerde der Knopf auch auf dem
     // Sperrbildschirm stehen, wo es nichts abzumelden gibt.
     logoutBtn.hidden = false;
@@ -965,6 +981,23 @@ function renderTodo(t) {
 addCatBtn.addEventListener("click", addCategory);
 themeBtn.addEventListener("click", toggleTheme);
 logoutBtn.addEventListener("click", logout);
+
+// Verwaltung: absichtlich versteckt hinter einem Doppelklick auf den Titel.
+// Ein sichtbarer Knopf waere fuer den taeglichen Gebrauch nur im Weg, und
+// wer kein Admin ist, soll gar nicht erst darauf stossen.
+titel.addEventListener("dblclick", () => {
+  if (istAdmin) adminPopup.hidden = false;
+});
+document.getElementById("adminPopupZu").addEventListener("click", () => {
+  adminPopup.hidden = true;
+});
+// Klick auf den abgedunkelten Hintergrund schliesst ebenfalls.
+adminPopup.addEventListener("click", e => {
+  if (e.target === adminPopup) adminPopup.hidden = true;
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !adminPopup.hidden) adminPopup.hidden = true;
+});
 
 // Spalten umsortieren: Board ist die Ablagezone fuer Bereichs-Drags.
 board.addEventListener("dragover", e => {

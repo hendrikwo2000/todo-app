@@ -12,12 +12,30 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="ToDo">
+
+  <!-- Vorschau beim Teilen (WhatsApp, Signal, Slack, Mastodon ...).
+       og-bild.png ist 1200x630, alles Wichtige liegt aber im mittleren
+       Quadrat - Dienste, die quadratisch zuschneiden, verlieren nichts.
+       Die URLs muessen absolut sein, relative Pfade werden ignoriert. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ToDo-Liste">
+  <meta property="og:title" content="ToDo-Liste">
+  <meta property="og:description" content="Bereiche, Termine, überall synchron.">
+  <meta property="og:url" content="https://todo.it-wolf.org/">
+  <meta property="og:image" content="https://todo.it-wolf.org/og-bild.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="ToDo-Liste – todo.it-wolf.org">
+  <meta property="og:locale" content="de_DE">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="description" content="Bereiche, Termine, überall synchron.">
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app">
     <header class="topbar">
-      <h1>ToDo-Liste</h1>
+      <h1 id="titel" title="Doppelklick für die Verwaltung">ToDo-Liste</h1>
       <button id="addCatBtn" class="btn add-cat">＋ Bereich</button>
       <span id="saveStatus" class="save-status"></span>
       <button id="logoutBtn" class="btn icon-only" title="Abmelden" hidden>⏻</button>
@@ -28,6 +46,18 @@
   </div>
 
   <div id="snackbar" class="snackbar" aria-live="polite"></div>
+
+  <!-- Erscheint nur bei Doppelklick auf den Titel, und nur fuer Admins.
+       Der Zugang soll da sein, aber niemandem im Weg stehen. -->
+  <div id="adminPopup" class="admin-popup" hidden>
+    <div class="admin-popup-box">
+      <div class="admin-popup-icon">🛠</div>
+      <h2>Verwaltung</h2>
+      <p>Wartelisten-Anfragen freischalten und Nutzer verwalten.</p>
+      <a href="/admin" class="btn primary">Öffnen</a>
+      <button type="button" id="adminPopupZu" class="lock-link">Schließen</button>
+    </div>
+  </div>
 
   <div id="lock" class="lock hidden">
     <form id="lockForm" class="lock-box">

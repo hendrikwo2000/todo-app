@@ -35,13 +35,13 @@ function json(body, status = 200) {
 // Fehlerantwort.
 async function angemeldetOderFehler(request, env) {
   if (!env.DB) return { fehler: json({ error: "D1-Bindung DB fehlt im Pages-Projekt" }, 500) };
-  const nutzerId = await angemeldeterNutzer(request, env);
-  if (!nutzerId) return { fehler: json({ error: "Nicht angemeldet" }, 401) };
-  return { nutzerId };
+  const nutzer = await angemeldeterNutzer(request, env);
+  if (!nutzer) return { fehler: json({ error: "Nicht angemeldet" }, 401) };
+  return { nutzerId: nutzer.id, nutzer };
 }
 
 export async function onRequestGet({ request, env }) {
-  const { nutzerId, fehler } = await angemeldetOderFehler(request, env);
+  const { nutzerId, nutzer, fehler } = await angemeldetOderFehler(request, env);
   if (fehler) return fehler;
 
   try {
@@ -60,6 +60,9 @@ export async function onRequestGet({ request, env }) {
     // Zurueck in die Form, die die App seit jeher kennt: Bereiche heissen dort
     // "categories", die Zugehoerigkeit "categoryId", die Reihenfolge "order".
     return json({
+      // Die App blendet den Verwaltungs-Zugang danach ein oder aus. Das ist
+      // reine Optik - /api/admin/* prueft selbst nochmal.
+      admin: nutzer.role === "admin",
       categories: listen.results.map(l => ({ id: l.id, name: l.name })),
       todos: todos.results.map(t => ({
         id: t.id,

@@ -10,7 +10,7 @@
  * naechste Schritt - it-wolf.org nutzt es bereits.
  */
 
-import { sendeMail, huelle, absatz, kasten, fussnote } from "../_lib/mail.js";
+import { sendeMail, huelle, absatz, kasten, knopf, fussnote } from "../_lib/mail.js";
 
 const MAX_NAME = 80;
 const MAX_EMAIL = 254;   // RFC-Obergrenze fuer Mailadressen
@@ -79,19 +79,41 @@ export async function onRequestPost({ request, env }) {
     await env.DB.prepare("INSERT INTO waitlist (name, email) VALUES (?, ?)")
       .bind(name, email).run();
 
-    // Admins benachrichtigen. Fehler hier duerfen die Eintragung nicht
-    // kippen - fuer den Eintragenden hat es geklappt, und im Dashboard
-    // steht der Eintrag ohnehin.
-    const admins = await env.DB.prepare("SELECT email FROM users WHERE role = 'admin'").all();
     const url = new URL(request.url).origin;
-    for (const admin of admins.results) {
+
+    // Bestaetigung an den Eintragenden. Ohne sie steht man da und weiss
+    // nicht, ob das Formular ueberhaupt etwas getan hat.
+    await sendeMail(env, {
+      to: email,
+      subject: "Du stehst auf der Warteliste",
+      html: huelle("Du stehst auf der Warteliste",
+        absatz(`Hallo ${escape(name)}, wir haben deine Anfrage für die
+                ToDo-Liste bekommen. Sobald dein Zugang freigeschaltet ist,
+                bekommst du noch eine Mail — dann kannst du dich mit dieser
+                Adresse anmelden.`) +
+        fussnote("Du musst nichts weiter tun. Diese Mail dient nur als Bestätigung.")),
+      text: `Hallo ${name},\n\nwir haben deine Anfrage fuer die ToDo-Liste bekommen. Sobald dein Zugang freigeschaltet ist, bekommst du noch eine Mail - dann kannst du dich mit dieser Adresse anmelden.\n\nDu musst nichts weiter tun.`,
+    });
+
+    // Benachrichtigung an die Verwaltung. ADMIN_MAIL hat Vorrang, damit die
+    // Benachrichtigungen nicht daran haengen, wer gerade Adminrechte hat;
+    // ohne die Variable gehen sie wie bisher an alle Admin-Konten.
+    const empfaenger = env.ADMIN_MAIL
+      ? [env.ADMIN_MAIL]
+      : (await env.DB.prepare("SELECT email FROM users WHERE role = 'admin'").all())
+          .results.map(a => a.email);
+
+    // Fehler hier duerfen die Eintragung nicht kippen - fuer den
+    // Eintragenden hat es geklappt, und im Dashboard steht der Eintrag.
+    for (const an of empfaenger) {
       await sendeMail(env, {
-        to: admin.email,
+        to: an,
         subject: `Neue Wartelisten-Anfrage: ${name}`,
         html: huelle("Neue Wartelisten-Anfrage",
           kasten(`<strong>${escape(name)}</strong><br>${escape(email)}`) +
           absatz("Im Dashboard kannst du die Anfrage freischalten oder ablehnen.") +
-          fussnote("Diese Mail bekommst du, weil dein Konto Adminrechte hat.")),
+          knopf("Zur Verwaltung", `${url}/admin`) +
+          fussnote("Diese Mail geht an die hinterlegte Verwaltungsadresse.")),
         text: `Neue Wartelisten-Anfrage:\n\n${name}\n${email}\n\nDashboard: ${url}/admin`,
       });
     }

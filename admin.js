@@ -74,14 +74,16 @@ function marke(text, klasse) {
   return s;
 }
 
-async function bearbeite(id, aktion, knopfEl) {
+async function bearbeite(id, aktion, knopfEl, extra = {}) {
   if (aktion === "ablehnen" && !confirm("Diese Anfrage wirklich ablehnen?")) return;
+  if (aktion === "rolle" && extra.rolle === "admin"
+      && !confirm("Diesem Nutzer Adminrechte geben? Er kann dann alle Anfragen und Nutzer verwalten.")) return;
   knopfEl.disabled = true;
   try {
     const res = await fetch(API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, aktion }),
+      body: JSON.stringify({ id, aktion, ...extra }),
     });
     const daten = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -95,6 +97,8 @@ async function bearbeite(id, aktion, knopfEl) {
       melde(daten.mailVerschickt === false
         ? "Freigeschaltet — aber die Willkommensmail ging nicht raus."
         : "Freigeschaltet, Willkommensmail verschickt.");
+    } else if (aktion === "rolle") {
+      melde(extra.rolle === "admin" ? "Adminrechte vergeben." : "Adminrechte entzogen.");
     } else {
       melde("Abgelehnt.");
     }
@@ -127,9 +131,21 @@ function zeichne(daten) {
 
   nutzerEl.replaceChildren();
   for (const n of daten.nutzer) {
-    const marken = [];
-    if (n.role === "admin") marken.push(marke("Admin", "admin"));
-    nutzerEl.append(zeile(n, marken));
+    const aktionen = [];
+    if (n.role === "admin") aktionen.push(marke("Admin", "admin"));
+    // Beim eigenen Konto kein Knopf: sich selbst die Rechte zu entziehen
+    // sperrt einen aus, sobald man der einzige Admin ist. Der Server
+    // verweigert es ohnehin - hier gar nicht erst anbieten.
+    if (n.id !== daten.ichSelbst) {
+      const zielRolle = n.role === "admin" ? "user" : "admin";
+      const b = knopf(
+        n.role === "admin" ? "Adminrechte entziehen" : "Zum Admin machen",
+        "still",
+        () => bearbeite(n.id, "rolle", b, { rolle: zielRolle })
+      );
+      aktionen.push(b);
+    }
+    nutzerEl.append(zeile(n, aktionen));
   }
 
   erledigtEl.replaceChildren();
