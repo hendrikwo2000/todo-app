@@ -14,18 +14,15 @@
    verschluesselt (siehe Abschnitt "Verschluesselung").
    ==================================================================== */
 
-// ---------- Cloud-Speicher (JSONBin.io) ----------
-// Bin-ID und Access-Key stammen aus dem JSONBin-Konto; der Access-Key ist
-// bewusst nur fuer dieses eine Bin freigegeben (Lesen + Schreiben), nicht
-// der volle Account-Master-Key, weil dieser Code als statische Seite
-// oeffentlich einsehbar ist.
-const JSONBIN_ID  = "6a4bf236da38895dfe36c173";
-const JSONBIN_KEY = "$2a$10$BGeFi/PYFCLdZs0Bzu8PHeijV91l8JX.izcEgvuptBkIeXwePMKSu";
-const API_BASE = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
-
-// ---------- Zusatz-Sicherung (Google Apps Script -> Google Drive) ----------
-const DASHBOARD_URL    = "https://script.google.com/macros/s/AKfycbysdgbe0ayb_0dTS1WYihnWJqVy2HTCl-Ihp7Msy2G819ilK7-q18slYhys7kNg5t9fzA/exec";
-const DASHBOARD_SECRET = "hwDash_9Kq2mVt7xL";
+// ---------- Cloud-Speicher ----------
+// Gespeichert wird weiterhin in einem JSONBin-Bin, aber nicht mehr direkt von
+// hier aus: Bin-ID und Access-Key standen frueher als Konstanten in dieser
+// Datei und waren damit fuer jeden Besucher lesbar. Beides liegt jetzt als
+// Secret im Cloudflare-Pages-Projekt; /api/todos reicht die Anfragen durch
+// (siehe functions/api/todos.js). Die Zweitsicherung nach Google Drive stoesst
+// dieselbe Function nach jedem Schreiben selbst an — auch ihr Geheimnis ist
+// damit aus dem oeffentlichen Quelltext verschwunden.
+const API_BASE = "/api/todos";
 
 let state = { categories: [], todos: [] };
 let editingId = null;      // id des ToDos, das gerade bearbeitet wird
@@ -241,13 +238,9 @@ function askNewPassword() {
 async function loadState() {
   let payload;
   try {
-    const res = await fetch(`${API_BASE}/latest`, {
-      headers: { "X-Access-Key": JSONBIN_KEY },
-      cache: "no-store",
-    });
+    const res = await fetch(API_BASE, { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
-    const json = await res.json();
-    payload = json.record;
+    payload = await res.json();
   } catch (e) {
     // canSave bleibt false: lieber nichts speichern als den Cloud-Stand
     // mit einem leeren Board ueberschreiben.
@@ -281,33 +274,17 @@ async function save() {
     const payload = await encryptPayload(state, password);
     const res = await fetch(API_BASE, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "X-Access-Key": JSONBIN_KEY },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     setStatus("Gespeichert ✓", "ok");
-    syncToDashboard(payload);
   } catch (e) {
     setStatus("⚠ Nicht gespeichert", "err");
   } finally {
     saving = false;
     if (pendingSave) { pendingSave = false; save(); }
   }
-}
-
-// Speicherstand zusaetzlich an das Google Apps Script schicken, das ihn nach
-// Google Drive schreibt — ebenfalls nur verschluesselt. Wegen mode "no-cors"
-// ist die Antwort nicht lesbar; Fehler bleiben bewusst folgenlos.
-async function syncToDashboard(payload) {
-  if (!DASHBOARD_URL) return;
-  try {
-    await fetch(DASHBOARD_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ secret: DASHBOARD_SECRET, todos: payload })
-    });
-  } catch (e) { /* optional, App läuft normal weiter */ }
 }
 
 let statusTimer = null;
