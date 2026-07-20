@@ -158,18 +158,11 @@ function zeigeTurnstile(an) {
       sitekey: TURNSTILE_SITEKEY,
       theme: "auto",
     });
-    // Werbeblocker und strenge Netzwerke schlucken das Widget manchmal:
-    // render() meldet keinen Fehler, es erscheint nur nie ein iframe. Ohne
-    // Hinweis stuende man dann vor einem Formular, das der Server wortlos
-    // ablehnt.
-    setTimeout(() => {
-      if (kasten.hidden || kasten.querySelector("iframe")) return;
-      const hinweis = document.createElement("p");
-      hinweis.className = "lock-hint";
-      hinweis.textContent = "Die Bot-Prüfung lädt nicht — vermutlich blockiert " +
-        "sie ein Werbeblocker. Schreib mir sonst einfach eine Mail.";
-      kasten.replaceChildren(hinweis);
-    }, 6000);
+    // Kein Ladehinweis mit Zeitschaltung hier: im Modus "Verwaltet" winkt
+    // Turnstile die meisten Besucher stillschweigend durch, ganz ohne
+    // sichtbares Widget. Ein fehlendes iframe ist also der Normalfall, kein
+    // Fehler. Ob es geklappt hat, zeigt allein das Token - und das wird
+    // beim Absenden geprueft.
   } else {
     // Nach einem Absenden ist das Token verbraucht.
     window.turnstile.reset(turnstileId);
@@ -307,12 +300,19 @@ function login() {
             setzeMeldung("Bitte Name und Adresse ausfüllen.");
             return;
           }
+          // Erst hier zaehlt es: liegt kein Token vor, ist die Pruefung
+          // entweder noch unterwegs oder blockiert. Beides erklaeren, statt
+          // den Server eine kryptische Absage schicken zu lassen.
+          const bot = turnstileToken();
+          if (turnstileId !== null && !bot) {
+            setzeMeldung("Bot-Prüfung noch nicht fertig — kurz warten und nochmal. " +
+                         "Bleibt es dabei, blockiert sie vermutlich ein Werbeblocker.");
+            return;
+          }
           const res = await fetch("/api/waitlist", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: wunschName, email: wunschEmail, turnstile: turnstileToken(),
-            }),
+            body: JSON.stringify({ name: wunschName, email: wunschEmail, turnstile: bot }),
           });
           if (!res.ok) {
             setzeMeldung(await serverMeldung(res, "Eintragen hat nicht geklappt."));
