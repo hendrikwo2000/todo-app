@@ -112,152 +112,108 @@ function toggleTheme() {
   applyTheme(next);
 }
 
-// ---------- Verschluesselung ----------
-// Gleiches Format wie beim Schul-Dashboard: AES-GCM, Schluessel per PBKDF2 aus
-// dem Passwort. Im Bin liegt dadurch nur Chiffretext — der oeffentlich
-// sichtbare Access-Key oben gibt niemandem Zugriff auf die Inhalte. Das
-// Passwort steht nirgends im Code, es bleibt auf dem Geraet.
+// ---------- Zugang ----------
+// Uebergangsloesung, bis es einen richtigen Login gibt: ein gemeinsames
+// Passwort, das die Function gegen ein Secret prueft.
+//
+// Frueher stand hier AES-GCM. Die ToDos lagen verschluesselt im Bin und dieses
+// Passwort war der Schluessel - der Server konnte nichts lesen. Seit sie als
+// echte Spalten in D1 liegen (damit sortiert, gefiltert und spaeter geteilt
+// werden kann), geht das nicht mehr: Spalten, die niemand lesen kann, kann
+// auch niemand sortieren. Der Schutz ist deshalb vom Inhalt an den Zugang
+// gewandert.
+//
+// Wichtig dabei: eine Pruefung HIER waere wertlos, sie ist in den
+// Entwicklertools in Sekunden umgangen. Das Passwort geht darum bei jeder
+// Anfrage als Header mit, und die Function entscheidet.
 const LOCK_KEY = "todoPass";
-const ITERATIONS = 250000;
 
 let password = null;
 // Erst speichern, wenn der vorhandene Stand wirklich gelesen wurde. Sonst
 // wuerde die erste Aenderung nach einem Ladefehler das Board leer ueberschreiben.
 let canSave = false;
-let migrated = false;
-
-function toB64(bytes) {
-  let s = "";
-  for (const b of new Uint8Array(bytes)) s += String.fromCharCode(b);
-  return btoa(s);
-}
-function fromB64(s) { return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
-
-async function deriveKey(pass, salt, iterations, usages) {
-  const material = await crypto.subtle.importKey(
-    "raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: salt, iterations: iterations, hash: "SHA-256" },
-    material, { name: "AES-GCM", length: 256 }, false, usages);
-}
-
-async function encryptPayload(data, pass) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv   = crypto.getRandomValues(new Uint8Array(12));
-  const key  = await deriveKey(pass, salt, ITERATIONS, ["encrypt"]);
-  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key,
-    new TextEncoder().encode(JSON.stringify(data)));
-  return { encrypted: true, v: 1, iterations: ITERATIONS,
-           salt: toB64(salt), iv: toB64(iv), data: toB64(cipher) };
-}
-
-async function decryptPayload(payload, pass) {
-  const key = await deriveKey(pass, fromB64(payload.salt), payload.iterations, ["decrypt"]);
-  const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: fromB64(payload.iv) }, key, fromB64(payload.data));
-  return JSON.parse(new TextDecoder().decode(plain));
-}
 
 // ---------- Sperrbildschirm ----------
-// Fragt das Passwort ab und liefert die entschluesselten Daten. Ein gemerktes
-// Passwort wird still probiert; nur wenn es nicht passt, erscheint die Abfrage.
-function unlock(payload) {
-  return new Promise(resolve => {
+// Fragt das Passwort ab, bis der Server eines akzeptiert. Ein gemerktes wird
+// still probiert; nur wenn es nicht passt, erscheint die Maske.
+//
+// pruefe(pass) liefert true/false - oder wirft, wenn der Server gar nicht
+// antwortet. Der Unterschied ist wichtig: bei einer Stoerung darf NICHT nach
+// dem Passwort gefragt werden, sonst tippt man es dreimal ein, waehrend in
+// Wahrheit die Datenbank klemmt.
+function askPassword(pruefe) {
+  return new Promise((resolve, reject) => {
     const overlay = document.getElementById("lock");
     const form    = document.getElementById("lockForm");
     const input   = document.getElementById("lockPass");
     const msg     = document.getElementById("lockMsg");
 
-    const attempt = async (pass, silent) => {
+    const versuch = async (pass, still) => {
+      let ok;
       try {
-        const data = await decryptPayload(payload, pass);
+        ok = await pruefe(pass);
+      } catch (e) {
+        overlay.classList.add("hidden");
+        reject(e);
+        return true;   // fertig - nicht weiter nach dem Passwort fragen
+      }
+      if (ok) {
         localStorage.setItem(LOCK_KEY, pass);
         password = pass;
         overlay.classList.add("hidden");
-        resolve(data);
+        resolve(pass);
         return true;
-      } catch (e) {
-        localStorage.removeItem(LOCK_KEY);
-        if (!silent) { msg.textContent = "Falsches Passwort"; input.value = ""; input.focus(); }
-        return false;
       }
+      localStorage.removeItem(LOCK_KEY);
+      if (!still) { msg.textContent = "Falsches Passwort"; input.value = ""; input.focus(); }
+      return false;
     };
 
-    const showPrompt = () => {
-      // Overlay teilt sich die Maske mit askNewPassword() — Beschriftung und
-      // Wiederhol-Feld gehoeren daher zurueckgesetzt.
+    const zeige = () => {
       document.getElementById("lockTitle").textContent = "ToDo-Liste entsperren";
-      document.getElementById("lockHint").textContent = "Einmal pro Gerät eingeben — wird gespeichert.";
+      document.getElementById("lockHint").textContent =
+        "Einmal pro Gerät eingeben — wird gespeichert.";
       document.getElementById("lockPass2").hidden = true;
       overlay.classList.remove("hidden");
       input.focus();
-      form.onsubmit = e => { e.preventDefault(); if (input.value) attempt(input.value, false); };
+      form.onsubmit = e => { e.preventDefault(); if (input.value) versuch(input.value, false); };
     };
 
-    const saved = localStorage.getItem(LOCK_KEY);
-    if (saved) attempt(saved, true).then(ok => { if (!ok) showPrompt(); });
-    else showPrompt();
-  });
-}
-
-// Einmalige Einrichtung, solange im Bin noch Klartext liegt. Das Passwort wird
-// zweimal abgefragt: ein Tippfehler wuerde die Daten sonst unlesbar machen.
-function askNewPassword() {
-  return new Promise(resolve => {
-    const overlay = document.getElementById("lock");
-    const form    = document.getElementById("lockForm");
-    const input   = document.getElementById("lockPass");
-    const repeat  = document.getElementById("lockPass2");
-    const msg     = document.getElementById("lockMsg");
-
-    document.getElementById("lockTitle").textContent = "Passwort festlegen";
-    document.getElementById("lockHint").textContent =
-      "Nimm dasselbe Passwort wie im Schul-Dashboard, dann kann es die ToDos weiter anzeigen.";
-    repeat.hidden = false;
-    overlay.classList.remove("hidden");
-    input.focus();
-
-    form.onsubmit = e => {
-      e.preventDefault();
-      if (!input.value) return;
-      if (input.value !== repeat.value) {
-        msg.textContent = "Die Passwörter stimmen nicht überein";
-        repeat.value = ""; repeat.focus();
-        return;
-      }
-      localStorage.setItem(LOCK_KEY, input.value);
-      password = input.value;
-      repeat.hidden = true;
-      overlay.classList.add("hidden");
-      resolve();
-    };
+    const gemerkt = localStorage.getItem(LOCK_KEY);
+    if (gemerkt) versuch(gemerkt, true).then(ok => { if (!ok) zeige(); });
+    else zeige();
   });
 }
 
 // ---------- Laden & Speichern ----------
+// 200 = Daten, 401 = falsches Passwort, alles andere ist eine echte Stoerung
+// und fliegt als Ausnahme weiter.
+async function hole(pass) {
+  const res = await fetch(API_BASE, {
+    headers: { "X-Todo-Passwort": pass },
+    cache: "no-store",
+  });
+  if (res.status === 401) return null;
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
+
 async function loadState() {
-  let payload;
+  let daten = null;
   try {
-    const res = await fetch(API_BASE, { cache: "no-store" });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    payload = await res.json();
+    await askPassword(async pass => {
+      daten = await hole(pass);
+      return daten !== null;
+    });
   } catch (e) {
-    // canSave bleibt false: lieber nichts speichern als den Cloud-Stand
-    // mit einem leeren Board ueberschreiben.
-    setStatus("⚠ Cloud-Speicher nicht erreichbar", "err");
+    // canSave bleibt false: lieber nichts speichern als den Server-Stand mit
+    // einem leeren Board ueberschreiben.
+    setStatus("⚠ Server nicht erreichbar", "err");
     state = { categories: [], todos: [] };
     return;
   }
 
-  if (payload && payload.encrypted) {
-    state = await unlock(payload);
-  } else {
-    // Altbestand im Klartext: Passwort festlegen, init() schreibt gleich
-    // verschluesselt zurueck.
-    await askNewPassword();
-    state = payload || {};
-    migrated = true;
-  }
+  state = daten || {};
   canSave = true;
 
   if (!Array.isArray(state.categories)) state.categories = [];
@@ -271,11 +227,10 @@ async function save() {
   saving = true;
   setStatus("Speichere …", "");
   try {
-    const payload = await encryptPayload(state, password);
     const res = await fetch(API_BASE, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json", "X-Todo-Passwort": password },
+      body: JSON.stringify(state),
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     setStatus("Gespeichert ✓", "ok");
@@ -933,5 +888,4 @@ applyTheme(
 (async function init() {
   await loadState();
   render();
-  if (migrated) save();   // Klartext-Altbestand sofort verschluesselt ersetzen
 })();
