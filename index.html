@@ -35,8 +35,7 @@
 <body>
   <div class="app">
     <header class="topbar">
-      <h1 id="titel" title="Doppelklick für die Verwaltung">ToDo-Liste</h1>
-      <button id="listenWechsel" class="btn icon-only switcher" title="Liste wechseln" hidden>⌄</button>
+      <h1 id="titel">ToDo-Liste</h1>
       <button id="addCatBtn" class="btn add-cat">＋ Bereich</button>
       <span id="saveStatus" class="save-status"></span>
       <button id="einstellungenBtn" class="btn icon-only" title="Einstellungen" hidden>⚙️</button>
@@ -51,18 +50,6 @@
   </div>
 
   <div id="snackbar" class="snackbar" aria-live="polite"></div>
-
-  <!-- Erscheint nur bei Doppelklick auf den Titel, und nur fuer Admins.
-       Der Zugang soll da sein, aber niemandem im Weg stehen. -->
-  <div id="adminPopup" class="admin-popup" hidden>
-    <div class="admin-popup-box">
-      <div class="admin-popup-icon">🛠</div>
-      <h2>Verwaltung</h2>
-      <p>Wartelisten-Anfragen freischalten und Nutzer verwalten.</p>
-      <a href="/admin" class="btn primary">Öffnen</a>
-      <button type="button" id="adminPopupZu" class="lock-link">Schließen</button>
-    </div>
-  </div>
 
   <!-- Einstellungen hinter dem Zahnrad. Ein Dialog mit mehreren Ansichten:
        Hauptansicht (Listen + Konto), Zugriff-verwalten, Abmelde-Rueckfrage,
@@ -94,6 +81,13 @@
             <button type="button" id="kontoAbmelden" class="btn">Abmelden</button>
             <button type="button" id="kontoLoeschenStart" class="btn gefahr">Konto löschen</button>
           </div>
+        </div>
+
+        <!-- Nur fuer Admins sichtbar (JS blendet es je nach Rolle ein). Frueher
+             hinter einem Doppelklick auf den Titel versteckt. -->
+        <div class="ein-abschnitt" id="adminAbschnitt" hidden>
+          <h3>Verwaltung</h3>
+          <a href="/admin" class="btn">Verwaltung öffnen</a>
         </div>
       </div>
 

@@ -75,7 +75,27 @@ html, body {
   margin: 0;
   font-weight: 700;
   letter-spacing: -.3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;   /* darf im Flex-Kopf schrumpfen statt ueberzulaufen */
 }
+.titel-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Ab zwei Listen ist der Titel der Umschalter: kleiner Pfeil, Zeigehand. */
+.titel-schaltbar { cursor: pointer; user-select: none; }
+.titel-pfeil {
+  font-size: 15px; line-height: 1; font-weight: 400;
+  color: var(--muted); transition: color .15s;
+}
+.titel-schaltbar:hover .titel-pfeil { color: var(--accent); }
+/* Titel-Umbenennen: das Feld sitzt an Ort und Stelle des Titels. */
+.titel-edit {
+  font: inherit; font-size: 24px; font-weight: 700; letter-spacing: -.3px;
+  color: var(--text); background: var(--bg);
+  border: 1px solid var(--accent); border-radius: 8px;
+  padding: 1px 7px; width: min(58vw, 300px);
+}
+.titel-edit:focus { outline: none; }
 .save-status {
   font-size: 13.5px;
   color: var(--muted);
@@ -675,8 +695,7 @@ input[type="date"]:focus {
    die Optik ab, die Textausrichtung fehlt dort aber. */
 .topbar a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 
-/* ---------- Verwaltungs-Popup (Doppelklick auf den Titel) ---------- */
-#titel.klickbar { cursor: pointer; }
+/* ---------- Modale Dialoge (Einstellungen, Eingabe, Bestaetigung) ---------- */
 .admin-popup {
   position: fixed;
   inset: 0;
@@ -718,6 +737,19 @@ input[type="date"]:focus {
   cursor: pointer;
 }
 .admin-popup-box .lock-link:hover { color: var(--text); }
+
+/* Eingabe-Dialog (ersetzt das nackte prompt() des Browsers). */
+.eingabe-feld {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit; font-size: 14px;
+}
+.eingabe-feld:focus { outline: none; border-color: var(--accent); }
+.eingabe-feld[readonly] { color: var(--muted); }
 
 /* Loeschen und andere unwiderrufliche Aktionen. Bewusst kein gefuelltes Rot:
    der Knopf soll warnen, aber nicht staerker ziehen als der harmlose
@@ -796,8 +828,6 @@ input[type="date"]:focus {
 .leer-liste { display: flex; flex-direction: column; align-items: center; gap: 14px; }
 
 /* ---------- Umschalter-Menue am Titel ---------- */
-.switcher { line-height: 1; }
-.switcher[hidden] { display: none; }
 .listen-menue {
   position: absolute;
   top: 100%; left: 0;

@@ -44,11 +44,9 @@ const addCatBtn    = document.getElementById("addCatBtn");
 const saveStatusEl = document.getElementById("saveStatus");
 const themeBtn     = document.getElementById("themeBtn");
 const einstellungenBtn = document.getElementById("einstellungenBtn");
-const switcherBtn  = document.getElementById("listenWechsel");
 const listenMenue  = document.getElementById("listenMenue");
 const snackbar     = document.getElementById("snackbar");
 const titel        = document.getElementById("titel");
-const adminPopup   = document.getElementById("adminPopup");
 const einstellungenPopup = document.getElementById("einstellungenPopup");
 
 // Oeffentlicher Sitekey des Turnstile-Widgets fuer todo.it-wolf.org. Darf im
@@ -489,6 +487,8 @@ function oeffneEinstellungen() {
   schliesseMenue();
   zeichneListen();
   document.getElementById("kontoMsg").textContent = "";
+  // Verwaltung nur fuer Admins - der Abschnitt bleibt sonst ausgeblendet.
+  document.getElementById("adminAbschnitt").hidden = !istAdmin;
   zeigeEinAnsicht("haupt");
   einstellungenPopup.hidden = false;
 }
@@ -598,13 +598,19 @@ async function teileListe(b) {
     b.geteilt = true;
     const url = `${location.origin}/?beitreten=${d.token}`;
     if (await kopiere(url)) snackInfo("Link kopiert – jetzt verschicken.");
-    else prompt("Diesen Link teilen:", url);
+    else await textEingabe({
+      titel: "Link teilen",
+      text: "Kopiere den Link und verschick ihn:",
+      wert: url, okText: "Fertig", icon: "🔗", readonly: true,
+    });
     zeichneListen();
   } catch (e) { snackInfo("Server nicht erreichbar."); }
 }
 
-async function benenneListeUm(b) {
-  const name = (prompt("Neuer Name der Liste:", b.name) || "").trim();
+// Kern des Umbenennens: Server rufen, dann den lokalen Zustand nachziehen.
+// Wird sowohl vom Titel (Doppelklick) als auch von den Einstellungen genutzt.
+async function benenneListeMit(b, name) {
+  name = (name || "").trim();
   if (!name || name === b.name) return;
   try {
     const res = await fetch("/api/listen/umbenennen", {
@@ -615,10 +621,21 @@ async function benenneListeUm(b) {
     const d = await res.json().catch(() => ({}));
     if (!res.ok) { snackInfo(d.error || "Umbenennen hat nicht geklappt."); return; }
     b.name = name;
-    if (b.id === aktiveListe) titel.textContent = name;
+    if (b.id === aktiveListe) zeichneTitel();
     zeichneListen();
     aktualisiereMenue();
   } catch (e) { snackInfo("Server nicht erreichbar."); }
+}
+
+async function benenneListeUm(b) {
+  const name = await textEingabe({
+    titel: "Liste umbenennen",
+    wert: b.name,
+    platzhalter: "Name der Liste",
+    okText: "Speichern",
+  });
+  if (name === null) return;
+  benenneListeMit(b, name);
 }
 
 async function loescheListe(b) {
@@ -671,7 +688,12 @@ function entferneListeLokal(id) {
 }
 
 async function neueListeAnlegen() {
-  const name = (prompt("Name der neuen Liste:") || "").trim();
+  const name = await textEingabe({
+    titel: "Neue Liste",
+    platzhalter: "Name der Liste",
+    okText: "Anlegen",
+    icon: "＋",
+  });
   if (!name) return;
   try {
     const res = await fetch("/api/listen/neu", {
@@ -845,10 +867,127 @@ function snackInfo(text) {
 }
 
 // In die Zwischenablage kopieren. Kann scheitern (unsicherer Kontext, keine
-// Freigabe) - dann faengt der Aufrufer das mit einem prompt() ab.
+// Freigabe) - dann faengt der Aufrufer das mit dem Eingabe-Dialog ab.
 async function kopiere(text) {
   try { await navigator.clipboard.writeText(text); return true; }
   catch (e) { return false; }
+}
+
+// Eigener Eingabe-Dialog als Ersatz fuer das nackte prompt() des Browsers.
+// Gibt ein Promise zurueck: der getrimmte Text bei "OK"/Enter, null bei
+// Abbrechen/Escape/Klick daneben. Mit readonly wird nur ein Text zum Kopieren
+// angezeigt (dann ohne Abbrechen-Knopf). Baut denselben Kasten wie die anderen
+// Dialoge, damit die Optik einheitlich bleibt.
+function textEingabe(optionen) {
+  const o = optionen || {};
+  const okText = o.okText || "OK";
+  const icon = o.icon || "✏️";
+  const readonly = !!o.readonly;
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.className = "admin-popup eingabe-popup";
+    const box = document.createElement("div");
+    box.className = "admin-popup-box";
+    overlay.appendChild(box);
+
+    const ic = document.createElement("div");
+    ic.className = "admin-popup-icon";
+    ic.textContent = icon;
+    box.appendChild(ic);
+
+    const h = document.createElement("h2");
+    h.textContent = o.titel || "";
+    box.appendChild(h);
+
+    if (o.text) {
+      const p = document.createElement("p");
+      p.textContent = o.text;
+      box.appendChild(p);
+    }
+
+    const feld = document.createElement("input");
+    feld.type = "text";
+    feld.className = "eingabe-feld";
+    feld.value = o.wert || "";
+    feld.placeholder = o.platzhalter || "";
+    feld.setAttribute("autocomplete", "off");
+    if (readonly) feld.readOnly = true;
+    box.appendChild(feld);
+
+    const ok = document.createElement("button");
+    ok.type = "button";
+    ok.className = "btn primary";
+    ok.textContent = okText;
+    box.appendChild(ok);
+
+    let ab = null;
+    if (!readonly) {
+      ab = document.createElement("button");
+      ab.type = "button";
+      ab.className = "lock-link";
+      ab.textContent = "Abbrechen";
+      box.appendChild(ab);
+    }
+
+    let fertig = false;
+    const schliess = (ergebnis) => {
+      if (fertig) return;
+      fertig = true;
+      document.removeEventListener("keydown", aufTaste, true);
+      overlay.remove();
+      resolve(ergebnis);
+    };
+    const nimm = () => schliess(readonly ? "" : feld.value.trim());
+    // In der Capture-Phase abfangen und stoppen, damit Escape/Enter nicht auch
+    // den Dialog dahinter (Einstellungen) schliesst oder abschickt.
+    const aufTaste = e => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); schliess(null); }
+      else if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); nimm(); }
+    };
+    document.addEventListener("keydown", aufTaste, true);
+    ok.addEventListener("click", nimm);
+    if (ab) ab.addEventListener("click", () => schliess(null));
+    overlay.addEventListener("click", e => { if (e.target === overlay) schliess(null); });
+
+    document.body.appendChild(overlay);
+    feld.focus();
+    feld.select();
+  });
+}
+
+// Aktive Liste direkt im Titel umbenennen (nur eigene Listen). Der Titel wird
+// kurz zum Eingabefeld: Enter oder Klick daneben uebernimmt, Escape verwirft.
+function starteTitelUmbenennen() {
+  const meta = listen.find(b => b.id === aktiveListe);
+  if (!meta || !meta.istEigen) return;
+  schliesseMenue();
+  const alt = meta.name;
+  titel.innerHTML = "";
+  titel.classList.remove("titel-schaltbar");
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "titel-edit";
+  input.value = alt;
+  input.setAttribute("autocomplete", "off");
+  input.setAttribute("aria-label", "Listenname");
+  titel.appendChild(input);
+  input.focus();
+  input.select();
+
+  let fertig = false;
+  const abschluss = (speichern) => {
+    if (fertig) return;
+    fertig = true;
+    const neu = input.value.trim();
+    zeichneTitel();   // Titel-Optik (Name + Pfeil) wiederherstellen
+    if (speichern && neu && neu !== alt) benenneListeMit(meta, neu);
+  };
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); abschluss(true); }
+    else if (e.key === "Escape") { e.preventDefault(); abschluss(false); }
+  });
+  input.addEventListener("blur", () => abschluss(true));
+  input.addEventListener("click", e => e.stopPropagation());
 }
 
 // ---------- Aktive Liste ----------
@@ -859,10 +998,33 @@ function zeigeAktiveListe() {
   state = (aktiveListe && daten[aktiveListe]) || { categories: [], todos: [] };
   if (!Array.isArray(state.categories)) state.categories = [];
   if (!Array.isArray(state.todos)) state.todos = [];
-  const meta = listen.find(b => b.id === aktiveListe);
-  titel.textContent = meta ? meta.name : "ToDo-Liste";
-  switcherBtn.hidden = listen.length < 2;
+  zeichneTitel();
   addCatBtn.disabled = !aktiveListe;
+}
+
+// Titel = Name der aktiven Liste. Ab zwei Listen kommt ein kleiner Pfeil dazu
+// und der Titel wird anklickbar (Klick oeffnet das Umschaltmenue). Bei eigenen
+// Listen benennt ein Doppelklick direkt hier um.
+function zeichneTitel() {
+  const meta = listen.find(b => b.id === aktiveListe);
+  const mehrere = listen.length >= 2;
+  const eigen = !!(meta && meta.istEigen);
+  titel.innerHTML = "";
+  const name = document.createElement("span");
+  name.className = "titel-name";
+  name.textContent = meta ? meta.name : "ToDo-Liste";
+  titel.appendChild(name);
+  if (mehrere) {
+    const pfeil = document.createElement("span");
+    pfeil.className = "titel-pfeil";
+    pfeil.textContent = "▾";
+    titel.appendChild(pfeil);
+  }
+  titel.classList.toggle("titel-schaltbar", mehrere);
+  titel.title = [
+    mehrere ? "Klick: Liste wechseln" : "",
+    eigen ? "Doppelklick: umbenennen" : "",
+  ].filter(Boolean).join(" · ");
 }
 
 // Zwischen den Listen umschalten. Laufende Bearbeitungen der alten Liste
@@ -905,9 +1067,6 @@ async function loadState() {
     // Name als Ueberschrift im Konto-Abschnitt, Adresse darunter.
     document.getElementById("kontoName").textContent = eigenerName || "Konto";
     document.getElementById("kontoAdresse").textContent = eigeneEmail;
-    // Der Titel bekommt nur fuer Admins einen Hinweis-Cursor - sonst wuerde
-    // er einen Doppelklick andeuten, der bei allen anderen nichts tut.
-    titel.classList.toggle("klickbar", istAdmin);
     // Erst jetzt anzeigen: vorher stuenden die Knoepfe auch auf dem
     // Sperrbildschirm.
     einstellungenBtn.hidden = false;
@@ -1086,9 +1245,14 @@ function cancelEdit() {
 }
 
 // ---------- Aktionen: Bereiche ----------
-function addCategory() {
+async function addCategory() {
   if (!aktiveListe) return;   // ohne Liste gibt es nichts, wozu ein Bereich passt
-  const name = (prompt("Name des neuen Bereichs:") || "").trim();
+  const name = await textEingabe({
+    titel: "Neuer Bereich",
+    platzhalter: "Name des Bereichs",
+    okText: "Anlegen",
+    icon: "＋",
+  });
   if (!name) return;
   state.categories.push({ id: uid(), name: name });
   render();
@@ -1589,11 +1753,28 @@ function renderTodo(t) {
 addCatBtn.addEventListener("click", addCategory);
 themeBtn.addEventListener("click", toggleTheme);
 
-// Umschalter am Titel. stopPropagation, damit der Klick nicht sofort vom
-// document-Handler unten wieder geschlossen wird.
-switcherBtn.addEventListener("click", e => { e.stopPropagation(); toggleMenue(); });
+// Titel ist Umschalter und Umbenenn-Griff in einem: kurzer Klick oeffnet ab
+// zwei Listen das Menue, Doppelklick benennt die aktive eigene Liste um. Der
+// Timer trennt Einfach- von Doppelklick - sonst klappte jeder Umbenenn-
+// Doppelklick nebenbei auch das Menue auf.
+let titelKlickTimer = null;
+titel.addEventListener("click", () => {
+  if (titel.querySelector(".titel-edit")) return;   // laeuft gerade das Umbenennen
+  clearTimeout(titelKlickTimer);
+  titelKlickTimer = setTimeout(() => {
+    if (listen.length >= 2) toggleMenue();
+  }, 220);
+});
+titel.addEventListener("dblclick", () => {
+  clearTimeout(titelKlickTimer);
+  const meta = listen.find(b => b.id === aktiveListe);
+  if (meta && meta.istEigen) starteTitelUmbenennen();
+});
+// Klick irgendwo sonst schliesst das offene Menue.
 document.addEventListener("click", e => {
-  if (!listenMenue.hidden && e.target !== switcherBtn && !listenMenue.contains(e.target)) schliesseMenue();
+  if (listenMenue.hidden) return;
+  if (titel.contains(e.target) || listenMenue.contains(e.target)) return;
+  schliesseMenue();
 });
 
 // Der ehemalige Abmelden-Knopf oeffnet jetzt die Einstellungen.
@@ -1630,23 +1811,9 @@ einstellungenPopup.addEventListener("click", e => {
   if (e.target === einstellungenPopup) einstellungenPopup.hidden = true;
 });
 
-// Verwaltung: absichtlich versteckt hinter einem Doppelklick auf den Titel.
-// Ein sichtbarer Knopf waere fuer den taeglichen Gebrauch nur im Weg, und
-// wer kein Admin ist, soll gar nicht erst darauf stossen.
-titel.addEventListener("dblclick", () => {
-  if (istAdmin) adminPopup.hidden = false;
-});
-document.getElementById("adminPopupZu").addEventListener("click", () => {
-  adminPopup.hidden = true;
-});
-// Klick auf den abgedunkelten Hintergrund schliesst ebenfalls.
-adminPopup.addEventListener("click", e => {
-  if (e.target === adminPopup) adminPopup.hidden = true;
-});
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
   if (!listenMenue.hidden) schliesseMenue();
-  if (!adminPopup.hidden) adminPopup.hidden = true;
   if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
 });
 
