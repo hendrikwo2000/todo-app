@@ -699,7 +699,7 @@ function entferneListeLokal(id) {
 async function neueListeAnlegen() {
   const name = await textEingabe({
     titel: "Neue Liste",
-    platzhalter: "Name der Liste",
+    platzhalter: "z. B. Meine ToDos",
     okText: "Anlegen",
     icon: "＋",
   });
@@ -1317,10 +1317,6 @@ function cancelRenameCategory() {
 function deleteCategory(catId) {
   const cat = state.categories.find(c => c.id === catId);
   if (!cat) return;
-  if (state.categories.length <= 1) {
-    alert("Es muss mindestens ein Bereich übrig bleiben.");
-    return;
-  }
   const count = state.todos.filter(t => t.categoryId === cat.id).length;
   const msg = count
     ? `Bereich „${cat.name}“ und ${count} darin enthaltene ToDo(s) wirklich löschen?`
@@ -1513,10 +1509,17 @@ function render() {
   }
 
   if (!state.categories.length) {
+    const wrap = document.createElement("div");
+    wrap.className = "empty leer-liste";
     const p = document.createElement("p");
-    p.className = "empty";
-    p.textContent = "Noch keine Bereiche. Lege oben mit „＋ Bereich“ einen an.";
-    board.appendChild(p);
+    p.textContent = "Noch keine Bereiche.";
+    const btn = document.createElement("button");
+    btn.className = "btn primary";
+    btn.textContent = "＋ Bereich anlegen";
+    btn.addEventListener("click", addCategory);
+    wrap.appendChild(p);
+    wrap.appendChild(btn);
+    board.appendChild(wrap);
     return;
   }
 
@@ -1603,10 +1606,18 @@ function renderColumn(cat) {
   // Leer-Hinweis nur, wenn im Bereich wirklich gar nichts Offenes und kein
   // Thema steht - sonst tragen die Themen die Struktur.
   if (!open.length && !themen.length) {
+    const wrap = document.createElement("div");
+    wrap.className = "empty-cta";
     const empty = document.createElement("p");
     empty.className = "empty";
     empty.textContent = "Keine offenen ToDos.";
-    col.appendChild(empty);
+    const btn = document.createElement("button");
+    btn.className = "btn primary";
+    btn.textContent = "＋ ToDo anlegen";
+    btn.addEventListener("click", () => openAdd(cat.id, null));
+    wrap.appendChild(empty);
+    wrap.appendChild(btn);
+    col.appendChild(wrap);
   }
 
   // --- Ueber-Themen als eigene Gruppen darunter ---
