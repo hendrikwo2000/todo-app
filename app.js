@@ -640,7 +640,7 @@ async function benenneListeUm(b) {
   const name = await textEingabe({
     titel: "Liste umbenennen",
     wert: b.name,
-    platzhalter: "Name der Liste",
+    platzhalter: "z. B. Meine ToDos",
     okText: "Speichern",
   });
   if (name === null) return;
@@ -1279,7 +1279,7 @@ async function addCategory() {
   if (!aktiveListe) return;   // ohne Liste gibt es nichts, wozu ein Bereich passt
   const name = await textEingabe({
     titel: "Neuer Bereich",
-    platzhalter: "Name des Bereichs",
+    platzhalter: "z. B. Haushalt oder Arbeit",
     okText: "Anlegen",
     icon: "＋",
   });
@@ -1341,7 +1341,7 @@ async function addThema(catId) {
   const name = await textEingabe({
     titel: "Neues Über-Thema",
     text: "Eine Gruppe innerhalb dieses Bereichs.",
-    platzhalter: "Name des Themas",
+    platzhalter: "z. B. Urlaub",
     okText: "Anlegen",
     icon: "＋",
   });
@@ -1780,7 +1780,7 @@ function baueAddWidget(cat, themaId) {
   add.className = "col-add open";
   add.innerHTML = `
     <div class="add-line">
-      <input type="text" class="add-text" placeholder="Neues ToDo …" autocomplete="off">
+      <input type="text" class="add-text" placeholder="z. B. Wäsche waschen" autocomplete="off">
       <span class="date-field">
         <button type="button" class="add-icon add-cal">📅</button>
         <input type="date" class="add-date" tabindex="-1" aria-label="Termin">
