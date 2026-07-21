@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /admin.js
+Disallow: /freischalten.html
+Disallow: /freischalten.js
+Disallow: /api/
+
+Sitemap: https://todo.it-wolf.org/sitemap.xml
