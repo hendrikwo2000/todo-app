@@ -1,16 +1,21 @@
 -- Schema der ToDo-App (Cloudflare D1 / SQLite).
 --
--- Ersetzt den einen JSONBin-Datensatz, in dem frueher alles zusammen lag.
--- Aufbau: ein Nutzer hat mehrere Bereiche ("lists" - die Spalten im Board),
--- ein Bereich hat mehrere ToDos.
+-- Aufbau in drei Ebenen:
+--   Liste  (boards)  -> Bereich (lists)  -> ToDo (todos)
+-- Eine "Liste" ist ein ganzes Board, das man teilen kann. Sie enthaelt
+-- mehrere "Bereiche" (die Spalten), ein Bereich mehrere ToDos.
 --
--- Bewusst KEINE Verschluesselung mehr: mit Spalten statt Chiffretext kann die
--- Datenbank sortieren und filtern, das Admin-Dashboard etwas anzeigen und
--- spaeter eine Liste zwischen Nutzern geteilt werden. Der Preis ist, dass der
--- Betreiber die Inhalte lesen kann - siehe README.
+-- Historie: Frueher lag alles verschluesselt in einem JSONBin-Datensatz, dann
+-- in D1 mit EINER Liste pro Nutzer (lists hing direkt an user_id). Seit den
+-- geteilten Listen sitzt ueber den Bereichen die Ebene `boards`, und wer eine
+-- Liste sehen darf, steht in `board_members` - nicht mehr am festen user_id.
 --
--- Einspielen:  wrangler d1 execute todo --file=schema.sql
--- oder die Datei im Dashboard unter D1 -> Console einfuegen.
+-- Bewusst KEINE Verschluesselung: mit echten Spalten kann die Datenbank
+-- sortieren, filtern und eine Liste zwischen Nutzern teilen. Der Preis ist,
+-- dass der Betreiber die Inhalte lesen kann - siehe README/BETRIEB.
+--
+-- Einspielen (frische Datenbank):  wrangler d1 execute todo --file=schema.sql
+-- Bestehende Datenbank umstellen:  siehe migration-boards.sql
 
 -- ---------------------------------------------------------------- Nutzer ---
 -- role steuert den Zugang zum Admin-Dashboard. Absichtlich eine Spalte und
@@ -24,14 +29,54 @@ CREATE TABLE users (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- --------------------------------------------------------------- Listen ---
+-- Eine "Liste" ist die teilbare Einheit. owner_id ist der Ersteller: nur er
+-- darf umbenennen, teilen, Zugriffe entziehen und die ganze Liste loeschen.
+-- id bleibt TEXT, damit die App die UUIDs weiter selbst erzeugt.
+--
+-- share_token ist der aktuelle Einladungs-Token; NULL, solange die Liste nie
+-- geteilt wurde. Er liegt bewusst im KLARTEXT (anders als Codes und
+-- Sitzungstoken): der Ersteller muss den Link jederzeit erneut kopieren
+-- koennen, und ein Hash liesse sich nicht zurueckrechnen. Der Token ist 32
+-- Zufalls-Bytes, und er gewaehrt nur den Beitritt zu einer ToDo-Liste -
+-- kein hohes Schutzgut. "Link zuruecksetzen" heisst: neuen Token setzen, der
+-- alte Link laeuft damit ins Leere.
+CREATE TABLE boards (
+  id          TEXT PRIMARY KEY,
+  owner_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  share_token TEXT UNIQUE,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- --------------------------------------------------------- Mitgliedschaft ---
+-- Wer eine Liste sehen und bearbeiten darf. Der Ersteller steht hier selbst
+-- mit role='owner' - so ist "welche Listen sehe ich?" EINE Abfrage auf
+-- board_members, ohne boards.owner_id gesondert zu behandeln.
+--
+-- position ist die Reihenfolge im Umschalter, pro Nutzer verschieden: die
+-- eigene Liste und eine geteilte Liste koennen bei zwei Personen anders
+-- herum stehen.
+--
+-- role: 'owner' oder 'member'. Beide duerfen den Inhalt (Bereiche, ToDos)
+-- bearbeiten - Mitbearbeiten war die ausdrueckliche Vorgabe. Nur die
+-- Verwaltung der Liste selbst bleibt dem owner vorbehalten.
+CREATE TABLE board_members (
+  board_id  TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+  user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role      TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'member')),
+  position  INTEGER NOT NULL DEFAULT 0,
+  joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (board_id, user_id)
+);
+
 -- -------------------------------------------------------------- Bereiche ---
--- id bleibt TEXT, damit die vorhandenen UUIDs aus JSONBin unveraendert
--- uebernommen werden koennen - die App erzeugt sie weiterhin selbst.
+-- Die Spalten im Board. Haengen jetzt an board_id (frueher user_id).
 -- position ersetzt die fruehere Reihenfolge im Array: SQL kennt keine
 -- inhaerente Sortierung, die Spaltenreihenfolge muss also explizit mit.
 CREATE TABLE lists (
   id         TEXT PRIMARY KEY,
-  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  board_id   TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
   name       TEXT NOT NULL,
   position   INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -67,10 +112,10 @@ CREATE TABLE waitlist (
 );
 
 -- ------------------------------------------------------------ Anmeldung ---
--- Login per E-Mail-Code statt Passwort: kein Hashing, kein
--- Zuruecksetzen-Flow, keine vergessenen Passwoerter. Wer sich anmelden darf,
--- steht in `users` - das IST hier die Zugangsbeschraenkung, es gibt bewusst
--- keine Registrierung.
+-- Login per E-Mail-Code statt Passwort: kein Hashing-Aufwand fuer den Nutzer,
+-- kein Zuruecksetzen-Flow, keine vergessenen Passwoerter. Wer sich anmelden
+-- darf, steht in `users` - das IST hier die Zugangsbeschraenkung, es gibt
+-- bewusst keine Registrierung.
 --
 -- Codes werden gehasht gespeichert (wie ein Passwort), nicht im Klartext -
 -- falls die Datenbank je ausgelesen wird, sind angeforderte, noch gueltige
@@ -111,9 +156,14 @@ CREATE TABLE sessions (
 );
 
 -- ----------------------------------------------------------------- Index ---
--- Das Board laedt immer "alle Bereiche eines Nutzers in Reihenfolge" und
--- danach "alle ToDos dieser Bereiche". Genau dafuer die beiden Indizes.
-CREATE INDEX idx_lists_user     ON lists(user_id, position);
+-- Das Board laedt "alle Listen eines Nutzers", dann "alle Bereiche dieser
+-- Listen in Reihenfolge", dann "alle ToDos dieser Bereiche". Dafuer die
+-- Indizes. idx_boards_token traegt den Beitritt ueber den Einladungslink.
+CREATE INDEX idx_members_user   ON board_members(user_id, position);
+CREATE INDEX idx_members_board  ON board_members(board_id);
+CREATE INDEX idx_boards_owner   ON boards(owner_id);
+CREATE INDEX idx_boards_token   ON boards(share_token);
+CREATE INDEX idx_lists_board    ON lists(board_id, position);
 CREATE INDEX idx_todos_list     ON todos(list_id);
 CREATE INDEX idx_waitlist_st    ON waitlist(status, created_at);
 CREATE INDEX idx_login_codes_em ON login_codes(email, created_at);

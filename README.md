@@ -1,6 +1,7 @@
 # ToDo-Liste
 
 Ein ToDo-Board im Browser: Bereiche als Spalten, ToDos mit Termin und Notiz.
+Bis zu zwei eigene **Listen**, die sich per Link mit anderen teilen lassen.
 Überall synchron — auf dem Handy zum Startbildschirm hinzufügen, dann
 verhält es sich wie eine App.
 
@@ -34,9 +35,35 @@ Angemeldet bleibst du dauerhaft, auch nach dem Schließen des Browsers.
 Steht deine Adresse noch nicht auf der Liste, wechselt die Anmeldung von
 selbst zum Eintragen.
 
+## Listen
+
+Du kannst bis zu **zwei eigene Listen** führen — etwa „Privat" und „Arbeit" —
+und jede beliebig oft mit anderen teilen.
+
+- **⚙️** oben rechts öffnet die Einstellungen mit allen Listen
+- **„＋ neue Liste"** legt eine zweite an; oben am Titel schaltest du per **⌄**
+  zwischen ihnen um
+- **„Umbenennen"** ändert den Namen (nur wer die Liste erstellt hat)
+- **„Löschen"** entfernt eine ganze Liste — dein Konto bleibt
+
+**Teilen**
+
+- In den Einstellungen bei der Liste auf **„Teilen"** — der Link ist kopiert
+- Schick ihn der Person; sie muss angemeldet sein
+- Öffnet sie den Link, taucht die Liste bei ihr auf (als „… von deinem Namen"),
+  und ihr bearbeitet sie gemeinsam
+
+**Zugriff wieder entziehen**
+
+- Bei einer geteilten Liste **„Geteilt mit … · Zugriff verwalten"**
+- **„Entfernen"** wirft eine Person raus, **„Alle entfernen"** setzt zugleich
+  den Link zurück — der alte funktioniert dann nicht mehr
+- Wer eine geteilte Liste nur mitliest, löst sie bei sich über
+  **„Verknüpfung lösen"**
+
 ## Abmelden
 
-- **⏻** oben rechts
+- **⚙️** oben rechts
 - **„Abmelden"**
 - **„Ja, abmelden"**
 
@@ -44,13 +71,14 @@ Beim nächsten Mal brauchst du wieder einen Anmeldelink.
 
 ## Konto löschen
 
-- **⏻** oben rechts
+- **⚙️** oben rechts
 - **„Konto löschen"**
 - Zur Bestätigung die eigene E-Mail-Adresse eintippen
 - **„Endgültig löschen"**
 
-Damit sind alle Bereiche und ToDos weg. Das lässt sich nicht rückgängig
-machen. Eintragen kannst du dich danach wieder.
+Damit sind deine eigenen Listen mit allen Bereichen und ToDos weg — auch für
+Personen, mit denen du geteilt hast. Das lässt sich nicht rückgängig machen.
+Eintragen kannst du dich danach wieder.
 
 ## Bedienung
 

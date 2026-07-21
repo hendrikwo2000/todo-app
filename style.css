@@ -64,6 +64,7 @@ html, body {
 
 /* ---------- Kopf ---------- */
 .topbar {
+  position: relative;   /* Anker fuer das Umschalter-Menue am Titel */
   display: flex;
   align-items: center;
   gap: 12px;
@@ -117,13 +118,13 @@ html, body {
   z-index: 30;
 }
 /* Links neben dem Design-Schalter. 42px = dessen Breite plus Abstand. */
-#logoutBtn {
+#einstellungenBtn {
   position: fixed;
   top: max(16px, env(safe-area-inset-top));
   right: calc(max(16px, env(safe-area-inset-right)) + 42px);
   z-index: 30;
 }
-#logoutBtn[hidden] { display: none; }
+#einstellungenBtn[hidden] { display: none; }
 
 input[type="text"],
 input[type="date"] {
@@ -724,10 +725,112 @@ input[type="date"]:focus {
 .btn.gefahr { color: var(--red); border-color: var(--del-soft); }
 .btn.gefahr:hover { background: var(--red); border-color: var(--red); color: #fff; filter: none; }
 
-/* Konto-Menue: die drei Ansichten teilen sich einen Dialog. */
-#kontoPopup .admin-popup-box > div { display: flex; flex-direction: column; gap: 10px; }
-#kontoPopup .admin-popup-box > div[hidden] { display: none; }
-#kontoPopup .btn { width: 100%; justify-content: center; }
+/* ---------- Einstellungen ---------- */
+/* Breiter und scrollbar als die schmalen Ja/Nein-Dialoge, links ausgerichtet
+   (die einzelnen Ansichten teilen sich einen Dialog). */
+.admin-popup-box.einstellungen {
+  width: min(440px, 100%);
+  max-height: min(82vh, 660px);
+  overflow-y: auto;
+  text-align: left;
+  gap: 4px;
+}
+.admin-popup-box.einstellungen > div { display: flex; flex-direction: column; gap: 12px; }
+.admin-popup-box.einstellungen > div[hidden] { display: none; }
+/* Icon und Ueberschrift jeder Ansicht mittig, wie in den anderen Dialogen. */
+.admin-popup-box.einstellungen > div > .admin-popup-icon { align-self: center; }
+.admin-popup-box.einstellungen h2 { text-align: center; }
+
+.ein-abschnitt {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 14px; margin-top: 2px;
+  border-top: 1px solid var(--line);
+}
+#einstellungenHaupt > .ein-abschnitt:first-of-type { border-top: 0; padding-top: 4px; }
+.ein-abschnitt h3 {
+  margin: 0; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+}
+.ein-hinweis { font-size: 12px; color: var(--muted); margin: 0; }
+.ein-konto-name { font-size: 15px; font-weight: 600; margin: 0; }
+.ein-konto-mail { font-size: 12.5px; color: var(--muted); margin: 0; word-break: break-all; }
+.ein-konto-knoepfe { display: flex; gap: 8px; }
+.ein-konto-knoepfe .btn { flex: 1; justify-content: center; }
+#neueListe { align-self: flex-start; }
+#neueListe:disabled { opacity: .5; cursor: not-allowed; }
+#neueListe:disabled:hover { color: var(--text); border-color: var(--line); }
+#einstellungenZu { align-self: center; margin-top: 8px; }
+
+/* Listen-Zeilen (Meine Listen / Geteilt mit mir / Mitglieder) */
+.listen-liste { display: flex; flex-direction: column; gap: 8px; }
+.listen-liste:empty { display: none; }
+.listen-zeile {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--bg);
+}
+.lz-kopf { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.lz-name { font-size: 15px; font-weight: 600; }
+.lz-name.aktiv::after {
+  content: "aktiv"; margin-left: 8px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--accent); background: var(--accent-soft);
+  padding: 1px 6px; border-radius: 6px;
+}
+.lz-von { font-size: 12px; color: var(--muted); word-break: break-all; }
+.lz-knoepfe { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn.klein { padding: 5px 10px; font-size: 12.5px; }
+.lz-geteilt {
+  align-self: flex-start;
+  background: none; border: 0; padding: 2px 0;
+  font: inherit; font-size: 12px; font-weight: 600; color: var(--accent);
+  cursor: pointer; text-align: left;
+}
+.lz-geteilt:hover { text-decoration: underline; }
+.lz-geteilt-info { font-size: 12px; color: var(--muted); }
+#alleEntfernen { align-self: flex-start; }
+
+/* Leerer Board-Zustand ohne jede Liste. */
+.leer-liste { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+/* ---------- Umschalter-Menue am Titel ---------- */
+.switcher { line-height: 1; }
+.switcher[hidden] { display: none; }
+.listen-menue {
+  position: absolute;
+  top: 100%; left: 0;
+  margin-top: 6px;
+  z-index: 40;
+  min-width: 200px; max-width: 280px;
+  display: flex; flex-direction: column;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--row);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+}
+.listen-menue[hidden] { display: none; }
+.menue-eintrag {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0; border-radius: 8px;
+  background: none; color: var(--text);
+  font: inherit; font-size: 14px; font-weight: 600;
+  text-align: left; cursor: pointer;
+}
+.menue-eintrag:hover { background: var(--hover); }
+.menue-eintrag.aktiv { color: var(--accent); background: var(--accent-soft); }
+.menue-von { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+
+/* "＋ Bereich" ohne aktive Liste ausgrauen. */
+.btn.add-cat:disabled { opacity: .4; cursor: not-allowed; }
+.btn.add-cat:disabled:hover { color: var(--muted); background: transparent; border-color: transparent; }
+
+/* Ein- und Ausblenden der Ansichten im Einstellungs-Dialog. */
+#einstellungenPopup .btn { justify-content: center; }
 #kontoAdresse { word-break: break-all; }
 #kontoLoeschenEmail {
   border: 1px solid var(--line);

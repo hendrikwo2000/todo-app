@@ -6,8 +6,15 @@
 import { sendeMail, huelle, absatz, fussnote } from "./mail.js";
 
 /**
- * Loescht Nutzer, Bereiche, ToDos, Sitzungen und offene Codes in EINER
+ * Loescht Nutzer, seine Listen (mit Bereichen und ToDos), seine
+ * Mitgliedschaften in fremden Listen, Sitzungen und offene Codes in EINER
  * Transaktion.
+ *
+ * Zwei Seiten der Listen: EIGENE Listen (owner_id = ich) verschwinden ganz,
+ * auch fuer alle, mit denen ich sie geteilt hatte - dafuer erst deren
+ * ToDos/Bereiche/Mitgliedschaften, dann die Liste. Listen, in die ich nur
+ * EINGELADEN war, bleiben bestehen; von denen loese ich nur meine eigene
+ * Mitgliedschaft.
  *
  * Die Kindtabellen werden ausdruecklich zuerst geleert, statt sich auf
  * ON DELETE CASCADE zu verlassen: ob SQLite das ausfuehrt, haengt an
@@ -19,10 +26,20 @@ import { sendeMail, huelle, absatz, fussnote } from "./mail.js";
  */
 export async function loescheKonto(env, nutzer) {
   await env.DB.batch([
+    // Eigene Listen samt Inhalt und fremden Zugriffen.
     env.DB.prepare(
-      "DELETE FROM todos WHERE list_id IN (SELECT id FROM lists WHERE user_id = ?)"
+      "DELETE FROM todos WHERE list_id IN (SELECT id FROM lists WHERE board_id IN (SELECT id FROM boards WHERE owner_id = ?))"
     ).bind(nutzer.id),
-    env.DB.prepare("DELETE FROM lists WHERE user_id = ?").bind(nutzer.id),
+    env.DB.prepare(
+      "DELETE FROM lists WHERE board_id IN (SELECT id FROM boards WHERE owner_id = ?)"
+    ).bind(nutzer.id),
+    env.DB.prepare(
+      "DELETE FROM board_members WHERE board_id IN (SELECT id FROM boards WHERE owner_id = ?)"
+    ).bind(nutzer.id),
+    env.DB.prepare("DELETE FROM boards WHERE owner_id = ?").bind(nutzer.id),
+    // Meine Mitgliedschaften in fremden Listen loesen (die Listen bleiben).
+    env.DB.prepare("DELETE FROM board_members WHERE user_id = ?").bind(nutzer.id),
+    // Der Rest wie gehabt.
     env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(nutzer.id),
     env.DB.prepare("DELETE FROM login_codes WHERE email = ?").bind(nutzer.email),
     env.DB.prepare("DELETE FROM waitlist WHERE email = ?").bind(nutzer.email),

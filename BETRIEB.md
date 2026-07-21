@@ -7,8 +7,12 @@ aus diesem Repo (Branch `main`, kein Build-Schritt).
 
 Die Daten liegen in einer Cloudflare-D1-Datenbank (Bindung `DB`, Schema in
 [schema.sql](schema.sql)) — nicht verschlüsselt: echte Spalten statt
-Chiffretext erlauben Sortieren, Filtern und später geteilte Listen. Der Preis:
+Chiffretext erlauben Sortieren, Filtern und geteilte Listen. Der Preis:
 der Betreiber kann die Inhalte lesen.
+
+Aufbau in drei Ebenen: **Liste** (`boards`) → **Bereich** (`lists`, die
+Spalten) → **ToDo** (`todos`). Wer eine Liste sehen und bearbeiten darf, steht
+in `board_members`. Siehe [Listen und Teilen](#listen-und-teilen).
 
 ## Login
 
@@ -74,6 +78,60 @@ Zwei Fallen, die je eine halbe Stunde kosten:
 Ohne `RESEND_KEY` schlägt jeder Mailversand fehl. `request-code` bricht dann
 ab, *bevor* gespeichert wird — es entsteht also gar kein Anmeldelink zum
 Testen; der Datensatz muss von Hand in `login_codes`.
+
+## Listen und Teilen
+
+Eine **Liste** (`boards`) ist die teilbare Einheit über den Bereichen. Wer sie
+sehen und **mitbearbeiten** darf, steht in `board_members` mit einer Rolle:
+
+- `owner` — der Ersteller. Nur er darf umbenennen, teilen, Zugriffe entziehen
+  und die ganze Liste löschen. Er steht selbst als `board_members`-Zeile drin,
+  damit „welche Listen sehe ich?" **eine** Abfrage bleibt.
+- `member` — eingeladen. Darf den **Inhalt** (Bereiche, ToDos) genauso ändern
+  wie der owner, aber nicht die Liste selbst verwalten.
+
+Pro Person höchstens **zwei eigene** Listen (`MAX_EIGENE_LISTEN` in
+[functions/\_lib/listen.js](functions/_lib/listen.js)); geteilte Listen zählen
+nicht mit. Eine Zahl, kein Deployment, falls das mal steigt.
+
+**Endpunkte.** Der Inhalt läuft weiter über `/api/todos`: `GET` liefert alle
+Listen des Nutzers samt Bereichen und ToDos in einer Antwort, `PUT` speichert
+**eine** Liste (`{ boardId, categories, todos }`). Anders als früher wird nur
+diese eine Liste ersetzt — so kann das Speichern nie eine andere plätten. Die
+Verwaltung liegt unter `/api/listen/`: `neu`, `umbenennen`, `loeschen`,
+`teilen`, `beitreten`, `verlassen`, `mitglieder`. Jeder prüft die Rolle frisch
+in der Datenbank.
+
+**Teilen-Link.** `teilen` legt einen `share_token` an (32 Zufalls-Bytes) und
+gibt ihn zurück; die App baut daraus `<origin>/?beitreten=<token>`. Der Token
+liegt bewusst im **Klartext** in `boards.share_token` — der Ersteller muss den
+Link jederzeit erneut kopieren können, ein Hash ließe sich nicht zurückrechnen.
+Er gewährt nur den Beitritt zu einer ToDo-Liste, kein hohes Schutzgut. Öffnet
+eine angemeldete Person den Link, hängt `beitreten` sie als `member` ein
+(doppelter Beitritt und eigene Liste sind harmlos). „Link zurücksetzen" (in
+`teilen` mit `{ reset: true }`) vergibt einen neuen Token, der alte läuft ins
+Leere. „Alle entfernen" (`mitglieder` mit `{ alle: true }`) wirft alle Mitglieder
+raus **und** setzt `share_token` auf NULL.
+
+**Bewusst nicht konfliktfrei.** `PUT /api/todos` ersetzt den kompletten Inhalt
+der Liste. Bearbeiten zwei Leute dieselbe Liste im selben Moment, gewinnt der
+spätere Speichervorgang — im schlimmsten Fall verschwindet frisch
+Hinzugefügtes. Für wenige Leute, die selten zeitgleich tippen, ist das
+vertretbar. Echtes gleichzeitiges Bearbeiten wäre ein ToDo-für-ToDo-Abgleich
+statt „alles auf einmal" — ein späterer Schritt, falls nötig.
+
+**Migration bestehender Daten.** Früher hingen die Bereiche direkt an `user_id`
+(eine Liste pro Nutzer). [migration-boards.sql](migration-boards.sql) baut das
+um: je Nutzer entsteht eine Liste „Meine Liste", in die seine Bereiche und
+ToDos unverändert wandern. **Einmalig**, vorher ein Backup:
+
+```
+wrangler d1 export todo --output=todo-backup.sql
+wrangler d1 execute todo --file=migration-boards.sql
+```
+
+Rollback: das Backup zurückspielen. Für eine **frische** Datenbank reicht
+`schema.sql` (enthält das neue Schema bereits).
 
 ## Warteliste und Verwaltung
 
@@ -148,11 +206,16 @@ Nutzer löschen ihr eigenes Konto in der App über den Abmelden-Knopf →
 Admins löschen fremde Konten im Dashboard. Beide Wege verschicken eine
 Benachrichtigung an die betroffene Adresse.
 
-Gelöscht werden Nutzer, Bereiche, ToDos, Sitzungen, offene Codes **und der
-Wartelisten-Eintrag** — letzterer, damit die Person sich neu bewerben kann;
-sonst hinge sie zwischen „kein Konto" und „steht schon auf der Liste" fest.
-Alles in einer Transaktion, Kindtabellen ausdrücklich zuerst (nicht auf
-`ON DELETE CASCADE` verlassen, das hängt an `PRAGMA foreign_keys`).
+Gelöscht werden Nutzer, seine **eigenen Listen** (mit Bereichen, ToDos und den
+fremden Zugriffen darauf), seine **Mitgliedschaften** in fremden Listen (die
+Listen selbst bleiben), Sitzungen, offene Codes **und der Wartelisten-Eintrag**
+— letzterer, damit die Person sich neu bewerben kann; sonst hinge sie zwischen
+„kein Konto" und „steht schon auf der Liste" fest. Alles in einer Transaktion,
+Kindtabellen ausdrücklich zuerst (nicht auf `ON DELETE CASCADE` verlassen, das
+hängt an `PRAGMA foreign_keys`).
+
+Eine einzelne **Liste** löscht der Ersteller getrennt davon in den
+Einstellungen (`/api/listen/loeschen`) — das lässt das Konto unberührt.
 
 **Der letzte Admin lässt sich nicht löschen** und sich auch selbst nicht
 degradieren — sonst käme niemand mehr an die Verwaltung.

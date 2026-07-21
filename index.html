@@ -36,10 +36,15 @@
   <div class="app">
     <header class="topbar">
       <h1 id="titel" title="Doppelklick für die Verwaltung">ToDo-Liste</h1>
+      <button id="listenWechsel" class="btn icon-only switcher" title="Liste wechseln" hidden>⌄</button>
       <button id="addCatBtn" class="btn add-cat">＋ Bereich</button>
       <span id="saveStatus" class="save-status"></span>
-      <button id="logoutBtn" class="btn icon-only" title="Abmelden" hidden>⏻</button>
+      <button id="einstellungenBtn" class="btn icon-only" title="Einstellungen" hidden>⚙️</button>
       <button id="themeBtn" class="btn icon-only" title="Dunkles Design">☾</button>
+
+      <!-- Umschalter zwischen den Listen. Inhalt kommt per JS, erscheint nur
+           bei mehr als einer Liste. -->
+      <div id="listenMenue" class="listen-menue" hidden></div>
     </header>
 
     <main id="board" class="board"><!-- Spalten werden per JS eingefuegt --></main>
@@ -59,16 +64,47 @@
     </div>
   </div>
 
-  <!-- Konto-Menue hinter dem Abmelden-Knopf. Drei Ansichten in einem
-       Dialog: Auswahl, Abmelde-Rueckfrage, Loesch-Bestaetigung. -->
-  <div id="kontoPopup" class="admin-popup" hidden>
-    <div class="admin-popup-box">
-      <div id="kontoAuswahl">
-        <div class="admin-popup-icon">👤</div>
-        <h2 id="kontoName">Konto</h2>
-        <p id="kontoAdresse"></p>
-        <button type="button" id="kontoAbmelden" class="btn primary">Abmelden</button>
-        <button type="button" id="kontoLoeschenStart" class="btn gefahr">Konto löschen</button>
+  <!-- Einstellungen hinter dem Zahnrad. Ein Dialog mit mehreren Ansichten:
+       Hauptansicht (Listen + Konto), Zugriff-verwalten, Abmelde-Rueckfrage,
+       Loesch-Bestaetigung. Die Listen-Zeilen fuellt JS. -->
+  <div id="einstellungenPopup" class="admin-popup" hidden>
+    <div class="admin-popup-box einstellungen">
+
+      <div id="einstellungenHaupt">
+        <div class="admin-popup-icon">⚙️</div>
+        <h2>Einstellungen</h2>
+
+        <div class="ein-abschnitt">
+          <h3>Meine Listen</h3>
+          <div id="eigeneListen" class="listen-liste"></div>
+          <button type="button" id="neueListe" class="btn">＋ neue Liste</button>
+          <p id="neueListeHinweis" class="ein-hinweis" hidden></p>
+        </div>
+
+        <div class="ein-abschnitt" id="geteiltAbschnitt" hidden>
+          <h3>Geteilt mit mir</h3>
+          <div id="geteilteListen" class="listen-liste"></div>
+        </div>
+
+        <div class="ein-abschnitt">
+          <h3>Konto</h3>
+          <p id="kontoName" class="ein-konto-name">Konto</p>
+          <p id="kontoAdresse" class="ein-konto-mail"></p>
+          <div class="ein-konto-knoepfe">
+            <button type="button" id="kontoAbmelden" class="btn">Abmelden</button>
+            <button type="button" id="kontoLoeschenStart" class="btn gefahr">Konto löschen</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zugriff einer eigenen, geteilten Liste verwalten. -->
+      <div id="mitgliederAnsicht" hidden>
+        <div class="admin-popup-icon">👥</div>
+        <h2 id="mitgliederTitel">Zugriff verwalten</h2>
+        <p id="mitgliederLeer" class="ein-hinweis" hidden>Noch niemand hat diese Liste geöffnet.</p>
+        <div id="mitgliederListe" class="listen-liste"></div>
+        <button type="button" id="alleEntfernen" class="btn gefahr">Alle entfernen &amp; Link zurücksetzen</button>
+        <button type="button" id="mitgliederZurueck" class="lock-link">Zurück</button>
       </div>
 
       <div id="kontoAbmeldenFrage" hidden>
@@ -76,19 +112,22 @@
         <h2>Abmelden?</h2>
         <p>Du bekommst beim nächsten Mal wieder einen Anmeldelink per Mail.</p>
         <button type="button" id="kontoAbmeldenJa" class="btn primary">Ja, abmelden</button>
+        <button type="button" id="kontoAbmeldenZurueck" class="lock-link">Zurück</button>
       </div>
 
       <div id="kontoLoeschenFrage" hidden>
         <div class="admin-popup-icon">⚠️</div>
         <h2>Konto löschen</h2>
-        <p>Alle Bereiche und ToDos werden unwiderruflich gelöscht.
-           Tipp zur Bestätigung deine Adresse ein.</p>
+        <p>Deine eigenen Listen mit allen Bereichen und ToDos werden
+           unwiderruflich gelöscht — auch für Personen, mit denen du geteilt
+           hast. Tipp zur Bestätigung deine Adresse ein.</p>
         <input type="email" id="kontoLoeschenEmail" placeholder="E-Mail-Adresse" autocomplete="off">
         <button type="button" id="kontoLoeschenJa" class="btn gefahr">Endgültig löschen</button>
         <div id="kontoMsg" class="lock-msg" aria-live="polite"></div>
+        <button type="button" id="kontoLoeschenZurueck" class="lock-link">Zurück</button>
       </div>
 
-      <button type="button" id="kontoPopupZu" class="lock-link">Abbrechen</button>
+      <button type="button" id="einstellungenZu" class="lock-link">Schließen</button>
     </div>
   </div>
 

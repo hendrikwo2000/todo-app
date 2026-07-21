@@ -19,6 +19,13 @@
 // Sitzungs-Cookie, und der Server liefert nur die eigenen Daten aus.
 const API_BASE = "/api/todos";
 
+// Mehrere Listen (boards) liegen zugleich im Speicher. `state` zeigt immer auf
+// die gerade aktive Liste - so arbeitet der ganze Render- und Bearbeiten-Code
+// unveraendert auf state.categories / state.todos weiter, ohne von den Listen
+// zu wissen.
+let listen = [];           // Metadaten je Liste (Form siehe /api/todos)
+let daten = {};            // { [listeId]: { categories, todos } }
+let aktiveListe = null;    // id der aktiven Liste (oder null: keine Liste)
 let state = { categories: [], todos: [] };
 let editingId = null;      // id des ToDos, das gerade bearbeitet wird
 let editingCat = null;     // id des Bereichs, dessen Name gerade bearbeitet wird
@@ -36,11 +43,13 @@ const board        = document.getElementById("board");
 const addCatBtn    = document.getElementById("addCatBtn");
 const saveStatusEl = document.getElementById("saveStatus");
 const themeBtn     = document.getElementById("themeBtn");
-const logoutBtn    = document.getElementById("logoutBtn");
+const einstellungenBtn = document.getElementById("einstellungenBtn");
+const switcherBtn  = document.getElementById("listenWechsel");
+const listenMenue  = document.getElementById("listenMenue");
 const snackbar     = document.getElementById("snackbar");
 const titel        = document.getElementById("titel");
 const adminPopup   = document.getElementById("adminPopup");
-const kontoPopup   = document.getElementById("kontoPopup");
+const einstellungenPopup = document.getElementById("einstellungenPopup");
 
 // Oeffentlicher Sitekey des Turnstile-Widgets fuer todo.it-wolf.org. Darf im
 // Quelltext stehen - der geheime Schluessel liegt als TURNSTILE_SECRET im
@@ -52,6 +61,7 @@ let turnstileId = null;
 // die Optik - /api/admin/* prueft die Rolle selbst nochmal.
 let istAdmin = false;
 let eigeneEmail = "";
+let eigenerName = "";
 
 // ---------- Hilfsfunktionen ----------
 function uid() {
@@ -435,27 +445,361 @@ async function logout() {
   location.reload();
 }
 
-// ---------- Konto-Menue ----------
-// Drei Ansichten in einem Dialog: Auswahl, Abmelde-Rueckfrage,
-// Loesch-Bestaetigung. Beide Wege verlangen eine zweite Bestaetigung -
-// Loeschen zusaetzlich die abgetippte Adresse, weil es die ToDos mitnimmt.
-const kontoAnsichten = {
-  auswahl:  document.getElementById("kontoAuswahl"),
-  abmelden: document.getElementById("kontoAbmeldenFrage"),
-  loeschen: document.getElementById("kontoLoeschenFrage"),
-};
+// ---------- Umschalter-Menue ----------
+// Kleines Aufklappmenue am Titel, um zwischen den Listen zu wechseln.
+function aktualisiereMenue() {
+  listenMenue.innerHTML = "";
+  for (const b of listen) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "menue-eintrag" + (b.id === aktiveListe ? " aktiv" : "");
+    const name = document.createElement("span");
+    name.textContent = b.name;
+    btn.appendChild(name);
+    if (!b.istEigen && b.besitzerName) {
+      const von = document.createElement("span");
+      von.className = "menue-von";
+      von.textContent = `von ${b.besitzerName}`;
+      btn.appendChild(von);
+    }
+    btn.addEventListener("click", () => wechsleListe(b.id));
+    listenMenue.appendChild(btn);
+  }
+}
+function toggleMenue() {
+  if (listenMenue.hidden) { aktualisiereMenue(); listenMenue.hidden = false; }
+  else listenMenue.hidden = true;
+}
+function schliesseMenue() { listenMenue.hidden = true; }
 
-function zeigeKonto(ansicht) {
-  for (const [name, el] of Object.entries(kontoAnsichten)) el.hidden = name !== ansicht;
+// ---------- Einstellungen ----------
+// Ein Dialog mit mehreren Ansichten: Hauptansicht (Listen + Konto),
+// Zugriff-verwalten, Abmelde- und Loesch-Rueckfrage.
+const einAnsichten = {
+  haupt:      document.getElementById("einstellungenHaupt"),
+  mitglieder: document.getElementById("mitgliederAnsicht"),
+  abmelden:   document.getElementById("kontoAbmeldenFrage"),
+  loeschen:   document.getElementById("kontoLoeschenFrage"),
+};
+function zeigeEinAnsicht(name) {
+  for (const [k, el] of Object.entries(einAnsichten)) el.hidden = k !== name;
+}
+
+function oeffneEinstellungen() {
+  schliesseMenue();
+  zeichneListen();
   document.getElementById("kontoMsg").textContent = "";
-  kontoPopup.hidden = false;
-  if (ansicht === "loeschen") {
-    const feld = document.getElementById("kontoLoeschenEmail");
-    feld.value = "";
-    feld.focus();
+  zeigeEinAnsicht("haupt");
+  einstellungenPopup.hidden = false;
+}
+
+// Kleiner Knopf fuer die Listen-Zeilen.
+function machBtn(text, fn, extra) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "btn klein" + (extra ? " " + extra : "");
+  b.textContent = text;
+  b.addEventListener("click", fn);
+  return b;
+}
+
+// Die beiden Abschnitte "Meine Listen" und "Geteilt mit mir" neu aufbauen.
+function zeichneListen() {
+  const eigeneBox = document.getElementById("eigeneListen");
+  const geteiltBox = document.getElementById("geteilteListen");
+  eigeneBox.innerHTML = "";
+  geteiltBox.innerHTML = "";
+
+  const eigene = listen.filter(b => b.istEigen);
+  const geteilt = listen.filter(b => !b.istEigen);
+
+  for (const b of eigene) eigeneBox.appendChild(baueEigeneZeile(b));
+
+  // "＋ neue Liste" sperren, sobald zwei eigene Listen bestehen.
+  const voll = eigene.length >= 2;
+  document.getElementById("neueListe").disabled = voll;
+  const hinweis = document.getElementById("neueListeHinweis");
+  hinweis.hidden = !voll;
+  if (voll) hinweis.textContent = "Mehr als zwei eigene Listen gehen (noch) nicht.";
+
+  document.getElementById("geteiltAbschnitt").hidden = geteilt.length === 0;
+  for (const b of geteilt) geteiltBox.appendChild(baueGeteilteZeile(b));
+}
+
+function baueEigeneZeile(b) {
+  const row = document.createElement("div");
+  row.className = "listen-zeile";
+
+  const kopf = document.createElement("div");
+  kopf.className = "lz-kopf";
+  const name = document.createElement("span");
+  name.className = "lz-name" + (b.id === aktiveListe ? " aktiv" : "");
+  name.textContent = b.name;
+  kopf.appendChild(name);
+  row.appendChild(kopf);
+
+  const knoepfe = document.createElement("div");
+  knoepfe.className = "lz-knoepfe";
+  knoepfe.appendChild(machBtn("Teilen", () => teileListe(b)));
+  knoepfe.appendChild(machBtn("Umbenennen", () => benenneListeUm(b)));
+  knoepfe.appendChild(machBtn("Löschen", () => loescheListe(b), "gefahr"));
+  row.appendChild(knoepfe);
+
+  if (b.mitglieder > 0) {
+    const verwalten = document.createElement("button");
+    verwalten.type = "button";
+    verwalten.className = "lz-geteilt";
+    verwalten.textContent = `Geteilt mit ${b.mitglieder} · Zugriff verwalten`;
+    verwalten.addEventListener("click", () => oeffneMitglieder(b));
+    row.appendChild(verwalten);
+  } else if (b.geteilt) {
+    const info = document.createElement("div");
+    info.className = "lz-geteilt-info";
+    info.textContent = "Link erstellt – noch niemand beigetreten.";
+    row.appendChild(info);
+  }
+  return row;
+}
+
+function baueGeteilteZeile(b) {
+  const row = document.createElement("div");
+  row.className = "listen-zeile";
+
+  const kopf = document.createElement("div");
+  kopf.className = "lz-kopf";
+  const name = document.createElement("span");
+  name.className = "lz-name" + (b.id === aktiveListe ? " aktiv" : "");
+  name.textContent = b.name;
+  const von = document.createElement("span");
+  von.className = "lz-von";
+  von.textContent = b.besitzerName ? `von ${b.besitzerName}` : "geteilt";
+  kopf.appendChild(name);
+  kopf.appendChild(von);
+  row.appendChild(kopf);
+
+  const knoepfe = document.createElement("div");
+  knoepfe.className = "lz-knoepfe";
+  knoepfe.appendChild(machBtn("Verknüpfung lösen", () => verlasseListe(b), "gefahr"));
+  row.appendChild(knoepfe);
+  return row;
+}
+
+// ---------- Listen-Aktionen ----------
+async function teileListe(b) {
+  try {
+    const res = await fetch("/api/listen/teilen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: b.id }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok || !d.token) { snackInfo(d.error || "Teilen hat nicht geklappt."); return; }
+    b.token = d.token;
+    b.geteilt = true;
+    const url = `${location.origin}/?beitreten=${d.token}`;
+    if (await kopiere(url)) snackInfo("Link kopiert – jetzt verschicken.");
+    else prompt("Diesen Link teilen:", url);
+    zeichneListen();
+  } catch (e) { snackInfo("Server nicht erreichbar."); }
+}
+
+async function benenneListeUm(b) {
+  const name = (prompt("Neuer Name der Liste:", b.name) || "").trim();
+  if (!name || name === b.name) return;
+  try {
+    const res = await fetch("/api/listen/umbenennen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: b.id, name }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { snackInfo(d.error || "Umbenennen hat nicht geklappt."); return; }
+    b.name = name;
+    if (b.id === aktiveListe) titel.textContent = name;
+    zeichneListen();
+    aktualisiereMenue();
+  } catch (e) { snackInfo("Server nicht erreichbar."); }
+}
+
+async function loescheListe(b) {
+  if (!confirm(`Liste „${b.name}“ mit allen Bereichen und ToDos löschen? `
+    + `Das gilt auch für Personen, mit denen du geteilt hast.`)) return;
+  try {
+    const res = await fetch("/api/listen/loeschen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: b.id }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { snackInfo(d.error || "Löschen hat nicht geklappt."); return; }
+    entferneListeLokal(b.id);
+    snackInfo("Liste gelöscht.");
+  } catch (e) { snackInfo("Server nicht erreichbar."); }
+}
+
+async function verlasseListe(b) {
+  if (!confirm(`Verknüpfung zu „${b.name}“ lösen? `
+    + `Die Liste selbst bleibt für die anderen bestehen.`)) return;
+  try {
+    const res = await fetch("/api/listen/verlassen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: b.id }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { snackInfo(d.error || "Hat nicht geklappt."); return; }
+    entferneListeLokal(b.id);
+    snackInfo("Verknüpfung gelöst.");
+  } catch (e) { snackInfo("Server nicht erreichbar."); }
+}
+
+// Eine Liste aus dem lokalen Zustand nehmen und, falls sie aktiv war, auf eine
+// andere umschalten (oder auf "keine Liste").
+function entferneListeLokal(id) {
+  listen = listen.filter(b => b.id !== id);
+  delete daten[id];
+  if (aktiveListe === id) {
+    aktiveListe = listen.length ? listen[0].id : null;
+    if (aktiveListe) localStorage.setItem("aktiveListe", aktiveListe);
+    else localStorage.removeItem("aktiveListe");
+    editingId = editingCat = addingCat = null;
+  }
+  zeigeAktiveListe();
+  zeichneListen();
+  aktualisiereMenue();
+  render();
+}
+
+async function neueListeAnlegen() {
+  const name = (prompt("Name der neuen Liste:") || "").trim();
+  if (!name) return;
+  try {
+    const res = await fetch("/api/listen/neu", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { snackInfo(d.error || "Anlegen hat nicht geklappt."); return; }
+    listen.push(d);
+    daten[d.id] = { categories: [], todos: [] };
+    aktiveListe = d.id;
+    localStorage.setItem("aktiveListe", d.id);
+    editingId = editingCat = addingCat = null;
+    zeigeAktiveListe();
+    zeichneListen();
+    aktualisiereMenue();
+    render();
+  } catch (e) { snackInfo("Server nicht erreichbar."); }
+}
+
+// ---------- Zugriff verwalten (Mitglieder) ----------
+let mitgliederListeId = null;
+
+async function oeffneMitglieder(b) {
+  mitgliederListeId = b.id;
+  document.getElementById("mitgliederTitel").textContent = `„${b.name}“ – Zugriff`;
+  document.getElementById("mitgliederListe").innerHTML = "";
+  document.getElementById("mitgliederLeer").hidden = true;
+  document.getElementById("alleEntfernen").hidden = true;
+  zeigeEinAnsicht("mitglieder");
+  try {
+    const res = await fetch(`/api/listen/mitglieder?id=${encodeURIComponent(b.id)}`, { cache: "no-store" });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { snackInfo(d.error || "Konnte nicht laden."); zeigeEinAnsicht("haupt"); return; }
+    zeichneMitglieder(d.mitglieder || []);
+  } catch (e) { snackInfo("Server nicht erreichbar."); zeigeEinAnsicht("haupt"); }
+}
+
+function zeichneMitglieder(leute) {
+  const box = document.getElementById("mitgliederListe");
+  box.innerHTML = "";
+  document.getElementById("mitgliederLeer").hidden = leute.length > 0;
+  document.getElementById("alleEntfernen").hidden = leute.length === 0;
+  for (const p of leute) {
+    const row = document.createElement("div");
+    row.className = "listen-zeile mitglied";
+    const kopf = document.createElement("div");
+    kopf.className = "lz-kopf";
+    const n = document.createElement("span");
+    n.className = "lz-name";
+    n.textContent = p.name || p.email;
+    const m = document.createElement("span");
+    m.className = "lz-von";
+    m.textContent = p.email;
+    kopf.appendChild(n);
+    kopf.appendChild(m);
+    row.appendChild(kopf);
+    const kn = document.createElement("div");
+    kn.className = "lz-knoepfe";
+    kn.appendChild(machBtn("Entfernen", () => entfernePerson(p), "gefahr"));
+    row.appendChild(kn);
+    box.appendChild(row);
   }
 }
 
+async function entfernePerson(p) {
+  try {
+    const res = await fetch("/api/listen/mitglieder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: mitgliederListeId, userId: p.id }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { snackInfo(d.error || "Entfernen hat nicht geklappt."); return; }
+    const b = listen.find(x => x.id === mitgliederListeId);
+    if (b && typeof b.mitglieder === "number") b.mitglieder = Math.max(0, b.mitglieder - 1);
+    if (b) oeffneMitglieder(b);   // Liste neu laden
+  } catch (e) { snackInfo("Server nicht erreichbar."); }
+}
+
+async function alleEntfernen() {
+  if (!confirm("Alle Personen entfernen und den Link zurücksetzen? "
+    + "Danach kommt niemand mehr mit dem alten Link hinein.")) return;
+  try {
+    const res = await fetch("/api/listen/mitglieder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: mitgliederListeId, alle: true }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { snackInfo(d.error || "Hat nicht geklappt."); return; }
+    const b = listen.find(x => x.id === mitgliederListeId);
+    if (b) { b.mitglieder = 0; b.geteilt = false; b.token = null; }
+    zeichneListen();
+    zeigeEinAnsicht("haupt");
+    snackInfo("Zugriff entzogen, Link zurückgesetzt.");
+  } catch (e) { snackInfo("Server nicht erreichbar."); }
+}
+
+// ---------- Einer geteilten Liste beitreten ----------
+// Ausgeloest durch ?beitreten=<token> in der Adresse (der Teilen-Link). Laeuft
+// erst NACH loadState, also ist die Anmeldung an dieser Stelle schon erledigt.
+async function evtlBeitreten() {
+  const token = new URLSearchParams(location.search).get("beitreten");
+  if (!token) return;
+  // Aus der Adresszeile nehmen, damit ein Neuladen nicht erneut beitritt.
+  history.replaceState(null, "", location.pathname);
+  try {
+    const res = await fetch("/api/listen/beitreten", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { snackInfo(d.error || "Der Link hat nicht funktioniert."); return; }
+    // Frisch laden, damit die neue Liste samt Daten da ist, dann hinschalten.
+    await loadState();
+    if (d.id && daten[d.id]) {
+      aktiveListe = d.id;
+      localStorage.setItem("aktiveListe", d.id);
+      zeigeAktiveListe();
+    }
+    snackInfo(d.schon ? "Diese Liste hattest du schon." : `„${d.name}“ hinzugefügt.`);
+  } catch (e) { snackInfo("Server nicht erreichbar."); }
+}
+
+// ---------- Konto loeschen ----------
 async function kontoLoeschen() {
   const feld = document.getElementById("kontoLoeschenEmail");
   const msg = document.getElementById("kontoMsg");
@@ -476,8 +820,8 @@ async function kontoLoeschen() {
       body: JSON.stringify({ email: eingabe }),
     });
     if (!res.ok) {
-      const daten = await res.json().catch(() => ({}));
-      msg.textContent = daten.error || "Löschen hat nicht geklappt.";
+      const d = await res.json().catch(() => ({}));
+      msg.textContent = d.error || "Löschen hat nicht geklappt.";
       knopf.disabled = false;
       return;
     }
@@ -486,6 +830,51 @@ async function kontoLoeschen() {
     msg.textContent = "Server nicht erreichbar.";
     knopf.disabled = false;
   }
+}
+
+// ---------- Kleine Helfer ----------
+// Kurzhinweis in der Snackbar ohne Rueckgaengig-Knopf.
+function snackInfo(text) {
+  clearTimeout(undoTimer);
+  snackbar.innerHTML = "";
+  const s = document.createElement("span");
+  s.textContent = text;
+  snackbar.appendChild(s);
+  snackbar.classList.add("show");
+  undoTimer = setTimeout(hideSnackbar, 3500);
+}
+
+// In die Zwischenablage kopieren. Kann scheitern (unsicherer Kontext, keine
+// Freigabe) - dann faengt der Aufrufer das mit einem prompt() ab.
+async function kopiere(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch (e) { return false; }
+}
+
+// ---------- Aktive Liste ----------
+// `state` auf die aktive Liste zeigen lassen und den Kopf anpassen: Titel wird
+// zum Listennamen, der Umschalter erscheint ab zwei Listen, "＋ Bereich" ist
+// nur mit aktiver Liste nutzbar.
+function zeigeAktiveListe() {
+  state = (aktiveListe && daten[aktiveListe]) || { categories: [], todos: [] };
+  if (!Array.isArray(state.categories)) state.categories = [];
+  if (!Array.isArray(state.todos)) state.todos = [];
+  const meta = listen.find(b => b.id === aktiveListe);
+  titel.textContent = meta ? meta.name : "ToDo-Liste";
+  switcherBtn.hidden = listen.length < 2;
+  addCatBtn.disabled = !aktiveListe;
+}
+
+// Zwischen den Listen umschalten. Laufende Bearbeitungen der alten Liste
+// verwerfen, damit sie nicht in der neuen landen.
+function wechsleListe(id) {
+  if (!daten[id]) return;
+  aktiveListe = id;
+  localStorage.setItem("aktiveListe", id);
+  editingId = editingCat = addingCat = null;
+  schliesseMenue();
+  zeigeAktiveListe();
+  render();
 }
 
 // ---------- Laden & Speichern ----------
@@ -498,47 +887,69 @@ async function loadState() {
       // canSave bleibt false: lieber nichts speichern als den Server-Stand
       // mit einem leeren Board ueberschreiben.
       setStatus("⚠ Server nicht erreichbar", "err");
-      state = { categories: [], todos: [] };
+      listen = []; daten = {}; aktiveListe = null; zeigeAktiveListe();
       return;
     }
     if (res.status === 401) { await login(); continue; }
     if (!res.ok) {
       setStatus("⚠ Server nicht erreichbar", "err");
-      state = { categories: [], todos: [] };
+      listen = []; daten = {}; aktiveListe = null; zeigeAktiveListe();
       return;
     }
 
-    state = (await res.json()) || {};
+    const antwort = (await res.json()) || {};
     canSave = true;
-    istAdmin = state.admin === true;
-    eigeneEmail = state.email || "";
-    // Name als Ueberschrift, Adresse darunter - "Konto" sagt niemandem, um
-    // welches Konto es geht.
-    document.getElementById("kontoName").textContent = state.name || "Konto";
+    istAdmin = antwort.admin === true;
+    eigeneEmail = antwort.email || "";
+    eigenerName = antwort.name || "";
+    // Name als Ueberschrift im Konto-Abschnitt, Adresse darunter.
+    document.getElementById("kontoName").textContent = eigenerName || "Konto";
     document.getElementById("kontoAdresse").textContent = eigeneEmail;
     // Der Titel bekommt nur fuer Admins einen Hinweis-Cursor - sonst wuerde
     // er einen Doppelklick andeuten, der bei allen anderen nichts tut.
     titel.classList.toggle("klickbar", istAdmin);
-    // Erst jetzt anzeigen: vorher wuerde der Knopf auch auf dem
-    // Sperrbildschirm stehen, wo es nichts abzumelden gibt.
-    logoutBtn.hidden = false;
-    if (!Array.isArray(state.categories)) state.categories = [];
-    if (!Array.isArray(state.todos)) state.todos = [];
+    // Erst jetzt anzeigen: vorher stuenden die Knoepfe auch auf dem
+    // Sperrbildschirm.
+    einstellungenBtn.hidden = false;
+
+    listen = Array.isArray(antwort.listen) ? antwort.listen : [];
+    daten = antwort.daten && typeof antwort.daten === "object" ? antwort.daten : {};
+    // Jede Liste bekommt eine saubere Huelle - auch eine ohne Bereiche.
+    for (const b of listen) {
+      const d = daten[b.id] || (daten[b.id] = { categories: [], todos: [] });
+      if (!Array.isArray(d.categories)) d.categories = [];
+      if (!Array.isArray(d.todos)) d.todos = [];
+    }
+
+    // Aktive Liste: die gemerkte, sonst die erste, sonst keine.
+    const gemerkt = localStorage.getItem("aktiveListe");
+    aktiveListe = (gemerkt && listen.some(b => b.id === gemerkt))
+      ? gemerkt
+      : (listen.length ? listen[0].id : null);
+    zeigeAktiveListe();
     return;
   }
 }
 
 let saving = false, pendingSave = false;
 async function save() {
-  if (!canSave) return;
+  if (!canSave || !aktiveListe) return;
   if (saving) { pendingSave = true; return; }
   saving = true;
   setStatus("Speichere …", "");
+  // An das Board binden, das JETZT aktiv ist, und die Nutzlast aus dessen
+  // Daten bilden - nicht aus `state`. Schaltet der Nutzer waehrend des
+  // Speicherns um, geht so trotzdem die richtige Liste raus.
+  const boardId = aktiveListe;
+  const ziel = daten[boardId] || { categories: [], todos: [] };
+  const body = JSON.stringify({
+    boardId, categories: ziel.categories, todos: ziel.todos,
+  });
   try {
     let res = await fetch(API_BASE, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(state),
+      body,
     });
     // Sitzung inzwischen abgelaufen (z. B. ein sehr lange offener Tab) -
     // einmal neu anmelden und den Speicherversuch wiederholen.
@@ -547,7 +958,7 @@ async function save() {
       res = await fetch(API_BASE, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(state),
+        body,
       });
     }
     if (!res.ok) throw new Error("HTTP " + res.status);
@@ -676,6 +1087,7 @@ function cancelEdit() {
 
 // ---------- Aktionen: Bereiche ----------
 function addCategory() {
+  if (!aktiveListe) return;   // ohne Liste gibt es nichts, wozu ein Bereich passt
   const name = (prompt("Name des neuen Bereichs:") || "").trim();
   if (!name) return;
   state.categories.push({ id: uid(), name: name });
@@ -815,6 +1227,22 @@ function render() {
   if (addingCat && !state.categories.some(c => c.id === addingCat)) addingCat = null;
   if (editingCat && !state.categories.some(c => c.id === editingCat)) editingCat = null;
   board.innerHTML = "";
+
+  // Noch gar keine Liste: erst eine anlegen, dann gibt es Bereiche.
+  if (!aktiveListe) {
+    const wrap = document.createElement("div");
+    wrap.className = "empty leer-liste";
+    const p = document.createElement("p");
+    p.textContent = "Du hast noch keine Liste.";
+    const btn = document.createElement("button");
+    btn.className = "btn primary";
+    btn.textContent = "＋ Erste Liste anlegen";
+    btn.addEventListener("click", neueListeAnlegen);
+    wrap.appendChild(p);
+    wrap.appendChild(btn);
+    board.appendChild(wrap);
+    return;
+  }
 
   if (!state.categories.length) {
     const p = document.createElement("p");
@@ -1161,21 +1589,45 @@ function renderTodo(t) {
 addCatBtn.addEventListener("click", addCategory);
 themeBtn.addEventListener("click", toggleTheme);
 
-// Der Knopf meldet nicht mehr direkt ab, sondern oeffnet das Konto-Menue.
-logoutBtn.addEventListener("click", () => zeigeKonto("auswahl"));
+// Umschalter am Titel. stopPropagation, damit der Klick nicht sofort vom
+// document-Handler unten wieder geschlossen wird.
+switcherBtn.addEventListener("click", e => { e.stopPropagation(); toggleMenue(); });
+document.addEventListener("click", e => {
+  if (!listenMenue.hidden && e.target !== switcherBtn && !listenMenue.contains(e.target)) schliesseMenue();
+});
+
+// Der ehemalige Abmelden-Knopf oeffnet jetzt die Einstellungen.
+einstellungenBtn.addEventListener("click", oeffneEinstellungen);
+document.getElementById("neueListe").addEventListener("click", neueListeAnlegen);
+
 document.getElementById("kontoAbmelden")
-  .addEventListener("click", () => zeigeKonto("abmelden"));
+  .addEventListener("click", () => zeigeEinAnsicht("abmelden"));
 document.getElementById("kontoAbmeldenJa").addEventListener("click", logout);
-document.getElementById("kontoLoeschenStart")
-  .addEventListener("click", () => zeigeKonto("loeschen"));
+document.getElementById("kontoAbmeldenZurueck")
+  .addEventListener("click", () => zeigeEinAnsicht("haupt"));
+
+document.getElementById("kontoLoeschenStart").addEventListener("click", () => {
+  const feld = document.getElementById("kontoLoeschenEmail");
+  feld.value = "";
+  document.getElementById("kontoMsg").textContent = "";
+  zeigeEinAnsicht("loeschen");
+  feld.focus();
+});
 document.getElementById("kontoLoeschenJa").addEventListener("click", kontoLoeschen);
+document.getElementById("kontoLoeschenZurueck")
+  .addEventListener("click", () => zeigeEinAnsicht("haupt"));
 document.getElementById("kontoLoeschenEmail").addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); kontoLoeschen(); }
 });
-document.getElementById("kontoPopupZu")
-  .addEventListener("click", () => { kontoPopup.hidden = true; });
-kontoPopup.addEventListener("click", e => {
-  if (e.target === kontoPopup) kontoPopup.hidden = true;
+
+document.getElementById("mitgliederZurueck")
+  .addEventListener("click", () => zeigeEinAnsicht("haupt"));
+document.getElementById("alleEntfernen").addEventListener("click", alleEntfernen);
+
+document.getElementById("einstellungenZu")
+  .addEventListener("click", () => { einstellungenPopup.hidden = true; });
+einstellungenPopup.addEventListener("click", e => {
+  if (e.target === einstellungenPopup) einstellungenPopup.hidden = true;
 });
 
 // Verwaltung: absichtlich versteckt hinter einem Doppelklick auf den Titel.
@@ -1193,8 +1645,9 @@ adminPopup.addEventListener("click", e => {
 });
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
+  if (!listenMenue.hidden) schliesseMenue();
   if (!adminPopup.hidden) adminPopup.hidden = true;
-  if (!kontoPopup.hidden) kontoPopup.hidden = true;
+  if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
 });
 
 // Spalten umsortieren: Board ist die Ablagezone fuer Bereichs-Drags.
@@ -1241,5 +1694,7 @@ applyTheme(
 );
 (async function init() {
   await loadState();
+  await evtlBeitreten();   // ?beitreten=<token> aus dem Teilen-Link einloesen
+  aktualisiereMenue();
   render();
 })();
