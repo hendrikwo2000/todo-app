@@ -498,6 +498,7 @@ function oeffneEinstellungen() {
   document.getElementById("kontoMsg").textContent = "";
   // Verwaltung nur fuer Admins - der Abschnitt bleibt sonst ausgeblendet.
   document.getElementById("adminAbschnitt").hidden = !istAdmin;
+  document.getElementById("kontoAdminBadge").hidden = !istAdmin;
   zeigeEinAnsicht("haupt");
   einstellungenPopup.hidden = false;
 }
@@ -964,6 +965,69 @@ function textEingabe(optionen) {
   });
 }
 
+// Eigener Rueckfrage-Dialog als Ersatz fuer das nackte confirm() des Browsers.
+// Gibt ein Promise<boolean> zurueck. Selber Kasten wie textEingabe(), nur ohne
+// Eingabefeld und mit "gefahr"-Knopf statt "primary".
+function bestaetigen(optionen) {
+  const o = optionen || {};
+  const okText = o.okText || "Löschen";
+  const icon = o.icon || "🗑️";
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.className = "admin-popup eingabe-popup";
+    const box = document.createElement("div");
+    box.className = "admin-popup-box";
+    overlay.appendChild(box);
+
+    const ic = document.createElement("div");
+    ic.className = "admin-popup-icon";
+    ic.textContent = icon;
+    box.appendChild(ic);
+
+    const h = document.createElement("h2");
+    h.textContent = o.titel || "";
+    box.appendChild(h);
+
+    if (o.text) {
+      const p = document.createElement("p");
+      p.textContent = o.text;
+      box.appendChild(p);
+    }
+
+    const ok = document.createElement("button");
+    ok.type = "button";
+    ok.className = "btn gefahr";
+    ok.textContent = okText;
+    box.appendChild(ok);
+
+    const ab = document.createElement("button");
+    ab.type = "button";
+    ab.className = "lock-link";
+    ab.textContent = "Abbrechen";
+    box.appendChild(ab);
+
+    let fertig = false;
+    const schliess = (ergebnis) => {
+      if (fertig) return;
+      fertig = true;
+      document.removeEventListener("keydown", aufTaste, true);
+      overlay.remove();
+      resolve(ergebnis);
+    };
+    const aufTaste = e => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); schliess(false); }
+      else if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); schliess(true); }
+    };
+    document.addEventListener("keydown", aufTaste, true);
+    ok.addEventListener("click", () => schliess(true));
+    ab.addEventListener("click", () => schliess(false));
+    overlay.addEventListener("click", e => { if (e.target === overlay) schliess(false); });
+
+    document.body.appendChild(overlay);
+    ok.focus();
+  });
+}
+
 // Aktive Liste direkt im Titel umbenennen (nur eigene Listen). Der Titel wird
 // kurz zum Eingabefeld: Enter oder Klick daneben uebernimmt, Escape verwirft.
 function starteTitelUmbenennen() {
@@ -1314,14 +1378,15 @@ function cancelRenameCategory() {
   render();
 }
 
-function deleteCategory(catId) {
+async function deleteCategory(catId) {
   const cat = state.categories.find(c => c.id === catId);
   if (!cat) return;
   const count = state.todos.filter(t => t.categoryId === cat.id).length;
   const msg = count
     ? `Bereich „${cat.name}“ und ${count} darin enthaltene ToDo(s) wirklich löschen?`
     : `Bereich „${cat.name}“ wirklich löschen?`;
-  if (!confirm(msg)) return;
+  const ok = await bestaetigen({ titel: "Bereich löschen?", text: msg, okText: "Löschen" });
+  if (!ok) return;
   state.todos = state.todos.filter(t => t.categoryId !== cat.id);
   state.themen = state.themen.filter(th => th.categoryId !== cat.id);
   state.categories = state.categories.filter(c => c.id !== cat.id);
@@ -1604,20 +1669,30 @@ function renderColumn(cat) {
   col.appendChild(freieUl);
 
   // Leer-Hinweis nur, wenn im Bereich wirklich gar nichts Offenes und kein
-  // Thema steht - sonst tragen die Themen die Struktur.
+  // Thema steht - sonst tragen die Themen die Struktur. Der grosse Knopf
+  // erscheint nur, wenn der Bereich noch NIE ein ToDo hatte (auch keine
+  // erledigten) - danach reicht das kleine "＋ ToDo" oben, sonst naggt der
+  // Knopf jedes Mal, wenn alles abgehakt ist.
   if (!open.length && !themen.length) {
-    const wrap = document.createElement("div");
-    wrap.className = "empty-cta";
-    const empty = document.createElement("p");
-    empty.className = "empty";
-    empty.textContent = "Keine offenen ToDos.";
-    const btn = document.createElement("button");
-    btn.className = "btn primary";
-    btn.textContent = "＋ ToDo anlegen";
-    btn.addEventListener("click", () => openAdd(cat.id, null));
-    wrap.appendChild(empty);
-    wrap.appendChild(btn);
-    col.appendChild(wrap);
+    if (!inCat.length) {
+      const wrap = document.createElement("div");
+      wrap.className = "empty-cta";
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "Keine offenen ToDos.";
+      const btn = document.createElement("button");
+      btn.className = "btn primary";
+      btn.textContent = "＋ ToDo anlegen";
+      btn.addEventListener("click", () => openAdd(cat.id, null));
+      wrap.appendChild(empty);
+      wrap.appendChild(btn);
+      col.appendChild(wrap);
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "Keine offenen ToDos.";
+      col.appendChild(empty);
+    }
   }
 
   // --- Ueber-Themen als eigene Gruppen darunter ---
@@ -1776,6 +1851,9 @@ function baueAddKnopfzeile(cat) {
 // Das aufgeklappte Eingabefeld. Ziel ist Bereich + Ueber-Thema (themaId null =
 // frei). Gleiches Feld fuer beide Faelle - nur das Ziel unterscheidet sich.
 function baueAddWidget(cat, themaId) {
+  // Beim allerersten ToDo im Bereich kurz erklaeren, wofuer das Kalender-Icon
+  // da ist - danach kennt man's.
+  const istErstesTodo = !state.todos.some(t => t.categoryId === cat.id);
   const add = document.createElement("div");
   add.className = "col-add open";
   add.innerHTML = `
@@ -1787,6 +1865,7 @@ function baueAddWidget(cat, themaId) {
       </span>
       <button type="button" class="add-icon date-clear" title="Termin entfernen" hidden>✕</button>
     </div>
+    ${istErstesTodo ? `<p class="add-hint">📅 antippen, um ein Datum zu setzen — optional.</p>` : ""}
     <textarea class="add-note" placeholder="Notiz (optional) …" rows="2"></textarea>`;
 
   const textInput = add.querySelector(".add-text");

@@ -272,6 +272,7 @@ input[type="date"]:focus {
 .col-add.open { display: flex; flex-direction: column; gap: 6px; }
 .add-line { display: flex; gap: 5px; }
 .add-line .add-text { flex: 1; min-width: 0; }
+.add-hint { margin: -2px 0 0; font-size: 11.5px; color: var(--muted); }
 .add-icon {
   border: 1px solid var(--line);
   background: var(--row);
@@ -907,11 +908,22 @@ input[type="date"]:focus {
   padding-top: 14px; margin-top: 2px;
   border-top: 1px solid var(--line);
 }
+/* Ohne dieses [hidden] gewinnt "display: flex" oben gegen das hidden-Attribut
+   (gleiche Spezifitaet, Autoren-CSS schlaegt die UA-Regel) - der Abschnitt
+   blieb sichtbar, egal was JS an .hidden setzte. */
+.ein-abschnitt[hidden] { display: none; }
 #einstellungenHaupt > .ein-abschnitt:first-of-type { border-top: 0; padding-top: 4px; }
 .ein-abschnitt h3 {
   margin: 0; font-size: 12px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+  display: flex; align-items: center; gap: 6px;
 }
+.pille {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--accent); background: var(--accent-soft);
+  padding: 1px 6px; border-radius: 6px;
+}
+.pille[hidden] { display: none; }
 .ein-hinweis { font-size: 12px; color: var(--muted); margin: 0; }
 .ein-konto-name { font-size: 15px; font-weight: 600; margin: 0; }
 .ein-konto-mail { font-size: 12.5px; color: var(--muted); margin: 0; word-break: break-all; }
