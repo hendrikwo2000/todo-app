@@ -1160,6 +1160,7 @@ async function loadState() {
     // Erst jetzt anzeigen: vorher stuenden die Knoepfe auch auf dem
     // Sperrbildschirm.
     einstellungenBtn.hidden = false;
+    zeigeHinweise();
 
     listen = Array.isArray(antwort.listen) ? antwort.listen : [];
     daten = antwort.daten && typeof antwort.daten === "object" ? antwort.daten : {};
@@ -1578,6 +1579,51 @@ function sortDone(a, b) {
 // geladenen Listen), nicht nur ueber den aktiven Bereich.
 function kontoHatJeToDoGehabt() {
   return Object.values(daten).some(d => d.todos && d.todos.length);
+}
+
+// ---------- Hinweise (einmalige Tipps unter dem Kopf) ----------
+// "pointer: coarse" statt User-Agent-Sniffing: zuverlaessiger fuer "ist das
+// primaere Eingabegeraet ein Finger" als eine Breitenpruefung allein.
+function istMobil() {
+  return matchMedia("(pointer: coarse)").matches;
+}
+// Schon als App gestartet (Home-Bildschirm-Icon)? Dann erledigt sich der Tipp
+// von selbst. navigator.standalone ist Safaris eigene, nicht standardisierte
+// Variante davon.
+function istStandalone() {
+  return matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function baueHinweis(schluessel, text) {
+  const p = document.createElement("p");
+  p.className = "hinweis";
+  const span = document.createElement("span");
+  span.textContent = text;
+  const zu = document.createElement("button");
+  zu.type = "button";
+  zu.title = "Hinweis ausblenden";
+  zu.textContent = "✕";
+  zu.addEventListener("click", () => {
+    localStorage.setItem(schluessel, "1");
+    p.remove();
+  });
+  p.appendChild(span);
+  p.appendChild(zu);
+  return p;
+}
+
+// Einmal nach dem Anmelden aufgerufen. Jeder Tipp hat sein eigenes
+// "gesehen"-Flag in localStorage - unabhaengig voneinander ausblendbar.
+function zeigeHinweise() {
+  const leiste = document.getElementById("hinweisleiste");
+  if (istMobil() && !istStandalone() && !localStorage.getItem("hinweisHomeGesehen")) {
+    leiste.appendChild(baueHinweis("hinweisHomeGesehen",
+      "📱 Zum Home-Bildschirm hinzufügen (Teilen- bzw. Menü-Symbol des Browsers) — startet dann wie eine eigene App."));
+  }
+  if (!localStorage.getItem("hinweisEinstellungenGesehen")) {
+    leiste.appendChild(baueHinweis("hinweisEinstellungenGesehen",
+      "⚙️ Unter Einstellungen kannst du Listen umbenennen, teilen oder eine neue anlegen."));
+  }
 }
 
 // ---------- Rendern ----------

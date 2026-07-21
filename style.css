@@ -62,6 +62,22 @@ html, body {
   padding-bottom: max(56px, env(safe-area-inset-bottom));
 }
 
+/* Einmalige Tipps unter dem Kopf (Home-Bildschirm, Einstellungsmenue). */
+.hinweisleiste { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.hinweisleiste:empty { display: none; margin-bottom: 0; }
+.hinweis {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--text);
+  background: var(--accent-soft); border: 1px solid var(--line);
+  border-radius: 10px; padding: 9px 13px;
+}
+.hinweis span { flex: 1; }
+.hinweis button {
+  flex: none; background: none; border: 0; color: var(--muted); cursor: pointer;
+  font-size: 15px; line-height: 1; padding: 3px 5px;
+}
+.hinweis button:hover { color: var(--text); }
+
 /* ---------- Kopf ---------- */
 .topbar {
   position: relative;   /* Anker fuer das Umschalter-Menue am Titel */
