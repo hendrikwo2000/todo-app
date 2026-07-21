@@ -10,9 +10,11 @@ Die Daten liegen in einer Cloudflare-D1-Datenbank (Bindung `DB`, Schema in
 Chiffretext erlauben Sortieren, Filtern und geteilte Listen. Der Preis:
 der Betreiber kann die Inhalte lesen.
 
-Aufbau in drei Ebenen: **Liste** (`boards`) → **Bereich** (`lists`, die
-Spalten) → **ToDo** (`todos`). Wer eine Liste sehen und bearbeiten darf, steht
-in `board_members`. Siehe [Listen und Teilen](#listen-und-teilen).
+Aufbau in vier Ebenen: **Liste** (`boards`) → **Bereich** (`lists`, die
+Spalten) → optional **Über-Thema** (`themen`, eine benannte Gruppe innerhalb
+des Bereichs) → **ToDo** (`todos`, `thema_id` NULL = frei im Bereich). Wer
+eine Liste sehen und bearbeiten darf, steht in `board_members`. Siehe
+[Listen und Teilen](#listen-und-teilen).
 
 ## Login
 
@@ -95,9 +97,10 @@ Pro Person höchstens **zwei eigene** Listen (`MAX_EIGENE_LISTEN` in
 nicht mit. Eine Zahl, kein Deployment, falls das mal steigt.
 
 **Endpunkte.** Der Inhalt läuft weiter über `/api/todos`: `GET` liefert alle
-Listen des Nutzers samt Bereichen und ToDos in einer Antwort, `PUT` speichert
-**eine** Liste (`{ boardId, categories, todos }`). Anders als früher wird nur
-diese eine Liste ersetzt — so kann das Speichern nie eine andere plätten. Die
+Listen des Nutzers samt Bereichen, Themen und ToDos in einer Antwort, `PUT`
+speichert **eine** Liste (`{ boardId, categories, themen, todos }`). Anders
+als früher wird nur diese eine Liste ersetzt — so kann das Speichern nie eine
+andere plätten. Die
 Verwaltung liegt unter `/api/listen/`: `neu`, `umbenennen`, `loeschen`,
 `teilen`, `beitreten`, `verlassen`, `mitglieder`. Jeder prüft die Rolle frisch
 in der Datenbank.
@@ -165,9 +168,11 @@ selbst abmeldet, und das kann bei nie ablaufenden Sitzungen nie passieren.
 
 **Adminrechte** vergibt man im Dashboard in der Nutzerliste („Zum Admin
 machen"). Man kann sie sich nicht selbst entziehen — sonst sperrt sich der
-einzige Admin aus. Der Zugang zum Dashboard versteckt sich in der App hinter
-einem **Doppelklick auf die Überschrift „ToDo-Liste"**; bei Nicht-Admins
-passiert dabei nichts.
+einzige Admin aus. Der Zugang zum Dashboard sitzt in den Einstellungen (⚙️):
+der Abschnitt „Verwaltung" mit dem Link auf `/admin` erscheint dort nur für
+Admins (Rolle kommt frisch von `/api/todos` als `admin`-Flag, reine Optik —
+`/api/admin/*` prüft selbst nochmal). Bei Nicht-Admins bleibt der Abschnitt
+per `hidden` ausgeblendet.
 
 Ein Nutzer lässt sich auch direkt anlegen, ohne Warteliste:
 

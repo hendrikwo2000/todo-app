@@ -649,8 +649,13 @@ async function benenneListeUm(b) {
 }
 
 async function loescheListe(b) {
-  if (!confirm(`Liste „${b.name}“ mit allen Bereichen und ToDos löschen? `
-    + `Das gilt auch für Personen, mit denen du geteilt hast.`)) return;
+  const ok = await bestaetigen({
+    titel: "Liste löschen?",
+    text: `Liste „${b.name}“ mit allen Bereichen und ToDos löschen? `
+      + `Das gilt auch für Personen, mit denen du geteilt hast.`,
+    okText: "Löschen",
+  });
+  if (!ok) return;
   try {
     const res = await fetch("/api/listen/loeschen", {
       method: "POST",
@@ -665,8 +670,14 @@ async function loescheListe(b) {
 }
 
 async function verlasseListe(b) {
-  if (!confirm(`Verknüpfung zu „${b.name}“ lösen? `
-    + `Die Liste selbst bleibt für die anderen bestehen.`)) return;
+  const ok = await bestaetigen({
+    titel: "Verknüpfung lösen?",
+    text: `Verknüpfung zu „${b.name}“ lösen? `
+      + `Die Liste selbst bleibt für die anderen bestehen.`,
+    okText: "Lösen",
+    icon: "🔗",
+  });
+  if (!ok) return;
   try {
     const res = await fetch("/api/listen/verlassen", {
       method: "POST",
@@ -786,8 +797,13 @@ async function entfernePerson(p) {
 }
 
 async function alleEntfernen() {
-  if (!confirm("Alle Personen entfernen und den Link zurücksetzen? "
-    + "Danach kommt niemand mehr mit dem alten Link hinein.")) return;
+  const ok = await bestaetigen({
+    titel: "Alle entfernen?",
+    text: "Alle Personen entfernen und den Link zurücksetzen? "
+      + "Danach kommt niemand mehr mit dem alten Link hinein.",
+    okText: "Entfernen",
+  });
+  if (!ok) return;
   try {
     const res = await fetch("/api/listen/mitglieder", {
       method: "POST",
@@ -1444,14 +1460,20 @@ function cancelRenameThema() {
 // Thema loeschen loest nur die Gruppierung: die ToDos bleiben und rutschen frei
 // in den Bereich (thema_id -> null). Bewusst weniger drastisch als beim Bereich,
 // wo die ToDos mitgehen - ein Thema ist ja nur eine Klammer um sie herum.
-function deleteThema(themaId) {
+async function deleteThema(themaId) {
   const th = state.themen.find(x => x.id === themaId);
   if (!th) return;
   const drin = state.todos.filter(t => t.themaId === themaId);
   if (drin.length) {
     const anzahl = drin.length;
-    if (!confirm(`Thema „${th.name}“ auflösen? Die ${anzahl} ToDo(s) darin `
-      + `rücken zurück in den Bereich, gelöscht wird nichts.`)) return;
+    const ok = await bestaetigen({
+      titel: "Thema auflösen?",
+      text: `Thema „${th.name}“ auflösen? Die ${anzahl} ToDo(s) darin `
+        + `rücken zurück in den Bereich, gelöscht wird nichts.`,
+      okText: "Auflösen",
+      icon: "🧩",
+    });
+    if (!ok) return;
     for (const t of drin) {
       t.themaId = null;
       // Termin-lose neu einreihen, damit sie nicht auf einer fremden Order sitzen.
@@ -1547,6 +1569,15 @@ function sortOpen(a, b) {
 }
 function sortDone(a, b) {
   return (a.completedAt || "") < (b.completedAt || "") ? 1 : -1;
+}
+
+// Ob auf dem Konto (ueber alle eigenen UND geteilten Listen) irgendwo schon
+// mal ein ToDo angelegt wurde. Der Erste-ToDo-Hinweis (grosser Knopf,
+// Kalender-Tipp) soll nur einmal im Leben des Kontos auftauchen, nicht bei
+// jedem neuen oder leergeraeumten Bereich - deshalb hier ueber "daten" (alle
+// geladenen Listen), nicht nur ueber den aktiven Bereich.
+function kontoHatJeToDoGehabt() {
+  return Object.values(daten).some(d => d.todos && d.todos.length);
 }
 
 // ---------- Rendern ----------
@@ -1670,11 +1701,11 @@ function renderColumn(cat) {
 
   // Leer-Hinweis nur, wenn im Bereich wirklich gar nichts Offenes und kein
   // Thema steht - sonst tragen die Themen die Struktur. Der grosse Knopf
-  // erscheint nur, wenn der Bereich noch NIE ein ToDo hatte (auch keine
-  // erledigten) - danach reicht das kleine "＋ ToDo" oben, sonst naggt der
-  // Knopf jedes Mal, wenn alles abgehakt ist.
+  // erscheint nur vorm allerersten ToDo auf dem ganzen Konto - danach reicht
+  // das kleine "＋ ToDo" oben, sonst naggt der Knopf bei jedem neuen oder
+  // leergeraeumten Bereich erneut.
   if (!open.length && !themen.length) {
-    if (!inCat.length) {
+    if (!kontoHatJeToDoGehabt()) {
       const wrap = document.createElement("div");
       wrap.className = "empty-cta";
       const empty = document.createElement("p");
@@ -1851,9 +1882,9 @@ function baueAddKnopfzeile(cat) {
 // Das aufgeklappte Eingabefeld. Ziel ist Bereich + Ueber-Thema (themaId null =
 // frei). Gleiches Feld fuer beide Faelle - nur das Ziel unterscheidet sich.
 function baueAddWidget(cat, themaId) {
-  // Beim allerersten ToDo im Bereich kurz erklaeren, wofuer das Kalender-Icon
-  // da ist - danach kennt man's.
-  const istErstesTodo = !state.todos.some(t => t.categoryId === cat.id);
+  // Beim allerersten ToDo auf dem ganzen Konto kurz erklaeren, wofuer das
+  // Kalender-Icon da ist - danach kennt man's, auch in einem neuen Bereich.
+  const istErstesTodo = !kontoHatJeToDoGehabt();
   const add = document.createElement("div");
   add.className = "col-add open";
   add.innerHTML = `

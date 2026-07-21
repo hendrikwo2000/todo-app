@@ -90,12 +90,24 @@ Eintragen kannst du dich danach wieder.
 - Doppelklick auf den Titel zum Umbenennen, 🗑️ zum Löschen
 - Titel ziehen, um die Spalten umzusortieren
 
+**Über-Themen**
+
+Eine optionale, benannte Gruppe innerhalb eines Bereichs — etwa „Urlaub" im
+Bereich „Privat".
+
+- **＋ Thema** in einem Bereich legt eine Gruppe an
+- Klick auf den Kopf klappt sie ein/aus, Doppelklick benennt um
+- **Auflösen** entfernt nur die Gruppierung — die ToDos bleiben und rutschen
+  frei in den Bereich
+- ToDos landen per Drag & Drop, über **＋** am Thema oder im
+  Bearbeiten-Dialog in einer Gruppe
+
 **ToDos**
 
 - **＋ ToDo** anlegen: Text, optional eine Notiz und über 📅 ein Termin
 - Häkchen setzen = erledigt, Häkchen raus = wieder offen
 - Doppelklick zum Bearbeiten, 🗑️ zum Löschen
-- Zwischen Spalten hin- und herziehen
+- Zwischen Bereichen und Themen hin- und herziehen
 
 Offene ToDos stehen nach Termin sortiert. Heute fällige sind gelb, überfällige
 rot, welche ohne Termin blau. Mit ☾ / ☀ wechselt das Design.
