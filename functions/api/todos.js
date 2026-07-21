@@ -53,8 +53,8 @@ export async function onRequestGet({ request, env }) {
     const mitglieder = {};
     for (const r of zaehlung.results) mitglieder[r.board_id] = r.n;
 
-    // 3) Alle Bereiche und ToDos aller zugaenglichen Listen in je einer
-    //    Abfrage, danach in JS nach Liste gruppiert.
+    // 3) Alle Bereiche, Ueber-Themen und ToDos aller zugaenglichen Listen in je
+    //    einer Abfrage, danach in JS nach Liste gruppiert.
     const bereiche = await env.DB.prepare(
       `SELECT l.id, l.board_id, l.name
          FROM lists l
@@ -63,9 +63,18 @@ export async function onRequestGet({ request, env }) {
         ORDER BY l.board_id, l.position, l.name`
     ).bind(nutzerId).all();
 
+    const themen = await env.DB.prepare(
+      `SELECT th.id, th.list_id, th.name, l.board_id
+         FROM themen th
+         JOIN lists l ON l.id = th.list_id
+         JOIN board_members m ON m.board_id = l.board_id
+        WHERE m.user_id = ?
+        ORDER BY th.list_id, th.position, th.name`
+    ).bind(nutzerId).all();
+
     const todos = await env.DB.prepare(
-      `SELECT t.id, t.list_id, t.text, t.note, t.due, t.done, t.position,
-              t.created_at, t.completed_at, l.board_id
+      `SELECT t.id, t.list_id, t.thema_id, t.text, t.note, t.due, t.done,
+              t.position, t.created_at, t.completed_at, l.board_id
          FROM todos t
          JOIN lists l ON l.id = t.list_id
          JOIN board_members m ON m.board_id = l.board_id
@@ -74,10 +83,15 @@ export async function onRequestGet({ request, env }) {
 
     // Leere Huelle je Liste, damit auch eine Liste ohne Bereiche auftaucht.
     const daten = {};
-    for (const b of listen) daten[b.id] = { categories: [], todos: [] };
+    for (const b of listen) daten[b.id] = { categories: [], themen: [], todos: [] };
     for (const l of bereiche.results) {
-      (daten[l.board_id] || (daten[l.board_id] = { categories: [], todos: [] }))
+      (daten[l.board_id] || (daten[l.board_id] = { categories: [], themen: [], todos: [] }))
         .categories.push({ id: l.id, name: l.name });
+    }
+    for (const th of themen.results) {
+      const eimer = daten[th.board_id];
+      if (!eimer) continue;
+      eimer.themen.push({ id: th.id, categoryId: th.list_id, name: th.name });
     }
     for (const t of todos.results) {
       const eimer = daten[t.board_id];
@@ -85,6 +99,7 @@ export async function onRequestGet({ request, env }) {
       eimer.todos.push({
         id: t.id,
         categoryId: t.list_id,
+        themaId: t.thema_id,       // null = frei im Bereich
         text: t.text,
         note: t.note,
         due: t.due,
@@ -136,11 +151,18 @@ export async function onRequestPut({ request, env }) {
   if (typeof boardId !== "string" || !boardId) {
     return json({ error: "Keine Liste angegeben" }, 400);
   }
+  // themen ist optional (aeltere Clients kennen es nicht) - fehlt es, als leer
+  // behandeln, statt die ganze Liste abzulehnen.
+  const themen = Array.isArray(zustand.themen) ? zustand.themen : [];
   if (!Array.isArray(zustand.categories) || !Array.isArray(zustand.todos)) {
     return json({ error: "Ungueltige Datenstruktur" }, 400);
   }
   if (zustand.categories.some(c => !c || typeof c.id !== "string" || typeof c.name !== "string")) {
     return json({ error: "Ungueltiger Bereich" }, 400);
+  }
+  if (themen.some(th => !th || typeof th.id !== "string" || typeof th.name !== "string"
+                     || typeof th.categoryId !== "string")) {
+    return json({ error: "Ungueltiges Ueber-Thema" }, 400);
   }
   if (zustand.todos.some(t => !t || typeof t.id !== "string" || typeof t.text !== "string")) {
     return json({ error: "Ungueltiges ToDo" }, 400);
@@ -151,16 +173,22 @@ export async function onRequestPut({ request, env }) {
   if (!rolle) return json({ error: "Kein Zugriff auf diese Liste" }, 403);
 
   // Nur DIESE Liste ersetzen. batch() laeuft als eine Transaktion - entweder
-  // steht am Ende alles drin oder nichts. Kindtabelle ausdruecklich zuerst,
+  // steht am Ende alles drin oder nichts. Kindtabellen ausdruecklich zuerst,
   // nicht auf ON DELETE CASCADE verlassen (haengt an PRAGMA foreign_keys).
+  // Reihenfolge: todos (haengt an lists und themen), dann themen (haengt an
+  // lists), dann lists.
   const anweisungen = [
     env.DB.prepare(
       "DELETE FROM todos WHERE list_id IN (SELECT id FROM lists WHERE board_id = ?)"
+    ).bind(boardId),
+    env.DB.prepare(
+      "DELETE FROM themen WHERE list_id IN (SELECT id FROM lists WHERE board_id = ?)"
     ).bind(boardId),
     env.DB.prepare("DELETE FROM lists WHERE board_id = ?").bind(boardId),
   ];
 
   // Die Reihenfolge der Spalten steckt im Array-Index, nicht in den Daten.
+  const bekannt = new Set(zustand.categories.map(c => c.id));
   zustand.categories.forEach((c, i) => {
     anweisungen.push(
       env.DB.prepare(
@@ -169,19 +197,40 @@ export async function onRequestPut({ request, env }) {
     );
   });
 
+  // Ueber-Themen: nur die zu einem bekannten Bereich, sonst schluege der
+  // (fehlende, aber im Code gewahrte) Bezug fehl. themaZuBereich merkt sich,
+  // in welchem Bereich ein Thema liegt - damit ein ToDo gleich nur dann sein
+  // thema_id behaelt, wenn das Thema wirklich in SEINEM Bereich sitzt.
+  // position ist der Index innerhalb des Bereichs (pro Bereich neu gezaehlt).
+  const themaZuBereich = new Map();
+  const themaZaehler = {};
+  for (const th of themen) {
+    if (!bekannt.has(th.categoryId)) continue;
+    const pos = (themaZaehler[th.categoryId] = (themaZaehler[th.categoryId] ?? -1) + 1);
+    themaZuBereich.set(th.id, th.categoryId);
+    anweisungen.push(
+      env.DB.prepare(
+        "INSERT INTO themen (id, list_id, name, position) VALUES (?, ?, ?, ?)"
+      ).bind(th.id, th.categoryId, th.name, pos)
+    );
+  }
+
   // ToDos ohne zugehoerigen Bereich wuerden am Fremdschluessel scheitern und
   // die ganze Transaktion kippen. Sie sind ohnehin unsichtbar - also raus.
-  const bekannt = new Set(zustand.categories.map(c => c.id));
+  // thema_id nur behalten, wenn das Thema existiert UND im selben Bereich liegt;
+  // sonst NULL (ToDo bleibt erhalten und rutscht frei in den Bereich).
   for (const t of zustand.todos) {
     if (!bekannt.has(t.categoryId)) continue;
+    const themaId = themaZuBereich.get(t.themaId) === t.categoryId ? t.themaId : null;
     anweisungen.push(
       env.DB.prepare(
         `INSERT INTO todos
-           (id, list_id, text, note, due, done, position, created_at, completed_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           (id, list_id, thema_id, text, note, due, done, position, created_at, completed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         t.id,
         t.categoryId,
+        themaId,
         t.text,
         t.note ?? null,
         t.due ?? null,

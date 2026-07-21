@@ -24,19 +24,28 @@ const API_BASE = "/api/todos";
 // unveraendert auf state.categories / state.todos weiter, ohne von den Listen
 // zu wissen.
 let listen = [];           // Metadaten je Liste (Form siehe /api/todos)
-let daten = {};            // { [listeId]: { categories, todos } }
+let daten = {};            // { [listeId]: { categories, themen, todos } }
 let aktiveListe = null;    // id der aktiven Liste (oder null: keine Liste)
-let state = { categories: [], todos: [] };
+let state = { categories: [], themen: [], todos: [] };
 let editingId = null;      // id des ToDos, das gerade bearbeitet wird
 let editingCat = null;     // id des Bereichs, dessen Name gerade bearbeitet wird
+let editingThema = null;   // id des Ueber-Themas, dessen Name gerade bearbeitet wird
 let draggedId = null;      // id des ToDos, das gerade gezogen wird
 let draggedCat = null;     // id des Bereichs, der gerade umsortiert wird
+// Wo gerade ein Eingabefeld aufgeklappt ist: Bereich plus Ziel-Thema. Ein ToDo
+// kann frei im Bereich (addingThema null) oder in einem Ueber-Thema entstehen.
 let addingCat = null;      // Bereich, dessen Eingabefeld gerade aufgeklappt ist
+let addingThema = null;    // Ueber-Thema fuer das offene Eingabefeld (null = frei)
 
 // Eingeklappte Erledigt-Bereiche pro Kategorie (in localStorage gemerkt).
 let doneCollapsed = {};
 try { doneCollapsed = JSON.parse(localStorage.getItem("doneCollapsed") || "{}"); }
 catch (e) { doneCollapsed = {}; }
+
+// Eingeklappte Ueber-Themen, Schluessel ist die Themen-id (ebenfalls gemerkt).
+let themaCollapsed = {};
+try { themaCollapsed = JSON.parse(localStorage.getItem("themaCollapsed") || "{}"); }
+catch (e) { themaCollapsed = {}; }
 
 // ---------- DOM-Referenzen ----------
 const board        = document.getElementById("board");
@@ -704,7 +713,7 @@ async function neueListeAnlegen() {
     const d = await res.json().catch(() => ({}));
     if (!res.ok) { snackInfo(d.error || "Anlegen hat nicht geklappt."); return; }
     listen.push(d);
-    daten[d.id] = { categories: [], todos: [] };
+    daten[d.id] = { categories: [], themen: [], todos: [] };
     aktiveListe = d.id;
     localStorage.setItem("aktiveListe", d.id);
     editingId = editingCat = addingCat = null;
@@ -995,8 +1004,9 @@ function starteTitelUmbenennen() {
 // zum Listennamen, der Umschalter erscheint ab zwei Listen, "＋ Bereich" ist
 // nur mit aktiver Liste nutzbar.
 function zeigeAktiveListe() {
-  state = (aktiveListe && daten[aktiveListe]) || { categories: [], todos: [] };
+  state = (aktiveListe && daten[aktiveListe]) || { categories: [], themen: [], todos: [] };
   if (!Array.isArray(state.categories)) state.categories = [];
+  if (!Array.isArray(state.themen)) state.themen = [];
   if (!Array.isArray(state.todos)) state.todos = [];
   zeichneTitel();
   addCatBtn.disabled = !aktiveListe;
@@ -1075,8 +1085,9 @@ async function loadState() {
     daten = antwort.daten && typeof antwort.daten === "object" ? antwort.daten : {};
     // Jede Liste bekommt eine saubere Huelle - auch eine ohne Bereiche.
     for (const b of listen) {
-      const d = daten[b.id] || (daten[b.id] = { categories: [], todos: [] });
+      const d = daten[b.id] || (daten[b.id] = { categories: [], themen: [], todos: [] });
       if (!Array.isArray(d.categories)) d.categories = [];
+      if (!Array.isArray(d.themen)) d.themen = [];
       if (!Array.isArray(d.todos)) d.todos = [];
     }
 
@@ -1100,9 +1111,12 @@ async function save() {
   // Daten bilden - nicht aus `state`. Schaltet der Nutzer waehrend des
   // Speicherns um, geht so trotzdem die richtige Liste raus.
   const boardId = aktiveListe;
-  const ziel = daten[boardId] || { categories: [], todos: [] };
+  const ziel = daten[boardId] || { categories: [], themen: [], todos: [] };
   const body = JSON.stringify({
-    boardId, categories: ziel.categories, todos: ziel.todos,
+    boardId,
+    categories: ziel.categories,
+    themen: ziel.themen || [],
+    todos: ziel.todos,
   });
   try {
     let res = await fetch(API_BASE, {
@@ -1143,20 +1157,25 @@ function setStatus(text, cls) {
 // ---------- Aktionen: ToDos ----------
 function findTodo(id) { return state.todos.find(t => t.id === id); }
 
-// Naechste freie Sortiernummer fuer termin-lose, offene ToDos einer Spalte.
-function nextOrder(catId) {
+// Naechste freie Sortiernummer fuer termin-lose, offene ToDos einer Gruppe.
+// Gruppe = Bereich + Ueber-Thema (null = frei), denn jede Gruppe wird fuer
+// sich sortiert; so landet ein neues ToDo hinten in genau seiner Gruppe.
+function nextOrder(catId, themaId) {
+  const tid = themaId || null;
   const orders = state.todos
-    .filter(t => t.categoryId === catId && !t.done && !t.due && typeof t.order === "number")
+    .filter(t => t.categoryId === catId && (t.themaId || null) === tid
+                 && !t.done && !t.due && typeof t.order === "number")
     .map(t => t.order);
   return orders.length ? Math.max(...orders) + 1 : 0;
 }
 
-function addTodoTo(categoryId, text, due, note) {
+function addTodoTo(categoryId, themaId, text, due, note) {
   text = (text || "").trim();
   if (!text) return false;
   const todo = {
     id: uid(),
     categoryId: categoryId,
+    themaId: themaId || null,
     text: text,
     due: due || null,
     note: (note && note.trim()) ? note.trim() : null,
@@ -1164,9 +1183,10 @@ function addTodoTo(categoryId, text, due, note) {
     createdAt: new Date().toISOString(),
     completedAt: null,
   };
-  if (!todo.due) todo.order = nextOrder(categoryId);
+  if (!todo.due) todo.order = nextOrder(categoryId, todo.themaId);
   state.todos.push(todo);
   addingCat = null;   // Eingabe nach dem Hinzufuegen wieder einklappen
+  addingThema = null;
   render();
   save();
   return true;
@@ -1177,8 +1197,8 @@ function toggleDone(id) {
   if (!t) return;
   t.done = !t.done;
   t.completedAt = t.done ? new Date().toISOString() : null;
-  // Wieder geoeffnete termin-lose ToDos ans Ende der offenen Liste setzen.
-  if (!t.done && !t.due && typeof t.order !== "number") t.order = nextOrder(t.categoryId);
+  // Wieder geoeffnete termin-lose ToDos ans Ende ihrer offenen Gruppe setzen.
+  if (!t.done && !t.due && typeof t.order !== "number") t.order = nextOrder(t.categoryId, t.themaId);
   render();
   save();
 }
@@ -1234,6 +1254,16 @@ function saveEdit(id) {
   t.text = text;
   t.due = dateInput.value || null;
   t.note = noteInput && noteInput.value.trim() ? noteInput.value.trim() : null;
+  // Ueber-Thema aus dem Dropdown (nur da, wenn der Bereich Themen hat). Beim
+  // Wechsel das termin-lose ToDo hinten in die neue Gruppe einsortieren.
+  const themaSelect = document.querySelector(`[data-edit-thema="${id}"]`);
+  if (themaSelect) {
+    const neu = themaSelect.value || null;
+    if ((t.themaId || null) !== neu) {
+      t.themaId = neu;
+      if (!t.due && !t.done) t.order = nextOrder(t.categoryId, neu);
+    }
+  }
   editingId = null;
   render();
   save();
@@ -1297,7 +1327,79 @@ function deleteCategory(catId) {
     : `Bereich „${cat.name}“ wirklich löschen?`;
   if (!confirm(msg)) return;
   state.todos = state.todos.filter(t => t.categoryId !== cat.id);
+  state.themen = state.themen.filter(th => th.categoryId !== cat.id);
   state.categories = state.categories.filter(c => c.id !== cat.id);
+  render();
+  save();
+}
+
+// ---------- Aktionen: Ueber-Themen ----------
+// Ein Ueber-Thema ist eine benannte Gruppe innerhalb eines Bereichs. Anlegen,
+// umbenennen und loeschen laufen bewusst wie bei den Bereichen, nur eine Ebene
+// tiefer - so muss man sich keine zweite Bedienlogik merken.
+function themenIn(catId) {
+  return state.themen.filter(th => th.categoryId === catId);
+}
+
+async function addThema(catId) {
+  const name = await textEingabe({
+    titel: "Neues Über-Thema",
+    text: "Eine Gruppe innerhalb dieses Bereichs.",
+    platzhalter: "Name des Themas",
+    okText: "Anlegen",
+    icon: "＋",
+  });
+  if (!name) return;
+  state.themen.push({ id: uid(), categoryId: catId, name: name });
+  render();
+  save();
+}
+
+// Themen-Name per Doppelklick direkt in der Ueberschrift bearbeiten.
+function startRenameThema(themaId) {
+  editingThema = themaId;
+  render();
+  const input = document.querySelector(`[data-edit-thema-name="${themaId}"]`);
+  if (input) { input.focus(); input.select(); }
+}
+
+function saveThemaName(themaId) {
+  const th = state.themen.find(x => x.id === themaId);
+  const input = document.querySelector(`[data-edit-thema-name="${themaId}"]`);
+  if (!th || !input) return;
+  const name = input.value.trim();
+  editingThema = null;
+  if (!name || name === th.name) { render(); return; }
+  th.name = name;
+  render();
+  save();
+}
+
+function cancelRenameThema() {
+  editingThema = null;
+  render();
+}
+
+// Thema loeschen loest nur die Gruppierung: die ToDos bleiben und rutschen frei
+// in den Bereich (thema_id -> null). Bewusst weniger drastisch als beim Bereich,
+// wo die ToDos mitgehen - ein Thema ist ja nur eine Klammer um sie herum.
+function deleteThema(themaId) {
+  const th = state.themen.find(x => x.id === themaId);
+  if (!th) return;
+  const drin = state.todos.filter(t => t.themaId === themaId);
+  if (drin.length) {
+    const anzahl = drin.length;
+    if (!confirm(`Thema „${th.name}“ auflösen? Die ${anzahl} ToDo(s) darin `
+      + `rücken zurück in den Bereich, gelöscht wird nichts.`)) return;
+    for (const t of drin) {
+      t.themaId = null;
+      // Termin-lose neu einreihen, damit sie nicht auf einer fremden Order sitzen.
+      if (!t.done && !t.due) t.order = nextOrder(t.categoryId, null);
+    }
+  }
+  state.themen = state.themen.filter(x => x.id !== themaId);
+  if (editingThema === themaId) editingThema = null;
+  if (addingThema === themaId) { addingThema = null; addingCat = null; }
   render();
   save();
 }
@@ -1308,8 +1410,8 @@ function toggleDoneCollapse(catId) {
   render();
 }
 
-function openAdd(catId) { addingCat = catId; render(); }
-function closeAdd() { addingCat = null; render(); }
+function openAdd(catId, themaId) { addingCat = catId; addingThema = themaId || null; render(); }
+function closeAdd() { addingCat = null; addingThema = null; render(); }
 
 // Aktuell offene Eingabe uebernehmen (Enter ODER Klick aus dem Feld heraus).
 function commitAddFromDOM() {
@@ -1319,7 +1421,7 @@ function commitAddFromDOM() {
   const text = widget.querySelector(".add-text").value;
   const due = widget.querySelector(".add-date").value;
   const note = widget.querySelector(".add-note").value;
-  if (text.trim()) addTodoTo(addingCat, text, due, note);
+  if (text.trim()) addTodoTo(addingCat, addingThema, text, due, note);
   else closeAdd();
 }
 
@@ -1388,8 +1490,10 @@ function sortDone(a, b) {
 
 // ---------- Rendern ----------
 function render() {
-  if (addingCat && !state.categories.some(c => c.id === addingCat)) addingCat = null;
+  if (addingCat && !state.categories.some(c => c.id === addingCat)) { addingCat = null; addingThema = null; }
+  if (addingThema && !state.themen.some(th => th.id === addingThema)) addingThema = null;
   if (editingCat && !state.categories.some(c => c.id === editingCat)) editingCat = null;
+  if (editingThema && !state.themen.some(th => th.id === editingThema)) editingThema = null;
   board.innerHTML = "";
 
   // Noch gar keine Liste: erst eine anlegen, dann gibt es Bereiche.
@@ -1418,17 +1522,18 @@ function render() {
 
   state.categories.forEach(cat => board.appendChild(renderColumn(cat)));
 
-  // Eingabefeld der gerade offenen Spalte fokussieren.
+  // Eingabefeld der gerade offenen Stelle fokussieren (frei oder in einem Thema).
   if (addingCat) {
-    const input = document.querySelector(`[data-add="${addingCat}"]`);
+    const input = document.querySelector(".col-add.open .add-text");
     if (input) input.focus();
   }
 }
 
 function renderColumn(cat) {
   const inCat = state.todos.filter(t => t.categoryId === cat.id);
-  const open = inCat.filter(t => !t.done).sort(sortOpen);
+  const open = inCat.filter(t => !t.done);           // pro Gruppe sortiert, nicht global
   const done = inCat.filter(t => t.done).sort(sortDone);
+  const themen = themenIn(cat.id);
 
   const col = document.createElement("section");
   col.className = "column";
@@ -1457,7 +1562,8 @@ function renderColumn(cat) {
     head.querySelector('[data-act="del"]').addEventListener("click", () => deleteCategory(cat.id));
   } else {
     // Ampel am Zaehler: 0 = grau, offene ToDos = blau, etwas Dringendes = rot.
-    const countCls = !open.length ? "zero" : (open.some(t => isUrgent(t.due)) ? "urgent" : "normal");
+    // Zaehlt alle offenen des Bereichs, auch die in Ueber-Themen.
+    const countCls = ampelKlasse(open);
     head.innerHTML = `
       <h2 class="col-title">
         <span class="name">${escapeHtml(cat.name)}</span>
@@ -1482,21 +1588,29 @@ function renderColumn(cat) {
     });
   }
 
-  // --- Eingabe: eingeklappt eine schmale Zeile, die zum Tippen aufklappt ---
-  col.appendChild(renderAddArea(cat));
+  // --- Werkzeugzeile: ＋ ToDo (frei) und ＋ Thema, oder das offene Frei-Feld ---
+  if (addingCat === cat.id && addingThema === null) col.appendChild(baueAddWidget(cat, null));
+  else col.appendChild(baueAddKnopfzeile(cat));
 
-  // --- Offene ToDos ---
-  const openList = document.createElement("ul");
-  openList.className = "todo-list";
-  open.forEach(t => openList.appendChild(renderTodo(t)));
-  col.appendChild(openList);
+  // --- Freie ToDos (ohne Ueber-Thema), direkt in der Spalte ---
+  const frei = open.filter(t => !t.themaId).sort(sortOpen);
+  const freieUl = document.createElement("ul");
+  freieUl.className = "todo-list frei";
+  freieUl.dataset.thema = "";
+  frei.forEach(t => freieUl.appendChild(renderTodo(t)));
+  col.appendChild(freieUl);
 
-  if (!open.length) {
+  // Leer-Hinweis nur, wenn im Bereich wirklich gar nichts Offenes und kein
+  // Thema steht - sonst tragen die Themen die Struktur.
+  if (!open.length && !themen.length) {
     const empty = document.createElement("p");
     empty.className = "empty";
     empty.textContent = "Keine offenen ToDos.";
     col.appendChild(empty);
   }
+
+  // --- Ueber-Themen als eigene Gruppen darunter ---
+  themen.forEach(th => col.appendChild(renderThemaGruppe(cat, th, open)));
 
   // --- Erledigte ToDos (einklappbar) ---
   if (done.length) {
@@ -1524,70 +1638,138 @@ function renderColumn(cat) {
     col.appendChild(section);
   }
 
-  // --- Drag & Drop: Spalte ist Ablage- und Sortierzone ---
-  col.addEventListener("dragover", e => {
-    if (!draggedId) return;
-    const dragged = findTodo(draggedId);
-    if (!dragged) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-
-    if (dragged.categoryId === cat.id && !dragged.due && !dragged.done) {
-      // Termin-lose ToDos live innerhalb der Spalte umsortieren.
-      const draggingEl = openList.querySelector(".todo.dragging");
-      if (draggingEl) {
-        const after = getDragAfterElement(openList, e.clientY);
-        if (after == null) openList.appendChild(draggingEl);
-        else openList.insertBefore(draggingEl, after);
-      }
-      col.classList.remove("drop-target");
-    } else {
-      col.classList.add("drop-target");
-    }
-  });
-  col.addEventListener("dragleave", e => {
-    if (!col.contains(e.relatedTarget)) col.classList.remove("drop-target");
-  });
-  col.addEventListener("drop", e => {
-    e.preventDefault();
-    col.classList.remove("drop-target");
-    const id = draggedId || e.dataTransfer.getData("text/plain");
-    const t = id && findTodo(id);
-    if (!t) return;
-    if (t.categoryId !== cat.id) {
-      // In eine andere Spalte verschieben.
-      t.categoryId = cat.id;
-      if (!t.due && !t.done) t.order = nextOrder(cat.id);
-      render(); save();
-    } else if (!t.due && !t.done) {
-      // Innerhalb der Spalte neu sortieren.
-      persistOrderFromDOM(openList);
-      render(); save();
-    }
-  });
+  // --- Drag & Drop: die Spalte selbst ist die "frei"-Ablage. Ueber-Themen
+  //     fangen ihre eigenen Drops mit stopPropagation ab (verdrahteDropZone),
+  //     sonst wuerde ein Ablegen im Thema auch die Spalte als "frei" treffen. ---
+  verdrahteDropZone(col, cat, null, freieUl);
 
   return col;
 }
 
-function renderAddArea(cat) {
-  const add = document.createElement("div");
-  add.className = "col-add";
+// Baut eine Ueber-Thema-Gruppe: Klapp-Kopf (umbenennen/aufloesen/＋) und darunter
+// die offenen ToDos des Themas. `open` sind alle offenen ToDos des Bereichs.
+function renderThemaGruppe(cat, th, open) {
+  const offen = open.filter(t => t.themaId === th.id).sort(sortOpen);
+  const collapsed = !!themaCollapsed[th.id];
 
-  if (addingCat !== cat.id) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "col-add-btn";
-    btn.textContent = "＋ ToDo";
-    btn.addEventListener("click", () => openAdd(cat.id));
-    add.appendChild(btn);
-    return add;
+  const gruppe = document.createElement("div");
+  gruppe.className = "thema-gruppe";
+  gruppe.dataset.thema = th.id;
+
+  const head = document.createElement("div");
+  if (editingThema === th.id) {
+    // Wie beim Bereich: Aufloesen gibt es nur im Bearbeiten-Modus.
+    head.className = "thema-head editing";
+    head.innerHTML = `
+      <input type="text" class="thema-edit" data-edit-thema-name="${th.id}"
+             value="${escapeHtml(th.name)}" autocomplete="off">
+      <button type="button" class="act del" title="Thema auflösen" data-act="del-thema">🗑️</button>`;
+    const input = head.querySelector(".thema-edit");
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") saveThemaName(th.id);
+      else if (e.key === "Escape") cancelRenameThema();
+    });
+    head.querySelector('[data-act="del-thema"]').addEventListener("click", () => deleteThema(th.id));
+  } else {
+    head.className = "thema-head" + (collapsed ? " collapsed" : "");
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "thema-toggle";
+    toggle.innerHTML =
+      `<span class="arrow">▾</span>` +
+      `<span class="thema-name">${escapeHtml(th.name)}</span>` +
+      `<span class="thema-count ${ampelKlasse(offen)}">${offen.length}</span>`;
+    toggle.title = "Klick: ein-/ausklappen · Doppelklick: umbenennen";
+    // Timer trennt Einfach- (einklappen) von Doppelklick (umbenennen), wie am Titel.
+    let klickTimer = null;
+    toggle.addEventListener("click", () => {
+      clearTimeout(klickTimer);
+      klickTimer = setTimeout(() => toggleThemaCollapse(th.id), 220);
+    });
+    toggle.addEventListener("dblclick", () => {
+      clearTimeout(klickTimer);
+      startRenameThema(th.id);
+    });
+    head.appendChild(toggle);
+
+    const plus = document.createElement("button");
+    plus.type = "button";
+    plus.className = "thema-add";
+    plus.textContent = "＋";
+    plus.title = "ToDo in diesem Thema";
+    plus.addEventListener("click", () => openAdd(cat.id, th.id));
+    head.appendChild(plus);
+  }
+  gruppe.appendChild(head);
+
+  if (!collapsed) {
+    const ul = document.createElement("ul");
+    ul.className = "todo-list thema-list";
+    ul.dataset.thema = th.id;
+    offen.forEach(t => ul.appendChild(renderTodo(t)));
+    gruppe.appendChild(ul);
+
+    if (addingCat === cat.id && addingThema === th.id) {
+      gruppe.appendChild(baueAddWidget(cat, th.id));
+    } else if (!offen.length) {
+      // Leeres Thema: Hinweis, der zugleich als Anlege-Flaeche dient.
+      const leer = document.createElement("p");
+      leer.className = "empty thema-leer";
+      leer.textContent = "＋ für ein ToDo.";
+      leer.addEventListener("click", () => openAdd(cat.id, th.id));
+      gruppe.appendChild(leer);
+    }
+    verdrahteDropZone(gruppe, cat, th.id, ul);
+  } else {
+    // Eingeklappt trotzdem als Ablage nutzbar (ohne Live-Umsortieren).
+    verdrahteDropZone(gruppe, cat, th.id, null);
   }
 
-  add.classList.add("open");
+  return gruppe;
+}
+
+// Ampel-Klasse fuer einen Zaehler offener ToDos: grau/blau/rot.
+function ampelKlasse(offene) {
+  return !offene.length ? "zero" : (offene.some(t => isUrgent(t.due)) ? "urgent" : "normal");
+}
+
+function toggleThemaCollapse(themaId) {
+  themaCollapsed[themaId] = !themaCollapsed[themaId];
+  localStorage.setItem("themaCollapsed", JSON.stringify(themaCollapsed));
+  render();
+}
+
+// Werkzeugzeile am Spaltenkopf: neues freies ToDo bzw. neues Ueber-Thema.
+function baueAddKnopfzeile(cat) {
+  const zeile = document.createElement("div");
+  zeile.className = "col-tools";
+
+  const todoBtn = document.createElement("button");
+  todoBtn.type = "button";
+  todoBtn.className = "col-add-btn";
+  todoBtn.textContent = "＋ ToDo";
+  todoBtn.addEventListener("click", () => openAdd(cat.id, null));
+
+  const themaBtn = document.createElement("button");
+  themaBtn.type = "button";
+  themaBtn.className = "col-thema-btn";
+  themaBtn.textContent = "＋ Thema";
+  themaBtn.title = "Über-Thema anlegen — eine Gruppe innerhalb des Bereichs";
+  themaBtn.addEventListener("click", () => addThema(cat.id));
+
+  zeile.appendChild(todoBtn);
+  zeile.appendChild(themaBtn);
+  return zeile;
+}
+
+// Das aufgeklappte Eingabefeld. Ziel ist Bereich + Ueber-Thema (themaId null =
+// frei). Gleiches Feld fuer beide Faelle - nur das Ziel unterscheidet sich.
+function baueAddWidget(cat, themaId) {
+  const add = document.createElement("div");
+  add.className = "col-add open";
   add.innerHTML = `
     <div class="add-line">
-      <input type="text" class="add-text" data-add="${cat.id}"
-             placeholder="Neues ToDo …" autocomplete="off">
+      <input type="text" class="add-text" placeholder="Neues ToDo …" autocomplete="off">
       <span class="date-field">
         <button type="button" class="add-icon add-cal">📅</button>
         <input type="date" class="add-date" tabindex="-1" aria-label="Termin">
@@ -1606,13 +1788,13 @@ function renderAddArea(cat) {
   syncDateUi();
 
   textInput.addEventListener("keydown", e => {
-    if (e.key === "Enter") addTodoTo(cat.id, textInput.value, dateInput.value, noteInput.value);
+    if (e.key === "Enter") addTodoTo(cat.id, themaId, textInput.value, dateInput.value, noteInput.value);
     else if (e.key === "Escape") closeAdd();
   });
 
   // Notizfeld: Strg/Cmd+Enter uebernimmt, Escape bricht ab (Enter = Zeilenumbruch).
   noteInput.addEventListener("keydown", e => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) addTodoTo(cat.id, textInput.value, dateInput.value, noteInput.value);
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) addTodoTo(cat.id, themaId, textInput.value, dateInput.value, noteInput.value);
     else if (e.key === "Escape") closeAdd();
   });
 
@@ -1621,6 +1803,63 @@ function renderAddArea(cat) {
   dateInput.addEventListener("change", syncDateUi);
 
   return add;
+}
+
+// Eine Drop-/Sortierzone verdrahten. Ziehen hierher setzt Bereich + Ueber-Thema
+// (themaId null = frei in der Spalte); termin-lose ToDos der GLEICHEN Gruppe
+// lassen sich innerhalb live umsortieren. Fuer Themen-Gruppen wird das Event
+// gestoppt, damit es nicht zusaetzlich die Spalte (frei) trifft.
+function verdrahteDropZone(zone, cat, themaId, ul) {
+  const tid = themaId || null;
+
+  zone.addEventListener("dragover", e => {
+    if (!draggedId) return;
+    const dragged = findTodo(draggedId);
+    if (!dragged) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (tid !== null) e.stopPropagation();
+
+    const gleicheGruppe = dragged.categoryId === cat.id
+      && (dragged.themaId || null) === tid && !dragged.due && !dragged.done;
+    if (gleicheGruppe && ul) {
+      const draggingEl = ul.querySelector(".todo.dragging");
+      if (draggingEl) {
+        const after = getDragAfterElement(ul, e.clientY);
+        if (after == null) ul.appendChild(draggingEl);
+        else ul.insertBefore(draggingEl, after);
+      }
+      zone.classList.remove("drop-target");
+    } else {
+      zone.classList.add("drop-target");
+    }
+  });
+
+  zone.addEventListener("dragleave", e => {
+    if (!zone.contains(e.relatedTarget)) zone.classList.remove("drop-target");
+  });
+
+  zone.addEventListener("drop", e => {
+    if (!draggedId) return;
+    e.preventDefault();
+    if (tid !== null) e.stopPropagation();
+    zone.classList.remove("drop-target");
+    const id = draggedId || e.dataTransfer.getData("text/plain");
+    const t = id && findTodo(id);
+    if (!t) return;
+    const wechsel = t.categoryId !== cat.id || (t.themaId || null) !== tid;
+    if (wechsel) {
+      // In eine andere Spalte oder ein anderes Thema (auch "heraus" = frei).
+      t.categoryId = cat.id;
+      t.themaId = tid;
+      if (!t.due && !t.done) t.order = nextOrder(cat.id, tid);
+      render(); save();
+    } else if (!t.due && !t.done && ul) {
+      // Innerhalb derselben Gruppe neu sortieren.
+      persistOrderFromDOM(ul);
+      render(); save();
+    }
+  });
 }
 
 // Kalender-Icon zeigt den gewaehlten Termin an; das ✕ raeumt ihn wieder weg.
@@ -1643,9 +1882,21 @@ function renderTodo(t) {
   if (editingId === t.id) {
     const wrap = document.createElement("div");
     wrap.className = "edit-row";
+    // Ueber-Thema-Auswahl nur, wenn der Bereich ueberhaupt Themen hat. Das ist
+    // der verlaessliche (auch mobile) Weg, ein ToDo zuzuordnen oder wieder frei
+    // zu stellen - Drag & Drop ist nur der Desktop-Komfort obendrauf.
+    const themenDesBereichs = themenIn(t.categoryId);
+    const themaWahl = themenDesBereichs.length ? `
+      <select class="edit-thema" data-edit-thema="${t.id}" aria-label="Über-Thema">
+        <option value="">— kein Über-Thema —</option>
+        ${themenDesBereichs.map(th =>
+          `<option value="${escapeHtml(th.id)}"${th.id === t.themaId ? " selected" : ""}>${escapeHtml(th.name)}</option>`
+        ).join("")}
+      </select>` : "";
     wrap.innerHTML = `
       <input type="text" data-edit-text="${t.id}" value="${escapeHtml(t.text)}">
       <textarea data-edit-note placeholder="Notiz (optional)" rows="2"></textarea>
+      ${themaWahl}
       <div class="edit-buttons">
         <span class="date-field">
           <button type="button" class="add-icon add-cal" data-act="cal">📅</button>
@@ -1851,6 +2102,11 @@ document.addEventListener("mousedown", e => {
     // ein Klick auf den Loeschen-Knopf erst neu rendern und ginge dabei verloren.
     const head = document.querySelector(".col-head.editing");
     if (head && !head.contains(e.target)) saveCategoryName(editingCat);
+  }
+  if (editingThema) {
+    // Wie beim Bereich: ganzen Thema-Kopf pruefen (Aufloesen-Knopf inklusive).
+    const head = document.querySelector(".thema-head.editing");
+    if (head && !head.contains(e.target)) saveThemaName(editingThema);
   }
 });
 

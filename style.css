@@ -504,6 +504,135 @@ input[type="date"]:focus {
 .done-toggle .arrow { transition: transform .15s; display: inline-block; font-size: 10px; }
 .done-toggle.collapsed .arrow { transform: rotate(-90deg); }
 
+/* ---------- Ueber-Themen (Gruppen innerhalb einer Spalte) ---------- */
+/* Werkzeugzeile: freies ToDo links, neues Ueber-Thema rechts. */
+.col-tools { display: flex; gap: 4px; align-items: center; }
+.col-tools .col-add-btn { flex: 1; width: auto; }
+.col-thema-btn {
+  flex: none;
+  border: 1px dashed transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .12s;
+}
+.col-thema-btn:hover { background: var(--row); color: var(--accent); border-color: var(--line); }
+
+.thema-gruppe {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 8px;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: outline-color .12s, background .12s;
+}
+.thema-gruppe.drop-target {
+  background: var(--accent-soft);
+  outline-color: var(--accent);
+  outline-style: dashed;
+}
+
+.thema-head { display: flex; align-items: center; gap: 2px; padding: 2px 2px 0; }
+.thema-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px;
+  text-align: left;
+}
+.thema-toggle:hover { color: var(--accent); }
+.thema-toggle .arrow {
+  flex: none;
+  font-size: 10px;
+  color: var(--muted);
+  display: inline-block;
+  transition: transform .15s;
+}
+.thema-head.collapsed .thema-toggle .arrow { transform: rotate(-90deg); }
+.thema-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thema-count {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0 6px;
+}
+.thema-count.zero   { color: var(--muted);  background: var(--chip); }
+.thema-count.normal { color: var(--accent); background: var(--accent-soft); }
+.thema-count.urgent { color: var(--red);    background: var(--del-soft); }
+
+/* ＋ am Thema: dezent, aber auf Touch (kein Hover) dauerhaft sichtbar. */
+.thema-add {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  font-size: 15px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .12s;
+}
+.thema-add:hover { background: var(--hover); color: var(--accent); }
+
+.thema-head.editing { gap: 6px; padding-bottom: 2px; }
+.thema-head.editing .act { width: 26px; height: 26px; font-size: 12px; }
+.thema-edit {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--row);
+  color: var(--text);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ToDos eines Themas leicht eingerueckt mit Leiste - macht die Ebene sichtbar,
+   ohne eine schwere Box um die Gruppe zu ziehen. */
+.thema-list { margin-left: 9px; padding-left: 8px; border-left: 2px solid var(--line); }
+.thema-leer { margin-left: 9px; padding-left: 8px; cursor: pointer; }
+.thema-leer:hover { color: var(--accent); }
+
+/* Ueber-Thema-Auswahl im Bearbeiten-Dialog eines ToDos. */
+.edit-thema {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--row);
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.edit-thema:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
 .empty {
   color: var(--muted);
   font-size: 12.5px;

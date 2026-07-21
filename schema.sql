@@ -1,9 +1,12 @@
 -- Schema der ToDo-App (Cloudflare D1 / SQLite).
 --
--- Aufbau in drei Ebenen:
---   Liste  (boards)  -> Bereich (lists)  -> ToDo (todos)
+-- Aufbau in Ebenen:
+--   Liste (boards) -> Bereich (lists) -> [Ueber-Thema (themen)] -> ToDo (todos)
 -- Eine "Liste" ist ein ganzes Board, das man teilen kann. Sie enthaelt
--- mehrere "Bereiche" (die Spalten), ein Bereich mehrere ToDos.
+-- mehrere "Bereiche" (die Spalten), ein Bereich mehrere ToDos. Ein ToDo kann
+-- optional einem "Ueber-Thema" zugeordnet sein - einer benannten Gruppe
+-- INNERHALB eines Bereichs (todos.thema_id). Ohne Zuordnung liegt es frei im
+-- Bereich; das Ueber-Thema ist also eine freiwillige Zwischenebene.
 --
 -- Historie: Frueher lag alles verschluesselt in einem JSONBin-Datensatz, dann
 -- in D1 mit EINER Liste pro Nutzer (lists hing direkt an user_id). Seit den
@@ -82,13 +85,32 @@ CREATE TABLE lists (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- --------------------------------------------------------- Ueber-Themen ---
+-- Optionale benannte Gruppe INNERHALB eines Bereichs. Ein ToDo verweist ueber
+-- todos.thema_id darauf oder liegt frei (thema_id NULL). Struktur wie lists,
+-- nur eine Ebene tiefer: haengt an list_id, position ist die Reihenfolge in
+-- der Spalte. Loescht man den Bereich, gehen seine Themen per CASCADE mit.
+CREATE TABLE themen (
+  id         TEXT PRIMARY KEY,
+  list_id    TEXT NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  position   INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- ----------------------------------------------------------------- ToDos ---
 -- done ist INTEGER (0/1) - SQLite kennt keinen echten Boolean.
 -- position wird nur bei ToDos OHNE Termin gebraucht; terminierte sortiert die
 -- App nach due. Deshalb NULL erlaubt, genau wie das bisherige t.order.
+-- thema_id ist die optionale Zuordnung zu einem Ueber-Thema desselben Bereichs
+-- (NULL = frei im Bereich). Bewusst KEIN Fremdschluessel auf themen: die
+-- Integritaet sichert der PUT-Pfad in api/todos.js (verwaiste thema_id wird
+-- auf NULL gesetzt, das ToDo bleibt erhalten) - so gibt es hier keine
+-- Cascade-Ueberraschung, die an PRAGMA foreign_keys haengt.
 CREATE TABLE todos (
   id           TEXT PRIMARY KEY,
   list_id      TEXT NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
+  thema_id     TEXT,
   text         TEXT NOT NULL,
   note         TEXT,
   due          TEXT,
@@ -164,6 +186,7 @@ CREATE INDEX idx_members_board  ON board_members(board_id);
 CREATE INDEX idx_boards_owner   ON boards(owner_id);
 CREATE INDEX idx_boards_token   ON boards(share_token);
 CREATE INDEX idx_lists_board    ON lists(board_id, position);
+CREATE INDEX idx_themen_list    ON themen(list_id, position);
 CREATE INDEX idx_todos_list     ON todos(list_id);
 CREATE INDEX idx_waitlist_st    ON waitlist(status, created_at);
 CREATE INDEX idx_login_codes_em ON login_codes(email, created_at);
