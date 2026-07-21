@@ -67,6 +67,8 @@ export async function meldeLoeschung(env, nutzer, durchAdmin) {
   return await sendeMail(env, {
     to: nutzer.email,
     subject: durchAdmin ? "Dein Zugang wurde entfernt" : "Dein Konto wurde gelöscht",
+    // Graue statt blaue Marke: das froehliche Blau der anderen Mails passt
+    // nicht zu einer endgueltigen Loeschung.
     html: huelle(durchAdmin ? "Zugang entfernt" : "Konto gelöscht",
       absatz(durchAdmin
         ? `${anrede}dein Zugang zur ToDo-Liste wurde entfernt. Deine Bereiche
@@ -76,7 +78,8 @@ export async function meldeLoeschung(env, nutzer, durchAdmin) {
       absatz("Wiederherstellen lässt sich das nicht. Du kannst dich aber jederzeit neu auf die Warteliste eintragen.") +
       fussnote(durchAdmin
         ? "Fragen? Antworte einfach auf diese Mail."
-        : "Warst du das nicht? Dann antworte auf diese Mail — dann schauen wir uns das an.")),
+        : "Warst du das nicht? Dann antworte auf diese Mail — dann schauen wir uns das an."),
+      "#6b7280"),
     text: durchAdmin
       ? `${anrede}dein Zugang zur ToDo-Liste wurde entfernt. Deine Bereiche und ToDos sind damit geloescht.\n\nWiederherstellen laesst sich das nicht. Du kannst dich aber jederzeit neu auf die Warteliste eintragen.`
       : `${anrede}dein Konto bei der ToDo-Liste ist geloescht. Deine Bereiche und ToDos wurden dabei mit entfernt.\n\nWiederherstellen laesst sich das nicht. Warst du das nicht? Dann antworte auf diese Mail.`,

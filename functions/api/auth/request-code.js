@@ -11,7 +11,7 @@
  */
 
 import { hashHex, neuesToken } from "../../_lib/session.js";
-import { sendeMail, huelle, absatz, knopf, fussnote } from "../../_lib/mail.js";
+import { sendeMail, huelle, absatz, kasten, knopf, fussnote } from "../../_lib/mail.js";
 
 const GUELTIG_MINUTEN = 10;
 
@@ -40,8 +40,8 @@ function mailHtml(code, link) {
   return huelle("Anmelden",
     knopf("Jetzt anmelden", link) +
     absatz(`Der Link gilt ${GUELTIG_MINUTEN} Minuten und funktioniert einmal.`) +
-    absatz(`<span style="color:#8b8e96;font-size:13px;">Anderes Gerät? Gib stattdessen diesen Code ein:
-            <strong style="color:#1c1d21;letter-spacing:2px;">${code}</strong></span>`) +
+    absatz(`<span style="color:#8b8e96;font-size:13px;">Anderes Gerät? Code eingeben:</span>`) +
+    kasten(code, true) +
     fussnote("Du hast das nicht angefordert? Dann ignoriere diese Mail einfach — ohne Link und Code passiert nichts.")
   );
 }

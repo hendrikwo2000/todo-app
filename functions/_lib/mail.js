@@ -13,7 +13,7 @@ const ABSENDER = "ToDo-Liste <login@mail.it-wolf.org>";
  * Mailprogramme kein modernes CSS koennen (Outlook rendert mit Word).
  * `inhalt` sind fertige <tr>-Zeilen.
  */
-export function huelle(ueberschrift, inhalt) {
+export function huelle(ueberschrift, inhalt, akzent = "#4f63d2") {
   return `<!doctype html>
 <html lang="de">
 <body style="margin:0;padding:0;background:#f4f5f7;">
@@ -24,7 +24,7 @@ export function huelle(ueberschrift, inhalt) {
              style="max-width:420px;background:#ffffff;border-radius:14px;
                     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
         <tr><td style="padding:28px 28px 0;">
-          <div style="font-size:13px;font-weight:600;color:#4f63d2;letter-spacing:.4px;">TODO-LISTE</div>
+          <div style="font-size:13px;font-weight:600;color:${akzent};letter-spacing:.4px;">TODO-LISTE</div>
           <h1 style="margin:14px 0 0;font-size:20px;line-height:1.3;color:#1c1d21;font-weight:700;">
             ${ueberschrift}
           </h1>
