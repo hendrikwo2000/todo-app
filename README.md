@@ -41,9 +41,11 @@ Du kannst bis zu **zwei eigene Listen** führen — etwa „Privat" und „Arbei
 und jede beliebig oft mit anderen teilen.
 
 - **⚙️** oben rechts öffnet die Einstellungen mit allen Listen
-- **„＋ neue Liste"** legt eine zweite an; oben am Titel schaltest du per **⌄**
-  zwischen ihnen um
-- **„Umbenennen"** ändert den Namen (nur wer die Liste erstellt hat)
+- **„＋ neue Liste"** (in den Einstellungen) legt eine zweite an; ab zwei
+  Listen zeigt der Titel oben ein kleines **▾** — ein Klick darauf schaltet
+  zwischen den Listen um
+- **Umbenennen** per Doppelklick direkt auf den Titel (nur eigene Listen) oder
+  in den Einstellungen über **„Umbenennen"**
 - **„Löschen"** entfernt eine ganze Liste — dein Konto bleibt
 
 **Teilen**
