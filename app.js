@@ -1537,15 +1537,46 @@ function persistOrderFromDOM(openList) {
 }
 
 // Spalte links/rechts der Maus finden (zum Einsortieren beim Spalten-Drag).
-function getColumnAfter(container, x) {
+// Die Spalten brechen bei genug Bereichen per flex-wrap in mehrere Zeilen um -
+// deshalb zuerst die Zeile unter der Maus bestimmen (alle Spalten einer
+// flex-Zeile teilen sich denselben oberen Rand, auch bei unterschiedlicher
+// Hoehe durch unterschiedlich viele ToDos) und erst danach links/rechts
+// einordnen. Reiner X-Abgleich liess eine in Zeile 2 gezogene Spalte
+// faelschlich in Zeile 1 springen.
+function getColumnAfter(container, x, y) {
   const cols = [...container.querySelectorAll(".column:not(.col-dragging)")];
-  let closest = { offset: -Infinity, el: null };
+  if (!cols.length) return null;
+
+  const zeilen = [];
   for (const col of cols) {
     const box = col.getBoundingClientRect();
+    let zeile = zeilen.find(z => Math.abs(z.top - box.top) < 1);
+    if (!zeile) { zeile = { top: box.top, bottom: box.bottom, cols: [] }; zeilen.push(zeile); }
+    zeile.bottom = Math.max(zeile.bottom, box.bottom);
+    zeile.cols.push({ col, box });
+  }
+  zeilen.sort((a, b) => a.top - b.top);
+
+  let zielIndex = zeilen.findIndex(z => y >= z.top && y <= z.bottom);
+  if (zielIndex === -1) {
+    let bestDist = Infinity;
+    zeilen.forEach((z, i) => {
+      const dist = y < z.top ? z.top - y : y - z.bottom;
+      if (dist < bestDist) { bestDist = dist; zielIndex = i; }
+    });
+  }
+
+  let closest = { offset: -Infinity, el: null };
+  for (const { col, box } of zeilen[zielIndex].cols) {
     const offset = x - box.left - box.width / 2;
     if (offset < 0 && offset > closest.offset) closest = { offset, el: col };
   }
-  return closest.el;
+  if (closest.el) return closest.el;
+
+  // Maus steht rechts von allen Spalten dieser Zeile: ans Zeilenende, also vor
+  // die erste Spalte der naechsten Zeile (oder ganz ans Ende, wenn letzte Zeile).
+  const naechsteZeile = zeilen[zielIndex + 1];
+  return naechsteZeile ? naechsteZeile.cols[0].col : null;
 }
 
 // Bereichs-Reihenfolge aus der aktuellen DOM-Anordnung uebernehmen.
@@ -2242,7 +2273,7 @@ board.addEventListener("dragover", e => {
   e.dataTransfer.dropEffect = "move";
   const draggingCol = board.querySelector(".column.col-dragging");
   if (!draggingCol) return;
-  const after = getColumnAfter(board, e.clientX);
+  const after = getColumnAfter(board, e.clientX, e.clientY);
   if (after == null) board.appendChild(draggingCol);
   else board.insertBefore(draggingCol, after);
 });
