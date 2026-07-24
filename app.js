@@ -50,6 +50,7 @@ catch (e) { themaCollapsed = {}; }
 // ---------- DOM-Referenzen ----------
 const board        = document.getElementById("board");
 const addCatBtn    = document.getElementById("addCatBtn");
+const addTodoBtn   = document.getElementById("addTodoBtn");
 const saveStatusEl = document.getElementById("saveStatus");
 const themeBtn     = document.getElementById("themeBtn");
 const einstellungenBtn = document.getElementById("einstellungenBtn");
@@ -75,6 +76,19 @@ function uid() {
   if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
   return "id-" + Date.now() + "-" + Math.random().toString(16).slice(2);
 }
+
+// ---------- Sonder-Bereich "Ohne Bereich" ----------
+// Ein Auffangbereich fuer ToDos, die (noch) zu keinem Bereich gehoeren.
+// Technisch ein ganz normaler Eintrag in `lists` - kein Schema-Sonderfall -,
+// nur an einer deterministischen id erkennbar: "ohnebereich:" + boardId.
+// Deterministisch, damit zwei Geraete nie zwei davon anlegen; pro Board
+// eindeutig, weil die boardId es ist. Die Spalte erscheint immer ganz links
+// und nur, solange sie ToDos enthaelt (oder gerade befuellt wird) - siehe
+// synchronisiereOhneBereich(). Kein Umbenennen, kein Loeschen, keine Themen.
+const OHNE_PREFIX = "ohnebereich:";
+const OHNE_NAME = "Ohne Bereich";
+function ohneBereichId(boardId) { return OHNE_PREFIX + boardId; }
+function istOhneBereich(catId) { return typeof catId === "string" && catId.startsWith(OHNE_PREFIX); }
 
 // Datum n Tage ab heute als "YYYY-MM-DD".
 function addDaysStr(n) {
@@ -1090,6 +1104,7 @@ function zeigeAktiveListe() {
   if (!Array.isArray(state.todos)) state.todos = [];
   zeichneTitel();
   addCatBtn.disabled = !aktiveListe;
+  addTodoBtn.disabled = !aktiveListe;
 }
 
 // Titel = Name der aktiven Liste. Ab zwei Listen kommt ein kleiner Pfeil dazu
@@ -1273,6 +1288,18 @@ function addTodoTo(categoryId, themaId, text, due, note) {
   return true;
 }
 
+// Der globale "＋ ToDo"-Knopf im Kopf: legt - falls noetig - den Sonder-Bereich
+// "Ohne Bereich" an und klappt dort das gewohnte Eingabefeld auf. So braucht die
+// schnelle Erfassung keinen eigenen Dialog; Termin und Notiz gehen wie ueberall.
+// Ohne eingegebenes ToDo verschwindet die Spalte beim naechsten render() wieder
+// (synchronisiereOhneBereich haelt sie nur, solange das Feld offen ist).
+function addTodoOhneBereich() {
+  if (!aktiveListe) return;
+  const id = ohneBereichId(aktiveListe);
+  if (!state.categories.some(c => c.id === id)) state.categories.unshift({ id, name: OHNE_NAME });
+  openAdd(id, null);
+}
+
 function toggleDone(id) {
   const t = findTodo(id);
   if (!t) return;
@@ -1335,6 +1362,15 @@ function saveEdit(id) {
   t.text = text;
   t.due = dateInput.value || null;
   t.note = noteInput && noteInput.value.trim() ? noteInput.value.trim() : null;
+  // Bereich-Auswahl (nur bei ToDos, die gerade "Ohne Bereich" liegen). Ein
+  // Wechsel in einen echten Bereich stellt das ToDo dort frei ein (ohne Thema)
+  // und reiht das termin-lose ToDo hinten in den Zielbereich ein.
+  const bereichSelect = document.querySelector(`[data-edit-bereich="${id}"]`);
+  if (bereichSelect && bereichSelect.value && bereichSelect.value !== t.categoryId) {
+    t.categoryId = bereichSelect.value;
+    t.themaId = null;
+    if (!t.due && !t.done) t.order = nextOrder(t.categoryId, null);
+  }
   // Ueber-Thema aus dem Dropdown (nur da, wenn der Bereich Themen hat). Beim
   // Wechsel das termin-lose ToDo hinten in die neue Gruppe einsortieren.
   const themaSelect = document.querySelector(`[data-edit-thema="${id}"]`);
@@ -1583,6 +1619,9 @@ function getColumnAfter(container, x, y) {
 function persistColumnOrderFromDOM() {
   const ids = [...board.querySelectorAll(".column")].map(c => c.dataset.cat);
   state.categories.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+  // "Ohne Bereich" bleibt immer ganz vorne, egal wohin eine Spalte gezogen
+  // wurde (stabiler Sort, die uebrigen Bereiche behalten ihre Reihenfolge).
+  state.categories.sort((a, b) => (istOhneBereich(a.id) ? 0 : 1) - (istOhneBereich(b.id) ? 0 : 1));
 }
 
 // ---------- Sortierung ----------
@@ -1658,7 +1697,23 @@ function zeigeHinweise() {
 }
 
 // ---------- Rendern ----------
+// Haelt den Sonder-Bereich "Ohne Bereich" im Gleichlauf mit seinen ToDos: legt
+// ihn an, sobald ein bereichsloses ToDo existiert (oder das Eingabefeld dort
+// gerade offen ist), und raeumt ihn weg, sobald das letzte weg ist. Zentral aus
+// render() aufgerufen - deckt Anlegen, Loeschen, Wegziehen, Zuordnen und
+// Rueckgaengig in einem Zug ab, statt an jeder einzelnen Stelle.
+function synchronisiereOhneBereich() {
+  if (!aktiveListe) return;
+  const id = ohneBereichId(aktiveListe);
+  const hatTodos = state.todos.some(t => t.categoryId === id);
+  const wirdBefuellt = addingCat === id;   // offenes Eingabefeld haelt die Spalte
+  const idx = state.categories.findIndex(c => c.id === id);
+  if ((hatTodos || wirdBefuellt) && idx < 0) state.categories.unshift({ id, name: OHNE_NAME });
+  else if (!hatTodos && !wirdBefuellt && idx >= 0) state.categories.splice(idx, 1);
+}
+
 function render() {
+  synchronisiereOhneBereich();
   if (addingCat && !state.categories.some(c => c.id === addingCat)) { addingCat = null; addingThema = null; }
   if (addingThema && !state.themen.some(th => th.id === addingThema)) addingThema = null;
   if (editingCat && !state.categories.some(c => c.id === editingCat)) editingCat = null;
@@ -1696,7 +1751,11 @@ function render() {
     return;
   }
 
-  state.categories.forEach(cat => board.appendChild(renderColumn(cat)));
+  // "Ohne Bereich" immer ganz links, egal wie die echten Bereiche sortiert sind.
+  // Array.sort ist stabil, die Reihenfolge der uebrigen Bereiche bleibt also.
+  const spalten = state.categories.slice()
+    .sort((a, b) => (istOhneBereich(a.id) ? 0 : 1) - (istOhneBereich(b.id) ? 0 : 1));
+  spalten.forEach(cat => board.appendChild(renderColumn(cat)));
 
   // Eingabefeld der gerade offenen Stelle fokussieren (frei oder in einem Thema).
   if (addingCat) {
@@ -1706,13 +1765,14 @@ function render() {
 }
 
 function renderColumn(cat) {
+  const istOhne = istOhneBereich(cat.id);
   const inCat = state.todos.filter(t => t.categoryId === cat.id);
   const open = inCat.filter(t => !t.done);           // pro Gruppe sortiert, nicht global
   const done = inCat.filter(t => t.done).sort(sortDone);
-  const themen = themenIn(cat.id);
+  const themen = istOhne ? [] : themenIn(cat.id);    // "Ohne Bereich" kennt keine Themen
 
   const col = document.createElement("section");
-  col.className = "column";
+  col.className = "column" + (istOhne ? " ohne-bereich" : "");
   col.dataset.cat = cat.id;
 
   // --- Kopf ---
@@ -1720,7 +1780,18 @@ function renderColumn(cat) {
   head.className = "col-head";
   col.appendChild(head);
 
-  if (editingCat === cat.id) {
+  if (istOhne) {
+    // Statischer Kopf: kein Umbenennen, kein Loeschen, kein Titel-Drag. Die
+    // Spalte ist kein normaler Bereich, sondern nur ein sichtbarer Auffang.
+    const countCls = ampelKlasse(open);
+    head.innerHTML = `
+      <h2 class="col-title statisch">
+        <span class="name">${escapeHtml(cat.name)}</span>
+        <span class="col-count ${countCls}">${open.length}</span>
+      </h2>`;
+    head.querySelector(".col-title").title =
+      "ToDos ohne Bereich — zieh eins in einen Bereich oder ordne es beim Bearbeiten zu";
+  } else if (editingCat === cat.id) {
     // Loeschen gibt es nur hier: wer den Bereich anfasst, hat ihn per
     // Doppelklick bewusst geoeffnet.
     head.className = "col-head editing";
@@ -1766,7 +1837,7 @@ function renderColumn(cat) {
 
   // --- Werkzeugzeile: ＋ ToDo (frei) und ＋ Thema, oder das offene Frei-Feld ---
   if (addingCat === cat.id && addingThema === null) col.appendChild(baueAddWidget(cat, null));
-  else col.appendChild(baueAddKnopfzeile(cat));
+  else col.appendChild(baueAddKnopfzeile(cat, istOhne));
 
   // --- Freie ToDos (ohne Ueber-Thema), direkt in der Spalte ---
   const frei = open.filter(t => !t.themaId).sort(sortOpen);
@@ -1934,7 +2005,8 @@ function toggleThemaCollapse(themaId) {
 }
 
 // Werkzeugzeile am Spaltenkopf: neues freies ToDo bzw. neues Ueber-Thema.
-function baueAddKnopfzeile(cat) {
+// ohneThema unterdrueckt den "＋ Thema"-Knopf - "Ohne Bereich" kennt keine Themen.
+function baueAddKnopfzeile(cat, ohneThema) {
   const zeile = document.createElement("div");
   zeile.className = "col-tools";
 
@@ -1943,16 +2015,17 @@ function baueAddKnopfzeile(cat) {
   todoBtn.className = "col-add-btn";
   todoBtn.textContent = "＋ ToDo";
   todoBtn.addEventListener("click", () => openAdd(cat.id, null));
-
-  const themaBtn = document.createElement("button");
-  themaBtn.type = "button";
-  themaBtn.className = "col-thema-btn";
-  themaBtn.textContent = "＋ Thema";
-  themaBtn.title = "Über-Thema anlegen — eine Gruppe innerhalb des Bereichs";
-  themaBtn.addEventListener("click", () => addThema(cat.id));
-
   zeile.appendChild(todoBtn);
-  zeile.appendChild(themaBtn);
+
+  if (!ohneThema) {
+    const themaBtn = document.createElement("button");
+    themaBtn.type = "button";
+    themaBtn.className = "col-thema-btn";
+    themaBtn.textContent = "＋ Thema";
+    themaBtn.title = "Über-Thema anlegen — eine Gruppe innerhalb des Bereichs";
+    themaBtn.addEventListener("click", () => addThema(cat.id));
+    zeile.appendChild(themaBtn);
+  }
   return zeile;
 }
 
@@ -2091,10 +2164,21 @@ function renderTodo(t) {
           `<option value="${escapeHtml(th.id)}"${th.id === t.themaId ? " selected" : ""}>${escapeHtml(th.name)}</option>`
         ).join("")}
       </select>` : "";
+    // Bereich-Auswahl nur bei ToDos, die gerade "Ohne Bereich" liegen - der
+    // verlaessliche (auch mobile) Weg, sie einem Bereich zuzuordnen. Zugeordnete
+    // ToDos verschiebt man wie bisher per Drag & Drop.
+    const echteBereiche = state.categories.filter(c => !istOhneBereich(c.id));
+    const bereichWahl = (istOhneBereich(t.categoryId) && echteBereiche.length) ? `
+      <select class="edit-thema edit-bereich" data-edit-bereich="${t.id}" aria-label="Bereich zuordnen">
+        <option value="">— Ohne Bereich —</option>
+        ${echteBereiche.map(c =>
+          `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`
+        ).join("")}
+      </select>` : "";
     wrap.innerHTML = `
       <input type="text" data-edit-text="${t.id}" value="${escapeHtml(t.text)}">
       <textarea data-edit-note placeholder="Notiz (optional)" rows="2"></textarea>
-      ${themaWahl}
+      ${bereichWahl}${themaWahl}
       <div class="edit-buttons">
         <span class="date-field">
           <button type="button" class="add-icon add-cal" data-act="cal">📅</button>
@@ -2200,6 +2284,7 @@ function renderTodo(t) {
 
 // ---------- Ereignisse ----------
 addCatBtn.addEventListener("click", addCategory);
+addTodoBtn.addEventListener("click", addTodoOhneBereich);
 themeBtn.addEventListener("click", toggleTheme);
 
 // Titel ist Umschalter und Umbenenn-Griff in einem: kurzer Klick oeffnet ab

@@ -146,6 +146,14 @@ html, body {
   border-color: transparent;
 }
 .btn.add-cat:hover { color: var(--accent); background: var(--row); border-color: var(--line); }
+/* Schmale Screens: der Titel nimmt die erste Zeile fuer sich, die beiden
+   Anlege-Knoepfe (＋ ToDo, ＋ Bereich) ruecken darunter. Sonst draengen sie
+   unter die fest oben rechts sitzenden Icons (⚙️/☾, position: fixed). Das
+   padding-right haelt in der Titelzeile den Platz fuer diese Icons frei. */
+@media (max-width: 480px) {
+  .topbar { flex-wrap: wrap; padding-right: 92px; }
+  .topbar h1 { flex-basis: 100%; }
+}
 .btn.icon-only { padding: 7px 10px; font-size: 16px; line-height: 1; }
 #themeBtn {
   position: fixed;
@@ -240,6 +248,13 @@ input[type="date"]:focus {
 .col-count.zero   { color: var(--muted);  background: var(--chip); }
 .col-count.normal { color: var(--accent); background: var(--accent-soft); }
 .col-count.urgent { color: var(--red);    background: var(--del-soft); }
+
+/* "Ohne Bereich": ein temporaerer Auffang, kein echter Bereich. Dezent
+   abgesetzt - gedaempfter Titel, kein Greif-Cursor, eine Innenkontur statt
+   eines Rahmens (box-shadow veraendert die Boxgroesse nicht, kein Layoutsprung). */
+.column.ohne-bereich { box-shadow: inset 0 0 0 1px var(--line); }
+.column.ohne-bereich .col-title .name { color: var(--muted); }
+.col-title.statisch { cursor: default; }
 
 /* Bereichsname im Doppelklick-Bearbeitungsmodus */
 .cat-edit {
