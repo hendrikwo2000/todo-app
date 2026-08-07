@@ -24,6 +24,11 @@
 import { angemeldeterNutzer, umstiegAufDomainCookie } from "../_lib/session.js";
 import { json, listenFuer, rolleIn } from "../_lib/listen.js";
 
+// Feste Palette fuer die Bereichsfarbe (siehe FARBEN in app.js, muss dazu
+// passen). Alles ausserhalb dieser Liste wird abgelehnt statt ungeprueft in
+// die Datenbank zu wandern.
+const FARBEN_ERLAUBT = new Set(["blau", "tuerkis", "gruen", "lila", "pink", "grau"]);
+
 // Liefert entweder die Nutzer-ID der aktuellen Sitzung oder eine fertige
 // Fehlerantwort.
 async function angemeldetOderFehler(request, env) {
@@ -56,7 +61,7 @@ export async function onRequestGet({ request, env }) {
     // 3) Alle Bereiche, Ueber-Themen und ToDos aller zugaenglichen Listen in je
     //    einer Abfrage, danach in JS nach Liste gruppiert.
     const bereiche = await env.DB.prepare(
-      `SELECT l.id, l.board_id, l.name
+      `SELECT l.id, l.board_id, l.name, l.farbe
          FROM lists l
          JOIN board_members m ON m.board_id = l.board_id
         WHERE m.user_id = ?
@@ -86,7 +91,7 @@ export async function onRequestGet({ request, env }) {
     for (const b of listen) daten[b.id] = { categories: [], themen: [], todos: [] };
     for (const l of bereiche.results) {
       (daten[l.board_id] || (daten[l.board_id] = { categories: [], themen: [], todos: [] }))
-        .categories.push({ id: l.id, name: l.name });
+        .categories.push({ id: l.id, name: l.name, farbe: l.farbe || null });
     }
     for (const th of themen.results) {
       const eimer = daten[th.board_id];
@@ -163,7 +168,8 @@ export async function onRequestPut({ request, env }) {
   if (!Array.isArray(zustand.categories) || !Array.isArray(zustand.todos)) {
     return json({ error: "Ungueltige Datenstruktur" }, 400);
   }
-  if (zustand.categories.some(c => !c || typeof c.id !== "string" || typeof c.name !== "string")) {
+  if (zustand.categories.some(c => !c || typeof c.id !== "string" || typeof c.name !== "string"
+                     || (c.farbe != null && !FARBEN_ERLAUBT.has(c.farbe)))) {
     return json({ error: "Ungueltiger Bereich" }, 400);
   }
   if (themen.some(th => !th || typeof th.id !== "string" || typeof th.name !== "string"
@@ -198,8 +204,8 @@ export async function onRequestPut({ request, env }) {
   zustand.categories.forEach((c, i) => {
     anweisungen.push(
       env.DB.prepare(
-        "INSERT INTO lists (id, board_id, name, position) VALUES (?, ?, ?, ?)"
-      ).bind(c.id, boardId, c.name, i)
+        "INSERT INTO lists (id, board_id, name, position, farbe) VALUES (?, ?, ?, ?, ?)"
+      ).bind(c.id, boardId, c.name, i, c.farbe || null)
     );
   });
 

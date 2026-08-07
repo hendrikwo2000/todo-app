@@ -36,6 +36,18 @@ let draggedCat = null;     // id des Bereichs, der gerade umsortiert wird
 // kann frei im Bereich (addingThema null) oder in einem Ueber-Thema entstehen.
 let addingCat = null;      // Bereich, dessen Eingabefeld gerade aufgeklappt ist
 let addingThema = null;    // Ueber-Thema fuer das offene Eingabefeld (null = frei)
+let farbePickerFuer = null; // id des Bereichs, dessen Farbauswahl gerade offen ist
+
+// Feste Palette fuer die Bereichsfarbe (Punkt am Namen + Streifen am
+// Bereich). Muss zu FARBEN_ERLAUBT in functions/api/todos.js passen.
+const FARBEN = [
+  { id: "blau",    name: "Blau"   },
+  { id: "tuerkis", name: "Türkis" },
+  { id: "gruen",   name: "Grün"   },
+  { id: "lila",    name: "Lila"   },
+  { id: "pink",    name: "Pink"   },
+  { id: "grau",    name: "Grau"   },
+];
 
 // Eingeklappte Erledigt-Bereiche pro Kategorie (in localStorage gemerkt).
 let doneCollapsed = {};
@@ -1773,6 +1785,7 @@ function renderColumn(cat) {
   const col = document.createElement("section");
   col.className = "column" + (istOhne ? " ohne-bereich" : "");
   col.dataset.cat = cat.id;
+  if (!istOhne && cat.farbe) col.dataset.farbe = cat.farbe;
 
   // --- Kopf --- ("Ohne Bereich" bekommt keinen: kein Kasten, keine
   // Ueberschrift, die ToDos stehen frei auf dem Board. Der Drag-Hinweis
@@ -1804,11 +1817,22 @@ function renderColumn(cat) {
       // Ampel am Zaehler: 0 = grau, offene ToDos = blau, etwas Dringendes = rot.
       // Zaehlt alle offenen des Bereichs, auch die in Ueber-Themen.
       const countCls = ampelKlasse(open);
+      const farbeOffen = farbePickerFuer === cat.id;
       head.innerHTML = `
         <h2 class="col-title">
           <span class="name">${escapeHtml(cat.name)}</span>
+          <button type="button" class="farbe-punkt${cat.farbe ? " farbe-" + cat.farbe : ""}"
+                  data-farbe-fuer="${cat.id}" title="Bereichsfarbe"></button>
           <span class="col-count ${countCls}">${open.length}</span>
-        </h2>`;
+        </h2>
+        ${farbeOffen ? `
+        <div class="farbe-popup" data-farbe-fuer="${cat.id}">
+          ${FARBEN.map(f => `<button type="button"
+                class="farbe-swatch farbe-${f.id}${cat.farbe === f.id ? " aktiv" : ""}"
+                data-farbe-wahl="${f.id}" title="${f.name}"></button>`).join("")}
+          <button type="button" class="farbe-swatch farbe-keine${!cat.farbe ? " aktiv" : ""}"
+                  data-farbe-wahl="" title="Keine Farbe">✕</button>
+        </div>` : ""}`;
 
       // Spalte am Titel anfassen und umsortieren, per Doppelklick umbenennen.
       const title = head.querySelector(".col-title");
@@ -1826,6 +1850,25 @@ function renderColumn(cat) {
         col.classList.remove("col-dragging");
         render();
       });
+
+      // Punkt oeffnet/schliesst die Farbauswahl, ein Klick auf einen Swatch
+      // waehlt die Farbe und speichert sofort.
+      head.querySelector("[data-farbe-fuer].farbe-punkt").addEventListener("click", e => {
+        e.stopPropagation();
+        farbePickerFuer = farbeOffen ? null : cat.id;
+        render();
+      });
+      if (farbeOffen) {
+        head.querySelectorAll("[data-farbe-wahl]").forEach(sw => {
+          sw.addEventListener("click", e => {
+            e.stopPropagation();
+            cat.farbe = sw.dataset.farbeWahl || null;
+            farbePickerFuer = null;
+            render();
+            save();
+          });
+        });
+      }
     }
   }
 
@@ -2343,6 +2386,7 @@ document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
   if (!listenMenue.hidden) schliesseMenue();
   if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
+  if (farbePickerFuer) { farbePickerFuer = null; render(); }
 });
 
 // Spalten umsortieren: Board ist die Ablagezone fuer Bereichs-Drags.
@@ -2384,6 +2428,15 @@ document.addEventListener("mousedown", e => {
     // Wie beim Bereich: ganzen Thema-Kopf pruefen (Aufloesen-Knopf inklusive).
     const head = document.querySelector(".thema-head.editing");
     if (head && !head.contains(e.target)) saveThemaName(editingThema);
+  }
+  if (farbePickerFuer) {
+    // Punkt UND Popup pruefen: ein Klick auf den Punkt selbst soll ihn
+    // zumachen duerfen (der eigene Toggle-Handler regelt das), nicht schon
+    // dieser Aussen-Check.
+    const popup = document.querySelector(`.farbe-popup[data-farbe-fuer="${farbePickerFuer}"]`);
+    const punkt = document.querySelector(`.farbe-punkt[data-farbe-fuer="${farbePickerFuer}"]`);
+    const drin = (popup && popup.contains(e.target)) || (punkt && punkt.contains(e.target));
+    if (!drin) { farbePickerFuer = null; render(); }
   }
 });
 

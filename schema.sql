@@ -77,10 +77,16 @@ CREATE TABLE board_members (
 -- Die Spalten im Board. Haengen jetzt an board_id (frueher user_id).
 -- position ersetzt die fruehere Reihenfolge im Array: SQL kennt keine
 -- inhaerente Sortierung, die Spaltenreihenfolge muss also explizit mit.
+-- farbe ist ein fester Schluessel aus einer kleinen Palette (z. B. "blau",
+-- siehe FARBEN in app.js) fuer den Farbstreifen am Bereich. NULL = keine
+-- gewaehlt, dann bleibt der Bereich wie bisher ohne Streifen. Die erlaubten
+-- Werte prueft die API (functions/api/todos.js), keine CHECK-Klausel hier -
+-- gleiche Handhabung wie bei den anderen freien Textfeldern in diesem Schema.
 CREATE TABLE lists (
   id         TEXT PRIMARY KEY,
   board_id   TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
   name       TEXT NOT NULL,
+  farbe      TEXT,
   position   INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

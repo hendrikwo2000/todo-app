@@ -16,6 +16,16 @@
   --chip: rgba(0, 0, 0, .06);
   --del-soft: #fbe3e1;
   --check-border: #c4cad8;
+  /* Palette fuer die Bereichsfarbe (Punkt am Namen, Streifen am Bereich).
+     Bewusst getrennt von --red/--orange/--yellow: die tragen an ToDos schon
+     eine Bedeutung (faellig/dringend), eine Bereichsfarbe in genau dieser
+     Farbe waere doppeldeutig. */
+  --farbe-blau: #4f63d2;
+  --farbe-tuerkis: #1f9d95;
+  --farbe-gruen: #2f9e69;
+  --farbe-lila: #8b5fd1;
+  --farbe-pink: #d1568f;
+  --farbe-grau: #8a93a8;
   color-scheme: light;
 }
 
@@ -37,6 +47,12 @@
   --chip: rgba(255, 255, 255, .10);
   --del-soft: #4a2522;
   --check-border: #4a5160;
+  --farbe-blau: #7e8ff2;
+  --farbe-tuerkis: #3dbdb4;
+  --farbe-gruen: #46b27e;
+  --farbe-lila: #a48ae8;
+  --farbe-pink: #e881b0;
+  --farbe-grau: #9aa3b8;
   color-scheme: dark;
 }
 
@@ -210,6 +226,7 @@ input[type="date"]:focus {
 }
 
 .col-head {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -224,6 +241,75 @@ input[type="date"]:focus {
   gap: 7px;
   min-width: 0;
   cursor: grab;
+}
+
+/* Bereichsfarbe: schmaler Streifen an der Box, gewaehlt ueber den Punkt am
+   Namen (siehe .farbe-punkt). Ohne Wahl bleibt der Bereich wie bisher ohne
+   Streifen - "Ohne Bereich" hat ohnehin keinen Kopf und bekommt keinen. */
+.column[data-farbe] { border-left-width: 4px; border-left-style: solid; }
+.column[data-farbe="blau"]    { border-left-color: var(--farbe-blau); }
+.column[data-farbe="tuerkis"] { border-left-color: var(--farbe-tuerkis); }
+.column[data-farbe="gruen"]   { border-left-color: var(--farbe-gruen); }
+.column[data-farbe="lila"]    { border-left-color: var(--farbe-lila); }
+.column[data-farbe="pink"]    { border-left-color: var(--farbe-pink); }
+.column[data-farbe="grau"]    { border-left-color: var(--farbe-grau); }
+
+/* Punkt neben dem Bereichsnamen oeffnet die Farbauswahl. Ohne gewaehlte
+   Farbe ein neutraler Ring, mit Farbe eine gefuellte Flaeche - derselbe Ton
+   wie der Streifen an der Box. */
+.farbe-punkt {
+  flex: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--check-border);
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.farbe-punkt:hover { border-color: var(--muted); }
+.farbe-punkt.farbe-blau    { background: var(--farbe-blau);    border-color: var(--farbe-blau); }
+.farbe-punkt.farbe-tuerkis { background: var(--farbe-tuerkis); border-color: var(--farbe-tuerkis); }
+.farbe-punkt.farbe-gruen   { background: var(--farbe-gruen);   border-color: var(--farbe-gruen); }
+.farbe-punkt.farbe-lila    { background: var(--farbe-lila);    border-color: var(--farbe-lila); }
+.farbe-punkt.farbe-pink    { background: var(--farbe-pink);    border-color: var(--farbe-pink); }
+.farbe-punkt.farbe-grau    { background: var(--farbe-grau);    border-color: var(--farbe-grau); }
+
+.farbe-popup {
+  position: absolute;
+  top: 100%; left: 0;
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 132px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--row);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+  z-index: 5;
+}
+.farbe-swatch {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.farbe-swatch.aktiv { border-color: var(--text); }
+.farbe-swatch.farbe-blau    { background: var(--farbe-blau); }
+.farbe-swatch.farbe-tuerkis { background: var(--farbe-tuerkis); }
+.farbe-swatch.farbe-gruen   { background: var(--farbe-gruen); }
+.farbe-swatch.farbe-lila    { background: var(--farbe-lila); }
+.farbe-swatch.farbe-pink    { background: var(--farbe-pink); }
+.farbe-swatch.farbe-grau    { background: var(--farbe-grau); }
+.farbe-swatch.farbe-keine {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--chip);
+  color: var(--muted);
+  font-size: 11px;
 }
 .col-title:active { cursor: grabbing; }
 .col-title .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
