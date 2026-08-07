@@ -1740,11 +1740,11 @@ function render() {
     const wrap = document.createElement("div");
     wrap.className = "empty leer-liste";
     const p = document.createElement("p");
-    p.textContent = "Noch keine Bereiche.";
+    p.textContent = "Noch keine ToDos.";
     const btn = document.createElement("button");
     btn.className = "btn primary";
-    btn.textContent = "＋ Bereich anlegen";
-    btn.addEventListener("click", addCategory);
+    btn.textContent = "＋ ToDo anlegen";
+    btn.addEventListener("click", addTodoOhneBereich);
     wrap.appendChild(p);
     wrap.appendChild(btn);
     board.appendChild(wrap);
@@ -1775,64 +1775,59 @@ function renderColumn(cat) {
   col.className = "column" + (istOhne ? " ohne-bereich" : "");
   col.dataset.cat = cat.id;
 
-  // --- Kopf ---
-  const head = document.createElement("div");
-  head.className = "col-head";
-  col.appendChild(head);
-
+  // --- Kopf --- ("Ohne Bereich" bekommt keinen: kein Kasten, keine
+  // Ueberschrift, die ToDos stehen frei auf dem Board. Der Drag-Hinweis
+  // wandert stattdessen als Tooltip auf die Spalte selbst.)
   if (istOhne) {
-    // Statischer Kopf: kein Umbenennen, kein Loeschen, kein Titel-Drag. Die
-    // Spalte ist kein normaler Bereich, sondern nur ein sichtbarer Auffang.
-    const countCls = ampelKlasse(open);
-    head.innerHTML = `
-      <h2 class="col-title statisch">
-        <span class="name">${escapeHtml(cat.name)}</span>
-        <span class="col-count ${countCls}">${open.length}</span>
-      </h2>`;
-    head.querySelector(".col-title").title =
-      "ToDos ohne Bereich — zieh eins in einen Bereich oder ordne es beim Bearbeiten zu";
-  } else if (editingCat === cat.id) {
-    // Loeschen gibt es nur hier: wer den Bereich anfasst, hat ihn per
-    // Doppelklick bewusst geoeffnet.
-    head.className = "col-head editing";
-    head.innerHTML = `
-      <input type="text" class="cat-edit" data-edit-cat="${cat.id}"
-             value="${escapeHtml(cat.name)}" autocomplete="off">
-      <div class="col-actions">
-        <button type="button" class="act del" title="Bereich löschen" data-act="del">🗑️</button>
-      </div>`;
-    const input = head.querySelector(".cat-edit");
-    input.addEventListener("keydown", e => {
-      if (e.key === "Enter") saveCategoryName(cat.id);
-      else if (e.key === "Escape") cancelRenameCategory();
-    });
-    head.querySelector('[data-act="del"]').addEventListener("click", () => deleteCategory(cat.id));
+    col.title = "ToDos ohne Bereich — zieh eins in einen Bereich oder ordne es beim Bearbeiten zu";
   } else {
-    // Ampel am Zaehler: 0 = grau, offene ToDos = blau, etwas Dringendes = rot.
-    // Zaehlt alle offenen des Bereichs, auch die in Ueber-Themen.
-    const countCls = ampelKlasse(open);
-    head.innerHTML = `
-      <h2 class="col-title">
-        <span class="name">${escapeHtml(cat.name)}</span>
-        <span class="col-count ${countCls}">${open.length}</span>
-      </h2>`;
+    const head = document.createElement("div");
+    head.className = "col-head";
+    col.appendChild(head);
 
-    // Spalte am Titel anfassen und umsortieren, per Doppelklick umbenennen.
-    const title = head.querySelector(".col-title");
-    title.draggable = true;
-    title.title = "Doppelklick zum Umbenennen · ziehen, um den Bereich zu verschieben";
-    title.addEventListener("dblclick", () => startRenameCategory(cat.id));
-    title.addEventListener("dragstart", e => {
-      draggedCat = cat.id;
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", "cat:" + cat.id);
-      col.classList.add("col-dragging");
-    });
-    title.addEventListener("dragend", () => {
-      draggedCat = null;
-      col.classList.remove("col-dragging");
-      render();
-    });
+    if (editingCat === cat.id) {
+      // Loeschen gibt es nur hier: wer den Bereich anfasst, hat ihn per
+      // Doppelklick bewusst geoeffnet.
+      head.className = "col-head editing";
+      head.innerHTML = `
+        <input type="text" class="cat-edit" data-edit-cat="${cat.id}"
+               value="${escapeHtml(cat.name)}" autocomplete="off">
+        <div class="col-actions">
+          <button type="button" class="act del" title="Bereich löschen" data-act="del">🗑️</button>
+        </div>`;
+      const input = head.querySelector(".cat-edit");
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter") saveCategoryName(cat.id);
+        else if (e.key === "Escape") cancelRenameCategory();
+      });
+      head.querySelector('[data-act="del"]').addEventListener("click", () => deleteCategory(cat.id));
+    } else {
+      // Ampel am Zaehler: 0 = grau, offene ToDos = blau, etwas Dringendes = rot.
+      // Zaehlt alle offenen des Bereichs, auch die in Ueber-Themen.
+      const countCls = ampelKlasse(open);
+      head.innerHTML = `
+        <h2 class="col-title">
+          <span class="name">${escapeHtml(cat.name)}</span>
+          <span class="col-count ${countCls}">${open.length}</span>
+        </h2>`;
+
+      // Spalte am Titel anfassen und umsortieren, per Doppelklick umbenennen.
+      const title = head.querySelector(".col-title");
+      title.draggable = true;
+      title.title = "Doppelklick zum Umbenennen · ziehen, um den Bereich zu verschieben";
+      title.addEventListener("dblclick", () => startRenameCategory(cat.id));
+      title.addEventListener("dragstart", e => {
+        draggedCat = cat.id;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", "cat:" + cat.id);
+        col.classList.add("col-dragging");
+      });
+      title.addEventListener("dragend", () => {
+        draggedCat = null;
+        col.classList.remove("col-dragging");
+        render();
+      });
+    }
   }
 
   // --- Werkzeugzeile: ＋ ToDo (frei) und ＋ Thema, oder das offene Frei-Feld ---

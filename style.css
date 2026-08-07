@@ -249,12 +249,16 @@ input[type="date"]:focus {
 .col-count.normal { color: var(--accent); background: var(--accent-soft); }
 .col-count.urgent { color: var(--red);    background: var(--del-soft); }
 
-/* "Ohne Bereich": ein temporaerer Auffang, kein echter Bereich. Dezent
-   abgesetzt - gedaempfter Titel, kein Greif-Cursor, eine Innenkontur statt
-   eines Rahmens (box-shadow veraendert die Boxgroesse nicht, kein Layoutsprung). */
-.column.ohne-bereich { box-shadow: inset 0 0 0 1px var(--line); }
-.column.ohne-bereich .col-title .name { color: var(--muted); }
-.col-title.statisch { cursor: default; }
+/* "Ohne Bereich": kein echter Bereich, sondern ein loser Auffang direkt auf
+   dem Board - ohne Kasten und ohne Titelzeile, die ToDos stehen frei. Nur beim
+   Drueberziehen (Drop-Ziel) blitzt die uebliche Hervorhebung weiterhin auf,
+   das ist Nutzer-Feedback und kein Rahmen. */
+.column.ohne-bereich:not(.drop-target) {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
 
 /* Bereichsname im Doppelklick-Bearbeitungsmodus */
 .cat-edit {
