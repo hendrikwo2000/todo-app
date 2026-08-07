@@ -146,14 +146,21 @@ html, body {
   border-color: transparent;
 }
 .btn.add-cat:hover { color: var(--accent); background: var(--row); border-color: var(--line); }
-/* Schmale Screens: der Titel nimmt die erste Zeile fuer sich, alle Knoepfe
-   (＋ ToDo, ＋ Bereich, Zahnrad) ruecken gemeinsam darunter. */
+.btn.icon-only { padding: 7px 10px; font-size: 16px; line-height: 1; }
+/* Rechtsbuendig in der Kopfzeile: schiebt sich ueber den frei bleibenden
+   Platz nach rechts, ohne den restlichen Knoepfen ihre Position zu nehmen. */
+#einstellungenBtn { margin-left: auto; }
+#einstellungenBtn[hidden] { display: none; }
+/* Schmale Screens: der Titel nimmt sich nur so viel Platz wie noetig und
+   teilt sich die erste Zeile mit dem Zahnrad (weiterhin rechtsbuendig). Die
+   Anlege-Knoepfe ruecken gemeinsam in die zweite Zeile. */
 @media (max-width: 480px) {
   .topbar { flex-wrap: wrap; }
-  .topbar h1 { flex-basis: 100%; }
+  .topbar h1 { flex: 1 1 auto; }
+  #einstellungenBtn { order: 1; }
+  #addTodoBtn { order: 2; flex-basis: 100%; }
+  #addCatBtn, #saveStatus { order: 2; }
 }
-.btn.icon-only { padding: 7px 10px; font-size: 16px; line-height: 1; }
-#einstellungenBtn[hidden] { display: none; }
 
 input[type="text"],
 input[type="date"] {
