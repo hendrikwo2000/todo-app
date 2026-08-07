@@ -171,11 +171,15 @@ html, body {
    teilt sich die erste Zeile mit dem Zahnrad (weiterhin rechtsbuendig). Die
    Anlege-Knoepfe ruecken gemeinsam in die zweite Zeile. */
 @media (max-width: 480px) {
-  .topbar { flex-wrap: wrap; }
+  /* row-gap halbiert: die unsichtbare Umbruch-Zeile unten steckt zwischen
+     zwei Luecken, macht aus 12px sonst 24px Abstand zum Titel. */
+  .topbar { flex-wrap: wrap; row-gap: 6px; }
   .topbar h1 { flex: 1 1 auto; }
   #einstellungenBtn { order: 1; }
-  #addTodoBtn { order: 2; flex-basis: 100%; }
-  #addCatBtn, #saveStatus { order: 2; }
+  /* Unsichtbarer Umbruch-Punkt statt flex-basis:100% auf addTodoBtn - der
+     haette die beiden Knoepfe wieder auf getrennte Zeilen verteilt. */
+  .topbar::after { content: ""; order: 2; flex-basis: 100%; width: 0; }
+  #addTodoBtn, #addCatBtn, #saveStatus { order: 3; }
 }
 
 input[type="text"],
