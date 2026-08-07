@@ -148,24 +148,17 @@ html, body {
 .btn.add-cat:hover { color: var(--accent); background: var(--row); border-color: var(--line); }
 /* Schmale Screens: der Titel nimmt die erste Zeile fuer sich, die beiden
    Anlege-Knoepfe (＋ ToDo, ＋ Bereich) ruecken darunter. Sonst draengen sie
-   unter die fest oben rechts sitzenden Icons (⚙️/☾, position: fixed). Das
-   padding-right haelt in der Titelzeile den Platz fuer diese Icons frei. */
+   unter das fest oben rechts sitzende Zahnrad (position: fixed). Das
+   padding-right haelt in der Titelzeile den Platz dafuer frei. */
 @media (max-width: 480px) {
-  .topbar { flex-wrap: wrap; padding-right: 92px; }
+  .topbar { flex-wrap: wrap; padding-right: 56px; }
   .topbar h1 { flex-basis: 100%; }
 }
 .btn.icon-only { padding: 7px 10px; font-size: 16px; line-height: 1; }
-#themeBtn {
-  position: fixed;
-  top: max(16px, env(safe-area-inset-top));
-  right: max(16px, env(safe-area-inset-right));
-  z-index: 30;
-}
-/* Links neben dem Design-Schalter. 42px = dessen Breite plus Abstand. */
 #einstellungenBtn {
   position: fixed;
   top: max(16px, env(safe-area-inset-top));
-  right: calc(max(16px, env(safe-area-inset-right)) + 42px);
+  right: max(16px, env(safe-area-inset-right));
   z-index: 30;
 }
 #einstellungenBtn[hidden] { display: none; }

@@ -143,8 +143,7 @@ function escapeHtml(s) {
 // ---------- Heller / dunkler Modus ----------
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
-  themeBtn.textContent = theme === "dark" ? "☀" : "☾";
-  themeBtn.title = theme === "dark" ? "Helles Design" : "Dunkles Design";
+  themeBtn.textContent = theme === "dark" ? "☀ Helles Design" : "☾ Dunkles Design";
 }
 function toggleTheme() {
   const cur = document.documentElement.getAttribute("data-theme") || "light";
@@ -1831,8 +1830,10 @@ function renderColumn(cat) {
   }
 
   // --- Werkzeugzeile: ＋ ToDo (frei) und ＋ Thema, oder das offene Frei-Feld ---
+  // "Ohne Bereich" bekommt keine eigene Werkzeugzeile - der globale "＋ ToDo"
+  // im Header legt genau dort an, eine zweite waere redundant.
   if (addingCat === cat.id && addingThema === null) col.appendChild(baueAddWidget(cat, null));
-  else col.appendChild(baueAddKnopfzeile(cat, istOhne));
+  else if (!istOhne) col.appendChild(baueAddKnopfzeile(cat));
 
   // --- Freie ToDos (ohne Ueber-Thema), direkt in der Spalte ---
   const frei = open.filter(t => !t.themaId).sort(sortOpen);
@@ -1999,9 +2000,9 @@ function toggleThemaCollapse(themaId) {
   render();
 }
 
-// Werkzeugzeile am Spaltenkopf: neues freies ToDo bzw. neues Ueber-Thema.
-// ohneThema unterdrueckt den "＋ Thema"-Knopf - "Ohne Bereich" kennt keine Themen.
-function baueAddKnopfzeile(cat, ohneThema) {
+// Werkzeugzeile am Spaltenkopf: neues freies ToDo bzw. neues Ueber-Thema. Nur
+// fuer echte Bereiche - "Ohne Bereich" hat keine eigene Werkzeugzeile.
+function baueAddKnopfzeile(cat) {
   const zeile = document.createElement("div");
   zeile.className = "col-tools";
 
@@ -2012,15 +2013,13 @@ function baueAddKnopfzeile(cat, ohneThema) {
   todoBtn.addEventListener("click", () => openAdd(cat.id, null));
   zeile.appendChild(todoBtn);
 
-  if (!ohneThema) {
-    const themaBtn = document.createElement("button");
-    themaBtn.type = "button";
-    themaBtn.className = "col-thema-btn";
-    themaBtn.textContent = "＋ Thema";
-    themaBtn.title = "Über-Thema anlegen — eine Gruppe innerhalb des Bereichs";
-    themaBtn.addEventListener("click", () => addThema(cat.id));
-    zeile.appendChild(themaBtn);
-  }
+  const themaBtn = document.createElement("button");
+  themaBtn.type = "button";
+  themaBtn.className = "col-thema-btn";
+  themaBtn.textContent = "＋ Thema";
+  themaBtn.title = "Über-Thema anlegen — eine Gruppe innerhalb des Bereichs";
+  themaBtn.addEventListener("click", () => addThema(cat.id));
+  zeile.appendChild(themaBtn);
   return zeile;
 }
 
