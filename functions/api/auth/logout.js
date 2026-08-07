@@ -7,7 +7,7 @@
  * Zeile aus `sessions` raus.
  */
 
-import { COOKIE_NAME, liesCookie, hashHex, loescheSessionCookie } from "../../_lib/session.js";
+import { COOKIE_NAME, liesCookie, hashHex, loescheSessionCookies, mitCookies } from "../../_lib/session.js";
 
 export async function onRequestPost({ request, env }) {
   const token = liesCookie(request, COOKIE_NAME);
@@ -22,10 +22,9 @@ export async function onRequestPost({ request, env }) {
   }
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
-    headers: {
+    headers: mitCookies({
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
-      "Set-Cookie": loescheSessionCookie(request),
-    },
+    }, loescheSessionCookies(request)),
   });
 }

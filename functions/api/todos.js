@@ -21,7 +21,7 @@
  * ToDo-Abgleich statt "alles auf einmal" - ein spaeterer Schritt.
  */
 
-import { angemeldeterNutzer } from "../_lib/session.js";
+import { angemeldeterNutzer, umstiegAufDomainCookie } from "../_lib/session.js";
 import { json, listenFuer, rolleIn } from "../_lib/listen.js";
 
 // Liefert entweder die Nutzer-ID der aktuellen Sitzung oder eine fertige
@@ -130,7 +130,13 @@ export async function onRequestGet({ request, env }) {
         mitglieder: b.role === "owner" ? (mitglieder[b.id] || 0) : undefined,
       })),
       daten,
-    });
+    },
+    200,
+    // Beilaeufig das Sitzungs-Cookie auf die ganze Domain umstellen, damit
+    // fokus.it-wolf.org dieselbe Anmeldung sieht. Passiert genau hier, weil
+    // die App diesen Endpunkt beim Start ohnehin immer aufruft - so merkt
+    // niemand etwas vom Umstieg. Kein Datenbankzugriff, kein Neuanmelden.
+    umstiegAufDomainCookie(request));
   } catch (e) {
     return json({ error: "Datenbankfehler beim Lesen" }, 500);
   }

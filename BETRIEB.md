@@ -41,6 +41,32 @@ Sitzungstoken liegen nur gehasht in der Datenbank. Abmelden über
 `/api/auth/logout` löscht die Sitzung serverseitig, nicht nur das Cookie — ein
 abgegriffenes Token wird damit ebenfalls ungültig.
 
+### Cookie gilt für die ganze Domain
+
+Das Sitzungscookie ist auf `Domain=.it-wolf.org` gesetzt, nicht auf
+`todo.it-wolf.org`. Nur dadurch sieht **fokus.it-wolf.org** dieselbe Anmeldung —
+der geteilte Login hängt allein an diesem Attribut, nicht am Hosting-Ort. Beide
+Pages-Projekte binden dieselbe D1-Datenbank `todo`, weil ein Cookie ohne
+Nachschlagen in `sessions` nichts wert ist.
+
+Die Domain wird **nur auf it-wolf.org-Hosts** gesetzt (`domainFlag` in
+`_lib/session.js`). Auf `127.0.0.1` und den `*.pages.dev`-Vorschauadressen würde
+der Browser ein fremdes Domain-Attribut still verwerfen — das Cookie käme gar
+nicht erst an, und die Anmeldung bräche ohne sichtbaren Fehler.
+
+Vor der Umstellung war das Cookie *host-only*. Diese alten Cookies räumt jede
+Antwort mit `Set-Cookie` gezielt mit ab (zweite Zeile, gleicher Name, **ohne**
+Domain, `Max-Age=0`) — sonst lägen zwei Cookies gleichen Namens nebeneinander,
+der Browser schickt beide, und welches der Server zuerst liest, ist nicht
+definiert. Deshalb liefern `setzeSessionCookies` und `loescheSessionCookies` ein
+**Array**; die Aufrufer hängen die Zeilen mit `mitCookies()` einzeln an, weil ein
+Objekt-Literal `Set-Cookie` nur einmal enthalten kann.
+
+Der Umstieg passiert **still**: `GET /api/todos` setzt bei jeder Anfrage den
+vorhandenen Token einmal neu, jetzt mit Domain (`umstiegAufDomainCookie`). Kein
+Datenbankzugriff, kein Zwangs-Logout — beim nächsten Öffnen der Liste ist das
+Cookie migriert.
+
 Unbekannte Adressen bekommen eine klare Absage („Diese Adresse ist nicht
 freigeschaltet"), die App wechselt dann von selbst zum Wartelisten-Formular.
 Das verrät, welche Adressen registriert sind — bei einer Handvoll bekannter

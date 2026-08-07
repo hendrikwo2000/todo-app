@@ -9,12 +9,12 @@
  * Mailprogramm, nicht aus der App.
  */
 
-import { hashHex, neuesToken, setzeSessionCookie, SESSION_ABLAUF_SQL } from "../../_lib/session.js";
+import { hashHex, neuesToken, setzeSessionCookies, mitCookies, SESSION_ABLAUF_SQL } from "../../_lib/session.js";
 
-function weiter(ziel, extraHeaders = {}) {
+function weiter(ziel, cookies = []) {
   return new Response(null, {
     status: 302,
-    headers: { Location: ziel, "Cache-Control": "no-store", ...extraHeaders },
+    headers: mitCookies({ Location: ziel, "Cache-Control": "no-store" }, cookies),
   });
 }
 
@@ -47,7 +47,7 @@ export async function onRequestGet({ request, env }) {
       ).bind(await hashHex(sitzung), nutzer.id),
     ]);
 
-    return weiter("/", { "Set-Cookie": setzeSessionCookie(request, sitzung) });
+    return weiter("/", setzeSessionCookies(request, sitzung));
   } catch (e) {
     return weiter("/?login=fehler");
   }

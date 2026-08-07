@@ -8,19 +8,21 @@
  * Liste ueberhaupt sehen darf, steht in board_members.
  */
 
+import { mitCookies } from "./session.js";
+
 // Fuer den Anfang zwei EIGENE Listen pro Person. Geteilte Listen zaehlen NICHT
 // mit - sie kommen obendrauf. Eine Zahl, kein Deployment, falls das mal steigt.
 export const MAX_EIGENE_LISTEN = 2;
 
-export function json(body, status = 200) {
+export function json(body, status = 200, cookies = []) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
+    headers: mitCookies({
       "Content-Type": "application/json; charset=utf-8",
       // Nirgends zwischenspeichern: sonst zeigt ein zweites Geraet nach einer
       // Aenderung minutenlang den alten Stand.
       "Cache-Control": "no-store",
-    },
+    }, cookies),
   });
 }
 

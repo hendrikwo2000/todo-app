@@ -5,16 +5,15 @@
  * Browser unsichtbar, anders als das fruehere Passwort in localStorage).
  */
 
-import { hashHex, zeitgleich, neuesToken, setzeSessionCookie, SESSION_ABLAUF_SQL } from "../../_lib/session.js";
+import { hashHex, zeitgleich, neuesToken, setzeSessionCookies, mitCookies, SESSION_ABLAUF_SQL } from "../../_lib/session.js";
 
-function json(body, status = 200, extraHeaders = {}) {
+function json(body, status = 200, cookies = []) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
+    headers: mitCookies({
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
-      ...extraHeaders,
-    },
+    }, cookies),
   });
 }
 
@@ -68,7 +67,7 @@ export async function onRequestPost({ request, env }) {
        VALUES (?, ?, ${SESSION_ABLAUF_SQL})`
     ).bind(await hashHex(token), nutzer.id).run();
 
-    return json({ ok: true }, 200, { "Set-Cookie": setzeSessionCookie(request, token) });
+    return json({ ok: true }, 200, setzeSessionCookies(request, token));
   } catch (e) {
     return json({ error: "Datenbankfehler" }, 500);
   }

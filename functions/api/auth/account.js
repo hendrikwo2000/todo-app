@@ -6,17 +6,16 @@
  * einen unbedachten Klick: der Vorgang loescht alle ToDos unwiderruflich.
  */
 
-import { angemeldeterNutzer, loescheSessionCookie } from "../../_lib/session.js";
+import { angemeldeterNutzer, loescheSessionCookies, mitCookies } from "../../_lib/session.js";
 import { loescheKonto, istLetzterAdmin, meldeLoeschung } from "../../_lib/loeschen.js";
 
-function json(body, status = 200, extraHeaders = {}) {
+function json(body, status = 200, cookies = []) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
+    headers: mitCookies({
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
-      ...extraHeaders,
-    },
+    }, cookies),
   });
 }
 
@@ -53,5 +52,5 @@ export async function onRequestDelete({ request, env }) {
   // ruecknehmen, das Konto ist ohnehin weg.
   await meldeLoeschung(env, nutzer, false);
 
-  return json({ ok: true }, 200, { "Set-Cookie": loescheSessionCookie(request) });
+  return json({ ok: true }, 200, loescheSessionCookies(request));
 }
