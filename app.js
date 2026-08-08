@@ -166,6 +166,8 @@ function toggleTheme() {
   const next = cur === "dark" ? "light" : "dark";
   localStorage.setItem("theme", next);
   applyTheme(next);
+  // Kurztext im (moeglicherweise offenen) Einstellungen-Kopf sofort mitziehen.
+  if (!einstellungenPopup.hidden) aktualisiereEinSubtexte();
 }
 
 // ---------- Zugang ----------
@@ -541,9 +543,49 @@ function zeigeEinAnsicht(name) {
   for (const [k, el] of Object.entries(einAnsichten)) el.hidden = k !== name;
 }
 
+// Akkordeon der Hauptansicht: je Oeffnen klappen die anderen Abschnitte zu -
+// die <details> werden nie neu gerendert, darum reicht eine einmalige
+// Verdrahtung auf das native "toggle"-Event (deckt auch Tastaturbedienung
+// ab, nicht nur Klicks).
+document.querySelectorAll("#einstellungenHaupt > .ein-abschnitt").forEach(det => {
+  det.addEventListener("toggle", () => {
+    if (det.open) {
+      document.querySelectorAll("#einstellungenHaupt > .ein-abschnitt").forEach(other => {
+        if (other !== det) other.open = false;
+      });
+    }
+  });
+});
+
+// Bei jedem Oeffnen auf denselben Ausschnitt zurueck - "Meine Listen" ist
+// laut Erst-Hinweis der haeufigste Grund fuers Zahnrad, der Rest faengt zu.
+function resetAkkordeon() {
+  document.querySelectorAll("#einstellungenHaupt > .ein-abschnitt").forEach(det => {
+    det.open = det.dataset.abschnitt === "listen";
+  });
+}
+
+// Kurztext in jeder Kopfzeile, auch zugeklappt sichtbar - Antwort auf "ich
+// finde Dinge nicht wieder": man sieht schon vor dem Aufklappen, was
+// ungefaehr drinsteckt.
+function aktualisiereEinSubtexte() {
+  const dunkel = (document.documentElement.getAttribute("data-theme") || "light") === "dark";
+  document.getElementById("subDarstellung").textContent = dunkel ? "Dunkel" : "Hell";
+
+  const eigeneZahl = listen.filter(b => b.istEigen).length;
+  document.getElementById("subListen").textContent = eigeneZahl === 1 ? "1 Liste" : `${eigeneZahl} Listen`;
+
+  const geteiltZahl = listen.filter(b => !b.istEigen).length;
+  document.getElementById("subGeteilt").textContent = geteiltZahl === 1 ? "1 Liste" : `${geteiltZahl} Listen`;
+
+  document.getElementById("subFokus").textContent = fokusZugang ? "aktiv" : "";
+  document.getElementById("subKonto").textContent = eigeneEmail;
+}
+
 function oeffneEinstellungen() {
   schliesseMenue();
   zeichneListen();
+  resetAkkordeon();
   document.getElementById("kontoMsg").textContent = "";
   // Verwaltung nur fuer Admins - der Abschnitt bleibt sonst ausgeblendet.
   document.getElementById("adminAbschnitt").hidden = !istAdmin;
@@ -598,6 +640,8 @@ function zeichneListen() {
 
   document.getElementById("geteiltAbschnitt").hidden = geteilt.length === 0;
   for (const b of geteilt) geteiltBox.appendChild(baueGeteilteZeile(b));
+
+  aktualisiereEinSubtexte();
 }
 
 function baueEigeneZeile(b) {
@@ -616,7 +660,16 @@ function baueEigeneZeile(b) {
   knoepfe.className = "lz-knoepfe";
   knoepfe.appendChild(machBtn("Teilen", () => teileListe(b)));
   knoepfe.appendChild(machBtn("Umbenennen", () => benenneListeUm(b)));
-  knoepfe.appendChild(machBtn("Löschen", () => loescheListe(b), "gefahr"));
+  // Loeschen bewusst als Symbol statt dritter Text-Knopf - selbe Optik wie
+  // beim Bereich/Thema, faellt dadurch schon von der Form her als eigene,
+  // seltener genutzte Aktion auf statt gleichrangig neben Teilen/Umbenennen.
+  const loeschBtn = document.createElement("button");
+  loeschBtn.type = "button";
+  loeschBtn.className = "act del lz-loeschen";
+  loeschBtn.title = "Liste löschen";
+  loeschBtn.textContent = "🗑️";
+  loeschBtn.addEventListener("click", () => loescheListe(b));
+  knoepfe.appendChild(loeschBtn);
   row.appendChild(knoepfe);
 
   if (b.mitglieder > 0) {
@@ -2045,34 +2098,23 @@ function renderColumn(cat) {
     head.className = "col-head";
     col.appendChild(head);
 
+    const farbeOffen = farbePickerFuer === cat.id;
+
     if (editingCat === cat.id) {
       // Loeschen gibt es nur hier: wer den Bereich anfasst, hat ihn per
-      // Doppelklick bewusst geoeffnet.
+      // Doppelklick bewusst geoeffnet. Die Farbauswahl (frueher als Punkt
+      // neben dem Namen, siehe Kommentar unten) sitzt aus demselben Grund
+      // hier statt in der Normalansicht - dort war sie ein zweites
+      // Farbsignal neben dem Streifen am linken Rand und damit ueberfluessig.
       head.className = "col-head editing";
       head.innerHTML = `
         <input type="text" class="cat-edit" data-edit-cat="${cat.id}"
                value="${escapeHtml(cat.name)}" autocomplete="off">
         <div class="col-actions">
-          <button type="button" class="act del" title="Bereich löschen" data-act="del">🗑️</button>
-        </div>`;
-      const input = head.querySelector(".cat-edit");
-      input.addEventListener("keydown", e => {
-        if (e.key === "Enter") saveCategoryName(cat.id);
-        else if (e.key === "Escape") cancelRenameCategory();
-      });
-      head.querySelector('[data-act="del"]').addEventListener("click", () => deleteCategory(cat.id));
-    } else {
-      // Ampel am Zaehler: 0 = grau, offene ToDos = blau, etwas Dringendes = rot.
-      // Zaehlt alle offenen des Bereichs, auch die in Ueber-Themen.
-      const countCls = ampelKlasse(open);
-      const farbeOffen = farbePickerFuer === cat.id;
-      head.innerHTML = `
-        <h2 class="col-title">
-          <span class="name">${escapeHtml(cat.name)}</span>
           <button type="button" class="farbe-punkt${cat.farbe ? " farbe-" + cat.farbe : ""}"
                   data-farbe-fuer="${cat.id}" title="Bereichsfarbe"></button>
-          <span class="col-count ${countCls}">${open.length}</span>
-        </h2>
+          <button type="button" class="act del" title="Bereich löschen" data-act="del">🗑️</button>
+        </div>
         ${farbeOffen ? `
         <div class="farbe-popup" data-farbe-fuer="${cat.id}">
           ${FARBEN.map(f => `<button type="button"
@@ -2081,6 +2123,52 @@ function renderColumn(cat) {
           <button type="button" class="farbe-swatch farbe-keine${!cat.farbe ? " aktiv" : ""}"
                   data-farbe-wahl="" title="Keine Farbe">✕</button>
         </div>` : ""}`;
+      const input = head.querySelector(".cat-edit");
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter") saveCategoryName(cat.id);
+        else if (e.key === "Escape") cancelRenameCategory();
+      });
+      head.querySelector('[data-act="del"]').addEventListener("click", () => deleteCategory(cat.id));
+
+      // Punkt oeffnet/schliesst die Farbauswahl, ein Klick auf einen Swatch
+      // waehlt die Farbe und speichert sofort. render() baut das Eingabefeld
+      // neu auf (Wert kommt sonst wieder aus cat.name) - den noch nicht
+      // gespeicherten Text davor sichern und danach zurueckschreiben, sonst
+      // waere ein angefangener neuer Name nach einem Farbklick weg.
+      const rerenderMitEingabe = () => {
+        const eingabe = head.querySelector(".cat-edit");
+        const zwischenwert = eingabe ? eingabe.value : null;
+        render();
+        if (zwischenwert !== null) {
+          const neu = document.querySelector(`[data-edit-cat="${cat.id}"]`);
+          if (neu) neu.value = zwischenwert;
+        }
+      };
+      head.querySelector("[data-farbe-fuer].farbe-punkt").addEventListener("click", e => {
+        e.stopPropagation();
+        farbePickerFuer = farbeOffen ? null : cat.id;
+        rerenderMitEingabe();
+      });
+      if (farbeOffen) {
+        head.querySelectorAll("[data-farbe-wahl]").forEach(sw => {
+          sw.addEventListener("click", e => {
+            e.stopPropagation();
+            cat.farbe = sw.dataset.farbeWahl || null;
+            farbePickerFuer = null;
+            rerenderMitEingabe();
+            save();
+          });
+        });
+      }
+    } else {
+      // Ampel am Zaehler: 0 = grau, offene ToDos = blau, etwas Dringendes = rot.
+      // Zaehlt alle offenen des Bereichs, auch die in Ueber-Themen.
+      const countCls = ampelKlasse(open);
+      head.innerHTML = `
+        <h2 class="col-title">
+          <span class="name">${escapeHtml(cat.name)}</span>
+          <span class="col-count ${countCls}">${open.length}</span>
+        </h2>`;
 
       // Spalte am Titel anfassen und umsortieren, per Doppelklick umbenennen.
       const title = head.querySelector(".col-title");
@@ -2099,32 +2187,19 @@ function renderColumn(cat) {
         render();
       });
 
-      // Punkt oeffnet/schliesst die Farbauswahl, ein Klick auf einen Swatch
-      // waehlt die Farbe und speichert sofort.
-      head.querySelector("[data-farbe-fuer].farbe-punkt").addEventListener("click", e => {
-        e.stopPropagation();
-        farbePickerFuer = farbeOffen ? null : cat.id;
-        render();
-      });
-      if (farbeOffen) {
-        head.querySelectorAll("[data-farbe-wahl]").forEach(sw => {
-          sw.addEventListener("click", e => {
-            e.stopPropagation();
-            cat.farbe = sw.dataset.farbeWahl || null;
-            farbePickerFuer = null;
-            render();
-            save();
-          });
-        });
+      // ＋ ToDo / ＋ Thema rechtsbuendig in derselben Zeile wie der Titel -
+      // nur wenn gerade kein Eingabefeld fuer ein freies ToDo offen ist (das
+      // erscheint dann stattdessen unterhalb, siehe naechster Block).
+      if (!(addingCat === cat.id && addingThema === null)) {
+        head.appendChild(baueAddKnopfzeile(cat));
       }
     }
   }
 
-  // --- Werkzeugzeile: ＋ ToDo (frei) und ＋ Thema, oder das offene Frei-Feld ---
+  // --- Das aufgeklappte Eingabefeld fuer ein freies ToDo ---
   // "Ohne Bereich" bekommt keine eigene Werkzeugzeile - der globale "＋ ToDo"
   // im Header legt genau dort an, eine zweite waere redundant.
   if (addingCat === cat.id && addingThema === null) col.appendChild(baueAddWidget(cat, null));
-  else if (!istOhne) col.appendChild(baueAddKnopfzeile(cat));
 
   // --- Freie ToDos (ohne Ueber-Thema), direkt in der Spalte ---
   const frei = open.filter(t => !t.themaId).sort(sortOpen);
@@ -2263,14 +2338,9 @@ function renderThemaGruppe(cat, th, open) {
 
     if (addingCat === cat.id && addingThema === th.id) {
       gruppe.appendChild(baueAddWidget(cat, th.id));
-    } else if (!offen.length) {
-      // Leeres Thema: Hinweis, der zugleich als Anlege-Flaeche dient.
-      const leer = document.createElement("p");
-      leer.className = "empty thema-leer";
-      leer.textContent = "＋ für ein ToDo.";
-      leer.addEventListener("click", () => openAdd(cat.id, th.id));
-      gruppe.appendChild(leer);
     }
+    // Kein eigener Hinweis mehr fuer ein leeres Thema - das ＋ am Thema-Namen
+    // (oben im head) deckt das Anlegen bereits ab.
     verdrahteDropZone(gruppe, cat, th.id, ul);
   } else {
     // Eingeklappt trotzdem als Ablage nutzbar (ohne Live-Umsortieren).
@@ -2629,6 +2699,7 @@ document.getElementById("fokusHolen").addEventListener("click", async e => {
     fokusZugang = true;
     btn.hidden = true;
     document.getElementById("fokusHinweis").textContent = "Du hast auch Zugang zum Fokus-Tracker.";
+    aktualisiereEinSubtexte();
     snackInfo("Zugang zum Fokus-Tracker freigeschaltet.");
   } catch (e) {
     snackInfo("Hat nicht geklappt - bitte nochmal versuchen.");

@@ -70,7 +70,12 @@
 
   <!-- Einstellungen hinter dem Zahnrad. Ein Dialog mit mehreren Ansichten:
        Hauptansicht (Listen + Konto), Zugriff-verwalten, Abmelde-Rueckfrage,
-       Loesch-Bestaetigung. Die Listen-Zeilen fuellt JS. -->
+       Loesch-Bestaetigung. Die Listen-Zeilen fuellt JS.
+       Hauptansicht als Akkordeon (<details>/<summary>, echtes Ein-Abschnitt-
+       offen erzwingt resetAkkordeon()/JS beim Oeffnen bzw. beim Aufklappen
+       eines anderen) - Ziel: nicht alles auf einen Blick, nur was gerade
+       gebraucht wird. Der Kurztext je Kopfzeile (ein-kopf-sub) fuellt JS,
+       damit man auch zugeklappt sieht, was drinsteckt. -->
   <div id="einstellungenPopup" class="admin-popup" hidden>
     <div class="admin-popup-box einstellungen">
 
@@ -78,52 +83,99 @@
         <div class="admin-popup-icon">⚙️</div>
         <h2>Einstellungen</h2>
 
-        <div class="ein-abschnitt">
-          <h3>Darstellung</h3>
-          <button type="button" id="themeBtn" class="btn">☾ Dunkles Design</button>
-        </div>
+        <details class="ein-abschnitt" data-abschnitt="darstellung">
+          <summary class="ein-kopf">
+            <span class="ein-kopf-icon">🎨</span>
+            <span class="ein-kopf-text">Darstellung</span>
+            <span class="ein-kopf-sub" id="subDarstellung"></span>
+            <span class="ein-kopf-pfeil">▾</span>
+          </summary>
+          <div class="ein-inhalt">
+            <button type="button" id="themeBtn" class="btn">☾ Dunkles Design</button>
+          </div>
+        </details>
 
-        <div class="ein-abschnitt">
-          <h3>Meine Listen</h3>
-          <div id="eigeneListen" class="listen-liste"></div>
-          <button type="button" id="neueListe" class="btn">＋ neue Liste</button>
-          <p id="neueListeHinweis" class="ein-hinweis" hidden></p>
-        </div>
+        <details class="ein-abschnitt" data-abschnitt="listen">
+          <summary class="ein-kopf">
+            <span class="ein-kopf-icon">📋</span>
+            <span class="ein-kopf-text">Meine Listen</span>
+            <span class="ein-kopf-sub" id="subListen"></span>
+            <span class="ein-kopf-pfeil">▾</span>
+          </summary>
+          <div class="ein-inhalt">
+            <div id="eigeneListen" class="listen-liste"></div>
+            <button type="button" id="neueListe" class="btn">＋ neue Liste</button>
+            <p id="neueListeHinweis" class="ein-hinweis" hidden></p>
+          </div>
+        </details>
 
-        <div class="ein-abschnitt" id="geteiltAbschnitt" hidden>
-          <h3>Geteilt mit mir</h3>
-          <div id="geteilteListen" class="listen-liste"></div>
-        </div>
+        <details class="ein-abschnitt" id="geteiltAbschnitt" hidden data-abschnitt="geteilt">
+          <summary class="ein-kopf">
+            <span class="ein-kopf-icon">🔗</span>
+            <span class="ein-kopf-text">Geteilt mit mir</span>
+            <span class="ein-kopf-sub" id="subGeteilt"></span>
+            <span class="ein-kopf-pfeil">▾</span>
+          </summary>
+          <div class="ein-inhalt">
+            <div id="geteilteListen" class="listen-liste"></div>
+          </div>
+        </details>
 
         <!-- Fokus-Zugang ist eine eigene Berechtigung, unabhaengig vom
              ToDo-Konto (siehe schema.sql). "Holen" braucht keine Rueckfrage -
              rein additiv, jederzeit in Fokus' eigenen Einstellungen wieder
              aufgebbar. -->
-        <div class="ein-abschnitt">
-          <h3>Fokus-Tracker</h3>
-          <p id="fokusHinweis" class="ein-hinweis"></p>
-          <button type="button" id="fokusHolen" class="btn">Zugang zum Fokus-Tracker holen</button>
-        </div>
-
-        <div class="ein-abschnitt">
-          <h3>Konto <span id="kontoAdminBadge" class="pille" hidden>Admin</span></h3>
-          <p id="kontoName" class="ein-konto-name">Konto</p>
-          <p id="kontoAdresse" class="ein-konto-mail"></p>
-          <div class="ein-konto-knoepfe">
-            <button type="button" id="kontoAbmelden" class="btn">Abmelden</button>
-            <button type="button" id="todoZugangAufgebenStart" class="btn gefahr">ToDo-Zugang aufgeben</button>
-            <button type="button" id="kontoLoeschenStart" class="btn gefahr">Konto löschen</button>
+        <details class="ein-abschnitt" data-abschnitt="fokus">
+          <summary class="ein-kopf">
+            <span class="ein-kopf-icon">⏱️</span>
+            <span class="ein-kopf-text">Fokus-Tracker</span>
+            <span class="ein-kopf-sub" id="subFokus"></span>
+            <span class="ein-kopf-pfeil">▾</span>
+          </summary>
+          <div class="ein-inhalt">
+            <p id="fokusHinweis" class="ein-hinweis"></p>
+            <button type="button" id="fokusHolen" class="btn">Zugang zum Fokus-Tracker holen</button>
           </div>
-          <p id="todoZugangAdminHinweis" class="ein-hinweis" hidden>
-            Als Admin kannst du dir hier nicht selbst den Zugang entziehen.</p>
-        </div>
+        </details>
+
+        <details class="ein-abschnitt" data-abschnitt="konto">
+          <summary class="ein-kopf">
+            <span class="ein-kopf-icon">👤</span>
+            <span class="ein-kopf-text">Konto</span>
+            <span id="kontoAdminBadge" class="pille" hidden>Admin</span>
+            <span class="ein-kopf-sub" id="subKonto"></span>
+            <span class="ein-kopf-pfeil">▾</span>
+          </summary>
+          <div class="ein-inhalt">
+            <p id="kontoName" class="ein-konto-name">Konto</p>
+            <p id="kontoAdresse" class="ein-konto-mail"></p>
+            <button type="button" id="kontoAbmelden" class="btn">Abmelden</button>
+            <!-- Getrennt von Abmelden: beides hier ist unwiderruflich, eine
+                 eigene Box mit --del-soft hebt das ab, statt nur auf die rote
+                 Schrift von .btn.gefahr zu setzen (die allein ging neben dem
+                 harmlosen Abmelden-Knopf unter). -->
+            <div class="ein-gefahrenzone">
+              <p class="ein-gefahren-label">Unwiderruflich</p>
+              <button type="button" id="todoZugangAufgebenStart" class="btn gefahr">ToDo-Zugang aufgeben</button>
+              <button type="button" id="kontoLoeschenStart" class="btn gefahr">Konto löschen</button>
+            </div>
+            <p id="todoZugangAdminHinweis" class="ein-hinweis" hidden>
+              Als Admin kannst du dir hier nicht selbst den Zugang entziehen.</p>
+          </div>
+        </details>
 
         <!-- Nur fuer Admins sichtbar (JS blendet es je nach Rolle ein). Frueher
              hinter einem Doppelklick auf den Titel versteckt. -->
-        <div class="ein-abschnitt" id="adminAbschnitt" hidden>
-          <h3>Verwaltung</h3>
-          <a href="/admin" class="btn">Verwaltung öffnen</a>
-        </div>
+        <details class="ein-abschnitt" id="adminAbschnitt" hidden data-abschnitt="verwaltung">
+          <summary class="ein-kopf">
+            <span class="ein-kopf-icon">🛡️</span>
+            <span class="ein-kopf-text">Verwaltung</span>
+            <span class="ein-kopf-pfeil">▾</span>
+          </summary>
+          <div class="ein-inhalt">
+            <a href="/admin" class="btn">Verwaltung öffnen</a>
+          </div>
+        </details>
       </div>
 
       <!-- Zugriff einer eigenen, geteilten Liste verwalten. -->

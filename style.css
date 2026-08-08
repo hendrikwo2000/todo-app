@@ -256,6 +256,7 @@ input[type="date"]:focus {
   padding: 2px 4px 0;
 }
 .col-title {
+  flex: 1;
   font-size: 16px;
   font-weight: 700;
   margin: 0;
@@ -376,14 +377,20 @@ input[type="date"]:focus {
   outline: none;
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-/* Loeschen erscheint nur im Bearbeiten-Modus (Doppelklick auf den Namen). */
+/* Loeschen (und die Farbauswahl, siehe .farbe-punkt) erscheinen nur im
+   Bearbeiten-Modus (Doppelklick auf den Namen). */
 .col-actions {
   margin-left: auto;
   display: flex;
+  align-items: center;
   gap: 2px;
   flex: none;
 }
 .col-actions .act { width: 28px; height: 28px; font-size: 13px; }
+/* Etwas groesser als der Punkt in der alten Position neben dem Namen -
+   sitzt hier neben einem 28px-Symbolknopf und braucht eine vergleichbare
+   Tippflaeche. */
+.col-actions .farbe-punkt { width: 16px; height: 16px; margin: 0 6px 0 3px; }
 
 /* ---------- Eingabe pro Spalte ---------- */
 .col-add-btn {
@@ -642,9 +649,11 @@ input[type="date"]:focus {
 .done-toggle.collapsed .arrow { transform: rotate(-90deg); }
 
 /* ---------- Ueber-Themen (Gruppen innerhalb einer Spalte) ---------- */
-/* Werkzeugzeile: freies ToDo links, neues Ueber-Thema rechts. */
-.col-tools { display: flex; gap: 4px; align-items: center; }
-.col-tools .col-add-btn { flex: 1; width: auto; }
+/* Steht jetzt rechtsbuendig neben dem Titel (siehe .col-title flex:1), nicht
+   mehr als eigene volle Zeile darunter - beide Knoepfe darum auf natuerliche
+   Breite statt sich Platz zu teilen. */
+.col-tools { display: flex; gap: 4px; align-items: center; flex: none; }
+.col-tools .col-add-btn { flex: none; width: auto; }
 .col-thema-btn {
   flex: none;
   border: 1px dashed transparent;
@@ -752,8 +761,6 @@ input[type="date"]:focus {
 /* ToDos eines Themas leicht eingerueckt mit Leiste - macht die Ebene sichtbar,
    ohne eine schwere Box um die Gruppe zu ziehen. */
 .thema-list { margin-left: 9px; padding-left: 8px; border-left: 2px solid var(--line); }
-.thema-leer { margin-left: 9px; padding-left: 8px; cursor: pointer; }
-.thema-leer:hover { color: var(--accent); }
 
 /* Ueber-Thema-Auswahl im Bearbeiten-Dialog eines ToDos. */
 .edit-thema {
@@ -1040,22 +1047,47 @@ input[type="date"]:focus {
 .admin-popup-box.einstellungen > div > .admin-popup-icon { align-self: center; }
 .admin-popup-box.einstellungen h2 { text-align: center; }
 
+/* Jeder Abschnitt ein <details> - zu wieviel auf einmal offenstand, war
+   genau die Klage ("alles steht offen"). Der toggle-Listener in app.js
+   (bei zeigeEinAnsicht/resetAkkordeon) sorgt dafuer, dass beim Aufklappen
+   eines Abschnitts die anderen zuklappen und dass die Hauptansicht immer
+   mit "Meine Listen" offen startet, alles andere zu. */
 .ein-abschnitt {
-  display: flex; flex-direction: column; gap: 8px;
-  padding-top: 14px; margin-top: 2px;
+  display: flex; flex-direction: column;
+  padding-top: 6px; margin-top: 2px;
   border-top: 1px solid var(--line);
 }
 /* Ohne dieses [hidden] gewinnt "display: flex" oben gegen das hidden-Attribut
    (gleiche Spezifitaet, Autoren-CSS schlaegt die UA-Regel) - der Abschnitt
    blieb sichtbar, egal was JS an .hidden setzte. */
 .ein-abschnitt[hidden] { display: none; }
-#einstellungenHaupt > .ein-abschnitt:first-of-type { border-top: 0; padding-top: 4px; }
-.ein-abschnitt h3 {
-  margin: 0; font-size: 12px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
-  display: flex; align-items: center; gap: 6px;
+#einstellungenHaupt > .ein-abschnitt:first-of-type { border-top: 0; padding-top: 0; }
+
+.ein-kopf {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 2px;
+  cursor: pointer;
+  list-style: none;
+  -webkit-tap-highlight-color: transparent;
 }
+.ein-kopf::-webkit-details-marker { display: none; }
+.ein-kopf:hover .ein-kopf-text { color: var(--accent); }
+.ein-kopf-icon { flex: none; font-size: 15px; line-height: 1; }
+.ein-kopf-text { font-size: 14px; font-weight: 600; color: var(--text); transition: color .12s; }
+/* Zieht sich selbst (und damit auch den Pfeil dahinter) an den rechten Rand -
+   Icon/Text/Admin-Pille bleiben links gruppiert. */
+.ein-kopf-sub {
+  margin-left: auto;
+  font-size: 12px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45%;
+}
+.ein-kopf-pfeil { flex: none; font-size: 11px; color: var(--muted); transition: transform .15s; }
+.ein-abschnitt[open] > .ein-kopf .ein-kopf-pfeil { transform: rotate(180deg); }
+
+.ein-inhalt { display: flex; flex-direction: column; gap: 8px; padding: 2px 2px 14px; }
+
 .pille {
+  flex: none;
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
   color: var(--accent); background: var(--accent-soft);
   padding: 1px 6px; border-radius: 6px;
@@ -1064,8 +1096,19 @@ input[type="date"]:focus {
 .ein-hinweis { font-size: 12px; color: var(--muted); margin: 0; }
 .ein-konto-name { font-size: 15px; font-weight: 600; margin: 0; }
 .ein-konto-mail { font-size: 12.5px; color: var(--muted); margin: 0; word-break: break-all; }
-.ein-konto-knoepfe { display: flex; gap: 8px; }
-.ein-konto-knoepfe .btn { flex: 1; justify-content: center; }
+/* Abmelden (harmlos, haeufig) steht jetzt fuer sich; die zwei
+   unwiderruflichen Aktionen stehen sichtbar abgesetzt in einer eigenen,
+   rot getoenten Box statt gleichrangig danebenzustehen. */
+.ein-gefahrenzone {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-top: 4px; padding: 10px;
+  border: 1px solid var(--del-soft); border-radius: 10px;
+  background: var(--del-soft);
+}
+.ein-gefahren-label {
+  margin: 0; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--red);
+}
 #neueListe { align-self: flex-start; }
 #neueListe:disabled { opacity: .5; cursor: not-allowed; }
 #neueListe:disabled:hover { color: var(--text); border-color: var(--line); }
@@ -1090,8 +1133,12 @@ input[type="date"]:focus {
   padding: 1px 6px; border-radius: 6px;
 }
 .lz-von { font-size: 12px; color: var(--muted); word-break: break-all; }
-.lz-knoepfe { display: flex; gap: 6px; flex-wrap: wrap; }
+.lz-knoepfe { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .btn.klein { padding: 5px 10px; font-size: 12.5px; }
+/* Loeschen als eigenes Symbol statt gleichrangiger dritter Text-Knopf neben
+   Teilen/Umbenennen - an den rechten Rand der Zeile geschoben, damit die
+   unwiderrufliche Aktion nicht einfach mittendrin steht. */
+.lz-loeschen { margin-left: auto; }
 .lz-geteilt {
   align-self: flex-start;
   background: none; border: 0; padding: 2px 0;
