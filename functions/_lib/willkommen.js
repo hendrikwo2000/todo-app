@@ -26,18 +26,32 @@ import { sendeMail, huelle, absatz, knopf, fussnote } from "./mail.js";
 // verschenkt also nichts, was nicht sowieso offen laege.
 const GUELTIG_TAGE = 7;
 
+// Fest verdrahtet, weil ToDo's eigener request.url-Ursprung fuer eine
+// Fokus-Freischaltung nicht passt (diese Function laeuft immer auf der
+// ToDo-Seite, auch wenn ueber die Fokus-Warteliste freigeschaltet wurde).
+// Gleiche Abwaegung wie TODO_URL in Fokus/web/functions/api/waitlist.js:
+// lokal ist dieser eine Link (fuer quelle='fokus') dadurch nicht testbar,
+// production schon.
+const FOKUS_URL = "https://fokus.it-wolf.org";
+
 /**
  * Legt einen Anmeldelink an und verschickt die Willkommensmail.
  * Liefert das Ergebnis von sendeMail ({ ok, grund }).
  *
- * `url` ist der Ursprung der Seite (https://todo.it-wolf.org).
- * `fokusZugang`: ob bei dieser Freischaltung auch fokus_zugang gesetzt wurde
- * (siehe functions/api/admin/waitlist.js) - dann bekommt die Mail einen
- * zusaetzlichen Hinweis auf den Fokus-Tracker. Derselbe Anmeldelink deckt
- * beide Apps ab (eine Sitzung, ein Cookie fuer *.it-wolf.org), es braucht
- * also keinen zweiten Link.
+ * `url` ist der Ursprung DIESER Anfrage (https://todo.it-wolf.org, lokal
+ * auch mal 127.0.0.1:PORT) - nur fuer quelle='todo' tatsaechlich verwendet.
+ * `quelle`: 'todo' oder 'fokus', woher die Wartelisten-Anfrage kam (siehe
+ * waitlist.quelle in schema.sql) - bestimmt, auf welche App der Anmeldelink
+ * zeigt. Ein frisch freigeschaltetes Konto hat immer GENAU EINE der beiden
+ * Berechtigungen, nie beide (die zweite App holt sich der Nutzer seither
+ * selbst, siehe Kommentar bei todo_zugang) - deshalb kein Fall fuer "beide".
  */
-export async function sendeWillkommen(env, { name, email, url, fokusZugang = false }) {
+export async function sendeWillkommen(env, { name, email, url, quelle = "todo" }) {
+  const istFokus = quelle === "fokus";
+  const zielUrl = istFokus ? FOKUS_URL : url;
+  const zugangText = istFokus ? "zum Fokus-Tracker" : "zur ToDo-Liste";
+  const knopfText = istFokus ? "Zum Fokus-Tracker" : "Zur ToDo-Liste";
+
   // Schlaegt das Anlegen fehl, geht die Mail trotzdem raus - nur eben ohne
   // Direktanmeldung. Eine Freischaltung ohne jede Nachricht waere schlimmer
   // als eine mit einem Schritt mehr.
@@ -51,20 +65,10 @@ export async function sendeWillkommen(env, { name, email, url, fokusZugang = fal
       `INSERT INTO login_codes (email, code_hash, token_hash, expires_at)
        VALUES (?, ?, ?, datetime('now', '+${GUELTIG_TAGE} days'))`
     ).bind(email, await hashHex(neuesToken()), await hashHex(token)).run();
-    link = `${url}/api/auth/link?t=${token}`;
+    link = `${zielUrl}/api/auth/link?t=${token}`;
   } catch (e) {
     link = null;
   }
-
-  const zugangText = fokusZugang ? "zur ToDo-Liste und zum Fokus-Tracker" : "zur ToDo-Liste";
-  const fokusHinweisHtml = fokusZugang
-    ? absatz(`<span style="color:#8b8e96;font-size:13px;">Beides mit derselben
-              Adresse: der Fokus-Tracker läuft unter
-              <a href="https://fokus.it-wolf.org" style="color:#4f63d2;">fokus.it-wolf.org</a>.</span>`)
-    : "";
-  const fokusHinweisText = fokusZugang
-    ? "\n\nBeides mit derselben Adresse: der Fokus-Tracker laeuft unter https://fokus.it-wolf.org."
-    : "";
 
   const html = link
     ? huelle("Willkommen!",
@@ -73,21 +77,19 @@ export async function sendeWillkommen(env, { name, email, url, fokusZugang = fal
         knopf("Jetzt anmelden", link) +
         absatz(`<span style="color:#8b8e96;font-size:13px;">Der Link gilt
                 ${GUELTIG_TAGE} Tage. Danach kommst du jederzeit über
-                <a href="${url}" style="color:#4f63d2;">${url.replace(/^https?:\/\//, "")}</a>
+                <a href="${zielUrl}" style="color:#4f63d2;">${zielUrl.replace(/^https?:\/\//, "")}</a>
                 rein — Adresse eintragen, Link aus der Mail klicken.</span>`) +
-        fokusHinweisHtml +
         fussnote("Fragen? Antworte einfach auf diese Mail."))
     : huelle("Willkommen!",
         absatz(`Hallo ${name}, dein Zugang ${zugangText} ist da.
                 Klick unten, gib deine Adresse ein und du bekommst einen
                 Anmeldelink — ein Passwort brauchst du nicht.`) +
-        knopf("Zur ToDo-Liste", url) +
-        fokusHinweisHtml +
+        knopf(knopfText, zielUrl) +
         fussnote("Fragen? Antworte einfach auf diese Mail."));
 
   const text = link
-    ? `Hallo ${name},\n\ndein Zugang ${zugangText} ist da. Mit diesem Link bist du sofort angemeldet:\n\n${link}\n\nDer Link gilt ${GUELTIG_TAGE} Tage. Danach kommst du jederzeit ueber ${url} rein - Adresse eintragen, Link aus der Mail klicken.${fokusHinweisText}`
-    : `Hallo ${name},\n\ndein Zugang ${zugangText} ist da:\n${url}\n\nGib dort deine Adresse ein, dann bekommst du einen Anmeldelink. Ein Passwort brauchst du nicht.${fokusHinweisText}`;
+    ? `Hallo ${name},\n\ndein Zugang ${zugangText} ist da. Mit diesem Link bist du sofort angemeldet:\n\n${link}\n\nDer Link gilt ${GUELTIG_TAGE} Tage. Danach kommst du jederzeit ueber ${zielUrl} rein - Adresse eintragen, Link aus der Mail klicken.`
+    : `Hallo ${name},\n\ndein Zugang ${zugangText} ist da:\n${zielUrl}\n\nGib dort deine Adresse ein, dann bekommst du einen Anmeldelink. Ein Passwort brauchst du nicht.`;
 
   return await sendeMail(env, { to: email, subject: "Du bist freigeschaltet", html, text });
 }

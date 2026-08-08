@@ -7,6 +7,13 @@
  *
  * Antwortet mit einer Weiterleitung statt JSON: der Aufruf kommt aus einem
  * Mailprogramm, nicht aus der App.
+ *
+ * login_codes ist mit dem Fokus-Tracker geteilt - ein dort angeforderter oder
+ * per Willkommensmail verschickter Link kann also auch hier landen (z. B. ein
+ * reines Fokus-Konto, dessen Willkommensmail ueber diese App verschickt
+ * wurde). Genau wie beim Anfordern eines Codes (request-code.js) gilt: ein
+ * gueltiger Link IST der Login-Versuch, der todo_zugang gleich mit setzt -
+ * kein separater "gesperrt"-Fall mehr noetig.
  */
 
 import { hashHex, neuesToken, setzeSessionCookies, mitCookies, SESSION_ABLAUF_SQL } from "../../_lib/session.js";
@@ -34,9 +41,12 @@ export async function onRequestGet({ request, env }) {
     // statt einer nackten Fehlerseite.
     if (!eintrag) return weiter("/?login=abgelaufen");
 
-    const nutzer = await env.DB.prepare("SELECT id FROM users WHERE email = ?")
+    const nutzer = await env.DB.prepare("SELECT id, todo_zugang FROM users WHERE email = ?")
       .bind(eintrag.email).first();
     if (!nutzer) return weiter("/?login=fehler");
+    if (!nutzer.todo_zugang) {
+      await env.DB.prepare("UPDATE users SET todo_zugang = 1 WHERE id = ?").bind(nutzer.id).run();
+    }
 
     const sitzung = neuesToken();
     await env.DB.batch([

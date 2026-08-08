@@ -95,14 +95,27 @@
           <div id="geteilteListen" class="listen-liste"></div>
         </div>
 
+        <!-- Fokus-Zugang ist eine eigene Berechtigung, unabhaengig vom
+             ToDo-Konto (siehe schema.sql). "Holen" braucht keine Rueckfrage -
+             rein additiv, jederzeit in Fokus' eigenen Einstellungen wieder
+             aufgebbar. -->
+        <div class="ein-abschnitt">
+          <h3>Fokus-Tracker</h3>
+          <p id="fokusHinweis" class="ein-hinweis"></p>
+          <button type="button" id="fokusHolen" class="btn">Zugang zum Fokus-Tracker holen</button>
+        </div>
+
         <div class="ein-abschnitt">
           <h3>Konto <span id="kontoAdminBadge" class="pille" hidden>Admin</span></h3>
           <p id="kontoName" class="ein-konto-name">Konto</p>
           <p id="kontoAdresse" class="ein-konto-mail"></p>
           <div class="ein-konto-knoepfe">
             <button type="button" id="kontoAbmelden" class="btn">Abmelden</button>
+            <button type="button" id="todoZugangAufgebenStart" class="btn gefahr">ToDo-Zugang aufgeben</button>
             <button type="button" id="kontoLoeschenStart" class="btn gefahr">Konto löschen</button>
           </div>
+          <p id="todoZugangAdminHinweis" class="ein-hinweis" hidden>
+            Als Admin kannst du dir hier nicht selbst den Zugang entziehen.</p>
         </div>
 
         <!-- Nur fuer Admins sichtbar (JS blendet es je nach Rolle ein). Frueher
@@ -121,6 +134,15 @@
         <div id="mitgliederListe" class="listen-liste"></div>
         <button type="button" id="alleEntfernen" class="btn gefahr">Alle entfernen &amp; Link zurücksetzen</button>
         <button type="button" id="mitgliederZurueck" class="lock-link">Zurück</button>
+      </div>
+
+      <div id="todoZugangAufgebenFrage" hidden>
+        <div class="admin-popup-icon">🚪</div>
+        <h2>ToDo-Zugang aufgeben?</h2>
+        <p>Deine Listen und ToDos bleiben erhalten. Du kommst jederzeit wieder
+           rein — einfach erneut anmelden.</p>
+        <button type="button" id="todoZugangAufgebenJa" class="btn gefahr">Ja, Zugang aufgeben</button>
+        <button type="button" id="todoZugangAufgebenZurueck" class="lock-link">Zurück</button>
       </div>
 
       <div id="kontoAbmeldenFrage" hidden>
@@ -171,6 +193,16 @@
       <h2 id="lockErfolgTitel">Du stehst auf der Liste</h2>
       <p class="lock-hint" id="lockErfolgText"></p>
       <button type="button" id="lockErfolgZurueck" class="lock-link">Zurück zur Anmeldung</button>
+    </div>
+
+    <!-- Angemeldet, aber ohne todo_zugang (z. B. ein reines Fokus-Konto, oder
+         gerade selbst aufgegeben). Eigener Kasten statt einer Zeile in der
+         Maske: hier hilft kein zweiter Anmeldeversuch mit derselben Sitzung. -->
+    <div id="lockGesperrt" class="lock-box" hidden>
+      <div class="lock-icon">⛔</div>
+      <h2>Kein Zugang</h2>
+      <p class="lock-hint" id="lockGesperrtText"></p>
+      <button type="button" class="lock-link" id="lockAbmelden">Abmelden</button>
     </div>
   </div>
 

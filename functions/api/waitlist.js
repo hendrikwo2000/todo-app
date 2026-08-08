@@ -56,10 +56,17 @@ export async function onRequestPost({ request, env }) {
   if (botFehler) return json({ error: botFehler }, 400);
 
   try {
-    // Schon freigeschaltet? Dann gehoert die Person nicht auf die Warteliste,
-    // sondern soll sich einfach anmelden.
-    const nutzer = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
+    // Schon ein Konto? Dann gehoert die Person nicht auf die Warteliste - hat
+    // sie schon todo_zugang, einfach anmelden; sonst (z. B. ein reines
+    // Fokus-Konto) gleich freischalten, statt auf einen Admin zu warten. Der
+    // naechste Login-Versuch wuerde ohnehin genauso freischalten, siehe
+    // request-code.js - hier passiert dasselbe nur einen Schritt frueher.
+    const nutzer = await env.DB.prepare("SELECT id, todo_zugang FROM users WHERE email = ?").bind(email).first();
     if (nutzer) {
+      if (!nutzer.todo_zugang) {
+        await env.DB.prepare("UPDATE users SET todo_zugang = 1 WHERE id = ?").bind(nutzer.id).run();
+        return json({ ok: true, message: "Du bist jetzt auch für die ToDo-Liste freigeschaltet - melde dich einfach an." });
+      }
       return json({ error: "Diese Adresse ist bereits freigeschaltet - melde dich einfach an." }, 409);
     }
 

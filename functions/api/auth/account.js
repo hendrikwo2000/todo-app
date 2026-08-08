@@ -6,7 +6,8 @@
  * einen unbedachten Klick: der Vorgang loescht alle ToDos unwiderruflich.
  */
 
-import { angemeldeterNutzer, loescheSessionCookies, mitCookies } from "../../_lib/session.js";
+import { loescheSessionCookies, mitCookies } from "../../_lib/session.js";
+import { nutzerOderFehler } from "../../_lib/zugang.js";
 import { loescheKonto, istLetzterAdmin, meldeLoeschung } from "../../_lib/loeschen.js";
 
 function json(body, status = 200, cookies = []) {
@@ -22,8 +23,8 @@ function json(body, status = 200, cookies = []) {
 export async function onRequestDelete({ request, env }) {
   if (!env.DB) return json({ error: "D1-Bindung DB fehlt im Pages-Projekt" }, 500);
 
-  const nutzer = await angemeldeterNutzer(request, env);
-  if (!nutzer) return json({ error: "Nicht angemeldet" }, 401);
+  const { nutzer, fehler } = await nutzerOderFehler(request, env);
+  if (fehler) return fehler;
 
   let body;
   try {

@@ -1,0 +1,31 @@
+-- Migration: eigenstaendiger ToDo-Zugang (symmetrisch zu fokus_zugang)
+--
+-- Bisher war ToDo-Zugang unconditional: jede Zeile in users durfte die
+-- ToDo-Liste benutzen, es gab keine eigene Spalte dafuer. Seit die Warteliste
+-- auch ueber fokus.it-wolf.org Konten anlegen kann (quelle='fokus'), stimmt
+-- das nicht mehr automatisch - ein reines Fokus-Konto soll nicht heimlich
+-- auch ToDo-Zugang haben. todo_zugang macht diese Berechtigung explizit,
+-- symmetrisch zu fokus_zugang.
+--
+-- DEFAULT 1: haelt den Status quo fuer JEDE bestehende Zeile unveraendert -
+-- bislang hatte ausnahmslos jedes Konto ToDo-Zugang, das darf beim Einspielen
+-- dieser Migration nicht kippen. Neue Konten setzen die Spalte ab jetzt
+-- explizit je nach waitlist.quelle (siehe functions/api/admin/waitlist.js).
+--
+-- Ab jetzt symmetrisch selbstbedienbar: eine Freischaltung ueber die
+-- Warteliste (einer der beiden Apps) braucht einmalig einen Admin, danach
+-- kann sich der Nutzer die jeweils andere App selbst holen - per Knopf in den
+-- Einstellungen oder einfach per Login-Versuch dort (siehe *-zugang.js in
+-- beiden Projekten).
+--
+-- REIN ADDITIV: nur ALTER TABLE ADD COLUMN. Bestehender Code liest die neue
+-- Spalte nicht, solange er nicht auf den neuen Stand aktualisiert ist - kein
+-- Bruchfenster zwischen Migration und Push.
+--
+-- Einspielen: Cloudflare-Dashboard -> D1 -> todo -> Konsole, oder
+--   npx wrangler d1 execute todo --remote --file=migration-todo-zugang.sql
+--
+-- Rollback: die Spalte stoert alten Code nicht (er liest sie nicht).
+
+ALTER TABLE users ADD COLUMN todo_zugang INTEGER NOT NULL DEFAULT 1
+  CHECK (todo_zugang IN (0, 1));

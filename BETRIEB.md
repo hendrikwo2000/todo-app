@@ -19,15 +19,20 @@ eine Liste sehen und bearbeiten darf, steht in `board_members`. Siehe
 ## Login
 
 Anmeldelink statt Passwort: wer sich anmelden darf, steht in der Tabelle
-`users` — das ist zugleich die ganze Zugangsbeschränkung, es gibt keine offene
-Registrierung.
+`users` — es gibt keine offene Registrierung (nur die Warteliste, siehe
+unten). Ein Konto allein reicht seit dem symmetrischen Zugangsmodell (siehe
+„Warteliste und Verwaltung") aber nicht mehr automatisch für DIESE App -
+dafür braucht es zusätzlich `todo_zugang=1`. Fehlt die Spalte noch (z. B. ein
+reines Fokus-Konto), setzt der Login-Versuch selbst sie mit — kein Umweg über
+die Warteliste nötig, siehe dort.
 
 Ablauf: Adresse eintragen → `/api/auth/request-code` verschickt über
 [Resend](https://resend.com) eine Mail mit **Link** (ein Klick, fertig) und
 einem sechsstelligen **Code** als Ausweg für den Gerätewechsel. Der Link geht
 an `/api/auth/link`, der Code an `/api/auth/verify-code`; beide zeigen auf
 denselben Datenbankeintrag, was zuerst benutzt wird, verbraucht beide. Gültig
-sind sie zehn Minuten.
+sind sie zehn Minuten (Ausnahme: der Link aus der Willkommensmail, sieben
+Tage, siehe unten).
 
 Die wartende Anmeldemaske fragt alle drei Sekunden `/api/auth/status` ab und
 geht von selbst auf, sobald der Link geklickt wurde — sonst stünde man vor dem
@@ -213,27 +218,55 @@ Unter **[/admin](https://todo.it-wolf.org/admin)** stehen offene Anfragen und
 die Nutzerliste. Freischalten legt das Konto an und verschickt eine
 Willkommensmail; Ablehnen setzt nur den Status — bewusst ohne Mail.
 
-**Fokus-Zugang wird hier mitverwaltet, obwohl er zu einer anderen App gehört.**
-Der Fokus-Tracker (fokus.it-wolf.org, eigenes Cloudflare-Pages-Projekt, gleiche
-D1-Datenbank) hat eine eigene Login-Maske mit eigener „Noch keinen Zugang?"-
-Warteliste, die in dieselbe `waitlist`-Tabelle schreibt — nur mit
-`quelle='fokus'` statt `'todo'`. Ein ToDo-Konto gibt NICHT automatisch
-Fokus-Zugang (bewusste Trennung, Fokus ist Eigennutz-Werkzeug, siehe
-Kommentar in `schema.sql`); die Spalte `users.fokus_zugang` steuert das
-unabhängig von `role`. Freischalten eines Eintrags mit `quelle='fokus'` setzt
-`fokus_zugang` gleich mit; in der Nutzerliste lässt sich der Schalter jederzeit
-einzeln umlegen („Fokus-Zugang geben/entziehen"), unabhängig von Adminrechten
-und ohne Selbstsperr-Risiko (anders als beim Admin-Rollentausch gibt es hier
-keine Sperre gegen das eigene Konto). `functions/api/waitlist.js` auf der
-Fokus-Seite verlinkt Freischalten- und Verwaltungslink fest auf
-`todo.it-wolf.org`, weil `/admin` und `/freischalten` nur hier existieren.
+**Zwei unabhängige Zugangsspalten, EINE Warteliste.** `users.todo_zugang` und
+`users.fokus_zugang` steuern je eine App (fokus.it-wolf.org: eigenes
+Cloudflare-Pages-Projekt, gleiche D1-Datenbank), unabhängig von `role` und
+voneinander — siehe Kommentar in `schema.sql`. Beide Apps schreiben in
+dieselbe `waitlist`-Tabelle, `quelle` hält fest, über welche Maske sich jemand
+eingetragen hat, und steuert beim Freischalten, welche der beiden Spalten
+gesetzt wird. Ein frisch freigeschaltetes Konto hat also immer GENAU EINE der
+beiden Berechtigungen, nie automatisch beide.
+
+**Seit 08.08.2026 symmetrisch selbstbedienbar: nur die ERSTE Freischaltung
+braucht einen Admin.** Danach holt sich der Nutzer die jeweils andere App
+selbst, zwei gleichwertige Wege:
+- Ein Knopf in den Einstellungen der App, die er schon hat („Zugang zum
+  Fokus-Tracker holen", drüben spiegelbildlich „Zugang zur ToDo-Liste holen")
+  — setzt die Spalte sofort, ohne Rückfrage (rein additiv, in der jeweils
+  ANDEREN App jederzeit wieder aufgebbar).
+- Einfach ein Login-Versuch auf der anderen App: `request-code.js` und
+  `link.js` setzen die fehlende Spalte still mit, bevor sie den Code
+  verschicken bzw. die Sitzung anlegen — keine eigene Meldung, sieht wie ein
+  ganz normaler Login aus.
+
+In der Nutzerliste lässt sich jede Spalte trotzdem jederzeit einzeln umlegen
+(„ToDo-/Fokus-Zugang geben/entziehen"), unabhängig von Adminrechten. Der
+Fokus-Schalter hat kein Selbstsperr-Risiko, deshalb keine Sperre gegen das
+eigene Konto; der ToDo-Schalter blendet sich beim eigenen Konto trotzdem aus
+(kein hartes Aussperr-Risiko — `/admin` hängt an `role`, nicht an
+`todo_zugang` —, aber eine unnötig verwirrende Zwischenlage).
+
+Jeder Nutzer kann seinen Zugang zu EINER App auch selbst wieder aufgeben (in
+deren eigenen Einstellungen, „ToDo-/Fokus-Zugang aufgeben", je eigenes
+`auth/zugang-aufgeben.js`) — die Daten bleiben, nur der Zugang ist weg, ein
+erneuter Login-Versuch holt ihn sich selbst zurück. Für `role='admin'` ist das
+beim ToDo-Zugang gesperrt, gleiche Vorsicht wie beim Rollen-Schalter im
+Dashboard.
+
+`functions/api/waitlist.js` auf der Fokus-Seite verlinkt Freischalten- und
+Verwaltungslink fest auf `todo.it-wolf.org`, weil `/admin` und `/freischalten`
+nur hier existieren.
 
 **Die Willkommensmail meldet direkt an.** Sie enthält einen Anmeldelink, der
 sieben Tage gilt (`functions/_lib/willkommen.js`). Er liegt als normaler
-Eintrag in `login_codes` und wird vom selben `/api/auth/link` eingelöst. Sieben
-Tage statt zehn Minuten, weil so eine Mail auch mal ein Wochenende liegen
-bleibt; wer Zugriff aufs Postfach hat, könnte sich ohnehin jederzeit selbst
-einen Anmeldelink schicken lassen.
+Eintrag in `login_codes` und wird vom selben `/api/auth/link` eingelöst —
+gebaut mit dem Origin der App, für die freigeschaltet wurde (`quelle`), NICHT
+zwingend `todo.it-wolf.org`: bei `quelle='fokus'` zeigt der Knopf fest auf
+`fokus.it-wolf.org` (ToDo's eigener request.url-Origin passt dort nicht,
+lokal ist dieser eine Link deshalb nicht testbar — Kommentar in
+`willkommen.js`). Sieben Tage statt zehn Minuten, weil so eine Mail auch mal
+ein Wochenende liegen bleibt; wer Zugriff aufs Postfach hat, könnte sich
+ohnehin jederzeit selbst einen Anmeldelink schicken lassen.
 
 **Freischalten direkt aus der Mail:** Die Benachrichtigung enthält einen
 Einmal-Link (7 Tage gültig) auf `/freischalten`. Das bloße Öffnen tut nichts —
@@ -255,12 +288,11 @@ Admins (Rolle kommt frisch von `/api/todos` als `admin`-Flag, reine Optik —
 `/api/admin/*` prüft selbst nochmal). Bei Nicht-Admins bleibt der Abschnitt
 per `hidden` ausgeblendet.
 
-Ein Nutzer lässt sich auch direkt anlegen, ohne Warteliste (optional gleich
-mit Fokus-Zugang):
+Ein Nutzer lässt sich auch direkt anlegen, ohne Warteliste:
 
 ```sql
-INSERT INTO users (email, name, role, fokus_zugang)
-VALUES ('adresse@example.com', 'Name', 'user', 0);
+INSERT INTO users (email, name, role, todo_zugang, fokus_zugang)
+VALUES ('adresse@example.com', 'Name', 'user', 1, 0);
 ```
 
 ## Bot-Schutz

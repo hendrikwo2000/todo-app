@@ -83,6 +83,9 @@ let turnstileId = null;
 let istAdmin = false;
 let eigeneEmail = "";
 let eigenerName = "";
+// Ob das Konto zusaetzlich Zugang zum Fokus-Tracker hat - fuer den
+// Abschnitt "Fokus-Tracker" in den Einstellungen.
+let fokusZugang = false;
 
 // ---------- Hilfsfunktionen ----------
 function uid() {
@@ -484,6 +487,19 @@ async function logout() {
   location.reload();
 }
 
+// Angemeldet, aber kein todo_zugang. Hier hilft kein zweiter Versuch,
+// deshalb ein eigener Kasten statt einer Zeile in der Anmeldemaske - siehe
+// #lockGesperrt in index.html.
+function zeigeGesperrt(text) {
+  document.getElementById("lockForm").hidden = true;
+  document.getElementById("lockErfolg").hidden = true;
+  document.getElementById("lockGesperrt").hidden = false;
+  document.getElementById("lockGesperrtText").textContent =
+    text || "Dieses Konto ist für die ToDo-Liste nicht freigeschaltet.";
+  document.getElementById("lock").classList.remove("hidden");
+}
+document.getElementById("lockAbmelden").addEventListener("click", logout);
+
 // ---------- Umschalter-Menue ----------
 // Kleines Aufklappmenue am Titel, um zwischen den Listen zu wechseln.
 function aktualisiereMenue() {
@@ -513,12 +529,13 @@ function schliesseMenue() { listenMenue.hidden = true; }
 
 // ---------- Einstellungen ----------
 // Ein Dialog mit mehreren Ansichten: Hauptansicht (Listen + Konto),
-// Zugriff-verwalten, Abmelde- und Loesch-Rueckfrage.
+// Zugriff-verwalten, Abmelde-, Zugang-aufgeben- und Loesch-Rueckfrage.
 const einAnsichten = {
-  haupt:      document.getElementById("einstellungenHaupt"),
-  mitglieder: document.getElementById("mitgliederAnsicht"),
-  abmelden:   document.getElementById("kontoAbmeldenFrage"),
-  loeschen:   document.getElementById("kontoLoeschenFrage"),
+  haupt:          document.getElementById("einstellungenHaupt"),
+  mitglieder:     document.getElementById("mitgliederAnsicht"),
+  abmelden:       document.getElementById("kontoAbmeldenFrage"),
+  zugangAufgeben: document.getElementById("todoZugangAufgebenFrage"),
+  loeschen:       document.getElementById("kontoLoeschenFrage"),
 };
 function zeigeEinAnsicht(name) {
   for (const [k, el] of Object.entries(einAnsichten)) el.hidden = k !== name;
@@ -531,6 +548,21 @@ function oeffneEinstellungen() {
   // Verwaltung nur fuer Admins - der Abschnitt bleibt sonst ausgeblendet.
   document.getElementById("adminAbschnitt").hidden = !istAdmin;
   document.getElementById("kontoAdminBadge").hidden = !istAdmin;
+
+  // Fokus-Tracker: Knopf nur zeigen, solange der Zugang noch fehlt - wer ihn
+  // schon hat, bekommt nur den Hinweistext (das Aufgeben passiert drueben in
+  // Fokus' eigenen Einstellungen, nicht hier).
+  document.getElementById("fokusHolen").hidden = fokusZugang;
+  document.getElementById("fokusHinweis").textContent = fokusZugang
+    ? "Du hast auch Zugang zum Fokus-Tracker."
+    : "Gewohnheiten abhaken und ein Pomodoro-Timer, mit derselben Anmeldung.";
+
+  // Als Admin nicht selbst den ToDo-Zugang aufgeben koennen (kein hartes
+  // Aussperr-Risiko, /admin haengt an der Rolle - aber eine unnoetig
+  // verwirrende Zwischenlage, siehe Kommentar im Endpunkt).
+  document.getElementById("todoZugangAufgebenStart").hidden = istAdmin;
+  document.getElementById("todoZugangAdminHinweis").hidden = !istAdmin;
+
   zeigeEinAnsicht("haupt");
   einstellungenPopup.hidden = false;
 }
@@ -1190,7 +1222,7 @@ function ladeCacheLokal() {
 function speichereCacheLokal() {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({
-      listen, daten, eigeneEmail, eigenerName, istAdmin,
+      listen, daten, eigeneEmail, eigenerName, istAdmin, fokusZugang,
     }));
   } catch (e) { /* z. B. voller Speicher - der Cache ist nur ein Fallback */ }
 }
@@ -1302,6 +1334,7 @@ function wiederherstellenAusCache() {
   eigeneEmail = cache.eigeneEmail || "";
   eigenerName = cache.eigenerName || "";
   istAdmin = !!cache.istAdmin;
+  fokusZugang = !!cache.fokusZugang;
   canSave = true;
   document.getElementById("kontoName").textContent = eigenerName || "Konto";
   document.getElementById("kontoAdresse").textContent = eigeneEmail;
@@ -1326,6 +1359,15 @@ async function loadState() {
       return;
     }
     if (res.status === 401) { await login(); continue; }
+    if (res.status === 403) {
+      // Angemeldet, aber kein todo_zugang (z. B. ein reines Fokus-Konto, oder
+      // gerade selbst aufgegeben) - ein zweiter Anmeldeversuch mit derselben
+      // Sitzung wuerde daran nichts aendern, deshalb eigener Kasten statt
+      // der Anmeldemaske.
+      const daten = await res.json().catch(() => ({}));
+      zeigeGesperrt(daten.error);
+      return;
+    }
     if (!res.ok) {
       serverErreichbar = false;
       wiederherstellenAusCache();
@@ -1338,6 +1380,7 @@ async function loadState() {
     const antwort = (await res.json()) || {};
     canSave = true;
     istAdmin = antwort.admin === true;
+    fokusZugang = antwort.fokusZugang === true;
     eigeneEmail = antwort.email || "";
     eigenerName = antwort.name || "";
     // Name als Ueberschrift im Konto-Abschnitt, Adresse darunter.
@@ -2575,6 +2618,35 @@ document.getElementById("kontoLoeschenZurueck")
   .addEventListener("click", () => zeigeEinAnsicht("haupt"));
 document.getElementById("kontoLoeschenEmail").addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); kontoLoeschen(); }
+});
+
+document.getElementById("fokusHolen").addEventListener("click", async e => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/auth/fokus-zugang", { method: "POST" });
+    if (!res.ok) { snackInfo("Hat nicht geklappt - bitte nochmal versuchen."); return; }
+    fokusZugang = true;
+    btn.hidden = true;
+    document.getElementById("fokusHinweis").textContent = "Du hast auch Zugang zum Fokus-Tracker.";
+    snackInfo("Zugang zum Fokus-Tracker freigeschaltet.");
+  } catch (e) {
+    snackInfo("Hat nicht geklappt - bitte nochmal versuchen.");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("todoZugangAufgebenStart")
+  .addEventListener("click", () => zeigeEinAnsicht("zugangAufgeben"));
+document.getElementById("todoZugangAufgebenZurueck")
+  .addEventListener("click", () => zeigeEinAnsicht("haupt"));
+document.getElementById("todoZugangAufgebenJa").addEventListener("click", async () => {
+  try {
+    await fetch("/api/auth/zugang-aufgeben", { method: "POST" });
+  } catch (e) { /* egal - der Gesperrt-Kasten zeigt den Zustand ohnehin an */ }
+  einstellungenPopup.hidden = true;
+  zeigeGesperrt("Du hast deinen ToDo-Zugang aufgegeben.");
 });
 
 document.getElementById("mitgliederZurueck")

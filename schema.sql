@@ -25,18 +25,27 @@
 -- keine fest verdrahtete Adresse im Code: ein zweiter Admin oder eine neue
 -- Mailadresse ist damit ein UPDATE statt eines Deployments.
 --
--- fokus_zugang ist eine EIGENE, von role/ToDo-Zugang unabhaengige Berechtigung
--- fuer den Fokus-Tracker (fokus.it-wolf.org, zweite App auf dieser Datenbank).
--- Ein ToDo-Konto reicht bewusst nicht automatisch fuer Fokus - das ist ein
--- Eigennutz-Werkzeug, keine Zusatzleistung fuer alle ToDo-Nutzer. Frueher eine
--- Umgebungsvariable (FOKUS_ZUGANG) auf dem Fokus-Pages-Projekt, jetzt hier,
--- damit sich beides aus DEMSELBEN Dashboard (todo.it-wolf.org/admin) pflegen
--- laesst.
+-- todo_zugang und fokus_zugang sind ZWEI EIGENE, von role unabhaengige
+-- Berechtigungen fuer je eine App auf dieser gemeinsamen Datenbank
+-- (todo.it-wolf.org / fokus.it-wolf.org). Ein Konto in dieser Tabelle heisst
+-- nur noch "hat sich irgendwo registriert und wurde einmal freigeschaltet" -
+-- welche App das konkret freischaltet, steht in den beiden Spalten.
+--
+-- Seit 08.08.2026 symmetrisch: die ERSTE Freischaltung (ueber die Warteliste
+-- einer der beiden Apps) braucht einen Admin, jede WEITERE App danach nicht
+-- mehr - wer schon ein Konto hat, kann sich selbst ueber einen Knopf in den
+-- Einstellungen oder einfach per Login-Versuch auf der anderen App
+-- freischalten (siehe die *-zugang.js-Endpunkte in beiden Projekten).
+-- DEFAULT 1 bei todo_zugang, DEFAULT 0 bei fokus_zugang: todo_zugang gab es
+-- am laengsten und war vorher unconditional (jede Zeile in users hatte
+-- automatisch ToDo-Zugang) - der Default haelt das fuer alle bestehenden
+-- Konten bei der Migration unveraendert.
 CREATE TABLE users (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   email        TEXT NOT NULL UNIQUE,
   name         TEXT,
   role         TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  todo_zugang  INTEGER NOT NULL DEFAULT 1 CHECK (todo_zugang IN (0, 1)),
   fokus_zugang INTEGER NOT NULL DEFAULT 0 CHECK (fokus_zugang IN (0, 1)),
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -142,8 +151,10 @@ CREATE TABLE todos (
 --
 -- quelle haelt fest, ueber welche App-Maske sich jemand eingetragen hat -
 -- todo.it-wolf.org oder fokus.it-wolf.org (beide schreiben in dieselbe
--- Tabelle). Steuert beim Freischalten, ob fokus_zugang gleich mit gesetzt
--- wird: wer sich ueber Fokus eintraegt, will erkennbar Fokus, nicht nur ToDo.
+-- Tabelle). Steuert beim Freischalten, WELCHE der beiden Zugangsspalten
+-- gesetzt wird (quelle='todo' -> todo_zugang, quelle='fokus' -> fokus_zugang) -
+-- die jeweils andere App holt sich der Nutzer danach selbst, siehe
+-- Kommentar bei todo_zugang/fokus_zugang oben.
 CREATE TABLE waitlist (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   name       TEXT NOT NULL,

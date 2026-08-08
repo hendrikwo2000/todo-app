@@ -4,12 +4,12 @@
  * eingetragen, damit "welche Listen sehe ich?" eine einzige Abfrage bleibt.
  */
 
-import { angemeldeterNutzer } from "../../_lib/session.js";
 import { json, MAX_EIGENE_LISTEN, eigeneAnzahl, naechstePosition } from "../../_lib/listen.js";
+import { nutzerOderFehler } from "../../_lib/zugang.js";
 
 export async function onRequestPost({ request, env }) {
-  const nutzer = await angemeldeterNutzer(request, env);
-  if (!nutzer) return json({ error: "Nicht angemeldet" }, 401);
+  const { nutzer, fehler } = await nutzerOderFehler(request, env);
+  if (fehler) return fehler;
 
   let body;
   try { body = await request.json(); } catch (e) { return json({ error: "Ungueltiges JSON" }, 400); }

@@ -77,13 +77,14 @@ export async function onRequestPost({ request, env }) {
   // Konto anlegen, Eintrag abhaken und Token entwerten - in einem Rutsch,
   // damit kein Zwischenzustand entstehen kann.
   //
-  // quelle='fokus' gibt gleich Fokus-Zugang mit, wie beim Freischalten im
-  // Dashboard - siehe Kommentar dort (functions/api/admin/waitlist.js).
+  // quelle bestimmt die Zugangsspalte, wie beim Freischalten im Dashboard -
+  // siehe Kommentar dort (functions/api/admin/waitlist.js).
   const fokusZugang = eintrag.quelle === "fokus" ? 1 : 0;
+  const todoZugang = eintrag.quelle === "fokus" ? 0 : 1;
   try {
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO users (email, name, role, fokus_zugang) VALUES (?, ?, 'user', ?)")
-        .bind(eintrag.email, eintrag.name, fokusZugang),
+      env.DB.prepare("INSERT INTO users (email, name, role, todo_zugang, fokus_zugang) VALUES (?, ?, 'user', ?, ?)")
+        .bind(eintrag.email, eintrag.name, todoZugang, fokusZugang),
       env.DB.prepare("UPDATE waitlist SET status = 'freigeschaltet' WHERE id = ?").bind(eintrag.wid),
       env.DB.prepare("UPDATE admin_tokens SET used_at = datetime('now') WHERE id = ?")
         .bind(eintrag.token_id),
@@ -96,7 +97,7 @@ export async function onRequestPost({ request, env }) {
     name: eintrag.name,
     email: eintrag.email,
     url: new URL(request.url).origin,
-    fokusZugang: !!fokusZugang,
+    quelle: eintrag.quelle,
   });
 
   return json({ ok: true, name: eintrag.name, email: eintrag.email, mailVerschickt: versand.ok });

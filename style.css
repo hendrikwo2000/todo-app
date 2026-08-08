@@ -184,6 +184,8 @@ html, body {
    Platz nach rechts, ohne den restlichen Knoepfen ihre Position zu nehmen. */
 #einstellungenBtn { margin-left: auto; }
 #einstellungenBtn[hidden] { display: none; }
+/* Gleiche Falle wie oben: display:flex auf .btn schlaegt [hidden]. */
+#fokusHolen[hidden], #todoZugangAufgebenStart[hidden] { display: none; }
 /* Schmale Screens: der Titel nimmt sich nur so viel Platz wie noetig und
    teilt sich die erste Zeile mit dem Zahnrad (weiterhin rechtsbuendig). Die
    Anlege-Knoepfe ruecken gemeinsam in die zweite Zeile. */

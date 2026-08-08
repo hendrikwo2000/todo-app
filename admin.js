@@ -107,6 +107,8 @@ async function bearbeite(id, aktion, knopfEl, extra = {}) {
       melde(extra.rolle === "admin" ? "Adminrechte vergeben." : "Adminrechte entzogen.");
     } else if (aktion === "fokus") {
       melde(extra.fokusZugang ? "Fokus-Zugang gegeben." : "Fokus-Zugang entzogen.");
+    } else if (aktion === "todo") {
+      melde(extra.todoZugang ? "ToDo-Zugang gegeben." : "ToDo-Zugang entzogen.");
     } else if (aktion === "nutzerLoeschen") {
       melde(daten.mailVerschickt === false
         ? "Gelöscht — aber die Benachrichtigung ging nicht raus."
@@ -150,6 +152,10 @@ function zeichne(daten) {
     // erkennen, dass die Knoepfe fehlen, und das ist kein Hinweis.
     if (n.id === daten.ichSelbst) aktionen.push(marke("Du", "du"));
     if (n.role === "admin") aktionen.push(marke("Admin", "admin"));
+    // Nur zeigen, wenn sie vom Normalfall abweicht - die meisten Konten haben
+    // todo_zugang, ein Badge dafuer waere nur Rauschen (umgekehrt zu Fokus,
+    // wo die meisten Konten den Zugang NICHT haben).
+    if (!n.todo_zugang) aktionen.push(marke("kein ToDo", "schlecht"));
     if (n.fokus_zugang) aktionen.push(marke("Fokus", "fokus"));
     // Fokus-Zugang ist eine eigene, von role unabhaengige Berechtigung (siehe
     // schema.sql) - anders als beim Admin-Rollentausch gibt es hier kein
@@ -160,10 +166,16 @@ function zeichne(daten) {
       () => bearbeite(n.id, "fokus", fb, { fokusZugang: !n.fokus_zugang })
     );
     aktionen.push(fb);
-    // Beim eigenen Konto sonst kein Knopf: sich selbst die Rechte zu entziehen
-    // sperrt einen aus, sobald man der einzige Admin ist. Der Server
-    // verweigert es ohnehin - hier gar nicht erst anbieten.
+    // Beim eigenen Konto sonst keine Knoepfe mit Aussperr-Risiko: sich selbst
+    // die Adminrechte oder den ToDo-Zugang zu entziehen sperrt einen aus,
+    // sobald man der einzige Admin ist bzw. die eigene Liste nicht mehr sieht.
+    // Der Server verweigert beides ohnehin - hier gar nicht erst anbieten.
     if (n.id !== daten.ichSelbst) {
+      const tb = knopf(
+        n.todo_zugang ? "ToDo-Zugang entziehen" : "ToDo-Zugang geben",
+        "still",
+        () => bearbeite(n.id, "todo", tb, { todoZugang: !n.todo_zugang })
+      );
       const zielRolle = n.role === "admin" ? "user" : "admin";
       const b = knopf(
         n.role === "admin" ? "Adminrechte entziehen" : "Zum Admin machen",
@@ -172,7 +184,7 @@ function zeichne(daten) {
       );
       const del = knopf("Löschen", "gefahr",
         () => bearbeite(n.id, "nutzerLoeschen", del, { name: n.name, email: n.email }));
-      aktionen.push(b, del);
+      aktionen.push(tb, b, del);
     }
     nutzerEl.append(zeile(n, aktionen));
   }

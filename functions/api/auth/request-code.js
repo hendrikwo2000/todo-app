@@ -8,6 +8,12 @@
  * praktisch wertlos - waehrend die Verwirrung real war: man wartet auf einen
  * Code, der nie kommt. Sollte es hier je eine offene Registrierung geben,
  * gehoert die generische Antwort zurueck.
+ *
+ * Ein Konto OHNE todo_zugang (z. B. ein reines Fokus-Konto) bekommt hier
+ * KEINE Absage mehr: der Login-Versuch selbst gilt als Freischaltung fuer
+ * diese App - still, ohne eigene Meldung, genau wie ein ganz normaler Login.
+ * Einmal wurde jemand ueber die Warteliste freigeschaltet, jede weitere App
+ * braucht keinen Admin mehr (siehe Kommentar bei todo_zugang in schema.sql).
  */
 
 import { hashHex, neuesToken } from "../../_lib/session.js";
@@ -60,7 +66,6 @@ Du hast das nicht angefordert? Dann ignoriere diese Mail einfach.`;
 
 export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ error: "D1-Bindung DB fehlt im Pages-Projekt" }, 500);
-  if (!env.RESEND_KEY) return json({ error: "RESEND_KEY fehlt im Pages-Projekt" }, 500);
 
   let body;
   try {
@@ -78,9 +83,12 @@ export async function onRequestPost({ request, env }) {
   // abstuerzen lassen (Cloudflare-Fehler 1101 statt einer lesbaren Meldung).
   let nutzer, kuerzlich;
   try {
-    nutzer = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
+    nutzer = await env.DB.prepare("SELECT id, todo_zugang FROM users WHERE email = ?").bind(email).first();
     if (!nutzer) {
       return json({ error: "Diese Adresse ist nicht freigeschaltet." }, 404);
+    }
+    if (!nutzer.todo_zugang) {
+      await env.DB.prepare("UPDATE users SET todo_zugang = 1 WHERE id = ?").bind(nutzer.id).run();
     }
     // Mindestabstand zwischen zwei Anforderungen fuer dieselbe Adresse -
     // verhindert, dass ein Postfach mit Code-Mails geflutet wird.
@@ -90,6 +98,12 @@ export async function onRequestPost({ request, env }) {
   } catch (e) {
     return json({ error: "Datenbankfehler" }, 500);
   }
+
+  // Erst NACH der Zugangspruefung: eine unbekannte Adresse soll ihre Absage
+  // auch dann bekommen, wenn der Mailversand gar nicht eingerichtet ist.
+  // Andersherum antwortet lokal (ohne RESEND_KEY) jede Adresse mit 500, und
+  // der Zugangsweg liesse sich nicht testen.
+  if (!env.RESEND_KEY) return json({ error: "RESEND_KEY fehlt im Pages-Projekt" }, 500);
 
   if (kuerzlich.n > 0) {
     return json({ error: "Bitte kurz warten, bevor du einen neuen Code anforderst." }, 429);

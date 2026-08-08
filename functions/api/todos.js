@@ -21,25 +21,17 @@
  * ToDo-Abgleich statt "alles auf einmal" - ein spaeterer Schritt.
  */
 
-import { angemeldeterNutzer, umstiegAufDomainCookie } from "../_lib/session.js";
+import { umstiegAufDomainCookie } from "../_lib/session.js";
 import { json, listenFuer, rolleIn } from "../_lib/listen.js";
+import { nutzerOderFehler } from "../_lib/zugang.js";
 
 // Feste Palette fuer die Bereichsfarbe (siehe FARBEN in app.js, muss dazu
 // passen). Alles ausserhalb dieser Liste wird abgelehnt statt ungeprueft in
 // die Datenbank zu wandern.
 const FARBEN_ERLAUBT = new Set(["blau", "tuerkis", "gruen", "lila", "pink", "grau"]);
 
-// Liefert entweder die Nutzer-ID der aktuellen Sitzung oder eine fertige
-// Fehlerantwort.
-async function angemeldetOderFehler(request, env) {
-  if (!env.DB) return { fehler: json({ error: "D1-Bindung DB fehlt im Pages-Projekt" }, 500) };
-  const nutzer = await angemeldeterNutzer(request, env);
-  if (!nutzer) return { fehler: json({ error: "Nicht angemeldet" }, 401) };
-  return { nutzerId: nutzer.id, nutzer };
-}
-
 export async function onRequestGet({ request, env }) {
-  const { nutzerId, nutzer, fehler } = await angemeldetOderFehler(request, env);
+  const { nutzerId, nutzer, fokusZugang, fehler } = await nutzerOderFehler(request, env);
   if (fehler) return fehler;
 
   try {
@@ -122,6 +114,10 @@ export async function onRequestGet({ request, env }) {
       email: nutzer.email,
       name: nutzer.name,
       nutzerId: nutzerId,
+      // Fuer den Abschnitt "Fokus-Tracker" in den Einstellungen - ob die
+      // andere App schon freigeschaltet ist oder sich der Nutzer den Zugang
+      // erst noch selbst holen kann.
+      fokusZugang,
       // Reine Metadaten je Liste; der Inhalt steht in daten[id].
       listen: listen.map(b => ({
         id: b.id,
@@ -148,7 +144,7 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPut({ request, env }) {
-  const { nutzerId, fehler } = await angemeldetOderFehler(request, env);
+  const { nutzerId, fehler } = await nutzerOderFehler(request, env);
   if (fehler) return fehler;
 
   let zustand;

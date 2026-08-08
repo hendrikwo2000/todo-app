@@ -6,6 +6,7 @@
  */
 
 import { hashHex, zeitgleich, neuesToken, setzeSessionCookies, mitCookies, SESSION_ABLAUF_SQL } from "../../_lib/session.js";
+import { darfRein } from "../../_lib/zugang.js";
 
 function json(body, status = 200, cookies = []) {
   return new Response(JSON.stringify(body), {
@@ -40,6 +41,12 @@ export async function onRequestPost({ request, env }) {
     // was er nicht erfahren soll, ist WARUM es nicht klappt, weil das beim
     // Durchraten von Codes hilft.
     if (!nutzer) return json({ error: "Falscher oder abgelaufener Code" }, 401);
+    // todo_zugang kann zwischen Codeversand und Einloesen entzogen worden
+    // sein (selten, aber die Pruefung ist billig) - lieber hier noch einmal
+    // ehrlich absagen als eine Sitzung fuer ein gesperrtes Konto anzulegen.
+    if (!(await darfRein(env, email))) {
+      return json({ error: "Diese Adresse ist für die ToDo-Liste nicht freigeschaltet." }, 403);
+    }
 
     const eintrag = await env.DB.prepare(
       `SELECT id, code_hash, attempts FROM login_codes
