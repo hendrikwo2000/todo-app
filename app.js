@@ -66,6 +66,10 @@ const addTodoBtn   = document.getElementById("addTodoBtn");
 const saveStatusEl = document.getElementById("saveStatus");
 const themeSwitch      = document.getElementById("themeSwitch");
 const themeSwitchLabel = document.getElementById("themeSwitchLabel");
+const pushSwitch       = document.getElementById("pushSwitch");
+const pushSwitchLabel  = document.getElementById("pushSwitchLabel");
+const pushSwitchWrap   = document.getElementById("pushSwitchWrap");
+const pushHinweis      = document.getElementById("pushHinweis");
 const einstellungenBtn = document.getElementById("einstellungenBtn");
 const listenMenue  = document.getElementById("listenMenue");
 const snackbar     = document.getElementById("snackbar");
@@ -78,6 +82,11 @@ const offlineBanner = document.getElementById("offlineBanner");
 // Pages-Projekt und verlaesst den Server nie.
 const TURNSTILE_SITEKEY = "0x4AAAAAAD59Ii7T3CeedSfa";
 let turnstileId = null;
+
+// Oeffentlicher VAPID-Schluessel fuer Push-Benachrichtigungen - wie der
+// Turnstile-Sitekey unbedenklich im Quelltext, der private Schluessel liegt
+// als VAPID_PRIVATE_KEY im Pages-Projekt (siehe functions/_lib/webpush.js).
+const VAPID_PUBLIC_KEY = "BGDQTQDoRHFvbkqBEc5t_-A_Xa-QyUIzzN56qZigMR5jSCU8wF7HNv1EHOG91lFrQaui2xElzlLLCLkvdKjnypA";
 
 // Werden beim Laden aus der Server-Antwort gesetzt. istAdmin ist nur fuer
 // die Optik - /api/admin/* prueft die Rolle selbst nochmal.
@@ -135,6 +144,28 @@ function dueInfo(iso) {
   if (iso === today) return { cls: "today", badge: "Heute" };
   if (iso === addDaysStr(1)) return { cls: "", badge: "Morgen" };
   return { cls: "", badge: "" };
+}
+
+// ---------- App-Icon-Badge (installierte PWA) ----------
+// Zaehlt UEBER ALLE Listen (nicht nur die aktive): faellige/ueberfaellige,
+// nicht erledigte ToDos. Der Push im Hintergrund (siehe sw.js) setzt dieselbe
+// Zahl auch ohne offene App; hier zusaetzlich bei jedem Rendern, damit sie
+// sich sofort senkt, sobald man ein ToDo abhakt - waehrend die App offen ist,
+// kann kein Push das nachholen.
+let letzteBadgeZahl = null;
+function aktualisiereBadge() {
+  if (!("setAppBadge" in navigator)) return;
+  const heute = todayStr();
+  let n = 0;
+  for (const id in daten) {
+    for (const t of (daten[id].todos || [])) {
+      if (!t.done && t.due && t.due <= heute) n++;
+    }
+  }
+  if (n === letzteBadgeZahl) return;
+  letzteBadgeZahl = n;
+  if (n > 0) navigator.setAppBadge(n).catch(() => {});
+  else navigator.clearAppBadge().catch(() => {});
 }
 
 // Dringlich = ueberfaellig, heute oder morgen faellig. Steuert die Ampelfarben
@@ -598,6 +629,7 @@ function oeffneEinstellungen() {
 
   zeigeEinAnsicht("haupt");
   einstellungenPopup.hidden = false;
+  aktualisierePushSchalter();
 }
 
 // Kleiner Knopf fuer die Listen-Zeilen.
@@ -2008,6 +2040,7 @@ function synchronisiereOhneBereich() {
 }
 
 function render() {
+  aktualisiereBadge();
   synchronisiereOhneBereich();
   if (addingCat && !state.categories.some(c => c.id === addingCat)) { addingCat = null; addingThema = null; }
   if (addingThema && !state.themen.some(th => th.id === addingThema)) addingThema = null;
@@ -2796,6 +2829,90 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });
 }
+
+// ---------- Push-Benachrichtigungen ----------
+// PushManager existiert im Safari-Tab auf dem iPhone gar nicht (erst ab
+// iOS 16.4, und nur fuer eine vom Home-Bildschirm gestartete, installierte
+// App) - der Schalter in den Einstellungen blendet sich dann aus und zeigt
+// stattdessen den Hinweis.
+function base64UrlZuBytes(base64url) {
+  const pad = "=".repeat((4 - (base64url.length % 4)) % 4);
+  const base64 = (base64url + pad).replace(/-/g, "+").replace(/_/g, "/");
+  const roh = atob(base64);
+  const bytes = new Uint8Array(roh.length);
+  for (let i = 0; i < roh.length; i++) bytes[i] = roh.charCodeAt(i);
+  return bytes;
+}
+
+const pushUnterstuetzt = () => "serviceWorker" in navigator && "PushManager" in window;
+
+async function aktuelleSubscription() {
+  if (!pushUnterstuetzt()) return null;
+  const reg = await navigator.serviceWorker.ready;
+  return await reg.pushManager.getSubscription();
+}
+
+// Bei jedem Oeffnen der Einstellungen den Schalter auf den echten Stand
+// bringen - eine Berechtigung kann sich auch ausserhalb der App aendern
+// (z. B. in den iOS-Systemeinstellungen entzogen).
+async function aktualisierePushSchalter() {
+  if (!pushUnterstuetzt()) {
+    pushSwitchWrap.hidden = true;
+    pushHinweis.hidden = false;
+    pushHinweis.textContent = "Auf dem iPhone nur verfügbar, wenn die App vom Home-Bildschirm aus geöffnet ist.";
+    return;
+  }
+  pushSwitchWrap.hidden = false;
+  pushHinweis.hidden = true;
+  const sub = await aktuelleSubscription().catch(() => null);
+  const an = !!sub && Notification.permission === "granted";
+  pushSwitch.checked = an;
+  pushSwitchLabel.textContent = an ? "An" : "Aus";
+}
+
+async function schaltePushUm() {
+  if (pushSwitch.checked) {
+    try {
+      const erlaubnis = await Notification.requestPermission();
+      if (erlaubnis !== "granted") { pushSwitch.checked = false; return; }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: base64UrlZuBytes(VAPID_PUBLIC_KEY),
+      });
+      const roh = sub.toJSON();
+      const res = await fetch("/api/push/abonnieren", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: roh.endpoint, keys: roh.keys }),
+      });
+      if (!res.ok) {
+        await sub.unsubscribe().catch(() => {});
+        pushSwitch.checked = false;
+        snackInfo("Anmelden hat nicht geklappt.");
+        return;
+      }
+      pushSwitchLabel.textContent = "An";
+    } catch (e) {
+      pushSwitch.checked = false;
+      snackInfo("Benachrichtigungen ließen sich nicht aktivieren.");
+    }
+  } else {
+    try {
+      const sub = await aktuelleSubscription();
+      if (sub) {
+        await fetch("/api/push/abbestellen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: sub.endpoint }),
+        });
+        await sub.unsubscribe();
+      }
+    } catch (e) { /* Schalter bleibt trotzdem aus */ }
+    pushSwitchLabel.textContent = "Aus";
+  }
+}
+if (pushSwitch) pushSwitch.addEventListener("change", schaltePushUm);
 
 window.addEventListener("offline", () => {
   serverErreichbar = false;

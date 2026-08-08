@@ -87,6 +87,9 @@ Unter *Pages → Settings → Environment variables*:
 | `RESEND_KEY` | Resend-API-Key mit Sending-Zugriff auf `mail.it-wolf.org` |
 | `ADMIN_MAIL` | optional: Adresse für Wartelisten-Benachrichtigungen. Ohne sie gehen sie an alle Konten mit `role='admin'` |
 | `TURNSTILE_SECRET` | Geheimer Schlüssel des Turnstile-Widgets. Fehlt er, findet **keine** Bot-Prüfung statt |
+| `VAPID_PUBLIC_KEY` | Öffentlicher Push-Schlüssel — steckt zusätzlich (unbedenklich) offen in `app.js` |
+| `VAPID_PRIVATE_KEY` | Privater Push-Schlüssel, signiert die Push-Nachrichten. Siehe [Benachrichtigungen](#benachrichtigungen) |
+| `PUSH_CRON_SECRET` | Geteiltes Geheimnis für `/api/push/pruefen` — ohne korrekten Header antwortet der Endpunkt mit 403 |
 
 Absenderadresse ist `login@mail.it-wolf.org` (fest im Code, keine Mailbox
 nötig — Resend verschickt nur, empfängt nichts). Die DNS-Einträge
@@ -166,6 +169,65 @@ wrangler d1 execute todo --file=migration-boards.sql
 
 Rollback: das Backup zurückspielen. Für eine **frische** Datenbank reicht
 `schema.sql` (enthält das neue Schema bereits).
+
+## Benachrichtigungen
+
+Zwei Bausteine, unabhaengig voneinander nutzbar: eine echte Push-Meldung
+("3 ToDos sind fällig") und eine Zahl auf dem App-Icon (Badge), sobald die
+App auf dem Handy zum Home-Bildschirm hinzugefuegt wurde.
+
+**Web Push von Hand, ohne Bibliothek** (`functions/_lib/webpush.js`): das
+Projekt hat bewusst kein `package.json`/Build-Schritt (siehe oben), deshalb
+die Verschluesselung (RFC 8291, "aes128gcm") und die VAPID-Signatur
+(RFC 8292, ES256-JWT) direkt mit WebCrypto (`crypto.subtle`) implementiert.
+Beide Standards gelten fuer iOS/Safari (ab 16.4, nur fuer eine vom
+Home-Bildschirm gestartete App) genauso wie fuer Chrome - Apple nutzt fuer
+Web Push denselben offenen Push-Dienst wie jeder andere Browser, kein
+eigenes APNs-Zertifikat noetig. Verifiziert per isoliertem Rundlauf-Test
+(verschluesseln mit dem Projekt-Code, entschluesseln mit einer gespiegelten
+Referenz-Implementierung in Node) - ein echtes Geraet laesst sich von hier
+aus nicht pruefen.
+
+**Tabelle `push_subscriptions`**: ein Abo je Geraet/Browser (`endpoint` +
+die beiden Schluessel `p256dh`/`auth` aus der PushSubscription des
+Browsers). Ein Nutzer kann mehrere Zeilen haben (mehrere Geraete); meldet
+sich dasselbe Geraet erneut an, ersetzt `ON CONFLICT(endpoint)` die
+bestehende Zeile.
+
+**Endpunkte** unter `/api/push/`:
+- `abonnieren` (POST, angemeldet) - Abo speichern/erneuern
+- `abbestellen` (POST, angemeldet) - eigenes Abo loeschen
+- `pruefen` (GET/POST) - KEIN Nutzer-Endpunkt, siehe unten
+
+**Zeitsteuerung ohne eigenen Cloudflare-Worker.** Cloudflare Pages kennt
+selbst keine Cron Triggers (die gibt es nur fuer eigenstaendige Worker mit
+`scheduled()`-Handler - ein zweites Cloudflare-Projekt nur dafuer war hier
+nicht im Verhaeltnis). Stattdessen prueft `/api/push/pruefen` bei jedem
+Aufruf frisch, welche Nutzer mit Push-Abo faellige/ueberfaellige, nicht
+erledigte ToDos haben, und verschickt bei Bedarf. Ein kostenloser externer
+Dienst ([cron-job.org](https://cron-job.org), kein Konto-Zwang) pingt diesen
+Endpunkt mehrmals taeglich an - GET oder POST auf
+`https://todo.it-wolf.org/api/push/pruefen`, Header `X-Cron-Secret: <Wert
+von PUSH_CRON_SECRET>`. Ungueltige Abos (Geraet abgemeldet: 404/410 vom
+Push-Dienst) werden dabei automatisch aus der Datenbank entfernt.
+
+**"Heute" in Europe/Berlin, nicht UTC** (`heuteBerlin()` in `pruefen.js`) -
+sonst faellt der Tageswechsel je nach Sommer-/Winterzeit bis zu zwei Stunden
+falsch.
+
+**Badge (Zahl auf dem App-Icon).** Zwei Wege zum selben Ziel, weil ein
+Skript das Icon nur anfassen kann, waehrend ein Fenster offen ist:
+- Im Vordergrund: `aktualisiereBadge()` in `app.js`, bei jedem `render()`
+  neu berechnet ueber ALLE Listen (nicht nur die aktive).
+- Im Hintergrund: der Push-Payload traegt die Zahl mit (`badge` im
+  JSON), der Service Worker setzt sie im `push`-Event
+  (`self.registration.setAppBadge()`, siehe `sw.js`).
+
+**Bekannter Kompromiss:** ohne Push (0 faellige ToDos) wird die Zahl NICHT
+im Hintergrund auf 0 gesetzt - eine "stille" Push-Nachricht ohne sichtbare
+Meldung ist bei iOS/Chrome nicht zuverlaessig erlaubt (beide zeigen sonst
+selbst eine generische Ersatzmeldung). Die Zahl stimmt spaetestens beim
+naechsten Oeffnen der App wieder.
 
 ## Offline
 

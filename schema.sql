@@ -144,6 +144,20 @@ CREATE TABLE todos (
   completed_at TEXT
 );
 
+-- --------------------------------------------------- Push-Anmeldungen ---
+-- Web-Push-Abo je Geraet/Browser (Endpunkt + Schluessel aus der
+-- PushSubscription des Browsers). Ein Nutzer kann mehrere Zeilen haben (z. B.
+-- mehrere Geraete); endpoint ist pro Geraet eindeutig, meldet sich dasselbe
+-- Geraet erneut an, wird die Zeile per ON CONFLICT ersetzt statt verdoppelt.
+CREATE TABLE push_subscriptions (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  endpoint   TEXT NOT NULL UNIQUE,
+  p256dh     TEXT NOT NULL,
+  auth       TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- ------------------------------------------------------------ Warteliste ---
 -- Getrennt von users: hier steht, wer fragen kommt. Beim Freischalten im
 -- Admin-Dashboard entsteht daraus ein Eintrag in users, der Wartelisten-
@@ -225,3 +239,4 @@ CREATE INDEX idx_login_codes_em ON login_codes(email, created_at);
 CREATE INDEX idx_login_codes_tk ON login_codes(token_hash);
 CREATE INDEX idx_sessions_user  ON sessions(user_id);
 CREATE INDEX idx_admin_tokens   ON admin_tokens(token_hash);
+CREATE INDEX idx_push_subs_user ON push_subscriptions(user_id);

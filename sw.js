@@ -16,7 +16,7 @@
    auf dem alten Stand haengen (activate() raeumt den alten Cache nur auf,
    wenn sich der Name aendert). Siehe BETRIEB.md.
    ==================================================================== */
-const CACHE_NAME = "todo-shell-v1";
+const CACHE_NAME = "todo-shell-v2";
 
 const SHELL_FILES = [
   "/",
@@ -44,6 +44,50 @@ self.addEventListener("activate", (event) => {
       ))
       .then(() => self.clients.claim())
   );
+});
+
+/* ====================================================================
+   Push-Benachrichtigungen. Payload kommt von functions/api/push/pruefen.js:
+   { title, body, badge (Zahl faelliger ToDos), url }.
+
+   setAppBadge() im selben Event wie showNotification() gesetzt - so
+   aktualisiert sich die Zahl auf dem Home-Bildschirm-Icon (iOS 16.4+/
+   Android) auch dann, wenn die App gerade gar nicht offen ist. showNotification()
+   ist Pflicht: ohne sie zeigen Chrome/Safari sonst selbst eine generische
+   Meldung ("Seite wurde aktualisiert"), das waere schlechter als die echte.
+   ==================================================================== */
+self.addEventListener("push", (event) => {
+  let daten = {};
+  try { daten = event.data ? event.data.json() : {}; } catch (e) { /* leer bleibt */ }
+
+  const titel = daten.title || "ToDo-Liste";
+  const optionen = {
+    body: daten.body || "",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    data: { url: daten.url || "/" },
+  };
+
+  event.waitUntil((async () => {
+    await self.registration.showNotification(titel, optionen);
+    if (typeof daten.badge === "number" && "setAppBadge" in self.registration) {
+      await self.registration.setAppBadge(daten.badge).catch(() => {});
+    }
+  })());
+});
+
+// Klick auf die Benachrichtigung: vorhandenes Fenster fokussieren statt
+// immer ein neues zu oeffnen.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const ziel = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil((async () => {
+    const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const c of clientsList) {
+      if (new URL(c.url).origin === self.location.origin && "focus" in c) return c.focus();
+    }
+    return self.clients.openWindow(ziel);
+  })());
 });
 
 self.addEventListener("fetch", (event) => {

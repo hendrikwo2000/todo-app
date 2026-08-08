@@ -63,6 +63,17 @@ und jede beliebig oft mit anderen teilen.
 - Wer eine geteilte Liste nur mitliest, löst sie bei sich über
   **„Verknüpfung lösen"**
 
+## Benachrichtigungen
+
+- **⚙️** oben rechts → **„Benachrichtigungen"** → Schalter auf **„An"**
+- Einmal die Erlaubnis im Browser bestätigen
+
+Danach kommt eine Meldung, sobald ein ToDo fällig oder überfällig ist, dazu
+eine Zahl auf dem App-Icon. Auf dem iPhone geht das nur, wenn die App vom
+**Home-Bildschirm** aus offen ist (nicht im normalen Safari-Tab) — dafür die
+Seite einmal öffnen, über das Teilen-Symbol **„Zum Home-Bildschirm"** wählen
+und die App von dort starten.
+
 ## Abmelden
 
 - **⚙️** oben rechts

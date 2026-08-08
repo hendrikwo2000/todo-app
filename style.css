@@ -992,6 +992,11 @@ input[type="date"]:focus {
 .switch input:checked + .switch-track .switch-thumb { transform: translateX(13px); background: #fff; }
 .switch-label { font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .switch input:checked ~ .switch-label { color: var(--text); }
+/* display:inline-flex oben schlaegt sonst das eingebaute [hidden] des
+   Browsers - gleiche Falle wie bei den anderen [hidden]-Zeilen hier. Braucht
+   nur der Push-Schalter, der sich je nach Geraeteunterstuetzung ausblendet -
+   der Darstellung-Schalter (themeSwitch) wird nie versteckt. */
+#pushSwitchWrap[hidden] { display: none; }
 
 /* Der Zurueck-Link in der Kopfzeile ist ein <a>, kein <button> - .btn deckt
    die Optik ab, die Textausrichtung fehlt dort aber. */

@@ -40,6 +40,7 @@ export async function loescheKonto(env, nutzer) {
     // Meine Mitgliedschaften in fremden Listen loesen (die Listen bleiben).
     env.DB.prepare("DELETE FROM board_members WHERE user_id = ?").bind(nutzer.id),
     // Der Rest wie gehabt.
+    env.DB.prepare("DELETE FROM push_subscriptions WHERE user_id = ?").bind(nutzer.id),
     env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(nutzer.id),
     env.DB.prepare("DELETE FROM login_codes WHERE email = ?").bind(nutzer.email),
     env.DB.prepare("DELETE FROM waitlist WHERE email = ?").bind(nutzer.email),
