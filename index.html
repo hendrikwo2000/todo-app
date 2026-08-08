@@ -52,6 +52,13 @@
       <div id="listenMenue" class="listen-menue" hidden></div>
     </header>
 
+    <!-- Erscheint, solange der Server nicht erreichbar ist bzw. noch nicht
+         gespeicherte Aenderungen warten - JS blendet per [hidden] um. -->
+    <div id="offlineBanner" class="offline-banner" hidden>
+      📴 Offline – Änderungen werden lokal gespeichert und synchronisiert,
+      sobald wieder Internet da ist.
+    </div>
+
     <!-- Einmalige Tipps (Home-Bildschirm auf dem Handy, Einstellungsmenue) -
          JS befuellt und blendet dauerhaft aus, sobald "✕" geklickt wurde. -->
     <div id="hinweisleiste" class="hinweisleiste"></div>

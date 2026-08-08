@@ -70,6 +70,7 @@ const listenMenue  = document.getElementById("listenMenue");
 const snackbar     = document.getElementById("snackbar");
 const titel        = document.getElementById("titel");
 const einstellungenPopup = document.getElementById("einstellungenPopup");
+const offlineBanner = document.getElementById("offlineBanner");
 
 // Oeffentlicher Sitekey des Turnstile-Widgets fuer todo.it-wolf.org. Darf im
 // Quelltext stehen - der geheime Schluessel liegt als TURNSTILE_SECRET im
@@ -173,8 +174,14 @@ function toggleTheme() {
 //
 // canSave bleibt false, bis der vorhandene Stand wirklich gelesen wurde -
 // sonst wuerde die erste Aenderung nach einem Ladefehler das Board leer
-// ueberschreiben.
+// ueberschreiben. Wird auch nach einer erfolgreichen Wiederherstellung aus
+// dem lokalen Cache (offline) true, weil dann ebenfalls ein echter,
+// nicht-leerer Stand vorliegt.
 let canSave = false;
+// Beste bekannte Einschaetzung, aus echten fetch-Ergebnissen abgeleitet -
+// bewusst nicht navigator.onLine direkt (das meldet z. B. bei einem WLAN
+// ohne echtes Internet faelschlich "online").
+let serverErreichbar = true;
 
 // ---------- Anmeldemaske ----------
 // Normalfall: Adresse eintragen, Mail oeffnen, Link klicken - fertig. Diese
@@ -689,6 +696,7 @@ async function loescheListe(b) {
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) { snackInfo(d.error || "Löschen hat nicht geklappt."); return; }
+    loeschePending(b.id);
     entferneListeLokal(b.id);
     snackInfo("Liste gelöscht.");
   } catch (e) { snackInfo("Server nicht erreichbar."); }
@@ -898,6 +906,12 @@ async function kontoLoeschen() {
       knopf.disabled = false;
       return;
     }
+    // Konto ist weg - ein eventueller alter Pending-Eintrag darf beim
+    // naechsten Anmelden (egal ob dieselbe oder eine andere Adresse) nicht
+    // wieder auftauchen.
+    const pendingAlle = pendingLesen();
+    delete pendingAlle[eigeneEmail];
+    pendingSchreiben(pendingAlle);
     location.reload();
   } catch (e) {
     msg.textContent = "Server nicht erreichbar.";
@@ -1155,25 +1169,171 @@ function wechsleListe(id) {
   render();
 }
 
+// ---------- Lokaler Cache & Offline-Sync ----------
+// Zwei getrennte localStorage-Schluessel: CACHE_KEY spiegelt schlicht die
+// letzte erfolgreiche Serverantwort (Lesegrundlage fuer den Offline-Start),
+// PENDING_KEY haelt Listen mit noch nicht gespeicherten Aenderungen fest -
+// verschachtelt pro Konto (eigeneEmail), damit auf einem gemeinsam
+// genutzten Geraet ein Kontowechsel keine fremden, ungesicherten
+// Aenderungen verwirft oder verliert.
+const CACHE_KEY = "todoCache";
+const PENDING_KEY = "todoPending";
+
+function ladeCacheLokal() {
+  try {
+    const roh = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+    if (!roh || !Array.isArray(roh.listen) || typeof roh.daten !== "object") return null;
+    return roh;
+  } catch (e) { return null; }
+}
+
+function speichereCacheLokal() {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      listen, daten, eigeneEmail, eigenerName, istAdmin,
+    }));
+  } catch (e) { /* z. B. voller Speicher - der Cache ist nur ein Fallback */ }
+}
+
+// Noch nicht hochgeladene Aenderungen haben Vorrang vor jedem anderen,
+// zwangslaeufig aelteren Stand (frischer GET oder lokaler Cache-Spiegel) -
+// sonst wuerde genau der Rettungsmechanismus die eigene Bearbeitung wieder
+// verschwinden lassen. Setzt eigeneEmail voraus, muss also NACH dessen
+// Zuweisung aufgerufen werden.
+function mischePendingEin() {
+  const pending = pendingFuerKonto();
+  for (const boardId of Object.keys(pending)) {
+    if (daten[boardId]) {
+      const p = pending[boardId];
+      daten[boardId] = { categories: p.categories, themen: p.themen || [], todos: p.todos };
+    }
+  }
+}
+
+function pendingLesen() {
+  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || "{}") || {}; }
+  catch (e) { return {}; }
+}
+
+function pendingSchreiben(map) {
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(map)); }
+  catch (e) { /* z. B. voller Speicher - der Cache ist nur ein Fallback */ }
+}
+
+function pendingFuerKonto() {
+  return pendingLesen()[eigeneEmail] || {};
+}
+
+// Aktuellen Stand von `boardId` als noch nicht gespeichert vormerken -
+// immer der komplette Inhalt, nie ein Diff, weil PUT /api/todos ohnehin nur
+// den kompletten Inhalt kennt (siehe save()).
+function setzePending(boardId, boardName) {
+  if (!eigeneEmail) return;
+  const map = pendingLesen();
+  if (!map[eigeneEmail]) map[eigeneEmail] = {};
+  const inhalt = daten[boardId] || { categories: [], themen: [], todos: [] };
+  map[eigeneEmail][boardId] = {
+    categories: inhalt.categories,
+    themen: inhalt.themen || [],
+    todos: inhalt.todos,
+    name: boardName,
+    seit: new Date().toISOString(),
+  };
+  pendingSchreiben(map);
+}
+
+function loeschePending(boardId) {
+  if (!eigeneEmail) return;
+  const map = pendingLesen();
+  if (map[eigeneEmail] && map[eigeneEmail][boardId]) {
+    delete map[eigeneEmail][boardId];
+    pendingSchreiben(map);
+  }
+}
+
+function zeigeOffline(sichtbar) {
+  if (offlineBanner) offlineBanner.hidden = !sichtbar;
+}
+
+// Banner-Sichtbarkeit aus dem tatsaechlichen Zustand ableiten, statt sie an
+// einzelnen Stellen einzeln zu setzen - so kann sie nie mit dem echten
+// Pending-Stand auseinanderlaufen.
+function aktualisiereOfflineAnzeige() {
+  const nochOffen = Object.keys(pendingFuerKonto()).length > 0;
+  // serverErreichbar statt navigator.onLine: Letzteres kennt nur den
+  // Netzwerkadapter, nicht ob unser Server tatsaechlich antwortet (WLAN ohne
+  // echtes Internet meldet sich faelschlich "online").
+  zeigeOffline(!serverErreichbar || nochOffen);
+}
+
+let synchronisiereLaeuft = false;
+async function versucheAusstehendeZuSynchronisieren() {
+  if (synchronisiereLaeuft || !navigator.onLine) return;
+  const pending = pendingFuerKonto();
+  const ids = Object.keys(pending);
+  if (!ids.length) return;
+  synchronisiereLaeuft = true;
+  // Sequenziell, nicht parallel: schlaegt eine Liste mit 401 fehl, zeigt
+  // save() genau einmal das Login-Overlay - danach ist die Sitzung fuer
+  // alle weiteren Listen in dieser Schleife wieder gueltig.
+  const synchronisiert = [];
+  for (const id of ids) {
+    const name = (pending[id] && pending[id].name) || "Liste";
+    const ergebnis = await save(id);
+    if (ergebnis === "ok") synchronisiert.push(name);
+  }
+  synchronisiereLaeuft = false;
+  if (synchronisiert.length) {
+    snackInfo("Offline-Änderungen synchronisiert: " + synchronisiert.join(", "));
+  }
+}
+
 // ---------- Laden & Speichern ----------
+// Kein Server erreichbar (kein Netz, oder eine Fehlerantwort): aus dem
+// lokalen Cache wiederherstellen statt das Board leerzuraeumen - inklusive
+// eigener, in dieser Offline-Phase gemachter Aenderungen (mischePendingEin).
+// Gibt es gar keinen Cache (z. B. allererster Besuch offline), bleibt nur
+// die ehrliche Leermeldung in render().
+function wiederherstellenAusCache() {
+  const cache = ladeCacheLokal();
+  if (!cache) { listen = []; daten = {}; aktiveListe = null; return; }
+  listen = cache.listen;
+  daten = cache.daten;
+  eigeneEmail = cache.eigeneEmail || "";
+  eigenerName = cache.eigenerName || "";
+  istAdmin = !!cache.istAdmin;
+  canSave = true;
+  document.getElementById("kontoName").textContent = eigenerName || "Konto";
+  document.getElementById("kontoAdresse").textContent = eigeneEmail;
+  einstellungenBtn.hidden = false;
+  mischePendingEin();
+  const gemerkt = localStorage.getItem("aktiveListe");
+  aktiveListe = (gemerkt && listen.some(b => b.id === gemerkt))
+    ? gemerkt
+    : (listen.length ? listen[0].id : null);
+}
+
 async function loadState() {
   while (true) {
     let res;
     try {
       res = await fetch(API_BASE, { cache: "no-store" });
     } catch (e) {
-      // canSave bleibt false: lieber nichts speichern als den Server-Stand
-      // mit einem leeren Board ueberschreiben.
+      serverErreichbar = false;
+      wiederherstellenAusCache();
       setStatus("⚠ Server nicht erreichbar", "err");
-      listen = []; daten = {}; aktiveListe = null; zeigeAktiveListe();
+      zeigeAktiveListe();
       return;
     }
     if (res.status === 401) { await login(); continue; }
     if (!res.ok) {
+      serverErreichbar = false;
+      wiederherstellenAusCache();
       setStatus("⚠ Server nicht erreichbar", "err");
-      listen = []; daten = {}; aktiveListe = null; zeigeAktiveListe();
+      zeigeAktiveListe();
       return;
     }
+    serverErreichbar = true;
 
     const antwort = (await res.json()) || {};
     canSave = true;
@@ -1198,6 +1358,15 @@ async function loadState() {
       if (!Array.isArray(d.todos)) d.todos = [];
     }
 
+    // Noch nicht hochgeladene Aenderungen aus einer vorigen Offline-Phase
+    // haben Vorrang vor diesem frischen, aber aelteren Serverstand - sonst
+    // wuerde der gerade gelungene GET sie stillschweigend ueberschreiben.
+    // Das eigentliche Nachreichen uebernimmt
+    // versucheAusstehendeZuSynchronisieren() nicht-blockierend nach dem
+    // ersten render() (siehe init()).
+    mischePendingEin();
+    speichereCacheLokal();
+
     // Aktive Liste: die gemerkte, sonst die erste, sonst keine.
     const gemerkt = localStorage.getItem("aktiveListe");
     aktiveListe = (gemerkt && listen.some(b => b.id === gemerkt))
@@ -1209,15 +1378,18 @@ async function loadState() {
 }
 
 let saving = false, pendingSave = false;
-async function save() {
-  if (!canSave || !aktiveListe) return;
+// boardId: Standard ist die aktive Liste, aber dieselbe Funktion reicht nach
+// einem Reconnect auch andere, offline geaenderte Listen nach (siehe
+// versucheAusstehendeZuSynchronisieren) - eine einzige Stelle, die den
+// Pending-Zustand pflegt, statt einer zweiten, parallelen Implementierung.
+// Rueckgabe "ok" | "verboten" | "fehler" | undefined (uebersprungen).
+async function save(boardId = aktiveListe) {
+  if (!canSave || !boardId) return;
   if (saving) { pendingSave = true; return; }
   saving = true;
   setStatus("Speichere …", "");
-  // An das Board binden, das JETZT aktiv ist, und die Nutzlast aus dessen
-  // Daten bilden - nicht aus `state`. Schaltet der Nutzer waehrend des
-  // Speicherns um, geht so trotzdem die richtige Liste raus.
-  const boardId = aktiveListe;
+  const boardMeta = listen.find(b => b.id === boardId);
+  const boardName = boardMeta ? boardMeta.name : "Liste";
   const ziel = daten[boardId] || { categories: [], themen: [], todos: [] };
   const body = JSON.stringify({
     boardId,
@@ -1225,6 +1397,7 @@ async function save() {
     themen: ziel.themen || [],
     todos: ziel.todos,
   });
+  let ergebnis = "fehler";
   try {
     let res = await fetch(API_BASE, {
       method: "PUT",
@@ -1241,14 +1414,38 @@ async function save() {
         body,
       });
     }
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    setStatus("Gespeichert ✓", "ok");
+    if (res.status === 403) {
+      // Kein Zugriff mehr - Liste wurde geloescht oder die Freigabe entzogen.
+      // Der Server ist erreichbar, nur der Zugriff fehlt: erneutes
+      // Versuchen wuerde nie klappen, also aufraeumen statt pending zu
+      // lassen.
+      serverErreichbar = true;
+      loeschePending(boardId);
+      setStatus("⚠ Nicht gespeichert", "err");
+      snackInfo(boardName + ": kein Zugriff mehr, nicht gespeichert.");
+      ergebnis = "verboten";
+    } else if (!res.ok) {
+      throw new Error("HTTP " + res.status);
+    } else {
+      serverErreichbar = true;
+      setStatus("Gespeichert ✓", "ok");
+      loeschePending(boardId);
+      speichereCacheLokal();
+      ergebnis = "ok";
+    }
   } catch (e) {
+    // Netzwerkfehler oder Server-Fehler: nicht verloren, sondern lokal
+    // vormerken - wird beim naechsten Reconnect automatisch nachgereicht.
+    serverErreichbar = false;
     setStatus("⚠ Nicht gespeichert", "err");
+    setzePending(boardId, boardName);
+    speichereCacheLokal();
   } finally {
     saving = false;
+    aktualisiereOfflineAnzeige();
     if (pendingSave) { pendingSave = false; save(); }
   }
+  return ergebnis;
 }
 
 let statusTimer = null;
@@ -1736,13 +1933,21 @@ function render() {
     const wrap = document.createElement("div");
     wrap.className = "empty leer-liste";
     const p = document.createElement("p");
-    p.textContent = "Du hast noch keine Liste.";
-    const btn = document.createElement("button");
-    btn.className = "btn primary";
-    btn.textContent = "＋ Erste Liste anlegen";
-    btn.addEventListener("click", neueListeAnlegen);
-    wrap.appendChild(p);
-    wrap.appendChild(btn);
+    if (!canSave) {
+      // Weder Server noch lokaler Cache verfuegbar - vermutlich der
+      // allererste Besuch ohne Internet. Der "Anlegen"-Knopf braucht
+      // zwingend eine Verbindung und waere hier nur eine Enttaeuschung.
+      p.textContent = "Keine Internetverbindung, und auf diesem Gerät liegt noch nichts Gespeichertes. Bitte einmal mit Internet öffnen.";
+      wrap.appendChild(p);
+    } else {
+      p.textContent = "Du hast noch keine Liste.";
+      const btn = document.createElement("button");
+      btn.className = "btn primary";
+      btn.textContent = "＋ Erste Liste anlegen";
+      btn.addEventListener("click", neueListeAnlegen);
+      wrap.appendChild(p);
+      wrap.appendChild(btn);
+    }
     board.appendChild(wrap);
     return;
   }
@@ -2445,9 +2650,37 @@ applyTheme(
   localStorage.getItem("theme") ||
   (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
 );
+
+// ---------- Offline: App-Shell-Cache & Sync-Ausloeser ----------
+// Cached nur die statischen Dateien (siehe sw.js) - die ToDo-Daten selbst
+// laufen weiter ueber localStorage (Lokaler Cache & Offline-Sync oben).
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
+window.addEventListener("offline", () => {
+  serverErreichbar = false;
+  zeigeOffline(true);
+});
+window.addEventListener("online", () => {
+  // Optimistisch, aber nicht blind: der naechste echte Speicherversuch in
+  // versucheAusstehendeZuSynchronisieren() korrigiert serverErreichbar
+  // zurueck auf false, falls das Netz nur zum Schein da ist.
+  serverErreichbar = true;
+  aktualisiereOfflineAnzeige();
+  versucheAusstehendeZuSynchronisieren();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") versucheAusstehendeZuSynchronisieren();
+});
+
 (async function init() {
   await loadState();
   await evtlBeitreten();   // ?beitreten=<token> aus dem Teilen-Link einloesen
   aktualisiereMenue();
   render();
+  aktualisiereOfflineAnzeige();
+  versucheAusstehendeZuSynchronisieren();
 })();

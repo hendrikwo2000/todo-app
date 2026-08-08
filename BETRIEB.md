@@ -162,6 +162,46 @@ wrangler d1 execute todo --file=migration-boards.sql
 Rollback: das Backup zurückspielen. Für eine **frische** Datenbank reicht
 `schema.sql` (enthält das neue Schema bereits).
 
+## Offline
+
+Die App funktioniert auch ohne Internet — vorausgesetzt, sie wurde auf dem
+Gerät mindestens einmal online geöffnet. Zwei getrennte Mechanismen:
+
+**App-Shell** (`sw.js`, Service Worker): cached `index.html`, `style.css`,
+`app.js`, `manifest.json` und die beiden Icons — nicht `/api/*`. Strategie
+network-first mit Cache-Fallback (nicht cache-first), damit ein Push auf
+`main` sofort bei jedem Online-Aufruf ankommt und nur der Offline-Fall die
+alte Version zeigt. **Wichtig:** Bei jeder Änderung an einer der gecachten
+Dateien die Konstante `CACHE_NAME` in `sw.js` hochzählen — sonst räumt
+`activate()` den alten Cache nicht auf und wiederkehrende Nutzer bleiben auf
+dem alten Stand hängen, ohne dass das irgendwo auffällt.
+
+**Daten** (`app.js`, kein Backend-Zugriff nötig): `localStorage` spiegelt
+unter dem Schlüssel `todoCache` die letzte erfolgreiche Antwort von
+`GET /api/todos` (siehe `speichereCacheLokal()`/`ladeCacheLokal()`). Schlägt
+ein Request fehl (`loadState()`/`save()`), wird daraus statt aus einem
+geleerten Board wiederhergestellt. Änderungen, die offline nicht gespeichert
+werden konnten, landen zusätzlich unter `todoPending` — verschachtelt pro
+Konto (`eigeneEmail`), damit auf einem gemeinsam genutzten Gerät ein
+Kontowechsel nicht fremde, noch nicht hochgeladene Änderungen verwirft.
+`save(boardId)` ist die einzige Stelle, die diese Pending-Liste pflegt (auch
+beim automatischen Nachreichen über `versucheAusstehendeZuSynchronisieren()`
+nach einem `online`-Event, `visibilitychange` oder App-Start) — bewusst
+keine zweite, parallele Implementierung.
+
+**Bekannter Kompromiss:** `PUT /api/todos` bleibt wie beschrieben „letzter
+Speichervorgang gewinnt" (s. o.) — Offline-Nutzung verlängert dieses
+Zeitfenster von Sekunden auf Stunden oder Tage. Bei geteilten Listen mit
+mehreren aktiven Personen steigt dadurch das Risiko, eine fremde
+Zwischenänderung zu überschreiben, ohne dass das Backend das erkennen
+könnte (keine Versionsspalte). Nach jedem automatischen Sync zeigt eine
+Snackbar, welche Liste synchronisiert wurde, damit es wenigstens auffällt.
+
+Eine neue Liste anlegen, umbenennen, löschen, teilen oder Mitglieder
+verwalten bleibt bewusst online-only (eigene, sofortige Requests ohne
+lokalen Fallback) — der Server vergibt dabei IDs und prüft Limits, das lässt
+sich nicht sinnvoll offline vorwegnehmen.
+
 ## Warteliste und Verwaltung
 
 Auf dem Anmeldebildschirm führt „Noch keinen Zugang? Eintragen" zu einem

@@ -136,6 +136,23 @@ html, body {
 .save-status.ok { color: var(--green); }
 .save-status.err { color: var(--red); }
 
+/* display:flex unten schlaegt sonst das eingebaute [hidden] des Browsers -
+   siehe die anderen [hidden]-Zeilen in dieser Datei. */
+.offline-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--col-bg);
+  border: 1px solid var(--yellow);
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.4;
+  padding: 8px 13px;
+  margin-bottom: 14px;
+}
+.offline-banner[hidden] { display: none; }
+
 .btn {
   border: 1px solid var(--line);
   background: var(--row);
