@@ -954,6 +954,7 @@ input[type="date"]:focus {
 .admin-marke.gut      { background: var(--accent-soft); color: var(--green); }
 .admin-marke.schlecht { background: var(--accent-soft); color: var(--muted); }
 .admin-marke.admin    { background: var(--accent-soft); color: var(--accent); }
+.admin-marke.fokus    { background: var(--accent-soft); color: var(--green); }
 
 /* Der Zurueck-Link in der Kopfzeile ist ein <a>, kein <button> - .btn deckt
    die Optik ab, die Textausrichtung fehlt dort aber. */

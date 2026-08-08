@@ -28,7 +28,7 @@ function json(body, status = 200) {
 async function hole(env, token) {
   if (!token) return null;
   return await env.DB.prepare(
-    `SELECT a.id AS token_id, a.used_at, w.id AS wid, w.name, w.email, w.status
+    `SELECT a.id AS token_id, a.used_at, w.id AS wid, w.name, w.email, w.status, w.quelle
        FROM admin_tokens a
        JOIN waitlist w ON w.id = a.waitlist_id
       WHERE a.token_hash = ? AND a.zweck = 'freischalten'
@@ -76,10 +76,14 @@ export async function onRequestPost({ request, env }) {
 
   // Konto anlegen, Eintrag abhaken und Token entwerten - in einem Rutsch,
   // damit kein Zwischenzustand entstehen kann.
+  //
+  // quelle='fokus' gibt gleich Fokus-Zugang mit, wie beim Freischalten im
+  // Dashboard - siehe Kommentar dort (functions/api/admin/waitlist.js).
+  const fokusZugang = eintrag.quelle === "fokus" ? 1 : 0;
   try {
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO users (email, name, role) VALUES (?, ?, 'user')")
-        .bind(eintrag.email, eintrag.name),
+      env.DB.prepare("INSERT INTO users (email, name, role, fokus_zugang) VALUES (?, ?, 'user', ?)")
+        .bind(eintrag.email, eintrag.name, fokusZugang),
       env.DB.prepare("UPDATE waitlist SET status = 'freigeschaltet' WHERE id = ?").bind(eintrag.wid),
       env.DB.prepare("UPDATE admin_tokens SET used_at = datetime('now') WHERE id = ?")
         .bind(eintrag.token_id),
@@ -92,6 +96,7 @@ export async function onRequestPost({ request, env }) {
     name: eintrag.name,
     email: eintrag.email,
     url: new URL(request.url).origin,
+    fokusZugang: !!fokusZugang,
   });
 
   return json({ ok: true, name: eintrag.name, email: eintrag.email, mailVerschickt: versand.ok });

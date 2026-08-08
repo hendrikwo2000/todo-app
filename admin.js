@@ -105,6 +105,8 @@ async function bearbeite(id, aktion, knopfEl, extra = {}) {
         : "Freigeschaltet, Willkommensmail verschickt.");
     } else if (aktion === "rolle") {
       melde(extra.rolle === "admin" ? "Adminrechte vergeben." : "Adminrechte entzogen.");
+    } else if (aktion === "fokus") {
+      melde(extra.fokusZugang ? "Fokus-Zugang gegeben." : "Fokus-Zugang entzogen.");
     } else if (aktion === "nutzerLoeschen") {
       melde(daten.mailVerschickt === false
         ? "Gelöscht — aber die Benachrichtigung ging nicht raus."
@@ -135,7 +137,10 @@ function zeichne(daten) {
   for (const w of offen) {
     const frei = knopf("Freischalten", "primaer", () => bearbeite(w.id, "freischalten", frei));
     const ab = knopf("Ablehnen", "still", () => bearbeite(w.id, "ablehnen", ab));
-    offenEl.append(zeile(w, [frei, ab]));
+    // Herkunft nur zeigen, wenn sie vom Normalfall abweicht - die Mehrheit
+    // kommt ueber ToDo, ein Badge dafuer waere nur Rauschen.
+    const knoepfe = w.quelle === "fokus" ? [marke("via Fokus", "fokus"), frei, ab] : [frei, ab];
+    offenEl.append(zeile(w, knoepfe));
   }
 
   nutzerEl.replaceChildren();
@@ -145,7 +150,17 @@ function zeichne(daten) {
     // erkennen, dass die Knoepfe fehlen, und das ist kein Hinweis.
     if (n.id === daten.ichSelbst) aktionen.push(marke("Du", "du"));
     if (n.role === "admin") aktionen.push(marke("Admin", "admin"));
-    // Beim eigenen Konto kein Knopf: sich selbst die Rechte zu entziehen
+    if (n.fokus_zugang) aktionen.push(marke("Fokus", "fokus"));
+    // Fokus-Zugang ist eine eigene, von role unabhaengige Berechtigung (siehe
+    // schema.sql) - anders als beim Admin-Rollentausch gibt es hier kein
+    // Aussperr-Risiko, der Schalter bleibt also auch beim eigenen Konto da.
+    const fb = knopf(
+      n.fokus_zugang ? "Fokus-Zugang entziehen" : "Fokus-Zugang geben",
+      "still",
+      () => bearbeite(n.id, "fokus", fb, { fokusZugang: !n.fokus_zugang })
+    );
+    aktionen.push(fb);
+    // Beim eigenen Konto sonst kein Knopf: sich selbst die Rechte zu entziehen
     // sperrt einen aus, sobald man der einzige Admin ist. Der Server
     // verweigert es ohnehin - hier gar nicht erst anbieten.
     if (n.id !== daten.ichSelbst) {

@@ -24,12 +24,21 @@
 -- role steuert den Zugang zum Admin-Dashboard. Absichtlich eine Spalte und
 -- keine fest verdrahtete Adresse im Code: ein zweiter Admin oder eine neue
 -- Mailadresse ist damit ein UPDATE statt eines Deployments.
+--
+-- fokus_zugang ist eine EIGENE, von role/ToDo-Zugang unabhaengige Berechtigung
+-- fuer den Fokus-Tracker (fokus.it-wolf.org, zweite App auf dieser Datenbank).
+-- Ein ToDo-Konto reicht bewusst nicht automatisch fuer Fokus - das ist ein
+-- Eigennutz-Werkzeug, keine Zusatzleistung fuer alle ToDo-Nutzer. Frueher eine
+-- Umgebungsvariable (FOKUS_ZUGANG) auf dem Fokus-Pages-Projekt, jetzt hier,
+-- damit sich beides aus DEMSELBEN Dashboard (todo.it-wolf.org/admin) pflegen
+-- laesst.
 CREATE TABLE users (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  email      TEXT NOT NULL UNIQUE,
-  name       TEXT,
-  role       TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  email        TEXT NOT NULL UNIQUE,
+  name         TEXT,
+  role         TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  fokus_zugang INTEGER NOT NULL DEFAULT 0 CHECK (fokus_zugang IN (0, 1)),
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- --------------------------------------------------------------- Listen ---
@@ -130,12 +139,18 @@ CREATE TABLE todos (
 -- Getrennt von users: hier steht, wer fragen kommt. Beim Freischalten im
 -- Admin-Dashboard entsteht daraus ein Eintrag in users, der Wartelisten-
 -- Eintrag bleibt als Verlauf mit status='freigeschaltet' stehen.
+--
+-- quelle haelt fest, ueber welche App-Maske sich jemand eingetragen hat -
+-- todo.it-wolf.org oder fokus.it-wolf.org (beide schreiben in dieselbe
+-- Tabelle). Steuert beim Freischalten, ob fokus_zugang gleich mit gesetzt
+-- wird: wer sich ueber Fokus eintraegt, will erkennbar Fokus, nicht nur ToDo.
 CREATE TABLE waitlist (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   name       TEXT NOT NULL,
   email      TEXT NOT NULL UNIQUE,
   status     TEXT NOT NULL DEFAULT 'offen'
              CHECK (status IN ('offen', 'freigeschaltet', 'abgelehnt')),
+  quelle     TEXT NOT NULL DEFAULT 'todo' CHECK (quelle IN ('todo', 'fokus')),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

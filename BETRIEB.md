@@ -213,6 +213,21 @@ Unter **[/admin](https://todo.it-wolf.org/admin)** stehen offene Anfragen und
 die Nutzerliste. Freischalten legt das Konto an und verschickt eine
 Willkommensmail; Ablehnen setzt nur den Status — bewusst ohne Mail.
 
+**Fokus-Zugang wird hier mitverwaltet, obwohl er zu einer anderen App gehört.**
+Der Fokus-Tracker (fokus.it-wolf.org, eigenes Cloudflare-Pages-Projekt, gleiche
+D1-Datenbank) hat eine eigene Login-Maske mit eigener „Noch keinen Zugang?"-
+Warteliste, die in dieselbe `waitlist`-Tabelle schreibt — nur mit
+`quelle='fokus'` statt `'todo'`. Ein ToDo-Konto gibt NICHT automatisch
+Fokus-Zugang (bewusste Trennung, Fokus ist Eigennutz-Werkzeug, siehe
+Kommentar in `schema.sql`); die Spalte `users.fokus_zugang` steuert das
+unabhängig von `role`. Freischalten eines Eintrags mit `quelle='fokus'` setzt
+`fokus_zugang` gleich mit; in der Nutzerliste lässt sich der Schalter jederzeit
+einzeln umlegen („Fokus-Zugang geben/entziehen"), unabhängig von Adminrechten
+und ohne Selbstsperr-Risiko (anders als beim Admin-Rollentausch gibt es hier
+keine Sperre gegen das eigene Konto). `functions/api/waitlist.js` auf der
+Fokus-Seite verlinkt Freischalten- und Verwaltungslink fest auf
+`todo.it-wolf.org`, weil `/admin` und `/freischalten` nur hier existieren.
+
 **Die Willkommensmail meldet direkt an.** Sie enthält einen Anmeldelink, der
 sieben Tage gilt (`functions/_lib/willkommen.js`). Er liegt als normaler
 Eintrag in `login_codes` und wird vom selben `/api/auth/link` eingelöst. Sieben
@@ -240,10 +255,12 @@ Admins (Rolle kommt frisch von `/api/todos` als `admin`-Flag, reine Optik —
 `/api/admin/*` prüft selbst nochmal). Bei Nicht-Admins bleibt der Abschnitt
 per `hidden` ausgeblendet.
 
-Ein Nutzer lässt sich auch direkt anlegen, ohne Warteliste:
+Ein Nutzer lässt sich auch direkt anlegen, ohne Warteliste (optional gleich
+mit Fokus-Zugang):
 
 ```sql
-INSERT INTO users (email, name, role) VALUES ('adresse@example.com', 'Name', 'user');
+INSERT INTO users (email, name, role, fokus_zugang)
+VALUES ('adresse@example.com', 'Name', 'user', 0);
 ```
 
 ## Bot-Schutz
@@ -269,6 +286,13 @@ Zwei Fallstricke:
 Der Sitekey erlaubt nur `todo.it-wolf.org`; lokal kommt deshalb nie ein Token
 zustande. Zusätzlich zur Bot-Prüfung gilt höchstens ein Eintrag pro Minute
 über alle Adressen.
+
+**Die Fokus-Warteliste (`fokus.it-wolf.org`) hat KEIN Turnstile** — der
+Sitekey ließe sich dort ohnehin nicht verwenden (an `todo.it-wolf.org`
+gebunden), und ein zweites Widget wäre für die zu erwartende Handvoll
+Anfragen nicht im Verhältnis. Die Minuten-Bremse gilt app-übergreifend
+(dieselbe `waitlist`-Tabelle), das war schon bei ToDo am Anfang der einzige
+Schutz.
 
 ## Konten löschen
 
