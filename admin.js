@@ -73,10 +73,43 @@ function marke(text, klasse) {
   return s;
 }
 
-async function bearbeite(id, aktion, knopfEl, extra = {}) {
+// Toggle-Switch fuer ein Recht: Status (an/aus) und Umschalt-Aktion in einem
+// Element, statt getrenntem Badge + Button. "aktiv=false" zeigt den Stand nur
+// noch (z.B. beim eigenen Konto, wo der Server die Aenderung ohnehin verweigert).
+function schalter(text, an, aktiv, beiAenderung) {
+  const label = document.createElement("label");
+  label.className = "switch" + (aktiv ? "" : " ist-gesperrt");
+  if (!aktiv) label.title = "Beim eigenen Konto nicht änderbar.";
+
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = an;
+  input.disabled = !aktiv;
+  if (aktiv) input.addEventListener("change", () => beiAenderung(input));
+
+  const track = document.createElement("span");
+  track.className = "switch-track";
+  const thumb = document.createElement("span");
+  thumb.className = "switch-thumb";
+  track.append(thumb);
+
+  const beschriftung = document.createElement("span");
+  beschriftung.className = "switch-label";
+  beschriftung.textContent = text;
+
+  label.append(input, track, beschriftung);
+  return label;
+}
+
+async function bearbeite(id, aktion, steuerEl, extra = {}) {
+  // Bei Schaltern (Checkbox) hat der Klick den Haken schon umgestellt, bevor
+  // dieser Code laeuft - bei Abbruch/Fehler muss das wieder zurueckgedreht werden.
+  const istSchalter = steuerEl instanceof HTMLInputElement;
+  const zurueckdrehen = () => { if (istSchalter) steuerEl.checked = !steuerEl.checked; };
+
   if (aktion === "ablehnen" && !confirm("Diese Anfrage wirklich ablehnen?")) return;
   if (aktion === "rolle" && extra.rolle === "admin"
-      && !confirm("Diesem Nutzer Adminrechte geben? Er kann dann alle Anfragen und Nutzer verwalten.")) return;
+      && !confirm("Diesem Nutzer Adminrechte geben? Er kann dann alle Anfragen und Nutzer verwalten.")) { zurueckdrehen(); return; }
   // Zwei Rueckfragen beim Loeschen: der Vorgang nimmt fremde ToDos mit und
   // laesst sich nicht rueckgaengig machen.
   if (aktion === "nutzerLoeschen") {
@@ -84,7 +117,7 @@ async function bearbeite(id, aktion, knopfEl, extra = {}) {
     if (!confirm(`${wer} löschen?\n\nAlle Bereiche und ToDos dieser Person werden unwiderruflich entfernt.`)) return;
     if (!confirm("Wirklich sicher? Das lässt sich nicht rückgängig machen.")) return;
   }
-  knopfEl.disabled = true;
+  steuerEl.disabled = true;
   try {
     const res = await fetch(API, {
       method: "POST",
@@ -94,7 +127,8 @@ async function bearbeite(id, aktion, knopfEl, extra = {}) {
     const daten = await res.json().catch(() => ({}));
     if (!res.ok) {
       melde(daten.error || "Hat nicht geklappt.");
-      knopfEl.disabled = false;
+      zurueckdrehen();
+      steuerEl.disabled = false;
       return;
     }
     // mailVerschickt kommt nur beim Freischalten - der Unterschied ist
@@ -119,7 +153,8 @@ async function bearbeite(id, aktion, knopfEl, extra = {}) {
     laden();
   } catch (e) {
     melde("Server nicht erreichbar.");
-    knopfEl.disabled = false;
+    zurueckdrehen();
+    steuerEl.disabled = false;
   }
 }
 
@@ -147,44 +182,27 @@ function zeichne(daten) {
 
   nutzerEl.replaceChildren();
   for (const n of daten.nutzer) {
+    const istIch = n.id === daten.ichSelbst;
     const aktionen = [];
     // Das eigene Konto klar kennzeichnen - vorher war es nur daran zu
     // erkennen, dass die Knoepfe fehlen, und das ist kein Hinweis.
-    if (n.id === daten.ichSelbst) aktionen.push(marke("Du", "du"));
-    if (n.role === "admin") aktionen.push(marke("Admin", "admin"));
-    // Nur zeigen, wenn sie vom Normalfall abweicht - die meisten Konten haben
-    // todo_zugang, ein Badge dafuer waere nur Rauschen (umgekehrt zu Fokus,
-    // wo die meisten Konten den Zugang NICHT haben).
-    if (!n.todo_zugang) aktionen.push(marke("kein ToDo", "schlecht"));
-    if (n.fokus_zugang) aktionen.push(marke("Fokus", "fokus"));
-    // Fokus-Zugang ist eine eigene, von role unabhaengige Berechtigung (siehe
-    // schema.sql) - anders als beim Admin-Rollentausch gibt es hier kein
-    // Aussperr-Risiko, der Schalter bleibt also auch beim eigenen Konto da.
-    const fb = knopf(
-      n.fokus_zugang ? "Fokus-Zugang entziehen" : "Fokus-Zugang geben",
-      "still",
-      () => bearbeite(n.id, "fokus", fb, { fokusZugang: !n.fokus_zugang })
-    );
-    aktionen.push(fb);
-    // Beim eigenen Konto sonst keine Knoepfe mit Aussperr-Risiko: sich selbst
-    // die Adminrechte oder den ToDo-Zugang zu entziehen sperrt einen aus,
-    // sobald man der einzige Admin ist bzw. die eigene Liste nicht mehr sieht.
-    // Der Server verweigert beides ohnehin - hier gar nicht erst anbieten.
-    if (n.id !== daten.ichSelbst) {
-      const tb = knopf(
-        n.todo_zugang ? "ToDo-Zugang entziehen" : "ToDo-Zugang geben",
-        "still",
-        () => bearbeite(n.id, "todo", tb, { todoZugang: !n.todo_zugang })
-      );
-      const zielRolle = n.role === "admin" ? "user" : "admin";
-      const b = knopf(
-        n.role === "admin" ? "Adminrechte entziehen" : "Zum Admin machen",
-        "still",
-        () => bearbeite(n.id, "rolle", b, { rolle: zielRolle })
-      );
+    if (istIch) aktionen.push(marke("Du", "du"));
+
+    // Adminrechte und ToDo-Zugang sperren sich selbst zu entziehen serverseitig
+    // (Aussperr-Risiko) - der Schalter zeigt beim eigenen Konto nur noch den
+    // Stand, laesst sich aber nicht anfassen. Fokus-Zugang hat kein
+    // Aussperr-Risiko und bleibt auch beim eigenen Konto bedienbar.
+    aktionen.push(schalter("Admin", n.role === "admin", !istIch,
+      input => bearbeite(n.id, "rolle", input, { rolle: input.checked ? "admin" : "user" })));
+    aktionen.push(schalter("ToDo", !!n.todo_zugang, !istIch,
+      input => bearbeite(n.id, "todo", input, { todoZugang: input.checked })));
+    aktionen.push(schalter("Fokus", !!n.fokus_zugang, true,
+      input => bearbeite(n.id, "fokus", input, { fokusZugang: input.checked })));
+
+    if (!istIch) {
       const del = knopf("Löschen", "gefahr",
         () => bearbeite(n.id, "nutzerLoeschen", del, { name: n.name, email: n.email }));
-      aktionen.push(tb, b, del);
+      aktionen.push(del);
     }
     nutzerEl.append(zeile(n, aktionen));
   }
