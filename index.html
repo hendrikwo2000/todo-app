@@ -162,16 +162,10 @@
 
         <!-- Nur fuer Admins sichtbar (JS blendet es je nach Rolle ein). Frueher
              hinter einem Doppelklick auf den Titel versteckt. -->
-        <details class="ein-abschnitt" id="adminAbschnitt" hidden data-abschnitt="verwaltung">
-          <summary class="ein-kopf">
-            <span class="ein-kopf-icon">🛡️</span>
-            <span class="ein-kopf-text">Verwaltung</span>
-            <span class="ein-kopf-pfeil">▾</span>
-          </summary>
-          <div class="ein-inhalt">
-            <a href="/admin" class="btn">Verwaltung öffnen</a>
-          </div>
-        </details>
+        <a href="/admin" id="adminAbschnitt" class="ein-abschnitt ein-zeile ein-link" hidden data-abschnitt="verwaltung">
+          <span class="ein-kopf-icon">🛡️</span>
+          <span class="ein-kopf-text">Verwaltung</span>
+        </a>
       </div>
 
       <!-- Zugriff einer eigenen, geteilten Liste verwalten. -->
