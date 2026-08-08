@@ -64,7 +64,8 @@ const board        = document.getElementById("board");
 const addCatBtn    = document.getElementById("addCatBtn");
 const addTodoBtn   = document.getElementById("addTodoBtn");
 const saveStatusEl = document.getElementById("saveStatus");
-const themeBtn     = document.getElementById("themeBtn");
+const themeSwitch      = document.getElementById("themeSwitch");
+const themeSwitchLabel = document.getElementById("themeSwitchLabel");
 const einstellungenBtn = document.getElementById("einstellungenBtn");
 const listenMenue  = document.getElementById("listenMenue");
 const snackbar     = document.getElementById("snackbar");
@@ -159,15 +160,8 @@ function escapeHtml(s) {
 // ---------- Heller / dunkler Modus ----------
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
-  themeBtn.textContent = theme === "dark" ? "☀ Helles Design" : "☾ Dunkles Design";
-}
-function toggleTheme() {
-  const cur = document.documentElement.getAttribute("data-theme") || "light";
-  const next = cur === "dark" ? "light" : "dark";
-  localStorage.setItem("theme", next);
-  applyTheme(next);
-  // Kurztext im (moeglicherweise offenen) Einstellungen-Kopf sofort mitziehen.
-  if (!einstellungenPopup.hidden) aktualisiereEinSubtexte();
+  themeSwitch.checked = theme === "dark";
+  themeSwitchLabel.textContent = theme === "dark" ? "Dunkel" : "Hell";
 }
 
 // ---------- Zugang ----------
@@ -547,10 +541,10 @@ function zeigeEinAnsicht(name) {
 // die <details> werden nie neu gerendert, darum reicht eine einmalige
 // Verdrahtung auf das native "toggle"-Event (deckt auch Tastaturbedienung
 // ab, nicht nur Klicks).
-document.querySelectorAll("#einstellungenHaupt > .ein-abschnitt").forEach(det => {
+document.querySelectorAll("#einstellungenHaupt > details.ein-abschnitt").forEach(det => {
   det.addEventListener("toggle", () => {
     if (det.open) {
-      document.querySelectorAll("#einstellungenHaupt > .ein-abschnitt").forEach(other => {
+      document.querySelectorAll("#einstellungenHaupt > details.ein-abschnitt").forEach(other => {
         if (other !== det) other.open = false;
       });
     }
@@ -560,25 +554,30 @@ document.querySelectorAll("#einstellungenHaupt > .ein-abschnitt").forEach(det =>
 // Bei jedem Oeffnen auf denselben Ausschnitt zurueck - "Meine Listen" ist
 // laut Erst-Hinweis der haeufigste Grund fuers Zahnrad, der Rest faengt zu.
 function resetAkkordeon() {
-  document.querySelectorAll("#einstellungenHaupt > .ein-abschnitt").forEach(det => {
+  document.querySelectorAll("#einstellungenHaupt > details.ein-abschnitt").forEach(det => {
     det.open = det.dataset.abschnitt === "listen";
   });
+}
+
+// Fokus-Tracker-Zeile: Status-Text und "aktiv"-Farbe. Eigene Funktion statt
+// Teil von aktualisiereEinSubtexte(), weil sie auch direkt nach dem Freischalten
+// (ohne Akkordeon-Kontext) aufgerufen wird.
+function aktualisiereFokusLink() {
+  document.getElementById("subFokus").textContent = fokusZugang ? "aktiv" : "nicht aktiv";
+  document.getElementById("fokusLink").classList.toggle("aktiv", fokusZugang);
 }
 
 // Kurztext in jeder Kopfzeile, auch zugeklappt sichtbar - Antwort auf "ich
 // finde Dinge nicht wieder": man sieht schon vor dem Aufklappen, was
 // ungefaehr drinsteckt.
 function aktualisiereEinSubtexte() {
-  const dunkel = (document.documentElement.getAttribute("data-theme") || "light") === "dark";
-  document.getElementById("subDarstellung").textContent = dunkel ? "Dunkel" : "Hell";
-
   const eigeneZahl = listen.filter(b => b.istEigen).length;
   document.getElementById("subListen").textContent = eigeneZahl === 1 ? "1 Liste" : `${eigeneZahl} Listen`;
 
   const geteiltZahl = listen.filter(b => !b.istEigen).length;
   document.getElementById("subGeteilt").textContent = geteiltZahl === 1 ? "1 Liste" : `${geteiltZahl} Listen`;
 
-  document.getElementById("subFokus").textContent = fokusZugang ? "aktiv" : "";
+  aktualisiereFokusLink();
   document.getElementById("subKonto").textContent = eigeneEmail;
 }
 
@@ -590,14 +589,6 @@ function oeffneEinstellungen() {
   // Verwaltung nur fuer Admins - der Abschnitt bleibt sonst ausgeblendet.
   document.getElementById("adminAbschnitt").hidden = !istAdmin;
   document.getElementById("kontoAdminBadge").hidden = !istAdmin;
-
-  // Fokus-Tracker: Knopf nur zeigen, solange der Zugang noch fehlt - wer ihn
-  // schon hat, bekommt nur den Hinweistext (das Aufgeben passiert drueben in
-  // Fokus' eigenen Einstellungen, nicht hier).
-  document.getElementById("fokusHolen").hidden = fokusZugang;
-  document.getElementById("fokusHinweis").textContent = fokusZugang
-    ? "Du hast auch Zugang zum Fokus-Tracker."
-    : "Gewohnheiten abhaken und ein Pomodoro-Timer, mit derselben Anmeldung.";
 
   // Als Admin nicht selbst den ToDo-Zugang aufgeben koennen (kein hartes
   // Aussperr-Risiko, /admin haengt an der Rolle - aber eine unnoetig
@@ -2640,7 +2631,11 @@ function renderTodo(t) {
 // ---------- Ereignisse ----------
 addCatBtn.addEventListener("click", addCategory);
 addTodoBtn.addEventListener("click", addTodoOhneBereich);
-themeBtn.addEventListener("click", toggleTheme);
+themeSwitch.addEventListener("change", () => {
+  const next = themeSwitch.checked ? "dark" : "light";
+  localStorage.setItem("theme", next);
+  applyTheme(next);
+});
 
 // Titel ist Umschalter und Umbenenn-Griff in einem: kurzer Klick oeffnet ab
 // zwei Listen das Menue, Doppelklick benennt die aktive eigene Liste um. Der
@@ -2690,21 +2685,20 @@ document.getElementById("kontoLoeschenEmail").addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); kontoLoeschen(); }
 });
 
-document.getElementById("fokusHolen").addEventListener("click", async e => {
-  const btn = e.currentTarget;
-  btn.disabled = true;
+// Vor der Freischaltung: Klick holt den Zugang (wie frueher der Knopf), der
+// Link fuehrt noch nirgends hin. Danach ist es ein ganz normaler Link zur
+// anderen App - der Browser uebernimmt, kein weiterer Klick-Handler noetig.
+document.getElementById("fokusLink").addEventListener("click", async e => {
+  if (fokusZugang) return;
+  e.preventDefault();
   try {
     const res = await fetch("/api/auth/fokus-zugang", { method: "POST" });
     if (!res.ok) { snackInfo("Hat nicht geklappt - bitte nochmal versuchen."); return; }
     fokusZugang = true;
-    btn.hidden = true;
-    document.getElementById("fokusHinweis").textContent = "Du hast auch Zugang zum Fokus-Tracker.";
-    aktualisiereEinSubtexte();
+    aktualisiereFokusLink();
     snackInfo("Zugang zum Fokus-Tracker freigeschaltet.");
   } catch (e) {
     snackInfo("Hat nicht geklappt - bitte nochmal versuchen.");
-  } finally {
-    btn.disabled = false;
   }
 });
 

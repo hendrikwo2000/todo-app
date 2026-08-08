@@ -185,7 +185,7 @@ html, body {
 #einstellungenBtn { margin-left: auto; }
 #einstellungenBtn[hidden] { display: none; }
 /* Gleiche Falle wie oben: display:flex auf .btn schlaegt [hidden]. */
-#fokusHolen[hidden], #todoZugangAufgebenStart[hidden] { display: none; }
+#todoZugangAufgebenStart[hidden] { display: none; }
 /* Schmale Screens: der Titel nimmt sich nur so viel Platz wie noetig und
    teilt sich die erste Zeile mit dem Zahnrad (weiterhin rechtsbuendig). Die
    Anlege-Knoepfe ruecken gemeinsam in die zweite Zeile. */
@@ -1089,7 +1089,24 @@ input[type="date"]:focus {
    (gleiche Spezifitaet, Autoren-CSS schlaegt die UA-Regel) - der Abschnitt
    blieb sichtbar, egal was JS an .hidden setzte. */
 .ein-abschnitt[hidden] { display: none; }
-#einstellungenHaupt > .ein-abschnitt:first-of-type { border-top: 0; padding-top: 0; }
+/* Eigene Markierungsklasse statt :first-of-type/:first-child: "Darstellung"
+   ist zwar der erste .ein-abschnitt, aber weder das erste Kind insgesamt
+   (Icon/Ueberschrift stehen davor) noch :first-of-type fuer <div> (das
+   Icon-<div> ist selbst ein <div> und kommt zuerst). */
+.ein-abschnitt-erste { border-top: 0; padding-top: 0; }
+
+/* Nicht-aufklappbare Zeile (Darstellung, Fokus-Tracker) - gleicher Rhythmus
+   wie ein .ein-kopf, aber ohne Akkordeon-Pfeil und ohne Aufklapp-Inhalt. */
+.ein-zeile {
+  flex-direction: row; align-items: center; gap: 8px;
+  padding: 6px 2px;
+}
+.ein-zeile .switch { margin-left: auto; }
+
+/* Fokus-Tracker/ToDo-Liste als einfacher Link statt Akkordeon+Knopf. */
+.ein-link, .ein-link:visited { color: inherit; text-decoration: none; }
+.ein-link:hover .ein-kopf-text { color: var(--accent); }
+.ein-link.aktiv .ein-kopf-sub { color: var(--green); }
 
 .ein-kopf {
   display: flex; align-items: center; gap: 8px;

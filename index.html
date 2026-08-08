@@ -71,11 +71,15 @@
   <!-- Einstellungen hinter dem Zahnrad. Ein Dialog mit mehreren Ansichten:
        Hauptansicht (Listen + Konto), Zugriff-verwalten, Abmelde-Rueckfrage,
        Loesch-Bestaetigung. Die Listen-Zeilen fuellt JS.
-       Hauptansicht als Akkordeon (<details>/<summary>, echtes Ein-Abschnitt-
-       offen erzwingt resetAkkordeon()/JS beim Oeffnen bzw. beim Aufklappen
-       eines anderen) - Ziel: nicht alles auf einen Blick, nur was gerade
-       gebraucht wird. Der Kurztext je Kopfzeile (ein-kopf-sub) fuellt JS,
-       damit man auch zugeklappt sieht, was drinsteckt. -->
+       Hauptansicht gemischt: die meisten Abschnitte ein Akkordeon
+       (<details>/<summary>, echtes Ein-Abschnitt-offen erzwingt
+       resetAkkordeon()/JS beim Oeffnen bzw. beim Aufklappen eines anderen) -
+       Ziel: nicht alles auf einen Blick, nur was gerade gebraucht wird.
+       "Darstellung" (Toggle-Switch) und "Fokus-Tracker" (Link) sind bewusst
+       keine Akkordeons, sondern einzeilig, weil sie nur einen einzigen
+       Zustand zeigen statt mehrerer Unter-Elemente. Der Kurztext je
+       Kopfzeile (ein-kopf-sub) fuellt JS, damit man auch zugeklappt sieht,
+       was drinsteckt. -->
   <div id="einstellungenPopup" class="admin-popup" hidden>
     <div class="admin-popup-box einstellungen">
 
@@ -83,17 +87,15 @@
         <div class="admin-popup-icon">⚙️</div>
         <h2>Einstellungen</h2>
 
-        <details class="ein-abschnitt" data-abschnitt="darstellung">
-          <summary class="ein-kopf">
-            <span class="ein-kopf-icon">🎨</span>
-            <span class="ein-kopf-text">Darstellung</span>
-            <span class="ein-kopf-sub" id="subDarstellung"></span>
-            <span class="ein-kopf-pfeil">▾</span>
-          </summary>
-          <div class="ein-inhalt">
-            <button type="button" id="themeBtn" class="btn">☾ Dunkles Design</button>
-          </div>
-        </details>
+        <div class="ein-abschnitt ein-zeile ein-abschnitt-erste" data-abschnitt="darstellung">
+          <span class="ein-kopf-icon">🎨</span>
+          <span class="ein-kopf-text">Darstellung</span>
+          <label class="switch" id="themeSwitchWrap">
+            <input type="checkbox" id="themeSwitch">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-label" id="themeSwitchLabel">Hell</span>
+          </label>
+        </div>
 
         <details class="ein-abschnitt" data-abschnitt="listen">
           <summary class="ein-kopf">
@@ -125,18 +127,12 @@
              ToDo-Konto (siehe schema.sql). "Holen" braucht keine Rueckfrage -
              rein additiv, jederzeit in Fokus' eigenen Einstellungen wieder
              aufgebbar. -->
-        <details class="ein-abschnitt" data-abschnitt="fokus">
-          <summary class="ein-kopf">
-            <span class="ein-kopf-icon">⏱️</span>
-            <span class="ein-kopf-text">Fokus-Tracker</span>
-            <span class="ein-kopf-sub" id="subFokus"></span>
-            <span class="ein-kopf-pfeil">▾</span>
-          </summary>
-          <div class="ein-inhalt">
-            <p id="fokusHinweis" class="ein-hinweis"></p>
-            <button type="button" id="fokusHolen" class="btn">Zugang zum Fokus-Tracker holen</button>
-          </div>
-        </details>
+        <a href="https://fokus.it-wolf.org" target="_blank" rel="noopener"
+           id="fokusLink" class="ein-abschnitt ein-zeile ein-link" data-abschnitt="fokus">
+          <span class="ein-kopf-icon">⏱️</span>
+          <span class="ein-kopf-text">Fokus-Tracker</span>
+          <span class="ein-kopf-sub" id="subFokus">nicht aktiv</span>
+        </a>
 
         <details class="ein-abschnitt" data-abschnitt="konto">
           <summary class="ein-kopf">
