@@ -145,6 +145,21 @@ CREATE TABLE todos (
   wiederholung TEXT
 );
 
+-- ------------------------------------------------------------ Unterpunkte ---
+-- Checkliste INNERHALB eines ToDos. done ist INTEGER (0/1) wie bei todos.
+-- position ist der Index innerhalb des ToDos (pro ToDo neu gezaehlt), wie
+-- themen.position innerhalb eines Bereichs. Anders als todos.thema_id HIER
+-- ein echter Fremdschluessel mit CASCADE: ein Unterpunkt ohne sein ToDo
+-- ergibt keinen Sinn (anders als ein ToDo ohne sein Thema, das frei
+-- weiterlebt).
+CREATE TABLE unterpunkte (
+  id       TEXT PRIMARY KEY,
+  todo_id  TEXT NOT NULL REFERENCES todos(id) ON DELETE CASCADE,
+  text     TEXT NOT NULL,
+  done     INTEGER NOT NULL DEFAULT 0 CHECK (done IN (0, 1)),
+  position INTEGER NOT NULL DEFAULT 0
+);
+
 -- --------------------------------------------------- Push-Anmeldungen ---
 -- Web-Push-Abo je Geraet/Browser (Endpunkt + Schluessel aus der
 -- PushSubscription des Browsers). Ein Nutzer kann mehrere Zeilen haben (z. B.
@@ -235,6 +250,7 @@ CREATE INDEX idx_boards_token   ON boards(share_token);
 CREATE INDEX idx_lists_board    ON lists(board_id, position);
 CREATE INDEX idx_themen_list    ON themen(list_id, position);
 CREATE INDEX idx_todos_list     ON todos(list_id);
+CREATE INDEX idx_unterpunkte_todo ON unterpunkte(todo_id, position);
 CREATE INDEX idx_waitlist_st    ON waitlist(status, created_at);
 CREATE INDEX idx_login_codes_em ON login_codes(email, created_at);
 CREATE INDEX idx_login_codes_tk ON login_codes(token_hash);
