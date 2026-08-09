@@ -1174,7 +1174,7 @@ input[type="date"]:focus {
   margin: 0; font-size: 11px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .04em; color: var(--red);
 }
-#neueListe { align-self: flex-start; }
+.ein-reihe { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 #neueListe:disabled { opacity: .5; cursor: not-allowed; }
 #neueListe:disabled:hover { color: var(--text); border-color: var(--line); }
 #einstellungenZu { align-self: center; margin-top: 8px; }
