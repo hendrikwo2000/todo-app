@@ -417,3 +417,12 @@ Karten-Hintergrund `--row`) — ausgerechnet die Farbe für „heute fällig".
 Beide jetzt dunkler (`--orange: #a85d0a`, `--muted: #6b7386`), beide über
 4,5:1. Dunkles Design war schon vorher in Ordnung (6,45:1 / 4,67:1) und
 blieb unangetastet.
+
+**Touch-Ziele.** Häkchen (`.check`) und Löschen-Symbol (`.act.del`) sind
+optisch fast unverändert (das Löschen-Symbol wuchs von 28px auf 34px
+sichtbar mit, die Checkbox nicht), bekommen aber ein größeres,
+unsichtbares Tippfeld drumherum (WCAG 2.2 verlangt mindestens 24px,
+Apple/Google empfehlen ~44px — die kompakte Zeile lässt nur ~32px zu, ohne
+Nachbarzeilen zu überlappen). Die Checkbox steckt dafür in einem
+`<label class="check-tap">` — bei einer echten Checkbox der einzige Weg,
+die Klickfläche ganz ohne JavaScript unsichtbar zu vergrößern.

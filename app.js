@@ -2609,13 +2609,19 @@ function renderTodo(t) {
   });
 
   // --- Checkbox ---
+  // Eigenes <label> vergroessert die Tippflaeche unsichtbar (.check-tap in
+  // style.css) - bei einer echten Checkbox der einzige Weg dafuer ganz ohne
+  // eigene Klick-Weiterleitung per JS.
   const cb = document.createElement("input");
   cb.type = "checkbox";
   cb.className = "check";
   cb.checked = t.done;
   cb.title = t.done ? "Wieder als offen markieren" : "Als erledigt abhaken";
   cb.addEventListener("change", () => toggleDone(t.id));
-  li.appendChild(cb);
+  const cbTap = document.createElement("label");
+  cbTap.className = "check-tap";
+  cbTap.appendChild(cb);
+  li.appendChild(cbTap);
 
   // --- Text + Termin (Doppelklick = bearbeiten) ---
   const main = document.createElement("div");

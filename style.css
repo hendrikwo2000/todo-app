@@ -535,6 +535,21 @@ input[type="date"]:focus {
   transform: rotate(45deg);
 }
 
+/* Sichtbares Icon bleibt 18px/16px, das <label> drumherum ist per
+   negativem Rand genauso gross wie vorher NUR die Checkbox - vergroessert
+   also die Tippflaeche, ohne Nachbarelemente zu verschieben. */
+.check-tap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin: -7px;
+  cursor: pointer;
+}
+.todo.is-done .check-tap { width: 24px; height: 24px; margin: -4px; }
+
 .todo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0; cursor: text; }
 .todo-text { font-size: 15.5px; line-height: 1.3; word-break: break-word; }
 
@@ -584,7 +599,7 @@ input[type="date"]:focus {
   opacity: 0;
   pointer-events: none;
   transition: opacity .12s;
-  padding-left: 22px;
+  padding-left: 28px;
   background: linear-gradient(to right, var(--row-fade) 0, var(--row) 24%);
 }
 .todo:hover .actions { opacity: 1; pointer-events: auto; }
@@ -592,7 +607,7 @@ input[type="date"]:focus {
   border: none;
   background: transparent;
   color: var(--muted);
-  width: 28px; height: 28px;
+  width: 34px; height: 34px;
   border-radius: 7px;
   cursor: pointer;
   font-size: 14px;
