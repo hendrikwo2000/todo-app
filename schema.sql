@@ -141,7 +141,8 @@ CREATE TABLE todos (
   done         INTEGER NOT NULL DEFAULT 0 CHECK (done IN (0, 1)),
   position     INTEGER,
   created_at   TEXT NOT NULL,
-  completed_at TEXT
+  completed_at TEXT,
+  wiederholung TEXT
 );
 
 -- --------------------------------------------------- Push-Anmeldungen ---
