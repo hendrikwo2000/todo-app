@@ -447,6 +447,26 @@ input:checked ~ .switch-track` braucht den Geschwister-Kombinator `~`
 statt `+`, weil die Beschriftung jetzt zwischen `input` und
 `.switch-track` sitzt (kein unmittelbarer Nachbar mehr).
 
+**Verwaltung: Rechte-Gruppe.** Die drei Rechte-Schalter (Admin/ToDo/Fokus)
+je Nutzer stecken jetzt in einer eigenen, leicht abgesetzten Box
+(`.admin-rechte`) statt lose zwischen Name und Löschen-Knopf zu stehen —
+reine Wahrnehmungshilfe, keine Funktionsänderung. Der Löschen-Knopf
+erscheint beim eigenen Konto jetzt ebenfalls, aber deaktiviert
+(`.btn.gefahr:disabled`) statt ganz zu fehlen — gleiches Muster wie bei
+den Schaltern selbst, die dort ebenfalls nur den Stand zeigen.
+
+## Kartenlayout
+
+Häkchen und Mülleimer-Symbol richten sich an Titel (+ Termin, falls
+gesetzt) aus (`align-items: flex-start` an `.todo`, feste statt
+prozentualer Versätze an `.check-tap`/`.actions`, je eigener Wert für
+undatiert/datiert/erledigt über `.todo.dated`/`.todo.urgent`/`.todo.is-done`)
+— vorher zentrierten sie sich an der GESAMTEN Karte inklusive Notiz und
+Checkliste und rutschten bei langem Inhalt weit nach unten. Die genauen
+Pixelwerte sind empirisch abgeglichen (`getBoundingClientRect()` in der
+Browser-Konsole), nicht aus der Typografie hergeleitet — bei künftigen
+Schriftgrößen-Änderungen an `.todo-text`/`.due` lohnt ein erneuter Abgleich.
+
 ## Wiederkehrende ToDos
 
 Ein ToDo mit `wiederholung` (`taeglich`/`woechentlich`/`monatlich`/`jaehrlich`,
@@ -468,6 +488,21 @@ der frisch erzeugte Nachfolger sofort wieder überfällig.
 gleiche Beschränkung wie bei Bereich/Thema-Zuordnung, die auch nur dort
 geht. Braucht zwingend einen Termin (ohne Termin ergibt eine Wiederholung
 keinen Sinn) — das Auswahlfeld bleibt unsichtbar, bis einer gesetzt ist.
+Im Dialog steckt die Auswahl seit der Kompakt-Zeile hinter einem
+🔁-Knopf statt einem immer sichtbaren `<select>` — Klick ruft
+`openDatePicker()` auf dem (unsichtbar überlagerten) `<select>` auf,
+genau wie beim 📅-Knopf für den Termin selbst; der Knopftext zeigt das
+gewählte Muster kompakt an (`updateWiederholungButton()`).
+
+**Sichtbarkeit.** Die neu erzeugte Ausgabe erscheint nicht sofort nach dem
+Abhaken, sondern erst ab ihrem eigenen Fälligkeitstag
+(`nochNichtFaellig()` in `app.js`, gefiltert in `renderColumn()` und
+`synchronisiereOhneBereich()`) — sonst stünde direkt danach eine optisch
+fast identische Zeile mit nur einem anderen Datum da. Gilt NUR für
+wiederkehrende ToDos: ein normales ToDo mit Zukunftstermin bleibt wie
+gewohnt sofort sichtbar (samt „Morgen"-Anzeige und roter Dringlichkeit ab
+morgen) — sonst wäre auch die Vorschau auf morgen fällige, nicht
+wiederkehrende ToDos weg.
 
 ## Unterpunkte
 
@@ -494,3 +529,32 @@ angehakt sind.
 kopiert seine Unterpunkte beim Abhaken auf die neue Ausgabe, aber frisch
 unangehakt — sonst müsste man z. B. eine wiederkehrende Einkaufsliste jedes
 Mal neu eintippen.
+
+**Eingabefeld hinter dem ✓-Knopf.** Im Bearbeiten-Dialog steckt nur das
+Eingabefeld für einen NEUEN Punkt hinter einem kompakten ✓-Knopf in der
+Kompakt-Zeile (`unterpunktEingabeOffen` merkt sich, für welches ToDo es
+gerade eingeblendet ist) — die bestehenden Punkte bleiben unverändert
+direkt darunter sichtbar und abhakbar. Enter im Feld ruft nicht direkt
+`addUnterpunkt()` auf, sondern `blur()`: der Re-Render aus `addUnterpunkt()`
+nimmt sonst das alte (dann verwaiste) Feld aus dem DOM, was selbst ein
+`blur` auslöst und den Punkt ein zweites Mal anlegen würde. Über genau
+diesen `blur()`-Weg übernimmt auch ein Klick irgendwo anders hin den
+offenen Eintrag, nicht nur Enter. Randfall: Klick auf „Abbrechen" bei noch
+unbestätigtem Text committet den Punkt zuerst (der `blur` kommt vor dem
+Klick) — das dabei neu gerenderte „Abbrechen" verpasst dadurch gelegentlich
+den ersten Klick, ein zweiter schließt dann wie erwartet. Kein
+Datenverlust, nur ein zusätzlicher Klick in diesem seltenen Zusammenspiel.
+
+**Bekannter Fehler (nicht behoben, seit Unterpunkte-Einführung):** Jede
+Aktion an einem Unterpunkt (`toggleUnterpunkt()`, `addUnterpunkt()`,
+`deleteUnterpunkt()`) rendert den kompletten Bearbeiten-Dialog neu und
+setzt dabei Titel- und Notizfeld auf den zuletzt GESPEICHERTEN Stand
+zurück (`t.text`/`t.note`), nicht auf einen gerade ungespeichert
+eingetippten. Wer mitten im Umbenennen zusätzlich einen bestehenden
+Unterpunkt abhakt, verliert dadurch den ungespeicherten Titel-Text
+kommentarlos — live nachgestellt am 10.08.2026. Betrifft nur das
+Zusammenspiel Titel/Notiz-Bearbeitung mit Unterpunkt-Aktionen am selben
+ToDo, nicht die übrigen Felder. Ein Fix bräuchte entweder ein Zwischenspeichern
+der Feldwerte vor jedem Unterpunkt-bedingten Re-Render oder ein gezieltes
+DOM-Update statt des vollen `render()` — beides über den Rahmen dieser
+Änderungsrunde hinaus.
