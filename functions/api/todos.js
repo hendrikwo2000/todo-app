@@ -30,6 +30,11 @@ import { nutzerOderFehler } from "../_lib/zugang.js";
 // die Datenbank zu wandern.
 const FARBEN_ERLAUBT = new Set(["blau", "tuerkis", "gruen", "lila", "pink", "grau"]);
 
+// Erlaubte Wiederholungsmuster (siehe WIEDERHOLUNGEN in app.js, muss dazu
+// passen). Alles ausserhalb dieser Liste wird abgelehnt statt ungeprueft in
+// die Datenbank zu wandern.
+const WIEDERHOLUNG_ERLAUBT = new Set(["taeglich", "woechentlich", "monatlich", "jaehrlich"]);
+
 export async function onRequestGet({ request, env }) {
   const { nutzerId, nutzer, fokusZugang, fehler } = await nutzerOderFehler(request, env);
   if (fehler) return fehler;
@@ -71,7 +76,7 @@ export async function onRequestGet({ request, env }) {
 
     const todos = await env.DB.prepare(
       `SELECT t.id, t.list_id, t.thema_id, t.text, t.note, t.due, t.done,
-              t.position, t.created_at, t.completed_at, l.board_id
+              t.position, t.created_at, t.completed_at, t.wiederholung, l.board_id
          FROM todos t
          JOIN lists l ON l.id = t.list_id
          JOIN board_members m ON m.board_id = l.board_id
@@ -104,6 +109,7 @@ export async function onRequestGet({ request, env }) {
         order: t.position,         // null bei terminierten ToDos, wie bisher
         createdAt: t.created_at,
         completedAt: t.completed_at,
+        wiederholung: t.wiederholung || null,
       });
     }
 
@@ -172,7 +178,8 @@ export async function onRequestPut({ request, env }) {
                      || typeof th.categoryId !== "string")) {
     return json({ error: "Ungueltiges Ueber-Thema" }, 400);
   }
-  if (zustand.todos.some(t => !t || typeof t.id !== "string" || typeof t.text !== "string")) {
+  if (zustand.todos.some(t => !t || typeof t.id !== "string" || typeof t.text !== "string"
+                     || (t.wiederholung != null && !WIEDERHOLUNG_ERLAUBT.has(t.wiederholung)))) {
     return json({ error: "Ungueltiges ToDo" }, 400);
   }
 
@@ -233,8 +240,8 @@ export async function onRequestPut({ request, env }) {
     anweisungen.push(
       env.DB.prepare(
         `INSERT INTO todos
-           (id, list_id, thema_id, text, note, due, done, position, created_at, completed_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           (id, list_id, thema_id, text, note, due, done, position, created_at, completed_at, wiederholung)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         t.id,
         t.categoryId,
@@ -245,7 +252,8 @@ export async function onRequestPut({ request, env }) {
         t.done ? 1 : 0,
         typeof t.order === "number" ? t.order : null,
         t.createdAt || new Date().toISOString(),
-        t.completedAt ?? null
+        t.completedAt ?? null,
+        t.wiederholung ?? null
       )
     );
   }
