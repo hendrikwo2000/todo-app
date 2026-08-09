@@ -579,6 +579,13 @@ input[type="date"]:focus {
   word-break: break-word;
 }
 
+.unterpunkte { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.unterpunkt { display: flex; align-items: center; gap: 6px; }
+.unterpunkt .check { width: 16px; height: 16px; }
+.unterpunkt .check-tap { width: 28px; height: 28px; margin: -6px; }
+.unterpunkt span { font-size: 13px; color: var(--text); }
+.unterpunkt.is-done span { text-decoration: line-through; color: var(--muted); }
+
 .due {
   font-size: 12.5px;
   color: var(--muted);
@@ -813,6 +820,25 @@ input[type="date"]:focus {
   transition: border-color .15s, box-shadow .15s;
 }
 .edit-wiederholung:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* Checklisten-Abschnitt im Bearbeiten-Dialog. */
+.edit-unterpunkte { display: flex; flex-direction: column; gap: 4px; }
+.edit-unterpunkt-zeile { display: flex; align-items: center; gap: 6px; }
+.edit-unterpunkt-text { flex: 1; font-size: 13px; }
+.edit-unterpunkt-text.is-done { text-decoration: line-through; color: var(--muted); }
+.edit-unterpunkt-neu {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--row);
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.edit-unterpunkt-neu:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .empty {
   color: var(--muted);

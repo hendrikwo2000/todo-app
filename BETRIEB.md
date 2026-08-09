@@ -468,3 +468,29 @@ der frisch erzeugte Nachfolger sofort wieder überfällig.
 gleiche Beschränkung wie bei Bereich/Thema-Zuordnung, die auch nur dort
 geht. Braucht zwingend einen Termin (ohne Termin ergibt eine Wiederholung
 keinen Sinn) — das Auswahlfeld bleibt unsichtbar, bis einer gesetzt ist.
+
+## Unterpunkte
+
+Eine Checkliste INNERHALB eines ToDos, eigene Tabelle `unterpunkte`
+(`todo_id` → `todos.id`, echter Fremdschlüssel mit CASCADE — anders als
+`todos.thema_id`, das bewusst ohne Fremdschlüssel auskommt, weil ein ToDo
+ein verschwundenes Thema überleben soll; ein Unterpunkt ohne sein ToDo
+ergibt dagegen keinen Sinn). Verwalten (anlegen/löschen) nur im
+Bearbeiten-Dialog, Abhaken zusätzlich direkt auf der Karte — blendet sich
+dort aus, sobald das ToDo selbst erledigt ist, wie die Notiz auch. Kein
+Umbenennen — Tippfehler heißt löschen und neu anlegen.
+
+**Automatik.** Letzter offener Punkt abgehakt → das ToDo wird automatisch
+erledigt; ein Punkt an einem erledigten ToDo wieder geöffnet → das ToDo wird
+automatisch wieder offen (`toggleUnterpunkt()` in `app.js`, ruft dafür
+`toggleDone()` auf — nicht `t.done` direkt setzen, sonst würde z. B. eine
+Wiederholung beim Automatik-Abhaken nicht auslösen). Umgekehrt: das
+Haupt-Häkchen manuell gesetzt zieht alle Unterpunkte mit, manuell entfernt
+lässt sie unangetastet — sonst würde die Automatik ein gerade wieder
+geöffnetes ToDo sofort erneut schließen, falls zufällig noch alle Punkte
+angehakt sind.
+
+**Wiederholung + Unterpunkte.** Ein wiederkehrendes ToDo mit Checkliste
+kopiert seine Unterpunkte beim Abhaken auf die neue Ausgabe, aber frisch
+unangehakt — sonst müsste man z. B. eine wiederkehrende Einkaufsliste jedes
+Mal neu eintippen.

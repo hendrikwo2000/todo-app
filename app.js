@@ -26,7 +26,7 @@ const API_BASE = "/api/todos";
 let listen = [];           // Metadaten je Liste (Form siehe /api/todos)
 let daten = {};            // { [listeId]: { categories, themen, todos } }
 let aktiveListe = null;    // id der aktiven Liste (oder null: keine Liste)
-let state = { categories: [], themen: [], todos: [] };
+let state = { categories: [], themen: [], todos: [], unterpunkte: [] };
 let editingId = null;      // id des ToDos, das gerade bearbeitet wird
 let editingCat = null;     // id des Bereichs, dessen Name gerade bearbeitet wird
 let editingThema = null;   // id des Ueber-Themas, dessen Name gerade bearbeitet wird
@@ -1285,10 +1285,11 @@ function starteTitelUmbenennen() {
 // zum Listennamen, der Umschalter erscheint ab zwei Listen, "＋ Bereich" ist
 // nur mit aktiver Liste nutzbar.
 function zeigeAktiveListe() {
-  state = (aktiveListe && daten[aktiveListe]) || { categories: [], themen: [], todos: [] };
+  state = (aktiveListe && daten[aktiveListe]) || { categories: [], themen: [], todos: [], unterpunkte: [] };
   if (!Array.isArray(state.categories)) state.categories = [];
   if (!Array.isArray(state.themen)) state.themen = [];
   if (!Array.isArray(state.todos)) state.todos = [];
+  if (!Array.isArray(state.unterpunkte)) state.unterpunkte = [];
   zeichneTitel();
   addCatBtn.disabled = !aktiveListe;
   addTodoBtn.disabled = !aktiveListe;
@@ -1525,10 +1526,11 @@ async function loadState() {
     daten = antwort.daten && typeof antwort.daten === "object" ? antwort.daten : {};
     // Jede Liste bekommt eine saubere Huelle - auch eine ohne Bereiche.
     for (const b of listen) {
-      const d = daten[b.id] || (daten[b.id] = { categories: [], themen: [], todos: [] });
+      const d = daten[b.id] || (daten[b.id] = { categories: [], themen: [], todos: [], unterpunkte: [] });
       if (!Array.isArray(d.categories)) d.categories = [];
       if (!Array.isArray(d.themen)) d.themen = [];
       if (!Array.isArray(d.todos)) d.todos = [];
+      if (!Array.isArray(d.unterpunkte)) d.unterpunkte = [];
     }
 
     // Noch nicht hochgeladene Aenderungen aus einer vorigen Offline-Phase
@@ -1563,12 +1565,13 @@ async function save(boardId = aktiveListe) {
   setStatus("Speichere …", "");
   const boardMeta = listen.find(b => b.id === boardId);
   const boardName = boardMeta ? boardMeta.name : "Liste";
-  const ziel = daten[boardId] || { categories: [], themen: [], todos: [] };
+  const ziel = daten[boardId] || { categories: [], themen: [], todos: [], unterpunkte: [] };
   const body = JSON.stringify({
     boardId,
     categories: ziel.categories,
     themen: ziel.themen || [],
     todos: ziel.todos,
+    unterpunkte: ziel.unterpunkte || [],
   });
   let ergebnis = "fehler";
   try {
@@ -1634,6 +1637,54 @@ function setStatus(text, cls) {
 // ---------- Aktionen: ToDos ----------
 function findTodo(id) { return state.todos.find(t => t.id === id); }
 
+// Alle Unterpunkte eines ToDos, in gespeicherter Reihenfolge (das GET liefert
+// sie schon sortiert, die Reihenfolge bleibt beim Filtern erhalten).
+function unterpunkteVon(todoId) {
+  return state.unterpunkte.filter(u => u.todoId === todoId);
+}
+
+function addUnterpunkt(todoId, text) {
+  text = (text || "").trim();
+  if (!text) return;
+  state.unterpunkte.push({ id: uid(), todoId, text, done: false });
+  // Ein frisch hinzugefuegter Punkt ist immer offen - war das ToDo bereits
+  // erledigt (z. B. nachtraeglich noch einen Punkt ergaenzt), darf es das
+  // nicht bleiben, sonst waere die Checkliste auf der Karte unsichtbar (die
+  // blendet sich ja gerade bei erledigten ToDos aus). toggleDone() rendert
+  // und speichert schon selbst, deshalb hier nicht doppelt.
+  const t = findTodo(todoId);
+  if (t && t.done) toggleDone(t.id);
+  else { render(); save(); }
+  const feld = document.querySelector(`[data-neuer-unterpunkt="${todoId}"]`);
+  if (feld) feld.focus();
+}
+
+function deleteUnterpunkt(id) {
+  state.unterpunkte = state.unterpunkte.filter(x => x.id !== id);
+  render();
+  save();
+}
+
+// Abhaken eines Unterpunkts kann das ToDo automatisch mitziehen: letzter
+// offener Punkt abgehakt -> ToDo erledigt; Punkt an einem erledigten ToDo
+// wieder geoeffnet -> ToDo wieder offen. Beide Faelle laufen ueber
+// toggleDone() (nicht direkt t.done setzen), damit z. B. eine Wiederholung
+// beim Automatik-Abhaken genauso ausgeloest wird wie beim manuellen.
+function toggleUnterpunkt(id) {
+  const u = state.unterpunkte.find(x => x.id === id);
+  if (!u) return;
+  u.done = !u.done;
+  const t = findTodo(u.todoId);
+  if (t) {
+    const geschwister = unterpunkteVon(u.todoId);
+    const alleFertig = geschwister.length > 0 && geschwister.every(x => x.done);
+    if (u.done && alleFertig && !t.done) { toggleDone(t.id); return; }
+    if (!u.done && t.done) { toggleDone(t.id); return; }
+  }
+  render();
+  save();
+}
+
 // Naechste freie Sortiernummer fuer termin-lose, offene ToDos einer Gruppe.
 // Gruppe = Bereich + Ueber-Thema (null = frei), denn jede Gruppe wird fuer
 // sich sortiert; so landet ein neues ToDo hinten in genau seiner Gruppe.
@@ -1688,13 +1739,20 @@ function toggleDone(id) {
   t.completedAt = t.done ? new Date().toISOString() : null;
   // Wieder geoeffnete termin-lose ToDos ans Ende ihrer offenen Gruppe setzen.
   if (!t.done && !t.due && typeof t.order !== "number") t.order = nextOrder(t.categoryId, t.themaId);
+  // Haupt-Haekchen manuell gesetzt (oder durch den letzten Unterpunkt ausgeloest,
+  // siehe toggleUnterpunkt): alle Unterpunkte ziehen nach. Beim OEFFNEN dagegen
+  // KEINE Kaskade - man will das ToDo zurueckholen, nicht den Haken-Fortschritt
+  // verlieren (siehe Kommentar in toggleUnterpunkt).
+  if (t.done) {
+    state.unterpunkte.forEach(u => { if (u.todoId === t.id) u.done = true; });
+  }
   // Wiederkehrendes ToDo abgehakt: sofort die naechste Ausgabe anlegen. Baut
   // das neue ToDo direkt (nicht ueber addTodoTo()) - die Funktion raeumt
   // nebenbei ein offenes Schnell-Anlege-Feld weg, was hier ein voellig
   // unbeteiligtes, gerade offenes Eingabefeld anderswo auf dem Board
   // schliessen wuerde.
   if (t.done && t.wiederholung && t.due) {
-    state.todos.push({
+    const neuesTodo = {
       id: uid(),
       categoryId: t.categoryId,
       themaId: t.themaId,
@@ -1705,6 +1763,12 @@ function toggleDone(id) {
       done: false,
       createdAt: new Date().toISOString(),
       completedAt: null,
+    };
+    state.todos.push(neuesTodo);
+    // Checkliste mitnehmen, aber frisch unangehakt - sonst muesste man sie bei
+    // jeder Wiederholung neu eintippen (z. B. eine wiederkehrende Einkaufsliste).
+    unterpunkteVon(t.id).forEach(u => {
+      state.unterpunkte.push({ id: uid(), todoId: neuesTodo.id, text: u.text, done: false });
     });
   }
   render();
@@ -1715,12 +1779,15 @@ function deleteTodo(id) {
   const idx = state.todos.findIndex(x => x.id === id);
   if (idx < 0) return;
   const removed = state.todos[idx];
+  const removedUnterpunkte = unterpunkteVon(id);
   state.todos.splice(idx, 1);
+  state.unterpunkte = state.unterpunkte.filter(u => u.todoId !== id);
   if (editingId === id) editingId = null;
   render();
   save();
   showUndo(`„${removed.text}“ gelöscht`, () => {
     state.todos.splice(Math.min(idx, state.todos.length), 0, removed);
+    state.unterpunkte.push(...removedUnterpunkte);
     render();
     save();
   });
@@ -2695,6 +2762,89 @@ function updateDateButton(calBtn, clearBtn, value) {
   clearBtn.hidden = !has;
 }
 
+// Checklisten-Abschnitt im Bearbeiten-Dialog: bestehende Punkte (Haekchen,
+// Text, Loeschen) und ein Eingabefeld zum Anhaengen. Kein Umbenennen in
+// dieser ersten Version - Tippfehler heisst loeschen und neu anlegen.
+function baueUnterpunkteBearbeiten(t) {
+  const box = document.createElement("div");
+  box.className = "edit-unterpunkte";
+
+  unterpunkteVon(t.id).forEach(u => {
+    const zeile = document.createElement("div");
+    zeile.className = "edit-unterpunkt-zeile";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "check";
+    cb.checked = u.done;
+    cb.addEventListener("change", () => toggleUnterpunkt(u.id));
+    const cbTap = document.createElement("label");
+    cbTap.className = "check-tap";
+    cbTap.appendChild(cb);
+    zeile.appendChild(cbTap);
+
+    const text = document.createElement("span");
+    text.className = "edit-unterpunkt-text" + (u.done ? " is-done" : "");
+    text.textContent = u.text;
+    zeile.appendChild(text);
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "act del";
+    del.title = "Unterpunkt löschen";
+    del.textContent = "🗑️";
+    del.addEventListener("click", () => deleteUnterpunkt(u.id));
+    zeile.appendChild(del);
+
+    box.appendChild(zeile);
+  });
+
+  const neu = document.createElement("input");
+  neu.type = "text";
+  neu.className = "edit-unterpunkt-neu";
+  neu.placeholder = "＋ Unterpunkt";
+  neu.dataset.neuerUnterpunkt = t.id;
+  neu.addEventListener("keydown", e => {
+    if (e.key === "Enter") addUnterpunkt(t.id, neu.value);
+  });
+  box.appendChild(neu);
+
+  return box;
+}
+
+// Checkliste auf der Karte selbst - direkt abhakbar, nicht nur im
+// Bearbeiten-Dialog (sonst waere Abhaken einzelner Punkte im Alltag
+// umstaendlich, z. B. beim Einkaufen). Blendet sich aus, sobald das ToDo
+// selbst erledigt ist, wie die Notiz auch. null, wenn keine Punkte da sind -
+// dann haengt renderTodo nichts an.
+function baueUnterpunkteAnzeige(t) {
+  const liste = unterpunkteVon(t.id);
+  if (!liste.length) return null;
+  const box = document.createElement("ul");
+  box.className = "unterpunkte";
+  liste.forEach(u => {
+    const zeile = document.createElement("li");
+    zeile.className = "unterpunkt" + (u.done ? " is-done" : "");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "check";
+    cb.checked = u.done;
+    cb.addEventListener("change", () => toggleUnterpunkt(u.id));
+    const cbTap = document.createElement("label");
+    cbTap.className = "check-tap";
+    cbTap.appendChild(cb);
+    zeile.appendChild(cbTap);
+
+    const text = document.createElement("span");
+    text.textContent = u.text;
+    zeile.appendChild(text);
+
+    box.appendChild(zeile);
+  });
+  return box;
+}
+
 function renderTodo(t) {
   const li = document.createElement("li");
   // Streifen-Ampel: blau ohne Termin, gelb mit Termin, rot wenn dringend.
@@ -2747,6 +2897,7 @@ function renderTodo(t) {
         <button class="btn primary" data-act="save">OK</button>
         <button class="btn" data-act="cancel">Abbrechen</button>
       </div>`;
+    wrap.appendChild(baueUnterpunkteBearbeiten(t));
     const textInput = wrap.querySelector(`[data-edit-text="${t.id}"]`);
     const noteInput = wrap.querySelector("[data-edit-note]");
     const dateInput = wrap.querySelector(`[data-edit-date="${t.id}"]`);
@@ -2839,6 +2990,10 @@ function renderTodo(t) {
     note.className = "todo-note";
     note.textContent = t.note;
     main.appendChild(note);
+  }
+  if (!t.done) {
+    const liste = baueUnterpunkteAnzeige(t);
+    if (liste) main.appendChild(liste);
   }
   li.appendChild(main);
 
