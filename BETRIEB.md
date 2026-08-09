@@ -408,3 +408,12 @@ Einstellungen (`/api/listen/loeschen`) — das lässt das Konto unberührt.
 
 **Der letzte Admin lässt sich nicht löschen** und sich auch selbst nicht
 degradieren — sonst käme niemand mehr an die Verwaltung.
+
+## Barrierefreiheit
+
+**Kontrast (nur helles Design).** `--orange` und `--muted` in `style.css`
+lagen unter der WCAG-AA-Grenze von 4,5:1 (2,89:1 bzw. 3,46:1 auf weißem
+Karten-Hintergrund `--row`) — ausgerechnet die Farbe für „heute fällig".
+Beide jetzt dunkler (`--orange: #a85d0a`, `--muted: #6b7386`), beide über
+4,5:1. Dunkles Design war schon vorher in Ordnung (6,45:1 / 4,67:1) und
+blieb unangetastet.
