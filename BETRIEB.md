@@ -426,3 +426,13 @@ Apple/Google empfehlen ~44px — die kompakte Zeile lässt nur ~32px zu, ohne
 Nachbarzeilen zu überlappen). Die Checkbox steckt dafür in einem
 `<label class="check-tap">` — bei einer echten Checkbox der einzige Weg,
 die Klickfläche ganz ohne JavaScript unsichtbar zu vergrößern.
+
+**Schalter-Beschriftung.** Der `.switch`-Baustein (Darstellung,
+Benachrichtigungen in den Einstellungen, Admin/ToDo/Fokus in der
+Verwaltung) zeigte die Beschriftung bisher NACH dem Schalter
+(`[Schalter] Wort`), jetzt davor (`Wort [Schalter]`) — der Schalter
+schließt die Zeile als Bedienelement ab, üblichere Lesereihenfolge.
+Wichtig bei künftigen Änderungen an diesem Baustein: `.switch
+input:checked ~ .switch-track` braucht den Geschwister-Kombinator `~`
+statt `+`, weil die Beschriftung jetzt zwischen `input` und
+`.switch-track` sitzt (kein unmittelbarer Nachbar mehr).

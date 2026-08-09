@@ -97,7 +97,7 @@ function schalter(text, an, aktiv, beiAenderung) {
   beschriftung.className = "switch-label";
   beschriftung.textContent = text;
 
-  label.append(input, track, beschriftung);
+  label.append(input, beschriftung, track);
   return label;
 }
 
