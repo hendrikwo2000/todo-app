@@ -83,9 +83,19 @@ export async function onRequestGet({ request, env }) {
         WHERE m.user_id = ?`
     ).bind(nutzerId).all();
 
+    const unterpunkte = await env.DB.prepare(
+      `SELECT u.id, u.todo_id, u.text, u.done, l.board_id
+         FROM unterpunkte u
+         JOIN todos t ON t.id = u.todo_id
+         JOIN lists l ON l.id = t.list_id
+         JOIN board_members m ON m.board_id = l.board_id
+        WHERE m.user_id = ?
+        ORDER BY u.todo_id, u.position`
+    ).bind(nutzerId).all();
+
     // Leere Huelle je Liste, damit auch eine Liste ohne Bereiche auftaucht.
     const daten = {};
-    for (const b of listen) daten[b.id] = { categories: [], themen: [], todos: [] };
+    for (const b of listen) daten[b.id] = { categories: [], themen: [], todos: [], unterpunkte: [] };
     for (const l of bereiche.results) {
       (daten[l.board_id] || (daten[l.board_id] = { categories: [], themen: [], todos: [] }))
         .categories.push({ id: l.id, name: l.name, farbe: l.farbe || null });
@@ -111,6 +121,11 @@ export async function onRequestGet({ request, env }) {
         completedAt: t.completed_at,
         wiederholung: t.wiederholung || null,
       });
+    }
+    for (const u of unterpunkte.results) {
+      const eimer = daten[u.board_id];
+      if (!eimer) continue;
+      eimer.unterpunkte.push({ id: u.id, todoId: u.todo_id, text: u.text, done: u.done === 1 });
     }
 
     return json({
@@ -167,6 +182,9 @@ export async function onRequestPut({ request, env }) {
   // themen ist optional (aeltere Clients kennen es nicht) - fehlt es, als leer
   // behandeln, statt die ganze Liste abzulehnen.
   const themen = Array.isArray(zustand.themen) ? zustand.themen : [];
+  // unterpunkte ist optional (aeltere Clients kennen es nicht) - fehlt es,
+  // als leer behandeln, wie bei themen.
+  const unterpunkte = Array.isArray(zustand.unterpunkte) ? zustand.unterpunkte : [];
   if (!Array.isArray(zustand.categories) || !Array.isArray(zustand.todos)) {
     return json({ error: "Ungueltige Datenstruktur" }, 400);
   }
@@ -182,6 +200,10 @@ export async function onRequestPut({ request, env }) {
                      || (t.wiederholung != null && !WIEDERHOLUNG_ERLAUBT.has(t.wiederholung)))) {
     return json({ error: "Ungueltiges ToDo" }, 400);
   }
+  if (unterpunkte.some(u => !u || typeof u.id !== "string" || typeof u.text !== "string"
+                     || typeof u.todoId !== "string")) {
+    return json({ error: "Ungueltiger Unterpunkt" }, 400);
+  }
 
   // Darf der Nutzer diese Liste bearbeiten? owner und member ja, sonst nicht.
   const rolle = await rolleIn(env, boardId, nutzerId);
@@ -190,9 +212,12 @@ export async function onRequestPut({ request, env }) {
   // Nur DIESE Liste ersetzen. batch() laeuft als eine Transaktion - entweder
   // steht am Ende alles drin oder nichts. Kindtabellen ausdruecklich zuerst,
   // nicht auf ON DELETE CASCADE verlassen (haengt an PRAGMA foreign_keys).
-  // Reihenfolge: todos (haengt an lists und themen), dann themen (haengt an
-  // lists), dann lists.
+  // Reihenfolge: unterpunkte (haengt an todos), dann todos (haengt an lists
+  // und themen), dann themen (haengt an lists), dann lists.
   const anweisungen = [
+    env.DB.prepare(
+      "DELETE FROM unterpunkte WHERE todo_id IN (SELECT id FROM todos WHERE list_id IN (SELECT id FROM lists WHERE board_id = ?))"
+    ).bind(boardId),
     env.DB.prepare(
       "DELETE FROM todos WHERE list_id IN (SELECT id FROM lists WHERE board_id = ?)"
     ).bind(boardId),
@@ -234,8 +259,10 @@ export async function onRequestPut({ request, env }) {
   // die ganze Transaktion kippen. Sie sind ohnehin unsichtbar - also raus.
   // thema_id nur behalten, wenn das Thema existiert UND im selben Bereich liegt;
   // sonst NULL (ToDo bleibt erhalten und rutscht frei in den Bereich).
+  const bekannteTodos = new Set();
   for (const t of zustand.todos) {
     if (!bekannt.has(t.categoryId)) continue;
+    bekannteTodos.add(t.id);
     const themaId = themaZuBereich.get(t.themaId) === t.categoryId ? t.themaId : null;
     anweisungen.push(
       env.DB.prepare(
@@ -255,6 +282,20 @@ export async function onRequestPut({ request, env }) {
         t.completedAt ?? null,
         t.wiederholung ?? null
       )
+    );
+  }
+
+  // Unterpunkte: nur die zu einem bekannten ToDo, sonst schluege der
+  // Fremdschluessel fehl. position ist der Index innerhalb des ToDos (pro
+  // ToDo neu gezaehlt), gleiches Prinzip wie themaZaehler oben.
+  const unterpunktZaehler = {};
+  for (const u of unterpunkte) {
+    if (!bekannteTodos.has(u.todoId)) continue;
+    const pos = (unterpunktZaehler[u.todoId] = (unterpunktZaehler[u.todoId] ?? -1) + 1);
+    anweisungen.push(
+      env.DB.prepare(
+        "INSERT INTO unterpunkte (id, todo_id, text, done, position) VALUES (?, ?, ?, ?, ?)"
+      ).bind(u.id, u.todoId, u.text, u.done ? 1 : 0, pos)
     );
   }
 
