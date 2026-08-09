@@ -37,6 +37,7 @@ let draggedCat = null;     // id des Bereichs, der gerade umsortiert wird
 let addingCat = null;      // Bereich, dessen Eingabefeld gerade aufgeklappt ist
 let addingThema = null;    // Ueber-Thema fuer das offene Eingabefeld (null = frei)
 let farbePickerFuer = null; // id des Bereichs, dessen Farbauswahl gerade offen ist
+let themaWerkzeugeFuer = null; // id des Bereichs, dessen "+Thema"/Farbe-Zeile offen ist
 
 // Feste Palette fuer die Bereichsfarbe (Punkt am Namen + Streifen am
 // Bereich). Muss zu FARBEN_ERLAUBT in functions/api/todos.js passen.
@@ -2122,68 +2123,23 @@ function renderColumn(cat) {
     head.className = "col-head";
     col.appendChild(head);
 
-    const farbeOffen = farbePickerFuer === cat.id;
-
     if (editingCat === cat.id) {
       // Loeschen gibt es nur hier: wer den Bereich anfasst, hat ihn per
-      // Doppelklick bewusst geoeffnet. Die Farbauswahl (frueher als Punkt
-      // neben dem Namen, siehe Kommentar unten) sitzt aus demselben Grund
-      // hier statt in der Normalansicht - dort war sie ein zweites
-      // Farbsignal neben dem Streifen am linken Rand und damit ueberfluessig.
+      // Doppelklick bewusst geoeffnet. Die Farbauswahl sitzt seit der
+      // Klick-Werkzeugzeile (siehe baueAddKnopfzeile) nicht mehr hier.
       head.className = "col-head editing";
       head.innerHTML = `
         <input type="text" class="cat-edit" data-edit-cat="${cat.id}"
                value="${escapeHtml(cat.name)}" autocomplete="off">
         <div class="col-actions">
-          <button type="button" class="farbe-punkt${cat.farbe ? " farbe-" + cat.farbe : ""}"
-                  data-farbe-fuer="${cat.id}" title="Bereichsfarbe"></button>
           <button type="button" class="act del" title="Bereich löschen" data-act="del">🗑️</button>
-        </div>
-        ${farbeOffen ? `
-        <div class="farbe-popup" data-farbe-fuer="${cat.id}">
-          ${FARBEN.map(f => `<button type="button"
-                class="farbe-swatch farbe-${f.id}${cat.farbe === f.id ? " aktiv" : ""}"
-                data-farbe-wahl="${f.id}" title="${f.name}"></button>`).join("")}
-          <button type="button" class="farbe-swatch farbe-keine${!cat.farbe ? " aktiv" : ""}"
-                  data-farbe-wahl="" title="Keine Farbe">✕</button>
-        </div>` : ""}`;
+        </div>`;
       const input = head.querySelector(".cat-edit");
       input.addEventListener("keydown", e => {
         if (e.key === "Enter") saveCategoryName(cat.id);
         else if (e.key === "Escape") cancelRenameCategory();
       });
       head.querySelector('[data-act="del"]').addEventListener("click", () => deleteCategory(cat.id));
-
-      // Punkt oeffnet/schliesst die Farbauswahl, ein Klick auf einen Swatch
-      // waehlt die Farbe und speichert sofort. render() baut das Eingabefeld
-      // neu auf (Wert kommt sonst wieder aus cat.name) - den noch nicht
-      // gespeicherten Text davor sichern und danach zurueckschreiben, sonst
-      // waere ein angefangener neuer Name nach einem Farbklick weg.
-      const rerenderMitEingabe = () => {
-        const eingabe = head.querySelector(".cat-edit");
-        const zwischenwert = eingabe ? eingabe.value : null;
-        render();
-        if (zwischenwert !== null) {
-          const neu = document.querySelector(`[data-edit-cat="${cat.id}"]`);
-          if (neu) neu.value = zwischenwert;
-        }
-      };
-      head.querySelector("[data-farbe-fuer].farbe-punkt").addEventListener("click", e => {
-        e.stopPropagation();
-        farbePickerFuer = farbeOffen ? null : cat.id;
-        rerenderMitEingabe();
-      });
-      if (farbeOffen) {
-        head.querySelectorAll("[data-farbe-wahl]").forEach(sw => {
-          sw.addEventListener("click", e => {
-            e.stopPropagation();
-            cat.farbe = sw.dataset.farbeWahl || null;
-            farbePickerFuer = null;
-            rerenderMitEingabe();
-            save();
-          });
-        });
-      }
     } else {
       // Ampel am Zaehler: 0 = grau, offene ToDos = blau, etwas Dringendes = rot.
       // Zaehlt alle offenen des Bereichs, auch die in Ueber-Themen.
@@ -2194,11 +2150,21 @@ function renderColumn(cat) {
           <span class="col-count ${countCls}">${open.length}</span>
         </h2>`;
 
-      // Spalte am Titel anfassen und umsortieren, per Doppelklick umbenennen.
+      // Spalte am Titel anfassen und umsortieren; Klick zeigt Farbe/Thema-
+      // Werkzeuge, Doppelklick benennt um - Timer trennt die drei wie schon
+      // beim Thema-Kopf (toggle in renderThemaGruppe).
       const title = head.querySelector(".col-title");
       title.draggable = true;
-      title.title = "Doppelklick zum Umbenennen · ziehen, um den Bereich zu verschieben";
-      title.addEventListener("dblclick", () => startRenameCategory(cat.id));
+      title.title = "Klick: Farbe & Thema · Doppelklick: umbenennen · ziehen: verschieben";
+      let titelKlickTimer = null;
+      title.addEventListener("click", () => {
+        clearTimeout(titelKlickTimer);
+        titelKlickTimer = setTimeout(() => toggleThemaWerkzeuge(cat.id), 220);
+      });
+      title.addEventListener("dblclick", () => {
+        clearTimeout(titelKlickTimer);
+        startRenameCategory(cat.id);
+      });
       title.addEventListener("dragstart", e => {
         draggedCat = cat.id;
         e.dataTransfer.effectAllowed = "move";
@@ -2211,9 +2177,8 @@ function renderColumn(cat) {
         render();
       });
 
-      // ＋ ToDo / ＋ Thema rechtsbuendig in derselben Zeile wie der Titel -
-      // nur wenn gerade kein Eingabefeld fuer ein freies ToDo offen ist (das
-      // erscheint dann stattdessen unterhalb, siehe naechster Block).
+      // ＋ ToDo steht immer da; Farbe und ＋ Thema nur nach Klick auf den
+      // Titel (siehe toggleThemaWerkzeuge) - beides braucht man seltener.
       if (!(addingCat === cat.id && addingThema === null)) {
         head.appendChild(baueAddKnopfzeile(cat));
       }
@@ -2387,6 +2352,16 @@ function toggleThemaCollapse(themaId) {
 
 // Werkzeugzeile am Spaltenkopf: neues freies ToDo bzw. neues Ueber-Thema. Nur
 // fuer echte Bereiche - "Ohne Bereich" hat keine eigene Werkzeugzeile.
+// Klick auf den Bereichstitel oeffnet/schliesst die Werkzeugzeile mit
+// Farbpunkt und "+Thema" (siehe baueAddKnopfzeile). Farbauswahl geht beim
+// Umschalten immer zu, sonst koennte sie beim naechsten Oeffnen der
+// Werkzeugzeile ungefragt schon wieder offenstehen.
+function toggleThemaWerkzeuge(catId) {
+  themaWerkzeugeFuer = themaWerkzeugeFuer === catId ? null : catId;
+  farbePickerFuer = null;
+  render();
+}
+
 function baueAddKnopfzeile(cat) {
   const zeile = document.createElement("div");
   zeile.className = "col-tools";
@@ -2398,13 +2373,52 @@ function baueAddKnopfzeile(cat) {
   todoBtn.addEventListener("click", () => openAdd(cat.id, null));
   zeile.appendChild(todoBtn);
 
-  const themaBtn = document.createElement("button");
-  themaBtn.type = "button";
-  themaBtn.className = "col-thema-btn";
-  themaBtn.textContent = "＋ Thema";
-  themaBtn.title = "Über-Thema anlegen — eine Gruppe innerhalb des Bereichs";
-  themaBtn.addEventListener("click", () => addThema(cat.id));
-  zeile.appendChild(themaBtn);
+  // Farbe und ＋ Thema stehen seltener im Weg als ein ToDo - deshalb nur
+  // sichtbar, solange fuer DIESEN Bereich die Werkzeuge aufgeklappt sind.
+  if (themaWerkzeugeFuer === cat.id) {
+    const farbeOffen = farbePickerFuer === cat.id;
+
+    const farbeBtn = document.createElement("button");
+    farbeBtn.type = "button";
+    farbeBtn.className = "farbe-punkt" + (cat.farbe ? " farbe-" + cat.farbe : "");
+    farbeBtn.dataset.farbeFuer = cat.id;
+    farbeBtn.title = "Bereichsfarbe";
+    farbeBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      farbePickerFuer = farbeOffen ? null : cat.id;
+      render();
+    });
+    zeile.appendChild(farbeBtn);
+
+    if (farbeOffen) {
+      const popup = document.createElement("div");
+      popup.className = "farbe-popup";
+      popup.dataset.farbeFuer = cat.id;
+      popup.innerHTML = FARBEN.map(f => `<button type="button"
+            class="farbe-swatch farbe-${f.id}${cat.farbe === f.id ? " aktiv" : ""}"
+            data-farbe-wahl="${f.id}" title="${f.name}"></button>`).join("") +
+        `<button type="button" class="farbe-swatch farbe-keine${!cat.farbe ? " aktiv" : ""}"
+                data-farbe-wahl="" title="Keine Farbe">✕</button>`;
+      popup.querySelectorAll("[data-farbe-wahl]").forEach(sw => {
+        sw.addEventListener("click", e => {
+          e.stopPropagation();
+          cat.farbe = sw.dataset.farbeWahl || null;
+          farbePickerFuer = null;
+          render();
+          save();
+        });
+      });
+      zeile.appendChild(popup);
+    }
+
+    const themaBtn = document.createElement("button");
+    themaBtn.type = "button";
+    themaBtn.className = "col-thema-btn";
+    themaBtn.textContent = "＋ Thema";
+    themaBtn.title = "Über-Thema anlegen — eine Gruppe innerhalb des Bereichs";
+    themaBtn.addEventListener("click", () => addThema(cat.id));
+    zeile.appendChild(themaBtn);
+  }
   return zeile;
 }
 
@@ -2768,6 +2782,7 @@ document.addEventListener("keydown", e => {
   if (!listenMenue.hidden) schliesseMenue();
   if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
   if (farbePickerFuer) { farbePickerFuer = null; render(); }
+  if (themaWerkzeugeFuer) { themaWerkzeugeFuer = null; farbePickerFuer = null; render(); }
 });
 
 // Spalten umsortieren: Board ist die Ablagezone fuer Bereichs-Drags.
@@ -2818,6 +2833,10 @@ document.addEventListener("mousedown", e => {
     const punkt = document.querySelector(`.farbe-punkt[data-farbe-fuer="${farbePickerFuer}"]`);
     const drin = (popup && popup.contains(e.target)) || (punkt && punkt.contains(e.target));
     if (!drin) { farbePickerFuer = null; render(); }
+  }
+  if (themaWerkzeugeFuer) {
+    const head = document.querySelector(`.column[data-cat="${themaWerkzeugeFuer}"] .col-head`);
+    if (head && !head.contains(e.target)) { themaWerkzeugeFuer = null; farbePickerFuer = null; render(); }
   }
 });
 

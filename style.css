@@ -685,6 +685,10 @@ input[type="date"]:focus {
 }
 .col-thema-btn:hover { background: var(--row); color: var(--accent); border-color: var(--line); }
 
+/* Etwas groesser als der nackte Basis-Punkt (12px) - sitzt hier neben den
+   groesseren Knoepfen "+ ToDo"/"+ Thema", soll optisch mithalten. */
+.col-tools .farbe-punkt { width: 16px; height: 16px; }
+
 .thema-gruppe {
   display: flex;
   flex-direction: column;
