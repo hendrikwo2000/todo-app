@@ -32,6 +32,7 @@ let editingCat = null;     // id des Bereichs, dessen Name gerade bearbeitet wir
 let editingThema = null;   // id des Ueber-Themas, dessen Name gerade bearbeitet wird
 let draggedId = null;      // id des ToDos, das gerade gezogen wird
 let draggedCat = null;     // id des Bereichs, der gerade umsortiert wird
+let draggedThema = null;   // id des Ueber-Themas, das gerade gezogen wird
 // Wo gerade ein Eingabefeld aufgeklappt ist: Bereich plus Ziel-Thema. Ein ToDo
 // kann frei im Bereich (addingThema null) oder in einem Ueber-Thema entstehen.
 let addingCat = null;      // Bereich, dessen Eingabefeld gerade aufgeklappt ist
@@ -2258,8 +2259,81 @@ function renderColumn(cat) {
   //     fangen ihre eigenen Drops mit stopPropagation ab (verdrahteDropZone),
   //     sonst wuerde ein Ablegen im Thema auch die Spalte als "frei" treffen. ---
   verdrahteDropZone(col, cat, null, freieUl);
+  // Themen koennen nur in echte Bereiche gezogen werden - "Ohne Bereich"
+  // kennt grundsaetzlich keine Themen (siehe Kopf dieser Funktion).
+  if (!istOhne) verdrahteThemaDropZone(col, cat);
 
   return col;
+}
+
+// Ablagezone fuer das Verschieben eines GANZEN Themas (samt seiner ToDos) in
+// einen anderen Bereich oder zum Umsortieren innerhalb des eigenen. Getrennt
+// von verdrahteDropZone (die ist fuer einzelne ToDos, haengt an draggedId) -
+// beide sitzen auf demselben col-Element, stoeren sich aber nicht: jede
+// prueft ihre eigene Zustandsvariable und steigt sonst sofort aus, bevor sie
+// das Event stoppen wuerde.
+function verdrahteThemaDropZone(col, cat) {
+  col.addEventListener("dragover", e => {
+    if (!draggedThema) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    col.classList.add("drop-target");
+  });
+  col.addEventListener("dragleave", e => {
+    if (!draggedThema) return;
+    if (!col.contains(e.relatedTarget)) col.classList.remove("drop-target");
+  });
+  col.addEventListener("drop", e => {
+    if (!draggedThema) return;
+    e.preventDefault();
+    col.classList.remove("drop-target");
+    const th = state.themen.find(x => x.id === draggedThema);
+    if (!th) return;
+    const vorId = getThemaAfter(col, e.clientY, draggedThema);
+    verschiebeThema(th, cat.id, vorId);
+    render();
+    save();
+  });
+}
+
+// Welches Thema in der Spalte kommt (der Mausposition nach) direkt NACH der
+// Ablagestelle? null = ganz ans Ende. exceptId blendet das gerade gezogene
+// Thema aus (sonst stoerte seine alte Position den Vergleich beim
+// Umsortieren innerhalb derselben Spalte). Gleiches Prinzip wie
+// getDragAfterElement/getColumnAfter weiter oben, nur ohne deren
+// Mehrzeilen-Sonderfall - Themen stehen immer einspaltig untereinander.
+function getThemaAfter(col, y, exceptId) {
+  const gruppen = [...col.querySelectorAll(".thema-gruppe")]
+    .filter(g => g.dataset.thema !== exceptId);
+  let closest = { offset: -Infinity, id: null };
+  for (const g of gruppen) {
+    const box = g.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) closest = { offset, id: g.dataset.thema };
+  }
+  return closest.id;
+}
+
+// Thema in einen (moeglicherweise anderen) Bereich einsortieren, an der
+// Stelle vor vorThemaId (null = ans Ende). Fuer die gespeicherte Position
+// zaehlt nur die relative Reihenfolge INNERHALB derselben categoryId (siehe
+// functions/api/todos.js) - dazwischenliegende Themen anderer Bereiche
+// stoeren die Zaehlung nicht. Die ToDos des Themas ziehen im categoryId mit
+// um, sonst erkennt der Speicherpfad sie beim naechsten Speichern als
+// verwaist (categoryId passt nicht mehr zum Thema) und loest thema_id
+// stillschweigend auf NULL auf - die ToDos blieben dann im ALTEN Bereich
+// zurueck statt dem Thema zu folgen.
+function verschiebeThema(th, zielCatId, vorThemaId) {
+  const ohneIhn = state.themen.filter(x => x.id !== th.id);
+  th.categoryId = zielCatId;
+  let einfuegeAn = ohneIhn.length;
+  if (vorThemaId) {
+    const idx = ohneIhn.findIndex(x => x.id === vorThemaId);
+    if (idx !== -1) einfuegeAn = idx;
+  }
+  ohneIhn.splice(einfuegeAn, 0, th);
+  state.themen = ohneIhn;
+  state.todos.forEach(t => { if (t.themaId === th.id) t.categoryId = zielCatId; });
 }
 
 // Baut eine Ueber-Thema-Gruppe: Klapp-Kopf (umbenennen/aufloesen/＋) und darunter
@@ -2295,7 +2369,8 @@ function renderThemaGruppe(cat, th, open) {
       `<span class="arrow">▾</span>` +
       `<span class="thema-name">${escapeHtml(th.name)}</span>` +
       `<span class="thema-count ${ampelKlasse(offen)}">${offen.length}</span>`;
-    toggle.title = "Klick: ein-/ausklappen · Doppelklick: umbenennen";
+    toggle.title = "Klick: ein-/ausklappen · Doppelklick: umbenennen · ziehen: verschieben";
+    toggle.draggable = true;
     // Timer trennt Einfach- (einklappen) von Doppelklick (umbenennen), wie am Titel.
     let klickTimer = null;
     toggle.addEventListener("click", () => {
@@ -2305,6 +2380,18 @@ function renderThemaGruppe(cat, th, open) {
     toggle.addEventListener("dblclick", () => {
       clearTimeout(klickTimer);
       startRenameThema(th.id);
+    });
+    toggle.addEventListener("dragstart", e => {
+      draggedThema = th.id;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", "thema:" + th.id);
+      gruppe.classList.add("thema-dragging");
+    });
+    toggle.addEventListener("dragend", () => {
+      draggedThema = null;
+      gruppe.classList.remove("thema-dragging");
+      document.querySelectorAll(".column.drop-target").forEach(c => c.classList.remove("drop-target"));
+      render();
     });
     head.appendChild(toggle);
 

@@ -157,6 +157,16 @@ Hinzugefügtes. Für wenige Leute, die selten zeitgleich tippen, ist das
 vertretbar. Echtes gleichzeitiges Bearbeiten wäre ein ToDo-für-ToDo-Abgleich
 statt „alles auf einmal" — ein späterer Schritt, falls nötig.
 
+**Thema in einen anderen Bereich ziehen.** Ein Über-Thema lässt sich per
+Drag komplett (mit allen ToDos) in einen anderen Bereich verschieben, nicht
+nur innerhalb der eigenen Spalte umsortieren. Dabei müssen ToDos und Thema
+gemeinsam ihre `categoryId` ändern (`verschiebeThema()` in `app.js`) — sonst
+erkennt `PUT /api/todos` sie beim nächsten Speichern als verwaist (die
+`categoryId` passt nicht mehr zum `thema_id`-Ziel) und setzt `thema_id`
+still auf NULL, siehe Kommentar dort. Die gespeicherte Reihenfolge
+(`themen.position`) zählt nur relativ innerhalb derselben `categoryId` —
+Themen anderer Bereiche dazwischen im Array stören nicht.
+
 **Migration bestehender Daten.** Früher hingen die Bereiche direkt an `user_id`
 (eine Liste pro Nutzer). [migration-boards.sql](migration-boards.sql) baut das
 um: je Nutzer entsteht eine Liste „Meine Liste", in die seine Bereiche und

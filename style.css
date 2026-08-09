@@ -703,6 +703,7 @@ input[type="date"]:focus {
   outline-color: var(--accent);
   outline-style: dashed;
 }
+.thema-gruppe.thema-dragging { opacity: .5; }
 
 .thema-head { display: flex; align-items: center; gap: 2px; padding: 2px 2px 0; }
 .thema-toggle {
