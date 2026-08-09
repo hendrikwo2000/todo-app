@@ -446,3 +446,25 @@ Wichtig bei künftigen Änderungen an diesem Baustein: `.switch
 input:checked ~ .switch-track` braucht den Geschwister-Kombinator `~`
 statt `+`, weil die Beschriftung jetzt zwischen `input` und
 `.switch-track` sitzt (kein unmittelbarer Nachbar mehr).
+
+## Wiederkehrende ToDos
+
+Ein ToDo mit `wiederholung` (`taeglich`/`woechentlich`/`monatlich`/`jaehrlich`,
+sonst NULL) erzeugt beim Abhaken sofort seinen Nachfolger — keine eigene
+„Serie" im Datenmodell, jede Ausgabe ist eine ganz normale, eigenständige
+Zeile in `todos`. Löschen, Bearbeiten vor dem Abhaken, Drag & Drop: alles
+funktioniert wie bei jedem anderen ToDo, weil es technisch keins ist.
+
+**Nächster Termin.** Fester Rhythmus ab dem URSPRÜNGLICHEN Fälligkeitsdatum
+(nicht ab dem Tag des Abhakens) — `folgeTermin()` in `app.js`. Zwei
+Feinheiten: Bei Monat/Jahr wird auf den letzten Tag des Zielmonats geklemmt,
+falls der ursprüngliche Tag dort nicht existiert (31. Januar → 28./29.
+Februar, nicht in den März „übergelaufen"); liegt der berechnete Termin
+trotz Klemmung noch in der Vergangenheit (spät abgehakt), rechnet die
+Funktion so oft weiter, bis der neue Termin wirklich ansteht — sonst wäre
+der frisch erzeugte Nachfolger sofort wieder überfällig.
+
+**Nur über den Bearbeiten-Dialog setzbar**, nicht im Schnell-Anlegen-Feld —
+gleiche Beschränkung wie bei Bereich/Thema-Zuordnung, die auch nur dort
+geht. Braucht zwingend einen Termin (ohne Termin ergibt eine Wiederholung
+keinen Sinn) — das Auswahlfeld bleibt unsichtbar, bis einer gesetzt ist.

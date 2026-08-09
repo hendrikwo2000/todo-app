@@ -51,6 +51,15 @@ const FARBEN = [
   { id: "grau",    name: "Grau"   },
 ];
 
+// Wiederholungsmuster fuer ToDos. Muss zu WIEDERHOLUNG_ERLAUBT in
+// functions/api/todos.js passen.
+const WIEDERHOLUNGEN = [
+  { id: "taeglich",     name: "Täglich"     },
+  { id: "woechentlich", name: "Wöchentlich" },
+  { id: "monatlich",    name: "Monatlich"   },
+  { id: "jaehrlich",    name: "Jährlich"    },
+];
+
 // Eingeklappte Erledigt-Bereiche pro Kategorie (in localStorage gemerkt).
 let doneCollapsed = {};
 try { doneCollapsed = JSON.parse(localStorage.getItem("doneCollapsed") || "{}"); }
@@ -125,6 +134,49 @@ function addDaysStr(n) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 function todayStr() { return addDaysStr(0); }
+
+// Naechstes Datum fuer ein Wiederholungsmuster, ausgehend von einem
+// gegebenen "YYYY-MM-DD" (nicht von heute, siehe addDaysStr). Rechnet ueber
+// lokale Date-Methoden (nicht new Date(iso) - das parst als UTC und kann je
+// nach Zeitzone einen Tag verschieben). Bei Monat/Jahr auf den letzten Tag
+// des Zielmonats geklemmt, falls der Ausgangstag dort nicht existiert (31.
+// Januar + 1 Monat -> 28./29. Februar, nicht in den Maerz uebergelaufen).
+function naechsteFaelligkeit(iso, muster) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const datum = new Date(y, m - 1, d);
+  if (muster === "taeglich") {
+    datum.setDate(datum.getDate() + 1);
+  } else if (muster === "woechentlich") {
+    datum.setDate(datum.getDate() + 7);
+  } else if (muster === "monatlich") {
+    const zielTag = datum.getDate();
+    datum.setDate(1);                     // sicher auf den 1. springen...
+    datum.setMonth(datum.getMonth() + 1); // ...dann den Monat weiterschalten...
+    const letzterTag = new Date(datum.getFullYear(), datum.getMonth() + 1, 0).getDate();
+    datum.setDate(Math.min(zielTag, letzterTag)); // ...zielTag setzen, geklemmt.
+  } else if (muster === "jaehrlich") {
+    const zielTag = datum.getDate();
+    const zielMonat = datum.getMonth();
+    datum.setDate(1);
+    datum.setFullYear(datum.getFullYear() + 1);
+    const letzterTag = new Date(datum.getFullYear(), zielMonat + 1, 0).getDate();
+    datum.setMonth(zielMonat);
+    datum.setDate(Math.min(zielTag, letzterTag));
+  } else {
+    return iso; // unbekanntes Muster - unveraendert zurueck, sollte nie vorkommen
+  }
+  return `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
+}
+
+// Wiederholt naechsteFaelligkeit(), bis das Ergebnis nicht mehr in der
+// Vergangenheit liegt - wer spaet abhakt, bekommt keinen sofort
+// ueberfaelligen Folgetermin, sondern den naechsten ECHT anstehenden.
+function folgeTermin(iso, muster) {
+  let naechster = naechsteFaelligkeit(iso, muster);
+  const heute = todayStr();
+  while (naechster < heute) naechster = naechsteFaelligkeit(naechster, muster);
+  return naechster;
+}
 
 function formatDate(iso) {
   if (!iso) return "";
@@ -1636,6 +1688,25 @@ function toggleDone(id) {
   t.completedAt = t.done ? new Date().toISOString() : null;
   // Wieder geoeffnete termin-lose ToDos ans Ende ihrer offenen Gruppe setzen.
   if (!t.done && !t.due && typeof t.order !== "number") t.order = nextOrder(t.categoryId, t.themaId);
+  // Wiederkehrendes ToDo abgehakt: sofort die naechste Ausgabe anlegen. Baut
+  // das neue ToDo direkt (nicht ueber addTodoTo()) - die Funktion raeumt
+  // nebenbei ein offenes Schnell-Anlege-Feld weg, was hier ein voellig
+  // unbeteiligtes, gerade offenes Eingabefeld anderswo auf dem Board
+  // schliessen wuerde.
+  if (t.done && t.wiederholung && t.due) {
+    state.todos.push({
+      id: uid(),
+      categoryId: t.categoryId,
+      themaId: t.themaId,
+      text: t.text,
+      due: folgeTermin(t.due, t.wiederholung),
+      note: t.note,
+      wiederholung: t.wiederholung,
+      done: false,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    });
+  }
   render();
   save();
 }
@@ -1691,6 +1762,8 @@ function saveEdit(id) {
   t.text = text;
   t.due = dateInput.value || null;
   t.note = noteInput && noteInput.value.trim() ? noteInput.value.trim() : null;
+  const wiederholungSelect = document.querySelector(`[data-edit-wiederholung="${id}"]`);
+  t.wiederholung = (t.due && wiederholungSelect && wiederholungSelect.value) ? wiederholungSelect.value : null;
   // Bereich-Auswahl (nur bei ToDos, die gerade "Ohne Bereich" liegen). Ein
   // Wechsel in einen echten Bereich stellt das ToDo dort frei ein (ohne Thema)
   // und reiht das termin-lose ToDo hinten in den Zielbereich ein.
@@ -2665,6 +2738,12 @@ function renderTodo(t) {
           <input type="date" data-edit-date="${t.id}" value="${t.due || ""}" tabindex="-1" aria-label="Termin">
         </span>
         <button type="button" class="add-icon date-clear" title="Termin entfernen" hidden>✕</button>
+        <select class="edit-wiederholung" data-edit-wiederholung="${t.id}" aria-label="Wiederholung" hidden>
+          <option value="">Wiederholt sich nicht</option>
+          ${WIEDERHOLUNGEN.map(w =>
+            `<option value="${w.id}"${t.wiederholung === w.id ? " selected" : ""}>${w.name}</option>`
+          ).join("")}
+        </select>
         <button class="btn primary" data-act="save">OK</button>
         <button class="btn" data-act="cancel">Abbrechen</button>
       </div>`;
@@ -2673,9 +2752,13 @@ function renderTodo(t) {
     const dateInput = wrap.querySelector(`[data-edit-date="${t.id}"]`);
     const calBtn    = wrap.querySelector('[data-act="cal"]');
     const clearBtn  = wrap.querySelector(".date-clear");
+    const wiederholungSelect = wrap.querySelector(".edit-wiederholung");
     noteInput.value = t.note || "";
 
-    const syncDateUi = () => updateDateButton(calBtn, clearBtn, dateInput.value);
+    const syncDateUi = () => {
+      updateDateButton(calBtn, clearBtn, dateInput.value);
+      wiederholungSelect.hidden = !dateInput.value;
+    };
     syncDateUi();
     calBtn.addEventListener("click", () => openDatePicker(dateInput));
     clearBtn.addEventListener("click", () => { dateInput.value = ""; syncDateUi(); textInput.focus(); });
@@ -2739,8 +2822,15 @@ function renderTodo(t) {
     const info = dueInfo(t.due);
     const due = document.createElement("span");
     due.className = "due" + (!t.done && info && info.cls ? " " + info.cls : "");
-    due.textContent = `📅 ${formatDate(t.due)}`;
-    if (!t.done && info && info.badge) due.title = info.badge;
+    const symbol = t.wiederholung ? "🔁 " : "";
+    due.textContent = `${symbol}📅 ${formatDate(t.due)}`;
+    const titelTeile = [];
+    if (!t.done && info && info.badge) titelTeile.push(info.badge);
+    if (t.wiederholung) {
+      const muster = WIEDERHOLUNGEN.find(w => w.id === t.wiederholung);
+      if (muster) titelTeile.push(`wiederholt sich ${muster.name.toLowerCase()}`);
+    }
+    if (titelTeile.length) due.title = titelTeile.join(" · ");
     main.appendChild(due);
   }
 

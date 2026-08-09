@@ -621,7 +621,7 @@ input[type="date"]:focus {
 
 /* Inline-Bearbeiten */
 .edit-row { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
-.edit-row .edit-buttons { display: flex; align-items: center; gap: 6px; }
+.edit-row .edit-buttons { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .edit-row input[type="text"] { width: 100%; }
 .edit-row .btn { padding: 6px 11px; font-size: 13px; margin-left: auto; }
 .edit-row .btn + .btn { margin-left: 0; }
@@ -796,6 +796,23 @@ input[type="date"]:focus {
   transition: border-color .15s, box-shadow .15s;
 }
 .edit-thema:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* Wiederholungs-Auswahl im Bearbeiten-Dialog - anders als .edit-thema NICHT
+   volle Breite, sitzt als Element in der .edit-buttons-Zeile neben den
+   Termin-Knoepfen. */
+.edit-wiederholung {
+  flex: none;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--row);
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.edit-wiederholung:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .empty {
   color: var(--muted);
