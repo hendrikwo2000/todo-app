@@ -188,22 +188,34 @@ function zeichne(daten) {
     // erkennen, dass die Knoepfe fehlen, und das ist kein Hinweis.
     if (istIch) aktionen.push(marke("Du", "du"));
 
-    // Adminrechte und ToDo-Zugang sperren sich selbst zu entziehen serverseitig
-    // (Aussperr-Risiko) - der Schalter zeigt beim eigenen Konto nur noch den
-    // Stand, laesst sich aber nicht anfassen. Fokus-Zugang hat kein
-    // Aussperr-Risiko und bleibt auch beim eigenen Konto bedienbar.
-    aktionen.push(schalter("Admin", n.role === "admin", !istIch,
+    // Die drei Rechte-Schalter als eigene, optisch abgesetzte Gruppe - vorher
+    // standen sie lose zwischen Name und Loeschen-Knopf, kaum als
+    // zusammengehoerige Einheit erkennbar. Adminrechte und ToDo-Zugang sperren
+    // sich selbst zu entziehen serverseitig (Aussperr-Risiko) - der Schalter
+    // zeigt beim eigenen Konto nur noch den Stand, laesst sich aber nicht
+    // anfassen. Fokus-Zugang hat kein Aussperr-Risiko und bleibt auch beim
+    // eigenen Konto bedienbar.
+    const rechte = document.createElement("div");
+    rechte.className = "admin-rechte";
+    rechte.appendChild(schalter("Admin", n.role === "admin", !istIch,
       input => bearbeite(n.id, "rolle", input, { rolle: input.checked ? "admin" : "user" })));
-    aktionen.push(schalter("ToDo", !!n.todo_zugang, !istIch,
+    rechte.appendChild(schalter("ToDo", !!n.todo_zugang, !istIch,
       input => bearbeite(n.id, "todo", input, { todoZugang: input.checked })));
-    aktionen.push(schalter("Fokus", !!n.fokus_zugang, true,
+    rechte.appendChild(schalter("Fokus", !!n.fokus_zugang, true,
       input => bearbeite(n.id, "fokus", input, { fokusZugang: input.checked })));
+    aktionen.push(rechte);
 
-    if (!istIch) {
-      const del = knopf("Löschen", "gefahr",
-        () => bearbeite(n.id, "nutzerLoeschen", del, { name: n.name, email: n.email }));
-      aktionen.push(del);
-    }
+    // Loeschen jetzt immer sichtbar, beim eigenen Konto nur deaktiviert -
+    // gleiches Muster wie bei den Schaltern oben (der Server verweigert die
+    // Aenderung beim eigenen Konto ohnehin). Vorher fehlte der Knopf beim
+    // eigenen Konto ganz, das sah neben den nur ausgegrauten Schaltern
+    // uneinheitlich aus.
+    const del = knopf("Löschen", "gefahr",
+      () => bearbeite(n.id, "nutzerLoeschen", del, { name: n.name, email: n.email }));
+    del.disabled = istIch;
+    if (istIch) del.title = "Das eigene Konto lässt sich hier nicht löschen.";
+    aktionen.push(del);
+
     nutzerEl.append(zeile(n, aktionen));
   }
 
