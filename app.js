@@ -39,6 +39,7 @@ let addingCat = null;      // Bereich, dessen Eingabefeld gerade aufgeklappt ist
 let addingThema = null;    // Ueber-Thema fuer das offene Eingabefeld (null = frei)
 let farbePickerFuer = null; // id des Bereichs, dessen Farbauswahl gerade offen ist
 let themaWerkzeugeFuer = null; // id des Bereichs, dessen "+Thema"/Farbe-Zeile offen ist
+let unterpunktEingabeOffen = null; // id des ToDos, dessen "+Unterpunkt"-Feld im Bearbeiten-Dialog offen ist
 
 // Feste Palette fuer die Bereichsfarbe (Punkt am Namen + Streifen am
 // Bereich). Muss zu FARBEN_ERLAUBT in functions/api/todos.js passen.
@@ -225,6 +226,15 @@ function aktualisiereBadge() {
 // Dringlich = ueberfaellig, heute oder morgen faellig. Steuert die Ampelfarben
 // (Streifen am ToDo und Zaehler neben der Bereichs-Ueberschrift).
 function isUrgent(iso) { return !!iso && iso <= addDaysStr(1); }
+
+// Neu erzeugte Ausgabe eines wiederkehrenden ToDos (siehe toggleDone): bis zum
+// Faelligkeitstag unsichtbar, damit man nach dem Abhaken nicht sofort wieder
+// dieselbe Zeile sieht. NUR wiederkehrende ToDos - ein normales ToDo mit
+// Zukunftstermin bleibt wie bisher sofort sichtbar (Morgen-Anzeige, rote
+// Dringlichkeit ab morgen bleiben fuer den Normalfall unangetastet).
+function nochNichtFaellig(t) {
+  return !t.done && !!t.wiederholung && !!t.due && t.due > todayStr();
+}
 
 // Nativen Kalender-Dialog eines Datumsfelds oeffnen. Das Feld selbst bleibt
 // unsichtbar (siehe .date-field im CSS), showPicker braucht es aber im Layout.
@@ -1813,6 +1823,7 @@ function hideSnackbar() { snackbar.classList.remove("show"); }
 
 function startEdit(id) {
   editingId = id;
+  unterpunktEingabeOffen = null;
   render();
   const input = document.querySelector(`[data-edit-text="${id}"]`);
   if (input) { input.focus(); input.select(); }
@@ -1851,12 +1862,14 @@ function saveEdit(id) {
     }
   }
   editingId = null;
+  unterpunktEingabeOffen = null;
   render();
   save();
 }
 
 function cancelEdit() {
   editingId = null;
+  unterpunktEingabeOffen = null;
   render();
 }
 
@@ -2174,7 +2187,7 @@ function zeigeHinweise() {
 function synchronisiereOhneBereich() {
   if (!aktiveListe) return;
   const id = ohneBereichId(aktiveListe);
-  const hatTodos = state.todos.some(t => t.categoryId === id);
+  const hatTodos = state.todos.some(t => t.categoryId === id && !nochNichtFaellig(t));
   const wirdBefuellt = addingCat === id;   // offenes Eingabefeld haelt die Spalte
   const idx = state.categories.findIndex(c => c.id === id);
   if ((hatTodos || wirdBefuellt) && idx < 0) state.categories.unshift({ id, name: OHNE_NAME });
@@ -2244,7 +2257,7 @@ function render() {
 
 function renderColumn(cat) {
   const istOhne = istOhneBereich(cat.id);
-  const inCat = state.todos.filter(t => t.categoryId === cat.id);
+  const inCat = state.todos.filter(t => t.categoryId === cat.id && !nochNichtFaellig(t));
   const open = inCat.filter(t => !t.done);           // pro Gruppe sortiert, nicht global
   const done = inCat.filter(t => t.done).sort(sortDone);
   const themen = istOhne ? [] : themenIn(cat.id);    // "Ohne Bereich" kennt keine Themen
@@ -2762,9 +2775,21 @@ function updateDateButton(calBtn, clearBtn, value) {
   clearBtn.hidden = !has;
 }
 
+// Analog zu updateDateButton: zeigt das Wiederholungsmuster kompakt im Knopf
+// ("🔁 Wöchentlich"), damit der Bearbeiten-Dialog kein breites <select> mehr
+// dauerhaft in der Zeile braucht - Klick oeffnet die Auswahl (siehe renderTodo).
+function updateWiederholungButton(btn, value) {
+  const muster = WIEDERHOLUNGEN.find(w => w.id === value);
+  btn.classList.toggle("active", !!muster);
+  btn.textContent = muster ? `🔁 ${muster.name}` : "🔁";
+  btn.title = muster ? `Wiederholt sich ${muster.name.toLowerCase()} – zum Ändern klicken` : "Wiederholung festlegen";
+}
+
 // Checklisten-Abschnitt im Bearbeiten-Dialog: bestehende Punkte (Haekchen,
-// Text, Loeschen) und ein Eingabefeld zum Anhaengen. Kein Umbenennen in
-// dieser ersten Version - Tippfehler heisst loeschen und neu anlegen.
+// Text, Loeschen). Das Eingabefeld fuer einen NEUEN Punkt sitzt seit der
+// Kompakt-Zeile hinter dem ✓-Knopf in .edit-buttons (siehe renderTodo), nicht
+// mehr hier. Kein Umbenennen weiterhin - Tippfehler heisst loeschen und neu
+// anlegen.
 function baueUnterpunkteBearbeiten(t) {
   const box = document.createElement("div");
   box.className = "edit-unterpunkte";
@@ -2798,16 +2823,6 @@ function baueUnterpunkteBearbeiten(t) {
 
     box.appendChild(zeile);
   });
-
-  const neu = document.createElement("input");
-  neu.type = "text";
-  neu.className = "edit-unterpunkt-neu";
-  neu.placeholder = "＋ Unterpunkt";
-  neu.dataset.neuerUnterpunkt = t.id;
-  neu.addEventListener("keydown", e => {
-    if (e.key === "Enter") addUnterpunkt(t.id, neu.value);
-  });
-  box.appendChild(neu);
 
   return box;
 }
@@ -2878,6 +2893,7 @@ function renderTodo(t) {
           `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`
         ).join("")}
       </select>` : "";
+    const unterpunktOffen = unterpunktEingabeOffen === t.id;
     wrap.innerHTML = `
       <input type="text" data-edit-text="${t.id}" value="${escapeHtml(t.text)}">
       <textarea data-edit-note placeholder="Notiz (optional)" rows="2"></textarea>
@@ -2888,12 +2904,18 @@ function renderTodo(t) {
           <input type="date" data-edit-date="${t.id}" value="${t.due || ""}" tabindex="-1" aria-label="Termin">
         </span>
         <button type="button" class="add-icon date-clear" title="Termin entfernen" hidden>✕</button>
-        <select class="edit-wiederholung" data-edit-wiederholung="${t.id}" aria-label="Wiederholung" hidden>
-          <option value="">Wiederholt sich nicht</option>
-          ${WIEDERHOLUNGEN.map(w =>
-            `<option value="${w.id}"${t.wiederholung === w.id ? " selected" : ""}>${w.name}</option>`
-          ).join("")}
-        </select>
+        <span class="date-field">
+          <button type="button" class="add-icon" data-act="wiederholung" hidden>🔁</button>
+          <select class="edit-wiederholung" data-edit-wiederholung="${t.id}" aria-label="Wiederholung" tabindex="-1">
+            <option value="">Wiederholt sich nicht</option>
+            ${WIEDERHOLUNGEN.map(w =>
+              `<option value="${w.id}"${t.wiederholung === w.id ? " selected" : ""}>${w.name}</option>`
+            ).join("")}
+          </select>
+        </span>
+        ${unterpunktOffen
+          ? `<input type="text" class="edit-unterpunkt-neu" data-neuer-unterpunkt="${t.id}" placeholder="＋ Unterpunkt" autocomplete="off">`
+          : `<button type="button" class="add-icon" data-act="unterpunkt" title="Unterpunkt hinzufügen">✓</button>`}
         <button class="btn primary" data-act="save">OK</button>
         <button class="btn" data-act="cancel">Abbrechen</button>
       </div>`;
@@ -2904,16 +2926,39 @@ function renderTodo(t) {
     const calBtn    = wrap.querySelector('[data-act="cal"]');
     const clearBtn  = wrap.querySelector(".date-clear");
     const wiederholungSelect = wrap.querySelector(".edit-wiederholung");
+    const wiederholungBtn = wrap.querySelector('[data-act="wiederholung"]');
     noteInput.value = t.note || "";
 
     const syncDateUi = () => {
       updateDateButton(calBtn, clearBtn, dateInput.value);
-      wiederholungSelect.hidden = !dateInput.value;
+      wiederholungBtn.hidden = !dateInput.value;
+      updateWiederholungButton(wiederholungBtn, wiederholungSelect.value);
     };
     syncDateUi();
     calBtn.addEventListener("click", () => openDatePicker(dateInput));
     clearBtn.addEventListener("click", () => { dateInput.value = ""; syncDateUi(); textInput.focus(); });
     dateInput.addEventListener("change", syncDateUi);
+    wiederholungBtn.addEventListener("click", () => openDatePicker(wiederholungSelect));
+    wiederholungSelect.addEventListener("change", () => updateWiederholungButton(wiederholungBtn, wiederholungSelect.value));
+
+    const unterpunktBtn = wrap.querySelector('[data-act="unterpunkt"]');
+    if (unterpunktBtn) {
+      unterpunktBtn.addEventListener("click", () => {
+        unterpunktEingabeOffen = t.id;
+        render();
+        const feld = document.querySelector(`[data-neuer-unterpunkt="${t.id}"]`);
+        if (feld) feld.focus();
+      });
+    }
+    const unterpunktNeuInput = wrap.querySelector(".edit-unterpunkt-neu");
+    if (unterpunktNeuInput) {
+      // Enter delegiert an blur() statt selbst addUnterpunkt aufzurufen: sonst
+      // wuerde der re-render() aus addUnterpunkt das (dann verwaiste) alte
+      // Feld aus dem DOM nehmen, was seinerseits ein blur ausloest - und ohne
+      // diesen Umweg damit denselben Unterpunkt ein zweites Mal anlegen wuerde.
+      unterpunktNeuInput.addEventListener("keydown", e => { if (e.key === "Enter") unterpunktNeuInput.blur(); });
+      unterpunktNeuInput.addEventListener("blur", () => addUnterpunkt(t.id, unterpunktNeuInput.value));
+    }
 
     textInput.addEventListener("keydown", e => {
       if (e.key === "Enter") saveEdit(t.id);
