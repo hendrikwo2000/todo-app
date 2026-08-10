@@ -703,6 +703,21 @@ zusätzlichen Umtausch bei Google. Tokens liegen im Klartext: ein Schlüssel auf
 demselben Server würde nur Sicherheit vortäuschen. Das Konto hängt per
 `ON DELETE CASCADE` am Nutzer, eine Kontolöschung räumt es also mit weg.
 
+**Nur der Hauptkalender.** `termine.js` filtert die Kalenderliste auf
+`primary`; abonnierte Kalender (Kalenderwochen, Feiertage, Geburtstage)
+tauchen weder als Umschalter noch als Balken auf. Über den `primary`-Schalter
+statt über Namensmuster: eine Erkennung an der Beschriftung bräche, sobald so
+ein Kalender anders heißt. Ausschlaggebend war ein abonnierter
+Kalenderwochen-Kalender, der quer durch jede Woche einen Balken zog.
+
+**Name statt E-Mail-Adresse.** Google gibt für den Hauptkalender die
+E-Mail-Adresse als Bezeichnung heraus, einen Anzeigenamen liefert die
+Kalender-Schnittstelle nicht mit. `kalenderName()` setzt deshalb den Namen aus
+dem ToDo-Konto (`eigenerName`) ein. Der echte Google-Anzeigename bräuchte die
+zusätzliche `profile`-Berechtigung und ein erneutes Verknüpfen — bewusst nicht
+gemacht. In den Einstellungen steht weiterhin die Adresse („verbunden als …"),
+dort beantwortet sie die Frage, WELCHES Konto hängt dran.
+
 **Termine.** `/api/google/termine?von=&bis=&kalender=` liefert immer die
 Kalenderliste (für die Umschalter) und die Termine der angefragten Kalender;
 ohne `kalender`-Parameter nur den Hauptkalender. Der Server fragt
@@ -779,7 +794,11 @@ Google-Termine zählen **nicht** in den Überfällig-Chip und nicht in die
 App-Icon-Badge — das sind keine Aufgaben. Beschreibungen kommen teils als HTML
 und werden entschärft (Tags raus) und als reiner Text gesetzt.
 
-**Umschalter.** Eine Pille je ToDo-Liste und je Google-Kalender, ab zwei
+**Umschalter.** Eine Pille je ToDo-Liste und je Google-Kalender, dazu am Ende
+eine Pille **KW** für die Kalenderwochen-Spalte — die ist zwar keine
+Datenquelle, wird aber genauso an- und abgeschaltet und gemerkt (Schlüssel
+`kw` im selben `kalQuellenAus`). Abgeschaltet fällt die erste Rasterspalte weg
+(`.ohne-kw`), das Raster geht auf sieben gleich breite Spalten zurück. Ab zwei
 Quellen sichtbar. Zwei localStorage-Mengen: `kalQuellenAus` (abgewählt) und
 `kalQuellenBekannt` (je gesehen). Ein NEU auftauchender Kalender startet
 ausgeschaltet — außer dem Hauptkalender —, eine spätere eigene Entscheidung

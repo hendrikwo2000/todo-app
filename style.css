@@ -1455,6 +1455,8 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
   font-variant-numeric: tabular-nums;
 }
 .kal-kw-kopf { font-size: 9px; letter-spacing: .03em; }
+/* KW-Spalte abgeschaltet: zurueck auf sieben gleich breite Spalten. */
+.kal-wochentage.ohne-kw, .kal-raster.ohne-kw { grid-template-columns: repeat(7, 1fr); }
 
 .kal-tag {
   aspect-ratio: 1 / 1;
@@ -1586,6 +1588,9 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
 .kal-pille > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kal-pille:hover { border-color: var(--accent); }
 .kal-pille.aus { background: transparent; color: var(--muted); border-style: dashed; }
+/* KW schaltet eine Spalte, keine Eintraege - deshalb ohne Farbmarke und
+   etwas schmaler als die Quellen-Pillen daneben. */
+.kal-pille-kw { padding-left: 10px; letter-spacing: .03em; }
 .kal-pille.aus .kal-punkt, .kal-pille.aus .kal-balken { opacity: .35; }
 
 /* Zwei FORMEN statt zweier Farbtoene: Punkt = ToDo, Balken = Termin. Die

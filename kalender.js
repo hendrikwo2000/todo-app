@@ -77,7 +77,22 @@ let quellenBekannt = ladeMenge("kalQuellenBekannt");
 // Aufgeklappte Google-Termine (Ort/Beschreibung), Schluessel ist die Termin-id.
 let offeneTermine = new Set();
 
+// Schluessel der Kalenderwochen-Spalte im selben Umschalt-Vorrat wie die
+// Listen und Kalender - sie ist zwar keine Datenquelle, wird aber genauso
+// an- und abgeschaltet und soll sich genauso merken lassen.
+const KW_QUELLE = "kw";
+
 function quelleAn(schluessel) { return !quellenAus.has(schluessel); }
+
+// Google gibt fuer den Hauptkalender die E-MAIL-ADRESSE als Bezeichnung
+// heraus; einen Anzeigenamen liefert die Kalender-Schnittstelle nicht mit.
+// Der Name aus dem ToDo-Konto steht naeher an dem, was man erwartet - und
+// kostet keine zusaetzliche Google-Berechtigung.
+function kalenderName(kal) {
+  if (!kal) return "";
+  if (kal.primaer && typeof eigenerName === "string" && eigenerName.trim()) return eigenerName;
+  return kal.name;
+}
 
 function schalteQuelle(schluessel) {
   if (quellenAus.has(schluessel)) quellenAus.delete(schluessel);
@@ -372,9 +387,12 @@ function zeichneFilter() {
   }));
   if (googleZustand.verbunden) {
     for (const k of googleZustand.kalender) {
-      quellen.push({ schluessel: "gcal:" + k.id, name: k.name, farbe: farbWert(k.farbe), art: "gcal" });
+      quellen.push({ schluessel: "gcal:" + k.id, name: kalenderName(k), farbe: farbWert(k.farbe), art: "gcal" });
     }
   }
+  // Die Kalenderwoche steht am Ende: sie ist eine Anzeige-Einstellung, keine
+  // Datenquelle - und sie ist immer da, auch ohne Google.
+  quellen.push({ schluessel: KW_QUELLE, name: "KW", art: "kw" });
 
   kalFilter.hidden = quellen.length < 2;
   kalFilter.innerHTML = "";
@@ -383,15 +401,18 @@ function zeichneFilter() {
   for (const q of quellen) {
     const pille = document.createElement("button");
     pille.type = "button";
-    pille.className = "kal-pille" + (quelleAn(q.schluessel) ? "" : " aus");
+    pille.className = "kal-pille kal-pille-" + q.art + (quelleAn(q.schluessel) ? "" : " aus");
     pille.addEventListener("click", () => schalteQuelle(q.schluessel));
 
     // Dieselben zwei Formen wie im Raster: Punkt fuer eine ToDo-Liste,
-    // Balken fuer einen Google-Kalender.
-    const marke = document.createElement("span");
-    marke.className = q.art === "gcal" ? "kal-balken kal-balken-marke" : "kal-punkt";
-    if (q.art === "gcal" && q.farbe) marke.style.background = q.farbe;
-    pille.appendChild(marke);
+    // Balken fuer einen Google-Kalender. Die KW-Pille traegt keine Marke -
+    // sie schaltet keine Eintraege, sondern eine Spalte.
+    if (q.art !== "kw") {
+      const marke = document.createElement("span");
+      marke.className = q.art === "gcal" ? "kal-balken kal-balken-marke" : "kal-punkt";
+      if (q.art === "gcal" && q.farbe) marke.style.background = q.farbe;
+      pille.appendChild(marke);
+    }
 
     const name = document.createElement("span");
     name.textContent = q.name;
@@ -422,12 +443,18 @@ function kalenderwoche(datum) {
 
 function zeichneRaster(tage, spuren, heute) {
   const { plan, ueberzaehlig } = spuren;
+  const kwAn = quelleAn(KW_QUELLE);
+  kalRaster.classList.toggle("ohne-kw", !kwAn);
+  kalWochentage.classList.toggle("ohne-kw", !kwAn);
+
   kalWochentage.innerHTML = "";
   // Erste Spalte gehoert der Kalenderwoche - im Kopf nur ein leises "KW".
-  const kwKopf = document.createElement("span");
-  kwKopf.className = "kal-kw kal-kw-kopf";
-  kwKopf.textContent = "KW";
-  kalWochentage.appendChild(kwKopf);
+  if (kwAn) {
+    const kwKopf = document.createElement("span");
+    kwKopf.className = "kal-kw kal-kw-kopf";
+    kwKopf.textContent = "KW";
+    kalWochentage.appendChild(kwKopf);
+  }
   for (const w of WOCHENTAGE) {
     const zelle = document.createElement("span");
     zelle.textContent = w;
@@ -455,10 +482,12 @@ function zeichneRaster(tage, spuren, heute) {
   for (let zeile = 0; zeile < zeilen; zeile++) {
     // Wochenzahl aus dem Montag der Zeile - der darf ruhig im Vor- oder
     // Folgemonat liegen, Date rechnet das von selbst um.
-    const kw = document.createElement("span");
-    kw.className = "kal-kw";
-    kw.textContent = String(kalenderwoche(new Date(kalJahr, kalMonatNr, zeile * 7 - ersterWochentag + 1)));
-    kalRaster.appendChild(kw);
+    if (kwAn) {
+      const kw = document.createElement("span");
+      kw.className = "kal-kw";
+      kw.textContent = String(kalenderwoche(new Date(kalJahr, kalMonatNr, zeile * 7 - ersterWochentag + 1)));
+      kalRaster.appendChild(kw);
+    }
 
     for (let spalte = 0; spalte < 7; spalte++) {
       const tag = zeile * 7 + spalte - ersterWochentag + 1;
@@ -656,7 +685,7 @@ function baueTerminZeile(t) {
 
   const meta = document.createElement("span");
   meta.className = "kal-eintrag-meta";
-  meta.textContent = [zeitLabel(t), kal ? kal.name : ""].filter(Boolean).join(" · ");
+  meta.textContent = [zeitLabel(t), kalenderName(kal)].filter(Boolean).join(" · ");
   text.appendChild(meta);
 
   knopf.appendChild(text);

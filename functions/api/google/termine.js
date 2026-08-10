@@ -46,14 +46,25 @@ export async function onRequestGet({ request, env }) {
 
   try {
     const token = await frischesZugriffToken(env, konto);
-    const kalender = await kalenderListe(token);
+    // NUR der Hauptkalender. Abonnierte Kalender (Kalenderwochen, Feiertage,
+    // Geburtstage) bleiben komplett draussen - sie tragen im Monatsraster
+    // wenig bei und ein Kalenderwochen-Abo wuerde quer durch jede Woche einen
+    // Balken ziehen. Ueber den `primary`-Schalter statt ueber Namensmuster:
+    // eine Erkennung an der Beschriftung braeche, sobald so ein Kalender
+    // anders heisst.
+    const alle = await kalenderListe(token);
+    const kalender = alle.filter(k => k.primaer);
+    if (!kalender.length && alle.length) kalender.push(alle[0]);
 
     // Nur bekannte Kalender abfragen: eine ungeprueft durchgereichte id waere
     // eine fremdgesteuerte Anfrage mit unserem Token.
     const erlaubt = new Set(kalender.map(k => k.id));
     let ziele = gewuenscht.filter(id => erlaubt.has(id));
     if (!ziele.length) {
-      const haupt = kalender.find(k => k.primaer);
+      // kalender enthaelt nur noch den Hauptkalender (siehe oben); der
+      // ||-Zweig greift, falls Google gar keinen als `primary` markiert -
+      // dann steht dort der erste, und ohne ihn bekaeme man gar nichts.
+      const haupt = kalender.find(k => k.primaer) || kalender[0];
       ziele = haupt ? [haupt.id] : [];
     }
     ziele = ziele.slice(0, MAX_KALENDER);
