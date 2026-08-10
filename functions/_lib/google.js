@@ -23,14 +23,26 @@ const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const API_BASE   = "https://www.googleapis.com/calendar/v3";
 
 // openid+email nur, um die verknuepfte Adresse anzeigen zu koennen ("verbunden
-// als ..."). calendar.readonly ist der eigentliche Zweck - der schreibende
-// Scope wird bewusst NICHT angefragt, das haelt den Zustimmungsdialog
-// harmloser und macht ein Versehen auf unserer Seite unmoeglich.
+// als ..."). calendar.readonly liest Kalenderliste und Termine,
+// calendar.events erlaubt zusaetzlich das ANLEGEN eines Termins aus dem
+// Kalender-Panel heraus. Beide zusammen, weil calendar.events allein die
+// Kalenderliste nicht sicher abdeckt.
+//
+// Wer vor der Erweiterung verknuepft hat, hat calendar.events NICHT im Token -
+// deshalb merkt sich `google_konten.scopes`, was tatsaechlich erteilt wurde,
+// und die App bietet das Anlegen nur an, wenn es gedeckt ist (siehe
+// darfSchreiben).
+export const SCOPE_SCHREIBEN = "https://www.googleapis.com/auth/calendar.events";
 export const SCOPES = [
   "openid",
   "email",
   "https://www.googleapis.com/auth/calendar.readonly",
+  SCOPE_SCHREIBEN,
 ].join(" ");
+
+export function darfSchreiben(konto) {
+  return !!(konto && typeof konto.scopes === "string" && konto.scopes.includes(SCOPE_SCHREIBEN));
+}
 
 // Muss ZEICHENGENAU mit einer der in der Google Cloud Console eingetragenen
 // Weiterleitungs-URIs uebereinstimmen, sonst lehnt Google mit
@@ -118,21 +130,23 @@ export function emailAusIdToken(idToken) {
 
 export async function kontoFuer(env, nutzerId) {
   return await env.DB.prepare(
-    "SELECT user_id, google_email, refresh_token, zugriff_token, zugriff_bis FROM google_konten WHERE user_id = ?"
+    "SELECT user_id, google_email, refresh_token, zugriff_token, zugriff_bis, scopes FROM google_konten WHERE user_id = ?"
   ).bind(nutzerId).first();
 }
 
-export async function speichereKonto(env, nutzerId, { email, refreshToken, zugriffToken, gueltigSekunden }) {
+export async function speichereKonto(env, nutzerId, { email, refreshToken, zugriffToken, gueltigSekunden, scopes }) {
   await env.DB.prepare(
-    `INSERT INTO google_konten (user_id, google_email, refresh_token, zugriff_token, zugriff_bis, verbunden_am)
-     VALUES (?, ?, ?, ?, datetime('now', ?), datetime('now'))
+    `INSERT INTO google_konten (user_id, google_email, refresh_token, zugriff_token, zugriff_bis, scopes, verbunden_am)
+     VALUES (?, ?, ?, ?, datetime('now', ?), ?, datetime('now'))
      ON CONFLICT(user_id) DO UPDATE SET
        google_email = excluded.google_email,
        refresh_token = excluded.refresh_token,
        zugriff_token = excluded.zugriff_token,
        zugriff_bis = excluded.zugriff_bis,
+       scopes = excluded.scopes,
        verbunden_am = excluded.verbunden_am`
-  ).bind(nutzerId, email, refreshToken, zugriffToken || null, `+${Math.max(60, gueltigSekunden || 3600)} seconds`).run();
+  ).bind(nutzerId, email, refreshToken, zugriffToken || null,
+         `+${Math.max(60, gueltigSekunden || 3600)} seconds`, scopes || null).run();
 }
 
 export async function loescheKonto(env, nutzerId) {
@@ -238,6 +252,35 @@ export async function termineVon(token, kalenderId, vonIso, bisIso) {
       beschreibung: e.description ? String(e.description).slice(0, 500) : null,
     }))
     .filter(e => e.start);
+}
+
+/**
+ * Ganztaegigen Termin anlegen.
+ *
+ * Ganztaegig, weil er im Panel aus einer TAGES-Zelle heraus entsteht - eine
+ * Uhrzeit gibt es an der Stelle gar nicht. Google erwartet das Ende als ersten
+ * Tag DANACH (exklusiv), deshalb der Tag Aufschlag.
+ */
+export async function legeTerminAn(token, kalenderId, { titel, datum }) {
+  const ende = new Date(datum + "T00:00:00");
+  ende.setDate(ende.getDate() + 1);
+  const endeIso = `${ende.getFullYear()}-${String(ende.getMonth() + 1).padStart(2, "0")}-${String(ende.getDate()).padStart(2, "0")}`;
+
+  const antwort = await fetch(`${API_BASE}/calendars/${encodeURIComponent(kalenderId)}/events`, {
+    method: "POST",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify({ summary: titel, start: { date: datum }, end: { date: endeIso } }),
+  });
+  if (antwort.status === 401) throw getrenntFehler("Google verweigert den Zugriff");
+  // 403 heisst hier fast immer: das Token traegt den Schreib-Scope nicht,
+  // weil die Verknuepfung aelter ist als diese Funktion.
+  if (antwort.status === 403) {
+    const e = new Error("Keine Schreibberechtigung");
+    e.code = "kein-schreibrecht";
+    throw e;
+  }
+  if (!antwort.ok) throw new Error("Google antwortet mit " + antwort.status);
+  return await antwort.json();
 }
 
 export async function widerrufe(token) {

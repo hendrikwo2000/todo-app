@@ -1390,7 +1390,11 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
   position: fixed;
   top: 0; right: 0; bottom: 0;
   z-index: 56;
-  width: min(380px, 92vw);
+  /* Am Rechner spuerbar breiter als frueher (380px) - die Balken tragen
+     ihren Titel und brauchen Platz. Auf dem Handy die ganze Breite: dort
+     bringt ein Streifen daneben nichts ausser weniger Kalender. Geschlossen
+     wird dann per Wisch nach rechts, ✕ oder Escape. */
+  width: min(480px, 100vw);
   display: flex;
   flex-direction: column;
   gap: 9px;
@@ -1558,6 +1562,14 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
   100%    { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
 }
 
+@media (max-width: 620px) {
+  .kalender {
+    width: 100vw;
+    border-left: 0;
+    padding-left: max(14px, env(safe-area-inset-left));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kalender.animiert { transition: none; }
   .todo.kal-treffer { animation: none; }
@@ -1690,3 +1702,74 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
 .kal-termin-details p { margin: 0 0 5px; overflow-wrap: anywhere; }
 .kal-termin-details p:last-child { margin-bottom: 0; }
 .kal-google-fehler { font-size: 12.5px; font-style: italic; }
+
+/* Anlegen direkt aus dem Kalender: Feld plus ein bis zwei Knoepfe, unter der
+   Tagesliste. Sitzt bewusst UNTER den Eintraegen - erst sehen, was ansteht,
+   dann ergaenzen. */
+.kal-anlegen {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--line);
+}
+.kal-anlegen-feld {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--row);
+  color: var(--text);
+  outline: none;
+}
+.kal-anlegen-feld:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.kal-anlegen-knoepfe { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------- Ziehen: Ablage "aus dem Bereich loesen" + Finger-Geist ---------- */
+/* Die Ablage erscheint nur waehrend eines Zuges (JS setzt [hidden]) - eine
+   dauerhaft sichtbare Flaeche waere die meiste Zeit sinnlos. */
+.ohne-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 11px 14px;
+  border: 2px dashed var(--line);
+  border-radius: 11px;
+  background: var(--col-bg);
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+/* display:flex schlaegt sonst das eingebaute [hidden] des Browsers. */
+.ohne-zone[hidden] { display: none; }
+.ohne-zone.drop-target {
+  border-color: var(--accent);
+  border-style: dashed;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Die Karte am Finger. pointer-events:none ist Pflicht - sonst faende
+   elementFromPoint unter dem Finger immer nur den Geist selbst und nie das
+   Ziel darunter. */
+.todo-geist {
+  position: fixed;
+  z-index: 200;
+  pointer-events: none;
+  margin: 0;
+  opacity: .92;
+  transform: rotate(1.5deg) scale(1.02);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .28);
+}
+/* Solange etwas am Finger haengt: keine Textmarkierung, kein iOS-Callout.
+   Genau das passierte bisher auf dem Handy statt eines Zuges. */
+body.zieht, body.zieht .todo {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}

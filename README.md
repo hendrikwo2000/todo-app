@@ -82,19 +82,28 @@ und die App von dort starten.
   angetippten Tages
 - **⚠ Überfällig** zeigt alles, was liegengeblieben ist — auch aus Vormonaten
 - Ein Tipp auf ein ToDo bringt dich zu ihm auf die Liste, samt Listenwechsel
+- Unter dem Tag ein Feld: Titel tippen, **Enter** — fertig, das ToDo hat das
+  Datum des Tages und landet in deiner aktuellen Liste (ohne Bereich)
+- Ist Google verbunden **und** darf schreiben, legt „＋ Termin" daneben einen
+  ganztägigen Termin in deinem Google-Kalender an
 
 Zurück geht es mit einem Wisch nach rechts, einem Tipp daneben oder Escape.
+Auf dem Handy füllt der Kalender den ganzen Bildschirm.
 
 ## Google Kalender
 
 - **⚙️** oben rechts → **„Google Kalender"** → **„Mit Google verbinden"**
 - Bei Google anmelden und den Zugriff bestätigen
 
-Danach stehen deine Google-Termine im Kalender neben den ToDos. Die App darf
-nur **lesen** — sie ändert bei Google nichts und legt dort auch nichts an.
-Hast du mehrere Kalender oder Listen, erscheinen oben im Kalender kleine
-Umschalter; damit blendest du einzelne Quellen aus. Zuerst ist nur dein
-Hauptkalender an, damit Feiertage und Geburtstage den Monat nicht zupflastern.
+Danach stehen deine Google-Termine im Kalender neben den ToDos. Angezeigt wird
+nur dein **Hauptkalender** — abonnierte Kalender wie Feiertage, Geburtstage
+oder Kalenderwochen bleiben draußen. Hast du mehrere Listen, erscheinen oben im
+Kalender kleine Umschalter; damit blendest du einzelne Quellen aus.
+
+Die App liest deine Termine und darf **einen ganztägigen Termin anlegen**
+(„＋ Termin" im Kalender) — ändern oder löschen kann sie nichts. Hast du vor
+dieser Erweiterung verbunden, fehlt dem Zugang das Anlegen: einmal trennen und
+neu verbinden, dann ist es da.
 
 Beim ersten Verbinden warnt Google, dass die App nicht verifiziert ist — über
 **„Erweitert"** kommst du weiter. Trennen geht an derselben Stelle; das nimmt
@@ -126,6 +135,11 @@ Eintragen kannst du dich danach wieder.
 - **＋ Bereich** oben anlegen
 - Doppelklick auf den Titel zum Umbenennen, 🗑️ zum Löschen
 - Titel ziehen, um die Spalten umzusortieren
+
+**ToDos verschieben:** am Rechner einfach ziehen. **Auf dem Handy** die Karte
+kurz gedrückt halten (etwa eine halbe Sekunde), bis sie am Finger hängt —
+danach ziehen und loslassen. Um ein ToDo wieder aus seinem Bereich zu lösen,
+zieh es neben die Spalten oder auf die Ablage, die dabei oben erscheint.
 
 **Über-Themen**
 

@@ -88,6 +88,7 @@ const snackbar     = document.getElementById("snackbar");
 const titel        = document.getElementById("titel");
 const einstellungenPopup = document.getElementById("einstellungenPopup");
 const offlineBanner = document.getElementById("offlineBanner");
+const ohneZone    = document.getElementById("ohneBereichZone");
 
 // Oeffentlicher Sitekey des Turnstile-Widgets fuer todo.it-wolf.org. Darf im
 // Quelltext stehen - der geheime Schluessel liegt als TURNSTILE_SECRET im
@@ -663,6 +664,7 @@ const einAnsichten = {
   abmelden:       document.getElementById("kontoAbmeldenFrage"),
   zugangAufgeben: document.getElementById("todoZugangAufgebenFrage"),
   loeschen:       document.getElementById("kontoLoeschenFrage"),
+  googleTrennen:  document.getElementById("googleTrennenFrage"),
 };
 function zeigeEinAnsicht(name) {
   for (const [k, el] of Object.entries(einAnsichten)) el.hidden = k !== name;
@@ -2794,6 +2796,49 @@ function baueAddWidget(cat, themaId) {
 // (themaId null = frei in der Spalte); termin-lose ToDos der GLEICHEN Gruppe
 // lassen sich innerhalb live umsortieren. Fuer Themen-Gruppen wird das Event
 // gestoppt, damit es nicht zusaetzlich die Spalte (frei) trifft.
+/**
+ * Ein ToDo in einen Bereich (und optional ein Ueber-Thema) verschieben.
+ *
+ * Gemeinsamer Kern fuer Maus-Drop UND Finger-Drop - vorher steckte er nur im
+ * dragover/drop-Paar und war fuer Touch nicht erreichbar.
+ * `ul` ist die Liste, in der sortiert wird; ohne sie (oder bei einem Wechsel
+ * der Gruppe) reiht sich das ToDo hinten ein.
+ */
+function verschiebeToDo(id, catId, themaId, ul) {
+  const t = findTodo(id);
+  if (!t) return;
+  const tid = themaId || null;
+  const wechsel = t.categoryId !== catId || (t.themaId || null) !== tid;
+  if (wechsel) {
+    t.categoryId = catId;
+    t.themaId = tid;
+    if (!t.due && !t.done) t.order = nextOrder(catId, tid);
+    render(); save();
+  } else if (!t.due && !t.done && ul) {
+    persistOrderFromDOM(ul);
+    render(); save();
+  }
+}
+
+/**
+ * Ein ToDo aus seinem Bereich loesen - es landet in "Ohne Bereich" der
+ * aktiven Liste.
+ *
+ * Ausgeloest durch Ablegen NEBEN den Spalten oder auf der Ablage ganz oben.
+ * Vorher gab es den Weg zurueck nur ueber das Dropdown im Bearbeiten-Dialog:
+ * hinein per Drag, heraus nur ueber ein Menue.
+ */
+function loeseAusBereich(id) {
+  const t = findTodo(id);
+  if (!t || !aktiveListe) return;
+  const ohne = ohneBereichId(aktiveListe);
+  if (t.categoryId === ohne) return;
+  if (!state.categories.some(c => c.id === ohne)) {
+    state.categories.unshift({ id: ohne, name: OHNE_NAME });
+  }
+  verschiebeToDo(id, ohne, null, null);
+}
+
 function verdrahteDropZone(zone, cat, themaId, ul) {
   const tid = themaId || null;
 
@@ -2830,20 +2875,7 @@ function verdrahteDropZone(zone, cat, themaId, ul) {
     if (tid !== null) e.stopPropagation();
     zone.classList.remove("drop-target");
     const id = draggedId || e.dataTransfer.getData("text/plain");
-    const t = id && findTodo(id);
-    if (!t) return;
-    const wechsel = t.categoryId !== cat.id || (t.themaId || null) !== tid;
-    if (wechsel) {
-      // In eine andere Spalte oder ein anderes Thema (auch "heraus" = frei).
-      t.categoryId = cat.id;
-      t.themaId = tid;
-      if (!t.due && !t.done) t.order = nextOrder(cat.id, tid);
-      render(); save();
-    } else if (!t.due && !t.done && ul) {
-      // Innerhalb derselben Gruppe neu sortieren.
-      persistOrderFromDOM(ul);
-      render(); save();
-    }
+    if (id) verschiebeToDo(id, cat.id, tid, ul);
   });
 }
 
@@ -3062,11 +3094,13 @@ function renderTodo(t) {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", t.id);
     li.classList.add("dragging");
+    zeigeOhneZone(t.id);
   });
   li.addEventListener("dragend", () => {
     draggedId = null;
     li.classList.remove("dragging");
     document.querySelectorAll(".column.drop-target").forEach(c => c.classList.remove("drop-target"));
+    versteckeOhneZone();
     render();  // Live-Vorschau wieder mit den Daten abgleichen
   });
 
@@ -3299,6 +3333,230 @@ document.addEventListener("mousedown", e => {
   }
 });
 
+/* ====================================================================
+   Ziehen mit dem Finger
+
+   Auf Touch gibt es das native Drag & Drop des Browsers nicht - dort loest
+   ein Wisch ueber eine Karte nur eine Textmarkierung aus. Deshalb hier
+   nachgebaut: langes Druecken startet den Zug, ein mitgefuehrter "Geist"
+   haengt am Finger, und das Ziel wird per elementFromPoint unter dem Finger
+   gesucht.
+
+   Die Schwellen sind der ganze Trick: Vor Ablauf des Timers gilt jede
+   Bewegung ueber WACKEL Pixel als Scrollen und bricht den Zug ab - sonst
+   liesse sich die Liste nicht mehr scrollen, ohne versehentlich etwas zu
+   verschieben.
+   ==================================================================== */
+const LANGES_DRUECKEN = 400;   // ms, bis der Zug beginnt
+const WACKEL = 10;             // px, die vorher noch als Scrollen durchgehen
+const RANDSCROLL = 70;         // px am Bildschirmrand, ab denen mitgescrollt wird
+
+let fingerZug = null;
+
+// Ablage oben einblenden - nur sinnvoll, solange das ToDo ueberhaupt in einem
+// Bereich liegt.
+function zeigeOhneZone(id) {
+  const t = findTodo(id);
+  ohneZone.hidden = !(t && aktiveListe && t.categoryId !== ohneBereichId(aktiveListe));
+}
+function versteckeOhneZone() {
+  ohneZone.hidden = true;
+  ohneZone.classList.remove("drop-target");
+}
+
+/**
+ * Was liegt unter dem Finger?
+ * { art: "gruppe"|"spalte"|"ohne", catId, themaId, ul }
+ * "ohne" heisst: keine Spalte getroffen - also aus dem Bereich loesen.
+ */
+function zielUnter(x, y) {
+  const el = document.elementFromPoint(x, y);
+  if (!el) return { art: "ohne" };
+  if (el.closest("#ohneBereichZone")) return { art: "ohne" };
+
+  const gruppe = el.closest(".thema-gruppe");
+  if (gruppe) {
+    const spalte = gruppe.closest(".column");
+    if (spalte) {
+      return {
+        art: "gruppe", catId: spalte.dataset.cat, themaId: gruppe.dataset.thema,
+        ul: gruppe.querySelector("ul.thema-list"),
+      };
+    }
+  }
+  const spalte = el.closest(".column");
+  if (spalte) {
+    return {
+      art: "spalte", catId: spalte.dataset.cat, themaId: null,
+      ul: spalte.querySelector("ul.todo-list.frei"),
+    };
+  }
+  return { art: "ohne" };
+}
+
+function starteFingerZug(x, y) {
+  if (!fingerZug) return;
+  // Hat inzwischen die Kalender-Wischgeste uebernommen (Zug vom rechten
+  // Bildschirmrand, siehe kalender.js), gehoert die Bewegung ihr - sonst
+  // haetten beide gleichzeitig den Finger.
+  if (typeof geste !== "undefined" && geste) { abbrechenFingerZug(); return; }
+  const { karte } = fingerZug;
+  fingerZug.aktiv = true;
+  draggedId = fingerZug.id;
+  karte.classList.add("dragging");
+  document.body.classList.add("zieht");
+
+  const box = karte.getBoundingClientRect();
+  const geist = karte.cloneNode(true);
+  geist.classList.add("todo-geist");
+  geist.classList.remove("dragging");
+  geist.style.width = box.width + "px";
+  fingerZug.versatzX = x - box.left;
+  fingerZug.versatzY = y - box.top;
+  document.body.appendChild(geist);
+  fingerZug.geist = geist;
+  bewegeFingerZug(x, y);
+
+  zeigeOhneZone(fingerZug.id);
+  if (navigator.vibrate) navigator.vibrate(15);
+}
+
+function bewegeFingerZug(x, y) {
+  const { geist } = fingerZug;
+  geist.style.left = (x - fingerZug.versatzX) + "px";
+  geist.style.top = (y - fingerZug.versatzY) + "px";
+
+  // Am oberen/unteren Rand mitscrollen, sonst kommt man auf einem langen
+  // Board nie bis zur Zielspalte.
+  if (y < RANDSCROLL) window.scrollBy(0, -10);
+  else if (y > window.innerHeight - RANDSCROLL) window.scrollBy(0, 10);
+
+  const ziel = zielUnter(x, y);
+  fingerZug.ziel = ziel;
+
+  document.querySelectorAll(".drop-target").forEach(el => el.classList.remove("drop-target"));
+  ohneZone.classList.toggle("drop-target", ziel.art === "ohne" && !ohneZone.hidden);
+
+  if (ziel.art === "ohne") return;
+  const dragged = findTodo(fingerZug.id);
+  const gleicheGruppe = dragged && dragged.categoryId === ziel.catId
+    && (dragged.themaId || null) === (ziel.themaId || null) && !dragged.due && !dragged.done;
+
+  // In der eigenen Gruppe umsortieren: die Karte wandert live mit, genau wie
+  // beim Ziehen mit der Maus.
+  if (gleicheGruppe && ziel.ul) {
+    const after = getDragAfterElement(ziel.ul, y);
+    if (after == null) ziel.ul.appendChild(fingerZug.karte);
+    else ziel.ul.insertBefore(fingerZug.karte, after);
+  } else {
+    const zone = ziel.art === "gruppe"
+      ? fingerZug.karte.ownerDocument.querySelector(`.thema-gruppe[data-thema="${ziel.themaId}"]`)
+      : fingerZug.karte.ownerDocument.querySelector(`.column[data-cat="${CSS.escape(ziel.catId)}"]`);
+    if (zone) zone.classList.add("drop-target");
+  }
+}
+
+function beendeFingerZug() {
+  const zug = fingerZug;
+  const ziel = zug.ziel || { art: "ohne" };
+  raeumeFingerZugAuf();
+  if (ziel.art === "ohne") loeseAusBereich(zug.id);
+  else verschiebeToDo(zug.id, ziel.catId, ziel.themaId, ziel.ul);
+  render();   // Live-Vorschau wieder mit den Daten abgleichen
+}
+
+function raeumeFingerZugAuf() {
+  if (!fingerZug) return;
+  clearTimeout(fingerZug.timer);
+  if (fingerZug.geist) fingerZug.geist.remove();
+  fingerZug.karte.classList.remove("dragging");
+  document.body.classList.remove("zieht");
+  document.querySelectorAll(".drop-target").forEach(el => el.classList.remove("drop-target"));
+  versteckeOhneZone();
+  draggedId = null;
+  fingerZug = null;
+}
+
+function abbrechenFingerZug() {
+  const war = fingerZug && fingerZug.aktiv;
+  raeumeFingerZugAuf();
+  if (war) render();
+}
+
+board.addEventListener("touchstart", e => {
+  if (fingerZug) abbrechenFingerZug();
+  if (e.touches.length !== 1 || editingId || addingCat) return;
+  const karte = e.target.closest(".todo");
+  if (!karte || !karte.dataset.id) return;
+  // Haken, Muelleimer, Eingabefelder: dort will man tippen, nicht ziehen.
+  if (e.target.closest("input, textarea, button, label, select, a")) return;
+
+  const t = e.touches[0];
+  fingerZug = {
+    id: karte.dataset.id, karte, startX: t.clientX, startY: t.clientY, aktiv: false,
+  };
+  fingerZug.timer = setTimeout(() => starteFingerZug(t.clientX, t.clientY), LANGES_DRUECKEN);
+}, { passive: true });
+
+document.addEventListener("touchmove", e => {
+  if (!fingerZug) return;
+  const t = e.touches[0];
+  if (!fingerZug.aktiv) {
+    // Noch im Wartefenster: eine groessere Bewegung ist Scrollen, kein Zug.
+    if (Math.abs(t.clientX - fingerZug.startX) > WACKEL
+        || Math.abs(t.clientY - fingerZug.startY) > WACKEL) abbrechenFingerZug();
+    return;
+  }
+  e.preventDefault();   // Board steht still, solange etwas am Finger haengt
+  bewegeFingerZug(t.clientX, t.clientY);
+}, { passive: false });
+
+document.addEventListener("touchend", e => {
+  if (!fingerZug) return;
+  if (fingerZug.aktiv) {
+    // Verhindert, dass aus dem Loslassen ein Klick auf die Karte wird
+    // (der wuerde das ToDo abhaken).
+    e.preventDefault();
+    beendeFingerZug();
+  } else {
+    abbrechenFingerZug();
+  }
+});
+document.addEventListener("touchcancel", abbrechenFingerZug);
+
+// ---------- Ablage "aus dem Bereich loesen" fuer die Maus ----------
+ohneZone.addEventListener("dragover", e => {
+  if (!draggedId) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  ohneZone.classList.add("drop-target");
+});
+ohneZone.addEventListener("dragleave", () => ohneZone.classList.remove("drop-target"));
+ohneZone.addEventListener("drop", e => {
+  if (!draggedId) return;
+  e.preventDefault();
+  const id = draggedId || e.dataTransfer.getData("text/plain");
+  versteckeOhneZone();
+  if (id) loeseAusBereich(id);
+});
+
+// Neben den Spalten loslassen loest ebenfalls aus dem Bereich. Der Aufhaenger
+// ist die ganze App-Flaeche, nicht nur das Board: unter der kuerzesten Spalte
+// bleibt sonst kaum eine Flaeche uebrig, die man treffen koennte.
+const appFlaeche = document.querySelector(".app");
+appFlaeche.addEventListener("dragover", e => {
+  if (!draggedId || e.target.closest(".column")) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+});
+appFlaeche.addEventListener("drop", e => {
+  if (!draggedId || e.target.closest(".column")) return;
+  e.preventDefault();
+  const id = draggedId;
+  versteckeOhneZone();
+  if (id) loeseAusBereich(id);
+});
+
 // ---------- Start ----------
 applyTheme(
   localStorage.getItem("theme") ||
@@ -3405,7 +3663,16 @@ document.getElementById("googleVerbinden").addEventListener("click", () => {
   location.href = "/api/google/start";
 });
 
-document.getElementById("googleTrennen").addEventListener("click", async () => {
+// Trennen erst nach Rueckfrage: der Klick liegt direkt unter dem
+// Verbunden-Text, und der Weg zurueck fuehrt durch den ganzen
+// Google-Zustimmungsdialog.
+document.getElementById("googleTrennen")
+  .addEventListener("click", () => zeigeEinAnsicht("googleTrennen"));
+document.getElementById("googleTrennenZurueck")
+  .addEventListener("click", () => zeigeEinAnsicht("haupt"));
+
+document.getElementById("googleTrennenJa").addEventListener("click", async () => {
+  zeigeEinAnsicht("haupt");
   try {
     await fetch("/api/google/trennen", { method: "POST" });
     snackInfo("Google-Kalender getrennt.");

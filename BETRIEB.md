@@ -469,6 +469,46 @@ Pixelwerte sind empirisch abgeglichen (`getBoundingClientRect()` in der
 Browser-Konsole), nicht aus der Typografie hergeleitet — bei künftigen
 Schriftgrößen-Änderungen an `.todo-text`/`.due` lohnt ein erneuter Abgleich.
 
+## Ziehen und Ablegen
+
+**Aus dem Bereich lösen** geht auf zwei Wegen: neben den Spalten loslassen,
+oder auf die Ablage, die während eines Zuges über dem Board erscheint. Beides
+landet in „Ohne Bereich" der aktiven Liste (`loeseAusBereich()`). Vorher führte
+der Weg hinein per Drag, heraus aber nur über das Dropdown im
+Bearbeiten-Dialog. Der Aufhänger für „neben den Spalten" ist die ganze
+`.app`-Fläche, nicht nur das Board — unter der kürzesten Spalte bliebe sonst
+kaum etwas zu treffen. Die Ablage erscheint nur, wenn das gezogene ToDo
+überhaupt in einem Bereich liegt.
+
+**Ziehen mit dem Finger** (`fingerZug` in `app.js`) ist komplett nachgebaut:
+Das native Drag & Drop des Browsers gibt es auf Touch nicht, dort löste ein
+Wisch über eine Karte nur eine Textmarkierung aus. Ablauf: langes Drücken
+(`LANGES_DRUECKEN`, 400 ms) startet den Zug, ein geklonter „Geist" hängt am
+Finger, das Ziel sucht `elementFromPoint()`.
+
+Drei Dinge, ohne die es nicht funktioniert:
+
+- **`WACKEL` (10 px):** Jede Bewegung VOR Ablauf des Timers gilt als Scrollen
+  und bricht ab — sonst ließe sich die Liste nicht mehr scrollen, ohne
+  versehentlich etwas zu verschieben.
+- **`pointer-events: none` auf dem Geist:** Sonst fände `elementFromPoint`
+  unter dem Finger immer nur den Geist selbst und nie das Ziel darunter.
+- **`preventDefault()` im touchmove** (Listener muss `passive: false` sein) und
+  `user-select: none` am Body: hält das Board still und verhindert die
+  Textmarkierung.
+
+Beim Loslassen bekommt auch `touchend` ein `preventDefault()` — sonst würde der
+Browser daraus einen Klick auf die Karte machen und das ToDo abhaken.
+
+**Kollision mit der Kalender-Geste:** Beides horcht auf `touchmove`. Hat der
+Wisch vom rechten Rand schon übernommen (`geste` in `kalender.js`), bricht
+`starteFingerZug()` ab. Umgekehrt bleibt die Kalender-Geste erlaubt, solange
+der Langdruck noch wartet — `darfGeste()` prüft `draggedId`, und das steht erst,
+wenn der Zug wirklich läuft.
+
+Maus-Drop und Finger-Drop teilen sich `verschiebeToDo()`; vorher steckte diese
+Logik nur im `dragover`/`drop`-Paar und war für Touch nicht erreichbar.
+
 ## Notizfeld
 
 Wächst mit dem Inhalt nach unten statt zu scrollen — im Anlege-Feld wie im
@@ -821,6 +861,28 @@ Google-Termine zählen **nicht** in den Überfällig-Chip und nicht in die
 App-Icon-Badge — das sind keine Aufgaben. Beschreibungen kommen teils als HTML
 und werden entschärft (Tags raus) und als reiner Text gesetzt.
 
+**Anlegen aus dem Kalender.** Unter der Tagesliste ein Feld plus Knöpfe:
+Das ToDo landet in der gerade AKTIVEN Liste und dort ohne Bereich — der
+Kalender kennt keinen Bereich, und „Ohne Bereich" ist genau der Auffang dafür.
+Das Panel bleibt offen und der Fokus im Feld, damit mehrere Tage hintereinander
+zu befüllen sind. Der Knopf „＋ Termin" erscheint nur, wenn die Verknüpfung
+wirklich schreiben darf (`schreiben` aus `/api/google/status`) — ein Knopf, der
+in einen 403 läuft, wäre schlechter als keiner.
+
+**Schreiben in Google.** Einziger schreibender Zugriff der App:
+`POST /api/google/termin` legt einen GANZTÄGIGEN Termin im Hauptkalender an,
+mehr nicht (keine Uhrzeit, kein Ort, keine Gäste — das macht man in Google
+selbst). Dafür trägt `SCOPES` zusätzlich `calendar.events`. **Wer vor dieser
+Erweiterung verknüpft hat, hat den Scope nicht im Token**; `google_konten.scopes`
+hält fest, was Google tatsächlich erteilt hat (der Nutzer kann im Dialog
+einzelne Häkchen abwählen — angefragt ist nicht gleich erteilt), und
+`darfSchreiben()` entscheidet daran. Der Weg zum Schreibrecht ist einmal
+trennen und neu verbinden.
+
+**Trennen fragt nach.** Der Knopf liegt direkt unter dem Verbunden-Text, und
+der Weg zurück führt durch den ganzen Google-Zustimmungsdialog — deshalb eine
+eigene Ansicht (`googleTrennenFrage`) wie bei Abmelden und Kontolöschung.
+
 **Umschalter.** Eine Pille je ToDo-Liste und je Google-Kalender, dazu am Ende
 eine Pille **KW** für die Kalenderwochen-Spalte — die ist zwar keine
 Datenquelle, wird aber genauso an- und abgeschaltet und gemerkt (Schlüssel
@@ -830,6 +892,11 @@ Quellen sichtbar. Zwei localStorage-Mengen: `kalQuellenAus` (abgewählt) und
 `kalQuellenBekannt` (je gesehen). Ein NEU auftauchender Kalender startet
 ausgeschaltet — außer dem Hauptkalender —, eine spätere eigene Entscheidung
 wird davon nie wieder überschrieben.
+
+**Panelbreite** ist am Rechner `min(480px, 100vw)`, auf Schirmen bis 620 px die
+volle Breite (`100vw`, ohne linken Rand). Auf dem Handy bringt ein Streifen
+daneben nichts außer weniger Kalender; geschlossen wird dort per Wisch nach
+rechts, ✕ oder Escape.
 
 **Nur teilweise getestet:** Der komplette echte Rundlauf mit Google
 (Zustimmung, Code-Tausch, Termine holen) ist mangels Zugangsdaten lokal NICHT

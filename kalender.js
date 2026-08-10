@@ -52,7 +52,7 @@ let kalAuswahl = null;   // ISO-Tag, UEBERFAELLIG oder null (nichts gewaehlt)
 // fertige Termine und kennt kein Google-Token. `moeglich` bleibt false,
 // solange im Pages-Projekt keine Zugangsdaten liegen - dann existiert die
 // Funktion fuer den Nutzer gar nicht, statt ins Leere zu laufen.
-let googleZustand = { moeglich: false, verbunden: false, email: null, kalender: [] };
+let googleZustand = { moeglich: false, verbunden: false, email: null, schreiben: false, kalender: [] };
 let googleTermine = [];      // Termine des geladenen Zeitraums
 let googleGeladen = null;    // Schluessel aus Monat + eingeschalteten Kalendern
 let googleLaedt = false;
@@ -76,6 +76,10 @@ let quellenBekannt = ladeMenge("kalQuellenBekannt");
 
 // Aufgeklappte Google-Termine (Ort/Beschreibung), Schluessel ist die Termin-id.
 let offeneTermine = new Set();
+
+// Halb getippter Titel im Anlege-Feld. Das Panel zeichnet sich bei jeder
+// Aenderung neu; ohne diesen Zwischenspeicher waere der Text dann weg.
+let anlegenText = "";
 
 // Schluessel der Kalenderwochen-Spalte im selben Umschalt-Vorrat wie die
 // Listen und Kalender - sie ist zwar keine Datenquelle, wird aber genauso
@@ -204,6 +208,7 @@ async function ladeGoogle() {
       googleZustand.moeglich = !!d.moeglich;
       googleZustand.verbunden = !!d.verbunden;
       googleZustand.email = d.email || null;
+      googleZustand.schreiben = !!d.schreiben;
       if (Array.isArray(d.kalender)) {
         googleZustand.kalender = d.kalender;
         merkeNeueKalender(d.kalender);
@@ -667,6 +672,13 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     kalTagesliste.appendChild(leer);
   }
 
+  // Anlegen direkt fuer den gewaehlten Tag - nur bei einem echten Datum, im
+  // Ueberfaellig-Ausschnitt gibt es keinen Tag, auf den es sich beziehen
+  // koennte.
+  if (kalAuswahl && kalAuswahl !== UEBERFAELLIG && aktiveListe) {
+    kalTagesliste.appendChild(baueAnlegeZeile(kalAuswahl));
+  }
+
   // Eine Zeile statt einer stillen Luecke, wenn Google gerade nicht mag -
   // sonst sieht ein Tag leer aus, obwohl nur die Termine fehlen.
   if (googleFehler && googleZustand.verbunden) {
@@ -675,6 +687,109 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     hinweis.textContent = "Google-Termine gerade nicht erreichbar.";
     kalTagesliste.appendChild(hinweis);
   }
+}
+
+/**
+ * Anlege-Zeile unter dem gewaehlten Tag.
+ *
+ * Das ToDo landet in der gerade AKTIVEN Liste und dort ohne Bereich - der
+ * Kalender kennt keinen Bereich, und "Ohne Bereich" ist genau der Auffang
+ * dafuer; zuordnen laesst es sich danach auf dem Board wie jedes andere.
+ * Das Panel bleibt offen, damit man mehrere Tage hintereinander befuellen
+ * kann.
+ */
+function baueAnlegeZeile(tag) {
+  const zeile = document.createElement("div");
+  zeile.className = "kal-anlegen";
+
+  const feld = document.createElement("input");
+  feld.type = "text";
+  feld.className = "kal-anlegen-feld";
+  feld.placeholder = "Für diesen Tag anlegen …";
+  feld.value = anlegenText;
+  zeile.appendChild(feld);
+
+  // Beim Neuzeichnen (jedes Anlegen rendert das Panel neu) den Tippstand
+  // halten - sonst verliert man den halb geschriebenen Titel, sobald
+  // irgendwo anders etwas passiert.
+  feld.addEventListener("input", () => { anlegenText = feld.value; });
+
+  const knoepfe = document.createElement("div");
+  knoepfe.className = "kal-anlegen-knoepfe";
+
+  const alsToDo = document.createElement("button");
+  alsToDo.type = "button";
+  alsToDo.className = "btn klein primary";
+  alsToDo.textContent = "＋ ToDo";
+  alsToDo.addEventListener("click", () => legeToDoAn(tag, feld.value));
+  knoepfe.appendChild(alsToDo);
+
+  // Der Termin-Knopf erscheint nur, wenn die Verknuepfung wirklich schreiben
+  // darf - eine aeltere traegt den Scope nicht, und ein Knopf, der dann in
+  // einen Fehler laeuft, waere schlechter als keiner.
+  if (googleZustand.verbunden && googleZustand.schreiben) {
+    const alsTermin = document.createElement("button");
+    alsTermin.type = "button";
+    alsTermin.className = "btn klein";
+    alsTermin.textContent = "＋ Termin";
+    alsTermin.title = "Ganztägiger Termin in deinem Google-Kalender";
+    alsTermin.addEventListener("click", () => legeTerminAn(tag, feld.value));
+    knoepfe.appendChild(alsTermin);
+  }
+
+  zeile.appendChild(knoepfe);
+  feld.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); legeToDoAn(tag, feld.value); }
+    else if (e.key === "Escape") { anlegenText = ""; feld.value = ""; feld.blur(); }
+  });
+  return zeile;
+}
+
+function legeToDoAn(tag, text) {
+  if (!text.trim() || !aktiveListe) return;
+  const bereich = ohneBereichId(aktiveListe);
+  if (!state.categories.some(c => c.id === bereich)) {
+    state.categories.unshift({ id: bereich, name: OHNE_NAME });
+  }
+  anlegenText = "";
+  addTodoTo(bereich, null, text, tag, null);   // rendert und speichert selbst
+  fokussiereAnlegeFeld();
+}
+
+async function legeTerminAn(tag, text) {
+  const titel = text.trim();
+  if (!titel) return;
+  anlegenText = "";
+  zeichneKalender();
+  try {
+    const antwort = await fetch("/api/google/termin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titel, datum: tag }),
+    });
+    if (!antwort.ok) {
+      const d = await antwort.json().catch(() => ({}));
+      snackInfo(d.neuVerknuepfen
+        ? "Dafür einmal in den Einstellungen trennen und neu verbinden."
+        : "Google hat den Termin nicht angenommen.");
+      return;
+    }
+    // Frisch holen statt den neuen Termin von Hand einzusortieren: so steht
+    // im Panel genau das, was bei Google steht.
+    googleGeladen = null;
+    await ladeGoogle();
+    snackInfo("Termin angelegt.");
+  } catch (e) {
+    snackInfo("Termin konnte nicht angelegt werden.");
+  }
+  fokussiereAnlegeFeld();
+}
+
+// Nach dem Anlegen zurueck ins Feld, damit der naechste Eintrag ohne
+// Mausweg folgt. Auf dem Handy haelt das nebenbei die Tastatur offen.
+function fokussiereAnlegeFeld() {
+  const feld = kalTagesliste.querySelector(".kal-anlegen-feld");
+  if (feld) feld.focus();
 }
 
 function baueGruppenKopf(text) {

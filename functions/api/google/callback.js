@@ -54,6 +54,9 @@ export async function onRequestGet({ request, env }) {
       refreshToken: daten.refresh_token,
       zugriffToken: daten.access_token,
       gueltigSekunden: daten.expires_in,
+      // Was wirklich erteilt wurde - der Nutzer kann im Dialog einzelne
+      // Berechtigungen abwaehlen, angefragt ist also nicht gleich erteilt.
+      scopes: daten.scope || null,
     });
   } catch (e) {
     return zurueck(request, "fehlgeschlagen");

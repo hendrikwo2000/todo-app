@@ -247,12 +247,17 @@ CREATE TABLE sessions (
 --
 -- Die Tokens stehen im Klartext - ein Schluessel auf demselben Server wuerde
 -- nur Sicherheit vortaeuschen. Der Schutz sitzt am Datenbankzugang.
+-- `scopes` haelt fest, was Google beim Verknuepfen erteilt hat. Daran
+-- erkennt die App, ob das Token auch schreiben darf (calendar.events) -
+-- aeltere Verknuepfungen duerfen nur lesen, und ein Anlege-Knopf, der dann
+-- in einen 403 laeuft, waere schlechter als gar keiner.
 CREATE TABLE google_konten (
   user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   google_email   TEXT,
   refresh_token  TEXT NOT NULL,
   zugriff_token  TEXT,
   zugriff_bis    TEXT,
+  scopes         TEXT,
   verbunden_am   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

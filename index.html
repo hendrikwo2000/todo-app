@@ -64,6 +64,15 @@
          JS befuellt und blendet dauerhaft aus, sobald "✕" geklickt wurde. -->
     <div id="hinweisleiste" class="hinweisleiste"></div>
 
+    <!-- Ablage, um ein ToDo wieder aus seinem Bereich zu loesen. Erscheint
+         nur waehrend eines Zuges und nur, wenn das gezogene ToDo ueberhaupt
+         in einem Bereich liegt. Neben den Spalten loslassen tut dasselbe -
+         die Ablage ist der Weg fuer schmale Bildschirme, wo "neben den
+         Spalten" kaum Platz hat. -->
+    <div id="ohneBereichZone" class="ohne-zone" hidden>
+      ⬆️ Hierher ziehen: aus dem Bereich lösen
+    </div>
+
     <main id="board" class="board"><!-- Spalten werden per JS eingefuegt --></main>
   </div>
 
@@ -249,6 +258,19 @@
            rein — einfach erneut anmelden.</p>
         <button type="button" id="todoZugangAufgebenJa" class="btn gefahr">Ja, Zugang aufgeben</button>
         <button type="button" id="todoZugangAufgebenZurueck" class="lock-link">Zurück</button>
+      </div>
+
+      <!-- Trennen ist zwar umkehrbar (neu verknuepfen geht jederzeit), aber
+           es widerruft den Zugriff auch bei Google - ein Fehlgriff kostet
+           den ganzen Weg durch den Zustimmungsdialog zurueck. -->
+      <div id="googleTrennenFrage" hidden>
+        <div class="admin-popup-icon">📆</div>
+        <h2>Google-Kalender trennen?</h2>
+        <p>Deine Termine verschwinden aus dem Kalender, und die App verliert
+           den Zugriff auch bei Google. Deine ToDos bleiben unberührt.
+           Neu verbinden kannst du jederzeit.</p>
+        <button type="button" id="googleTrennenJa" class="btn gefahr">Ja, trennen</button>
+        <button type="button" id="googleTrennenZurueck" class="lock-link">Zurück</button>
       </div>
 
       <div id="kontoAbmeldenFrage" hidden>

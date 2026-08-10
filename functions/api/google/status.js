@@ -9,7 +9,7 @@
 
 import { json } from "../../_lib/listen.js";
 import { nutzerOderFehler } from "../../_lib/zugang.js";
-import { fehltEinrichtung, kontoFuer } from "../../_lib/google.js";
+import { fehltEinrichtung, kontoFuer, darfSchreiben } from "../../_lib/google.js";
 
 export async function onRequestGet({ request, env }) {
   const { nutzerId, fehler } = await nutzerOderFehler(request, env);
@@ -24,5 +24,9 @@ export async function onRequestGet({ request, env }) {
     moeglich: true,
     verbunden: !!konto,
     email: konto ? konto.google_email : null,
+    // Aeltere Verknuepfungen tragen den Schreib-Scope nicht - die App bietet
+    // das Anlegen dann gar nicht erst an und bittet stattdessen ums neu
+    // Verknuepfen.
+    schreiben: darfSchreiben(konto),
   });
 }

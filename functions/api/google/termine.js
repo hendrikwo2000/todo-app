@@ -18,7 +18,7 @@ import { json } from "../../_lib/listen.js";
 import { nutzerOderFehler } from "../../_lib/zugang.js";
 import {
   fehltEinrichtung, kontoFuer, loescheKonto, frischesZugriffToken,
-  kalenderListe, termineVon, farbPalette,
+  kalenderListe, termineVon, farbPalette, darfSchreiben,
 } from "../../_lib/google.js";
 
 // Obergrenze fuer gleichzeitig abgefragte Kalender. Wer 30 abonnierte
@@ -91,6 +91,7 @@ export async function onRequestGet({ request, env }) {
       moeglich: true,
       verbunden: true,
       email: konto.google_email,
+      schreiben: darfSchreiben(konto),
       kalender,
       termine,
     });
