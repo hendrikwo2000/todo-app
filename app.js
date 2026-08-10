@@ -246,6 +246,42 @@ function openDatePicker(input) {
   input.click();
 }
 
+// ---------- Notizfeld ----------
+// Waechst mit dem Inhalt nach unten, statt bei zwei Zeilen zu scrollen: eine
+// laengere Notiz soll beim Bearbeiten vollstaendig zu lesen sein, ohne im Feld
+// zu blaettern. Erst auf "auto" setzen - sonst kennt scrollHeight nur die
+// bisherige, groessere Hoehe und das Feld schrumpft beim Loeschen nie wieder.
+//
+// Nach oben gedeckelt auf 45% der Fensterhoehe: ein Roman im Notizfeld wuerde
+// sonst die Knopfzeile aus dem Bild schieben. Ab da scrollt es doch, aber erst
+// dann.
+function passeNotizHoeheAn(feld) {
+  if (!feld) return;
+  const grenze = Math.max(90, Math.round(window.innerHeight * 0.45));
+  feld.style.height = "auto";
+  // scrollHeight zaehlt Inhalt + Innenabstand, aber NICHT den Rahmen - bei
+  // box-sizing:border-box (gilt hier global) frisst der Rahmen sonst zwei
+  // Pixel vom Inhalt, und die letzte Zeile bleibt angeschnitten.
+  const stil = getComputedStyle(feld);
+  const rahmen = (parseFloat(stil.borderTopWidth) || 0) + (parseFloat(stil.borderBottomWidth) || 0);
+  const noetig = feld.scrollHeight + rahmen;
+  feld.style.height = Math.min(noetig, grenze) + "px";
+  feld.style.overflowY = noetig > grenze ? "auto" : "hidden";
+}
+
+// Nur den Horcher anhaengen. Die ERSTE Messung macht render() ganz am Ende
+// (siehe passeAlleNotizfelderAn): hier haengt das Feld noch nicht im Dokument,
+// und scrollHeight ist dort schlicht 0 - das Feld bliebe einzeilig, egal wie
+// lang die Notiz ist.
+function verdrahteNotizHoehe(feld) {
+  if (!feld) return;
+  feld.addEventListener("input", () => passeNotizHoeheAn(feld));
+}
+
+function passeAlleNotizfelderAn() {
+  document.querySelectorAll(".add-note, [data-edit-note]").forEach(passeNotizHoeheAn);
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => (
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
@@ -1851,12 +1887,18 @@ function showUndo(message, undoFn) {
 }
 function hideSnackbar() { snackbar.classList.remove("show"); }
 
+// Bewusst OHNE Fokus und ohne Markierung: der Doppelklick soll die Notiz
+// lesbar machen, nicht sofort die Handy-Tastatur hochziehen und den Titel
+// blau markieren (ein Fehlgriff loeschte damit den ganzen Text). Wer tippen
+// will, tippt das Feld an. Die Auswahl, die der Doppelklick selbst im Text
+// erzeugt hat, raeumen wir mit weg - sie ueberlebt das Neuzeichnen sonst
+// sichtbar.
 function startEdit(id) {
   editingId = id;
   unterpunktEingabeOffen = null;
   render();
-  const input = document.querySelector(`[data-edit-text="${id}"]`);
-  if (input) { input.focus(); input.select(); }
+  const auswahl = window.getSelection && window.getSelection();
+  if (auswahl && auswahl.removeAllRanges) auswahl.removeAllRanges();
 }
 
 function saveEdit(id) {
@@ -2286,6 +2328,9 @@ function render() {
     const input = document.querySelector(".col-add.open .add-text");
     if (input) input.focus();
   }
+
+  // Erst jetzt, mit allem im Dokument, lassen sich die Notizfelder messen.
+  passeAlleNotizfelderAn();
 }
 
 function renderColumn(cat) {
@@ -2722,6 +2767,7 @@ function baueAddWidget(cat, themaId) {
   const noteInput = add.querySelector(".add-note");
   const calBtn    = add.querySelector(".add-cal");
   const clearBtn  = add.querySelector(".date-clear");
+  verdrahteNotizHoehe(noteInput);
 
   const syncDateUi = () => updateDateButton(calBtn, clearBtn, dateInput.value);
   syncDateUi();
@@ -2963,6 +3009,7 @@ function renderTodo(t) {
     const wiederholungSelect = wrap.querySelector(".edit-wiederholung");
     const wiederholungBtn = wrap.querySelector('[data-act="wiederholung"]');
     noteInput.value = t.note || "";
+    verdrahteNotizHoehe(noteInput);   // NACH dem Setzen des Werts, sonst misst es leer
 
     const syncDateUi = () => {
       updateDateButton(calBtn, clearBtn, dateInput.value);
@@ -3391,6 +3438,10 @@ document.getElementById("googleTrennen").addEventListener("click", async () => {
   if (window.kalenderGoogleVergessen) window.kalenderGoogleVergessen();
   setTimeout(() => snackInfo(texte[wert] || "Google: unbekannte Rückmeldung."), 400);
 })();
+
+// Der Deckel haengt an der Fensterhoehe - nach dem Drehen des Handys stimmt
+// er sonst bis zum naechsten Tastendruck nicht mehr.
+window.addEventListener("resize", passeAlleNotizfelderAn);
 
 window.addEventListener("offline", () => {
   serverErreichbar = false;

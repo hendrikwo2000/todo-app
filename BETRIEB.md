@@ -469,6 +469,35 @@ Pixelwerte sind empirisch abgeglichen (`getBoundingClientRect()` in der
 Browser-Konsole), nicht aus der Typografie hergeleitet — bei künftigen
 Schriftgrößen-Änderungen an `.todo-text`/`.due` lohnt ein erneuter Abgleich.
 
+## Notizfeld
+
+Wächst mit dem Inhalt nach unten statt zu scrollen — im Anlege-Feld wie im
+Bearbeiten-Dialog (`passeNotizHoeheAn()` in `app.js`). Drei Fallen stecken in
+den paar Zeilen:
+
+- **Erst `height:auto`, dann messen.** Ohne das kennt `scrollHeight` nur die
+  bisherige, größere Höhe, und das Feld schrumpft beim Löschen nie wieder.
+- **Rahmen dazurechnen.** `scrollHeight` zählt Inhalt + Innenabstand, aber
+  nicht den Rahmen; bei `box-sizing: border-box` (gilt global) frisst der
+  Rahmen sonst zwei Pixel vom Inhalt und die letzte Zeile bleibt angeschnitten.
+- **Erst messen, wenn das Feld im Dokument hängt.** Die erste Messung läuft
+  deshalb am ENDE von `render()` (`passeAlleNotizfelderAn()`), nicht beim
+  Aufbau der Zeile — dort ist `scrollHeight` schlicht 0 und das Feld bliebe
+  einzeilig.
+
+Gedeckelt auf 45 % der Fensterhöhe, ab da scrollt es doch; sonst schöbe eine
+sehr lange Notiz die Knopfzeile aus dem Bild. Der Deckel wird bei `resize` neu
+gerechnet, sonst stimmt er nach dem Drehen des Handys nicht mehr. `resize` ist
+im CSS auf `none`: ein von Hand gezogenes Feld würde beim nächsten Tastendruck
+ohnehin überschrieben.
+
+**Doppelklick öffnet die Bearbeitung ohne Fokus und ohne Markierung.** Früher
+sprang der Cursor in den Titel und markierte ihn komplett — auf dem Handy ging
+dabei die Tastatur auf und verdeckte die Notiz, die man eigentlich lesen
+wollte, und ein Fehlgriff hätte den ganzen Titel überschrieben. Jetzt steht
+alles nur da; wer tippen will, tippt das Feld an. `startEdit()` räumt zusätzlich
+die Textauswahl weg, die der Doppelklick selbst erzeugt hat.
+
 ## Wiederkehrende ToDos
 
 Ein ToDo mit `wiederholung` (`taeglich`/`woechentlich`/`monatlich`/`jaehrlich`,

@@ -485,6 +485,10 @@ input[type="date"]:focus {
   }
   .date-field .add-cal { pointer-events: none; }
 }
+/* resize:none, weil die Hoehe aus dem Inhalt kommt (passeNotizHoeheAn in
+   app.js) - ein von Hand gezogenes Feld wuerde beim naechsten Tastendruck
+   ohnehin wieder ueberschrieben. overflow-y setzt dieselbe Funktion, sobald
+   der Deckel erreicht ist. */
 .col-add .add-note {
   width: 100%;
   font-family: inherit;
@@ -494,7 +498,8 @@ input[type="date"]:focus {
   border-radius: 8px;
   background: var(--row);
   color: var(--text);
-  resize: vertical;
+  resize: none;
+  overflow-y: hidden;
   outline: none;
   transition: border-color .15s, box-shadow .15s;
 }
@@ -668,7 +673,8 @@ input[type="date"]:focus {
   border-radius: 8px;
   background: var(--row);
   color: var(--text);
-  resize: vertical;
+  resize: none;
+  overflow-y: hidden;
   outline: none;
   transition: border-color .15s, box-shadow .15s;
 }
