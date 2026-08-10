@@ -2187,10 +2187,7 @@ function zeigeHinweise() {
 function synchronisiereOhneBereich() {
   if (!aktiveListe) return;
   const id = ohneBereichId(aktiveListe);
-  // editingId wie in renderColumn: ein aus dem Kalender angesprungenes, noch
-  // nicht faelliges ToDo braucht seine Spalte, sonst zeigt der Sprung ins Leere.
-  const hatTodos = state.todos.some(t => t.categoryId === id
-    && (!nochNichtFaellig(t) || editingId === t.id));
+  const hatTodos = state.todos.some(t => t.categoryId === id && !nochNichtFaellig(t));
   const wirdBefuellt = addingCat === id;   // offenes Eingabefeld haelt die Spalte
   const idx = state.categories.findIndex(c => c.id === id);
   if ((hatTodos || wirdBefuellt) && idx < 0) state.categories.unshift({ id, name: OHNE_NAME });
@@ -2263,11 +2260,7 @@ function render() {
 
 function renderColumn(cat) {
   const istOhne = istOhneBereich(cat.id);
-  // Ausnahme editingId: ein noch nicht faelliges, wiederkehrendes ToDo ist
-  // hier sonst unsichtbar - aus dem Kalender kann man es aber anspringen,
-  // und dann muss die Karte auch da sein (siehe kalender.js).
-  const inCat = state.todos.filter(t => t.categoryId === cat.id
-    && (!nochNichtFaellig(t) || editingId === t.id));
+  const inCat = state.todos.filter(t => t.categoryId === cat.id && !nochNichtFaellig(t));
   const open = inCat.filter(t => !t.done);           // pro Gruppe sortiert, nicht global
   const done = inCat.filter(t => t.done).sort(sortDone);
   const themen = istOhne ? [] : themenIn(cat.id);    // "Ohne Bereich" kennt keine Themen

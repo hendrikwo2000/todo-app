@@ -46,10 +46,10 @@ let kalAuswahl = null;   // ISO-Tag, UEBERFAELLIG oder null (nichts gewaehlt)
 // ---------- Daten ----------
 // Flache Liste aller offenen ToDos mit Termin, quer ueber alle Listen.
 // Erledigte bleiben draussen (der Kalender beantwortet "was kommt noch").
-// Wiederkehrende ToDos, deren naechster Termin noch aussteht, sind hier
-// bewusst DRIN: auf dem Board versteckt nochNichtFaellig() sie bis zum
-// Faelligkeitstag, aber ein Kalender, der ausgerechnet die wiederkehrenden
-// Termine verschweigt, verfehlt seinen Zweck.
+// Wiederkehrende ToDos, deren naechster Termin noch aussteht, ebenfalls:
+// nochNichtFaellig() versteckt sie auf dem Board bis zum Faelligkeitstag,
+// und der Kalender haelt sich an dieselbe Regel - sonst zeigt er etwas,
+// das man auf dem Board nicht findet.
 function kalenderTermine() {
   const listenName = {};
   for (const b of listen) listenName[b.id] = b.name;
@@ -61,6 +61,7 @@ function kalenderTermine() {
     for (const c of (d.categories || [])) bereiche[c.id] = c;
     for (const t of (d.todos || [])) {
       if (t.done || !t.due) continue;
+      if (nochNichtFaellig(t)) continue;
       const cat = bereiche[t.categoryId];
       termine.push({
         id: t.id,

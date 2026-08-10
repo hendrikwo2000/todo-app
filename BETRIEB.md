@@ -582,14 +582,14 @@ Bearbeiten-Modus (`startEdit()`), die Karte blinkt kurz auf
 läge dieselbe Logik (Wiederholung, Unterpunkt-Automatik, Speichern) an zwei
 Stellen.
 
-**Falle: nicht jedes ToDo im Kalender steht auch auf dem Board.** Ein
-wiederkehrendes ToDo, dessen nächster Termin noch aussteht, versteckt
-`nochNichtFaellig()` bis zum Fälligkeitstag — im Kalender ist es trotzdem zu
-sehen (es ist ein echter Datensatz, und ein Kalender ohne die
-wiederkehrenden Termine verfehlt seinen Zweck). Damit der Sprung dorthin
-nicht ins Leere zeigt, haben `renderColumn()` und `synchronisiereOhneBereich()`
-eine Ausnahme für `editingId`: das gerade angesprungene ToDo wird gezeigt,
-auch wenn es normal noch unsichtbar wäre.
+**Wiederkehrende ToDos erscheinen erst ab ihrem Fälligkeitstag**, im
+Kalender genauso wie auf dem Board — `kalenderTermine()` filtert mit
+demselben `nochNichtFaellig()` wie `renderColumn()`. Die erste Fassung
+zeigte sie im Kalender schon vorher (Argument: es ist ein echter
+Datensatz); das war falsch, weil der Kalender damit Termine anzeigte, die
+man auf dem Board nicht wiederfindet. Wer das je wieder ändert, braucht
+zusätzlich eine Ausnahme in `renderColumn()` und `synchronisiereOhneBereich()`,
+sonst zeigt der Sprung aus dem Kalender ins Leere.
 
 **Überfällig-Chip.** Eigener Einstieg über dem Raster, weil Überfälliges quer
 über Vormonate liegt und im Raster des laufenden Monats gar nicht auftaucht.
