@@ -45,6 +45,7 @@
       <button id="addTodoBtn" class="btn add-cat" title="ToDo anlegen – landet ohne Bereich, bis du es zuordnest">＋ ToDo</button>
       <button id="addCatBtn" class="btn add-cat">＋ Bereich</button>
       <span id="saveStatus" class="save-status"></span>
+      <button id="kalenderBtn" class="btn icon-only" title="Kalender – oder vom rechten Rand hereinwischen">📅</button>
       <button id="einstellungenBtn" class="btn icon-only" title="Einstellungen" hidden>⚙️</button>
 
       <!-- Umschalter zwischen den Listen. Inhalt kommt per JS, erscheint nur
@@ -67,6 +68,26 @@
   </div>
 
   <div id="snackbar" class="snackbar" aria-live="polite"></div>
+
+  <!-- Kalender: Panel am rechten Rand, per Wisch vom rechten Bildschirmrand
+       oder ueber den 📅-Knopf in der Kopfzeile. Zeigt Termine aus ALLEN
+       Listen und ist rein lesend - ein Tipp auf einen Eintrag oeffnet das
+       ToDo im gewohnten Bearbeiten-Modus auf dem Board. Inhalt kommt aus
+       kalender.js. -->
+  <div id="kalenderHintergrund" class="kal-hintergrund"></div>
+  <aside id="kalenderPanel" class="kalender" aria-label="Kalender" aria-hidden="true">
+    <div class="kal-kopf">
+      <button type="button" id="kalZurueck" class="kal-pfeil" aria-label="Vorheriger Monat">‹</button>
+      <span id="kalMonatName" class="kal-monat"></span>
+      <button type="button" id="kalVor" class="kal-pfeil" aria-label="Nächster Monat">›</button>
+      <button type="button" id="kalHeute" class="btn klein">Heute</button>
+      <button type="button" id="kalZu" class="kal-schliessen" aria-label="Kalender schließen">✕</button>
+    </div>
+    <button type="button" id="kalUeberfaellig" class="kal-chip" hidden></button>
+    <div id="kalWochentage" class="kal-wochentage"></div>
+    <div id="kalRaster" class="kal-raster"></div>
+    <div id="kalTagesliste" class="kal-liste"></div>
+  </aside>
 
   <!-- Einstellungen hinter dem Zahnrad. Ein Dialog mit mehreren Ansichten:
        Hauptansicht (Listen + Konto), Zugriff-verwalten, Abmelde-Rueckfrage,
@@ -263,6 +284,9 @@
 
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
           async defer></script>
+  <!-- Reihenfolge ist Pflicht: kalender.js liest den Zustand aus app.js
+       (daten, listen, aktiveListe) und muss danach laufen. -->
   <script src="app.js"></script>
+  <script src="kalender.js"></script>
 </body>
 </html>

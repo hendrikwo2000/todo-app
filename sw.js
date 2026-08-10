@@ -16,13 +16,14 @@
    auf dem alten Stand haengen (activate() raeumt den alten Cache nur auf,
    wenn sich der Name aendert). Siehe BETRIEB.md.
    ==================================================================== */
-const CACHE_NAME = "todo-shell-v3";
+const CACHE_NAME = "todo-shell-v4";
 
 const SHELL_FILES = [
   "/",
   "/index.html",
   "/style.css",
   "/app.js",
+  "/kalender.js",
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",

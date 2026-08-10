@@ -2187,7 +2187,10 @@ function zeigeHinweise() {
 function synchronisiereOhneBereich() {
   if (!aktiveListe) return;
   const id = ohneBereichId(aktiveListe);
-  const hatTodos = state.todos.some(t => t.categoryId === id && !nochNichtFaellig(t));
+  // editingId wie in renderColumn: ein aus dem Kalender angesprungenes, noch
+  // nicht faelliges ToDo braucht seine Spalte, sonst zeigt der Sprung ins Leere.
+  const hatTodos = state.todos.some(t => t.categoryId === id
+    && (!nochNichtFaellig(t) || editingId === t.id));
   const wirdBefuellt = addingCat === id;   // offenes Eingabefeld haelt die Spalte
   const idx = state.categories.findIndex(c => c.id === id);
   if ((hatTodos || wirdBefuellt) && idx < 0) state.categories.unshift({ id, name: OHNE_NAME });
@@ -2196,6 +2199,9 @@ function synchronisiereOhneBereich() {
 
 function render() {
   aktualisiereBadge();
+  // Offenes Kalender-Panel mitziehen (siehe kalender.js). Zugeklappt und
+  // solange die Datei noch nicht geladen ist, kostet der Aufruf nichts.
+  if (window.kalenderNeuZeichnen) window.kalenderNeuZeichnen();
   synchronisiereOhneBereich();
   if (addingCat && !state.categories.some(c => c.id === addingCat)) { addingCat = null; addingThema = null; }
   if (addingThema && !state.themen.some(th => th.id === addingThema)) addingThema = null;
@@ -2257,7 +2263,11 @@ function render() {
 
 function renderColumn(cat) {
   const istOhne = istOhneBereich(cat.id);
-  const inCat = state.todos.filter(t => t.categoryId === cat.id && !nochNichtFaellig(t));
+  // Ausnahme editingId: ein noch nicht faelliges, wiederkehrendes ToDo ist
+  // hier sonst unsichtbar - aus dem Kalender kann man es aber anspringen,
+  // und dann muss die Karte auch da sein (siehe kalender.js).
+  const inCat = state.todos.filter(t => t.categoryId === cat.id
+    && (!nochNichtFaellig(t) || editingId === t.id));
   const open = inCat.filter(t => !t.done);           // pro Gruppe sortiert, nicht global
   const done = inCat.filter(t => t.done).sort(sortDone);
   const themen = istOhne ? [] : themenIn(cat.id);    // "Ohne Bereich" kennt keine Themen

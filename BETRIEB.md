@@ -558,3 +558,60 @@ ToDo, nicht die übrigen Felder. Ein Fix bräuchte entweder ein Zwischenspeicher
 der Feldwerte vor jedem Unterpunkt-bedingten Re-Render oder ein gezieltes
 DOM-Update statt des vollen `render()` — beides über den Rahmen dieser
 Änderungsrunde hinaus.
+
+## Kalender
+
+Panel am rechten Rand (`kalender.js`, Markup in `index.html`, CSS-Block
+„Kalender" in `style.css`): Monatsraster oben, Tagesliste darunter. Zeigt
+alle OFFENEN ToDos mit Termin aus ALLEN geladenen Listen — eigene wie
+geteilte —, also bewusst mehr als das Board, das immer nur eine Liste zeigt.
+Erledigte bleiben draußen, ToDos ohne Termin tauchen gar nicht auf.
+
+**Eigene Datei, kein Build-Schritt.** `kalender.js` wird nach `app.js`
+geladen und liest dessen Zustand direkt (`daten`, `listen`, `aktiveListe`) —
+Reihenfolge der `<script>`-Tags ist deshalb Pflicht. Umgekehrt gibt es genau
+eine Berührung: `render()` ruft `window.kalenderNeuZeichnen?.()` auf, damit
+ein offenes Panel bei Änderungen am Board mitzieht. Grund für die Trennung
+ist schlicht die Größe von `app.js` (>3300 Zeilen), nicht eine technische
+Notwendigkeit.
+
+**Rein lesend.** Ein Tipp auf einen Eintrag schließt das Panel, wechselt bei
+Bedarf die Liste (`wechsleListe()`) und öffnet das ToDo im gewohnten
+Bearbeiten-Modus (`startEdit()`), die Karte blinkt kurz auf
+(`.todo.kal-treffer`). Kein Abhaken, kein Termin-Ziehen im Kalender — sonst
+läge dieselbe Logik (Wiederholung, Unterpunkt-Automatik, Speichern) an zwei
+Stellen.
+
+**Falle: nicht jedes ToDo im Kalender steht auch auf dem Board.** Ein
+wiederkehrendes ToDo, dessen nächster Termin noch aussteht, versteckt
+`nochNichtFaellig()` bis zum Fälligkeitstag — im Kalender ist es trotzdem zu
+sehen (es ist ein echter Datensatz, und ein Kalender ohne die
+wiederkehrenden Termine verfehlt seinen Zweck). Damit der Sprung dorthin
+nicht ins Leere zeigt, haben `renderColumn()` und `synchronisiereOhneBereich()`
+eine Ausnahme für `editingId`: das gerade angesprungene ToDo wird gezeigt,
+auch wenn es normal noch unsichtbar wäre.
+
+**Überfällig-Chip.** Eigener Einstieg über dem Raster, weil Überfälliges quer
+über Vormonate liegt und im Raster des laufenden Monats gar nicht auftaucht.
+Auswahl `kalAuswahl` hält deshalb entweder ein ISO-Datum oder den
+Sonderwert `"ueberfaellig"`.
+
+**Wischgeste.** Start nur innerhalb von 24 px am RECHTEN Bildschirmrand
+(links liegt auf iOS/Android die Zurück-Geste des Browsers). Die Achse
+entscheidet sich nach 8 px: überwiegend senkrecht → die Geste wird
+verworfen, das Board scrollt normal; überwiegend waagerecht → `preventDefault()`
+und das Panel folgt dem Finger (Inline-`transform`, deshalb steht im CSS nur
+der Ruhezustand). Beim Loslassen entscheidet die Strecke (65 % zum Öffnen,
+35 % zum Schließen). Blockiert, solange ein Dialog offen ist oder etwas
+gezogen wird (`darfGeste()`) — sonst kämpft die Geste mit dem Drag & Drop des
+Boards. Am Rechner führt der 📅-Knopf in der Kopfzeile zum selben Ziel.
+
+**Jedes Öffnen startet bei heute** — Knopf wie Wisch (`springeZuHeute()`);
+sonst hinge das Panel noch in dem Monat, in dem man zuletzt geblättert hat.
+Beim Blättern in einen anderen Monat wird automatisch der erste Tag MIT
+Terminen gewählt, sonst steht unter einem gefüllten Raster eine leere Liste.
+
+**Nur synthetisch getestet:** die Wischgeste wurde mit selbst erzeugten
+Touch-Events geprüft (öffnen, schließen, senkrecht verwerfen, Mitte
+verwerfen, bei offenem Dialog blockiert), nicht mit einem echten Finger auf
+einem Gerät.

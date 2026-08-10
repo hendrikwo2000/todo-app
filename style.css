@@ -181,8 +181,11 @@ html, body {
 .btn.add-cat:hover { color: var(--accent); background: var(--row); border-color: var(--line); }
 .btn.icon-only { padding: 7px 10px; font-size: 16px; line-height: 1; }
 /* Rechtsbuendig in der Kopfzeile: schiebt sich ueber den frei bleibenden
-   Platz nach rechts, ohne den restlichen Knoepfen ihre Position zu nehmen. */
-#einstellungenBtn { margin-left: auto; }
+   Platz nach rechts, ohne den restlichen Knoepfen ihre Position zu nehmen.
+   Das margin-left:auto traegt nur der KALENDER-Knopf fuer beide Icon-Knoepfe -
+   zwei auto-Raender wuerden sich den freien Platz TEILEN und das Zahnrad in
+   der Mitte der Kopfzeile absetzen. */
+#kalenderBtn { margin-left: auto; }
 #einstellungenBtn[hidden] { display: none; }
 /* Gleiche Falle wie oben: display:flex auf .btn schlaegt [hidden]. */
 #todoZugangAufgebenStart[hidden] { display: none; }
@@ -1358,3 +1361,173 @@ input[type="date"]:focus {
 /* "Du" in der Nutzerliste - graugruen statt blau, damit es sich von der
    Admin-Marke daneben unterscheidet. */
 .admin-marke.du { background: var(--chip); color: var(--text); }
+
+/* ---------- Kalender (Panel am rechten Rand) ---------- */
+/* Aufruf per Wisch vom rechten Bildschirmrand oder ueber den 📅-Knopf,
+   Logik in kalender.js. Das Panel traegt seine Verschiebung als INLINE
+   transform (JS folgt damit dem Finger); hier steht nur der Ruhezustand
+   und der Uebergang fuer den animierten Rest des Weges. */
+html.kal-offen, html.kal-offen body { overflow: hidden; }
+
+.kal-hintergrund {
+  position: fixed;
+  inset: 0;
+  z-index: 55;                 /* ueber Board und Menue, unter Sperrbildschirm (100) */
+  background: rgba(0, 0, 0, .38);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .26s;
+}
+.kal-hintergrund.sichtbar { opacity: 1; pointer-events: auto; }
+
+.kalender {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  z-index: 56;
+  width: min(380px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  background: var(--bg);
+  border-left: 1px solid var(--line);
+  box-shadow: -10px 0 30px rgba(0, 0, 0, .20);
+  transform: translateX(100%);
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 0 14px;
+  overscroll-behavior: contain;
+  will-change: transform;
+}
+.kalender.animiert { transition: transform .26s cubic-bezier(.32, .72, 0, 1); }
+
+.kal-kopf { display: flex; align-items: center; gap: 4px; }
+.kal-monat { flex: 1; min-width: 0; text-align: center; font-weight: 700; font-size: 15.5px; }
+.kal-pfeil, .kal-schliessen {
+  flex: none;
+  border: 0; background: none; color: var(--muted);
+  font: inherit; font-size: 20px; line-height: 1;
+  padding: 4px 8px; border-radius: 8px; cursor: pointer;
+}
+.kal-schliessen { font-size: 15px; margin-left: 4px; }
+.kal-pfeil:hover, .kal-schliessen:hover { color: var(--accent); background: var(--hover); }
+
+/* Ueberfaellig-Chip: eigener Einstieg, weil Ueberfaelliges quer ueber
+   Vormonate liegt und im Raster des laufenden Monats gar nicht auftaucht. */
+.kal-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--red);
+  border-radius: 9px;
+  background: var(--del-soft);
+  color: var(--red);
+  font: inherit; font-size: 13px; font-weight: 600;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.kal-chip.gewaehlt { background: var(--red); color: #fff; }
+/* display:block oben schlaegt sonst das eingebaute [hidden] des Browsers. */
+.kal-chip[hidden] { display: none; }
+
+.kal-wochentage, .kal-raster {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.kal-wochentage { font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; }
+
+.kal-tag {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: none;
+  color: var(--text);
+  font: inherit; font-size: 13.5px;
+  cursor: pointer;
+}
+.kal-tag:hover { background: var(--hover); }
+.kal-tag.heute { border-color: var(--accent); font-weight: 700; }
+.kal-tag.gewaehlt { background: var(--accent); border-color: var(--accent); color: #fff; }
+.kal-tag.ueberfaellig .kal-zahl { color: var(--red); font-weight: 700; }
+.kal-tag.gewaehlt.ueberfaellig .kal-zahl { color: #fff; }
+.kal-zahl { line-height: 1; }
+
+.kal-punkte { display: flex; align-items: center; gap: 3px; height: 6px; }
+.kal-punkt {
+  flex: none;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.kal-punkt.farbe-blau    { background: var(--farbe-blau); }
+.kal-punkt.farbe-tuerkis { background: var(--farbe-tuerkis); }
+.kal-punkt.farbe-gruen   { background: var(--farbe-gruen); }
+.kal-punkt.farbe-lila    { background: var(--farbe-lila); }
+.kal-punkt.farbe-pink    { background: var(--farbe-pink); }
+.kal-punkt.farbe-grau    { background: var(--farbe-grau); }
+/* Mehr als drei ToDos an einem Tag: drei Punkte plus ein kleines Plus. */
+.kal-tag.viele .kal-punkte::after { content: "+"; font-size: 10px; line-height: 1; color: var(--muted); }
+.kal-tag.gewaehlt .kal-punkt { background: rgba(255, 255, 255, .92); }
+.kal-tag.gewaehlt .kal-punkte::after { color: rgba(255, 255, 255, .92); }
+
+.kal-liste {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+}
+.kal-liste-kopf {
+  display: flex; align-items: center; gap: 7px;
+  margin: 4px 0 2px;
+  font-size: 13px; font-weight: 700; color: var(--muted);
+}
+.kal-heute-chip {
+  font-size: 11px; font-weight: 600;
+  background: var(--chip); color: var(--muted);
+  border-radius: 999px; padding: 1px 7px;
+}
+.kal-leer { margin: 2px 0; font-size: 13.5px; color: var(--muted); }
+
+.kal-eintrag {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--row);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.kal-eintrag:hover { border-color: var(--accent); }
+.kal-eintrag .kal-punkt { margin-top: 6px; }
+.kal-eintrag-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kal-eintrag-titel { font-size: 14.5px; line-height: 1.3; }
+.kal-wdh { margin-left: 5px; font-size: 11px; }
+.kal-eintrag-meta {
+  font-size: 12px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Kurzes Aufblinken der Karte, die man aus dem Kalender angesprungen hat -
+   sonst sucht man nach dem Wechsel, wo man gelandet ist. */
+.todo.kal-treffer { animation: kalTreffer 1.6s ease-out; }
+@keyframes kalTreffer {
+  0%, 45% { box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 4px var(--accent); }
+  100%    { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kalender.animiert { transition: none; }
+  .todo.kal-treffer { animation: none; }
+}
