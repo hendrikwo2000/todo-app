@@ -274,8 +274,11 @@ function termineNachTagen() {
   return tage;
 }
 
-// Wie viele Balken-Reihen ("Spuren") eine Tageszelle hoechstens zeigt.
-const MAX_SPUREN = 3;
+// Wie viele Balken-Reihen ("Spuren") eine Tageszelle hoechstens zeigt. Zwei
+// statt drei, seit die Balken ihren Titel tragen und dadurch deutlich hoeher
+// sind - drei Reihen wuerden das Raster so weit aufblaehen, dass fuer die
+// Tagesliste darunter kaum Platz bliebe.
+const MAX_SPUREN = 2;
 
 /**
  * Spurenplan fuers Monatsraster.
@@ -336,6 +339,21 @@ function baueSpurenplan() {
 // pruefen: alles andere waere fremder Text in unserem CSS.
 function farbWert(hex) {
   return /^#[0-9a-f]{3,8}$/i.test(String(hex || "")) ? hex : null;
+}
+
+// Schrift auf dem farbigen Balken: dunkel auf hellen Google-Farben, weiss auf
+// dunklen. Ohne das ist ein Titel auf Gelb (#f6bf26) schlicht nicht zu lesen.
+// Relative Helligkeit nach WCAG, Schwelle empirisch auf die Google-Palette
+// gelegt.
+function kontrastFarbe(hex) {
+  const roh = String(hex).replace("#", "");
+  const voll = roh.length === 3 ? roh.split("").map(c => c + c).join("") : roh.slice(0, 6);
+  const kanal = i => {
+    const v = parseInt(voll.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  const helligkeit = 0.2126 * kanal(0) + 0.7152 * kanal(2) + 0.0722 * kanal(4);
+  return helligkeit > 0.45 ? "#1f2430" : "#ffffff";
 }
 
 function zeitLabel(t) {
@@ -499,14 +517,14 @@ function zeichneRaster(tage, spuren, heute) {
         continue;
       }
       kalRaster.appendChild(baueTagesZelle(tag, spalte, {
-        tage, plan, ueberzaehlig, spurenJeWoche, wocheVon, heute,
+        tage, plan, ueberzaehlig, spurenJeWoche, wocheVon, heute, tageImMonat,
       }));
     }
   }
 }
 
 function baueTagesZelle(tag, spalte, ctx) {
-  const { tage, plan, ueberzaehlig, spurenJeWoche, wocheVon, heute } = ctx;
+  const { tage, plan, ueberzaehlig, spurenJeWoche, wocheVon, heute, tageImMonat } = ctx;
   const iso = isoTag(kalJahr, kalMonatNr, tag);
   const todosDesTages = tage[iso] || [];
   const reihen = plan[iso] || [];
@@ -541,25 +559,47 @@ function baueTagesZelle(tag, spalte, ctx) {
   }
   zelle.appendChild(punkte);
 
-  // Balken laufen ueber die Zellgrenze hinweg zusammen, wenn der Termin am
-  // Nachbartag weitergeht - ausser am Wochenrand, dort endet die Zeile.
-  // Freie Spuren werden als unsichtbarer Platzhalter mitgezeichnet, sonst
-  // ruecken tiefere Balken nach oben und die Linie versetzt sich.
+  // Ein mehrtaegiger Termin bekommt EINEN Balken am Anfang seines Abschnitts
+  // in dieser Zeile, der ueber alle seine Tage reicht und den Titel EINMAL
+  // traegt - wie im Papierkalender. Technisch ueber die Breite (siehe
+  // --spanne im CSS): der Balken laeuft aus seiner Zelle heraus ueber die
+  // folgenden. Die decken ihre Spur mit einem unsichtbaren Platzhalter ab,
+  // damit die Reihenhoehe stimmt und nichts doppelt gezeichnet wird.
   const stapel = document.createElement("span");
   stapel.className = "kal-balken-stapel";
   for (let s = 0; s < (spurenJeWoche[wocheVon(tag)] || 0); s++) {
     const eintrag = reihen[s];
     const balken = document.createElement("span");
-    if (!eintrag) {
+
+    // Leere Spur oder Fortsetzung eines Balkens, der links begonnen hat.
+    const fortsetzung = eintrag && eintrag.weiterLinks && spalte > 0;
+    if (!eintrag || fortsetzung) {
       balken.className = "kal-balken kal-balken-luecke";
       stapel.appendChild(balken);
       continue;
     }
+
+    // Wie viele Tage reicht der Abschnitt in DIESER Zeile noch?
+    let spanne = 1;
+    while (spalte + spanne <= 6 && tag + spanne <= tageImMonat) {
+      const naechste = plan[isoTag(kalJahr, kalMonatNr, tag + spanne)] || [];
+      if (!naechste[s] || naechste[s].termin.id !== eintrag.termin.id) break;
+      spanne++;
+    }
+
     balken.className = "kal-balken"
-      + (eintrag.weiterLinks && spalte > 0 ? " weiter-links" : "")
-      + (eintrag.weiterRechts && spalte < 6 ? " weiter-rechts" : "");
+      + (eintrag.weiterLinks ? " weiter-links" : "")
+      + (eintrag.weiterRechts && spalte + spanne > 6 ? " weiter-rechts" : "");
+    balken.style.setProperty("--spanne", String(spanne));
     const farbe = farbWert(eintrag.termin.farbe);
-    if (farbe) balken.style.background = farbe;
+    if (farbe) {
+      balken.style.background = farbe;
+      balken.style.color = kontrastFarbe(farbe);
+    }
+    const text = document.createElement("span");
+    text.className = "kal-balken-text";
+    text.textContent = eintrag.termin.titel;
+    balken.appendChild(text);
     stapel.appendChild(balken);
   }
   zelle.appendChild(stapel);

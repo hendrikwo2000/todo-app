@@ -758,6 +758,33 @@ Anschluss, sonst zöge der Balken quer über den Zeilenumbruch. Vorher stand an
 jedem Tag ein einzelner Punkt, was einen mehrtägigen Termin wie mehrere
 einzelne aussehen ließ.
 
+**Der Balken traegt seinen Titel.** Ein mehrtaegiger Termin bekommt EINEN
+Balken am Anfang seines Abschnitts in der Zeile, der ueber alle seine Tage
+reicht und den Titel einmal traegt; die folgenden Tage decken ihre Spur mit
+einem unsichtbaren Platzhalter ab, damit die Reihenhoehe stimmt und nichts
+doppelt gezeichnet wird. Umgesetzt ueber die BREITE, nicht ueber absolute
+Positionierung: `--spanne` sagt, wie viele Tage der Abschnitt umfasst, und der
+Balken waechst je weiterem Tag um eine Stapelbreite plus die 10 px zwischen
+zwei Stapeln — er laeuft damit sichtbar aus seiner Zelle heraus. `flex: none`
+verhindert, dass die Breite wieder zurueckgestaucht wird, `overflow: hidden`
+schneidet den Titel am Ende des Termins ab statt ihn in fremde Tage laufen zu
+lassen, und `position: relative` + `z-index: 1` heben ihn ueber den Hintergrund
+der ueberdeckten Nachbarzellen (etwa den gewaehlten Tag).
+
+**Falle: `1fr` waechst mit dem Inhalt.** Mit `repeat(7, 1fr)` zog der
+ueberbreite Balken die Rasterspalten mit auf — ein Sieben-Tage-Balken war
+837 px statt 320 breit und schob das ganze Raster aus dem Panel.
+`repeat(7, minmax(0, 1fr))` nimmt den Spalten das automatische Mindestmass.
+
+**Schriftfarbe auf dem Balken** rechnet `kontrastFarbe()` aus der
+Google-Farbe (relative Helligkeit nach WCAG): dunkel auf hellen Farben, weiss
+auf dunklen. Fest weiss waere auf Googles Gelb (#f6bf26) nicht zu lesen.
+
+Die Zellen haben deshalb keine feste Quadratform mehr, sondern wachsen mit dem
+Inhalt (44 px leer, 46 px mit einer Spur, 62 px mit zweien) — und `MAX_SPUREN`
+steht bei **2**: drei Reihen mit Text wuerden das Raster so weit aufblaehen,
+dass fuer die Tagesliste darunter kaum Platz bliebe.
+
 **Feste Spuren im Raster.** `baueSpurenplan()` gibt jedem Termin EINE Reihe,
 die er über alle seine Tage behält; freie Reihen werden als unsichtbare
 Platzhalter mitgezeichnet. Vorher wurden die Balken je Tag neu einsortiert —
@@ -765,7 +792,7 @@ kam an einem Tag ein Einzeltermin dazu, rutschte der mehrtägige in eine andere
 Reihe oder fiel unter die damalige Zwei-Balken-Grenze, und die durchgezogene
 Linie riss auf (live aufgefallen, 10.08.2026). Sortiert wird nach **Länge
 zuerst**: lange Termine belegen ihre Spur als Erste, an einem vollen Tag weicht
-also eher ein Einzeltermin unter das „+". Höchstens `MAX_SPUREN` = 3 Reihen;
+also eher ein Einzeltermin unter das „+". Höchstens `MAX_SPUREN` Reihen (siehe oben);
 wie viele eine Zelle zeichnet, entscheidet die WOCHE, nicht der Tag — sonst
 lägen gleiche Spuren in einer Zeile auf verschiedenen Höhen.
 

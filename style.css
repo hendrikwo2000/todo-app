@@ -1437,7 +1437,10 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
    kalenderwoche() in kalender.js), danach die sieben Wochentage. */
 .kal-wochentage, .kal-raster {
   display: grid;
-  grid-template-columns: 21px repeat(7, 1fr);
+  /* minmax(0, 1fr), nicht 1fr: ein Balken, der ueber mehrere Tage reicht, ist
+     breiter als seine Zelle - mit dem automatischen Mindestmass von 1fr wuerde
+     er die Spalte mit aufziehen und das ganze Raster aus dem Panel schieben. */
+  grid-template-columns: 21px repeat(7, minmax(0, 1fr));
   gap: 2px;
 }
 .kal-wochentage { font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; }
@@ -1456,10 +1459,12 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
 }
 .kal-kw-kopf { font-size: 9px; letter-spacing: .03em; }
 /* KW-Spalte abgeschaltet: zurueck auf sieben gleich breite Spalten. */
-.kal-wochentage.ohne-kw, .kal-raster.ohne-kw { grid-template-columns: repeat(7, 1fr); }
+.kal-wochentage.ohne-kw, .kal-raster.ohne-kw { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 
+/* Keine feste Quadratform mehr: die Hoehe kommt aus dem Inhalt, seit die
+   Balken ihren Titel tragen. Wochen ohne Termine bleiben flach. */
 .kal-tag {
-  aspect-ratio: 1 / 1;
+  min-height: 44px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1609,22 +1614,47 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
   gap: 1px;
   padding: 0 3px 3px;
 }
-.kal-balken { height: 4px; border-radius: 3px; background: var(--muted); }
-.kal-balken.weiter-links {
-  margin-left: -5px;
-  border-top-left-radius: 0; border-bottom-left-radius: 0;
+/* Der Balken traegt seinen Titel, deshalb Texthoehe statt eines Strichs.
+   --spanne = wie viele Tage der Abschnitt in DIESER Zeile umfasst; der
+   Balken waechst dafuer ueber seine eigene Zelle hinaus:
+   je weiterem Tag eine volle Stapelbreite (100%) plus die 10px zwischen zwei
+   Stapeln (3px Innenabstand + 1px Zellrand + 2px Rasterluecke + 1px + 3px).
+   flex:none, damit die Breite nicht wieder auf die Zelle zurueckgestaucht
+   wird; overflow:hidden schneidet den Titel am Ende des Termins ab, statt
+   ihn in fremde Tage laufen zu lassen. position/z-index heben ihn ueber den
+   Hintergrund der ueberdeckten Nachbarzellen (z. B. den gewaehlten Tag). */
+.kal-balken {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  height: 15px;
+  width: calc(var(--spanne, 1) * 100% + (var(--spanne, 1) - 1) * 10px);
+  border-radius: 3px;
+  background: var(--muted);
+  color: #fff;
+  overflow: hidden;
 }
-.kal-balken.weiter-rechts {
-  margin-right: -5px;
-  border-top-right-radius: 0; border-bottom-right-radius: 0;
+.kal-balken-text {
+  display: block;
+  font-size: 10px;
+  line-height: 15px;
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
 }
+/* Laeuft der Termin ueber den Zeilenumbruch hinweg weiter, bleibt die
+   angeschnittene Seite eckig - so sieht man, dass es weitergeht. */
+.kal-balken.weiter-links { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.kal-balken.weiter-rechts { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 /* Freie Spur: haelt nur den Platz, damit ein Balken in Spur 2 auf allen Tagen
    der Woche auf derselben Hoehe liegt. Ohne den Platzhalter ruecken tiefere
    Balken nach oben und die durchgezogene Linie versetzt sich. */
-.kal-balken-luecke { background: transparent; }
+.kal-balken-luecke { background: transparent; width: 100%; z-index: auto; }
 
 /* Dieselbe Form als Marke in der Filter-Pille. */
-.kal-balken-marke { flex: none; width: 13px; height: 5px; }
+.kal-balken-marke { flex: none; width: 13px; height: 5px; border-radius: 3px; z-index: auto; }
 
 /* Zwischenueberschriften in der Tagesliste - nur wenn ein Tag BEIDES hat. */
 .kal-gruppe {
