@@ -692,12 +692,38 @@ anbietet statt endlos in denselben Fehler zu laufen.
 
 **Anzeige.** Pro Tag stehen ganztägige Termine oben, dann die mit Uhrzeit
 chronologisch, dann die ToDos — die haben keine Uhrzeit und gehören nicht in
-die Zeitachse. Termin-Punkte im Raster sind RINGE in der Google-Kalenderfarbe
-(per `style="color:"`, nicht `background`): so bleiben sie von ToDo-Punkten
-unterscheidbar, auch wenn die Farben zufällig gleich sind. Google-Termine
-zählen **nicht** in den Überfällig-Chip und nicht in die App-Icon-Badge —
-das sind keine Aufgaben. Beschreibungen kommen teils als HTML und werden
-entschärft (Tags raus) und als reiner Text gesetzt.
+die Zeitachse. Enthält ein Tag **beides**, trennen die Zwischenüberschriften
+„Termine" und „ToDos"; bei nur einer Sorte bleiben sie weg, sonst wäre es eine
+Beschriftung ohne Gegenstück.
+
+**Punkt = ToDo, Balken = Termin.** Die Unterscheidung läuft über die FORM, nicht
+über den Farbton — Bereichsfarben und Google-Kalenderfarben können sich gleichen.
+Ein erster Versuch mit farbigen RINGEN als Termin-Punkt fiel im Gebrauch durch:
+bei 6 px Durchmesser war die Google-Farbe praktisch nicht zu erkennen, und die
+Termine hoben sich zu wenig ab. In der Tagesliste trägt die Termin-Zeile deshalb
+einen 5 px breiten Farbbalken am linken Rand und eine ruhigere Fläche als ein
+ToDo.
+
+**Durchgezogene Linie über mehrere Tage.** `termineNachTagen()` legt je Termin
+UND Tag einen Eintrag an und vermerkt, ob der Termin links bzw. rechts
+weitergeht; das Raster zieht den Balken dann mit negativen Rändern über die
+Zellgrenze (3 px Innenabstand + 1 px Zellrand + 2 px Rasterlücke + 1 px + 3 px
+= 10 px zwischen zwei Balken, also −5 px je Seite). Am Wochenrand endet die
+Linie bewusst — Spalte 0 bekommt keinen linken, Spalte 6 keinen rechten
+Anschluss, sonst zöge der Balken quer über den Zeilenumbruch. Vorher stand an
+jedem Tag ein einzelner Punkt, was einen mehrtägigen Termin wie mehrere
+einzelne aussehen ließ.
+
+**Farben.** Der Server liefert je Termin eine fertig aufgelöste Farbe: die
+EIGENE Farbe des Termins (`colorId`, in Google pro Termin einstellbar) schlägt
+die Farbe seines Kalenders. Die Palette dahinter (`/colors`) wird nur geholt,
+wenn im Zeitraum überhaupt ein Termin eine eigene Farbe trägt — sonst wäre es
+eine Google-Anfrage umsonst. Vor dem Einsetzen in einen `style`-Wert prüft
+`farbWert()` gegen `#rrggbb`; alles andere wäre fremder Text in unserem CSS.
+
+Google-Termine zählen **nicht** in den Überfällig-Chip und nicht in die
+App-Icon-Badge — das sind keine Aufgaben. Beschreibungen kommen teils als HTML
+und werden entschärft (Tags raus) und als reiner Text gesetzt.
 
 **Umschalter.** Eine Pille je ToDo-Liste und je Google-Kalender, ab zwei
 Quellen sichtbar. Zwei localStorage-Mengen: `kalQuellenAus` (abgewählt) und

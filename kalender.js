@@ -232,18 +232,28 @@ function tageEinesTermins(t) {
   return tage;
 }
 
+// Ein Eintrag je Termin UND Tag, mit dem Wissen, ob der Termin an diesem Tag
+// weitergeht: nur damit kann das Raster einen durchgezogenen Balken ueber
+// mehrere Tage zeichnen statt an jedem Tag einen einzelnen Punkt.
 function termineNachTagen() {
   const tage = {};
   if (!googleZustand.verbunden) return tage;
   for (const t of googleTermine) {
     if (!quelleAn("gcal:" + t.kalenderId)) continue;
-    for (const tag of tageEinesTermins(t)) (tage[tag] = tage[tag] || []).push(t);
+    const spanne = tageEinesTermins(t);
+    spanne.forEach((tag, i) => {
+      (tage[tag] = tage[tag] || []).push({
+        termin: t,
+        weiterLinks: i > 0,
+        weiterRechts: i < spanne.length - 1,
+      });
+    });
   }
   // Innerhalb eines Tages: ganztaegige zuerst, dann nach Uhrzeit.
   for (const tag in tage) {
     tage[tag].sort((a, b) => {
-      if (a.ganztags !== b.ganztags) return a.ganztags ? -1 : 1;
-      return String(a.start) < String(b.start) ? -1 : 1;
+      if (a.termin.ganztags !== b.termin.ganztags) return a.termin.ganztags ? -1 : 1;
+      return String(a.termin.start) < String(b.termin.start) ? -1 : 1;
     });
   }
   return tage;
@@ -316,13 +326,12 @@ function zeichneFilter() {
     pille.className = "kal-pille" + (quelleAn(q.schluessel) ? "" : " aus");
     pille.addEventListener("click", () => schalteQuelle(q.schluessel));
 
-    const punkt = document.createElement("span");
-    punkt.className = "kal-punkt";
-    if (q.art === "gcal") {
-      punkt.classList.add("kal-punkt-termin");
-      if (q.farbe) punkt.style.color = q.farbe;   // faerbt den Ring, siehe CSS
-    }
-    pille.appendChild(punkt);
+    // Dieselben zwei Formen wie im Raster: Punkt fuer eine ToDo-Liste,
+    // Balken fuer einen Google-Kalender.
+    const marke = document.createElement("span");
+    marke.className = q.art === "gcal" ? "kal-balken kal-balken-marke" : "kal-punkt";
+    if (q.art === "gcal" && q.farbe) marke.style.background = q.farbe;
+    pille.appendChild(marke);
 
     const name = document.createElement("span");
     name.textContent = q.name;
@@ -370,8 +379,9 @@ function zeichneRaster(tage, tageTermine, heute) {
     zahl.textContent = String(tag);
     zelle.appendChild(zahl);
 
-    // ToDo-Punkte zuerst, Termin-Punkte danach - bei mehr als drei Eintraegen
-    // steht so immer das, was man selbst zu tun hat, vorn.
+    // Punkt = ToDo, Balken = Termin. Zwei Formen statt zweier Farbtoene: die
+    // Farben gehoeren jetzt den Bereichen bzw. Google und koennen sich
+    // gleichen, die Form bleibt eindeutig.
     const punkte = document.createElement("span");
     punkte.className = "kal-punkte";
     for (const t of todosDesTages.slice(0, 3)) {
@@ -379,15 +389,23 @@ function zeichneRaster(tage, tageTermine, heute) {
       punkt.className = "kal-punkt" + (t.farbe ? " farbe-" + t.farbe : "");
       punkte.appendChild(punkt);
     }
-    for (const t of termineDesTages.slice(0, Math.max(0, 3 - todosDesTages.length))) {
-      const kal = googleZustand.kalender.find(k => k.id === t.kalenderId);
-      const farbe = farbWert(kal && kal.farbe);
-      const punkt = document.createElement("span");
-      punkt.className = "kal-punkt kal-punkt-termin";
-      if (farbe) punkt.style.color = farbe;
-      punkte.appendChild(punkt);
-    }
     zelle.appendChild(punkte);
+
+    // Balken laufen ueber die Zellgrenze hinweg zusammen, wenn der Termin am
+    // Nachbartag weitergeht - ausser am Wochenrand, dort endet die Zeile.
+    const spalte = (ersterWochentag + tag - 1) % 7;
+    const stapel = document.createElement("span");
+    stapel.className = "kal-balken-stapel";
+    for (const eintrag of termineDesTages.slice(0, 2)) {
+      const balken = document.createElement("span");
+      balken.className = "kal-balken"
+        + (eintrag.weiterLinks && spalte > 0 ? " weiter-links" : "")
+        + (eintrag.weiterRechts && spalte < 6 ? " weiter-rechts" : "");
+      const farbe = farbWert(eintrag.termin.farbe);
+      if (farbe) balken.style.background = farbe;
+      stapel.appendChild(balken);
+    }
+    zelle.appendChild(stapel);
 
     if (gesamt) {
       const teile = [];
@@ -436,7 +454,13 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
   // Termine oben (ganztaegig, dann nach Uhrzeit - so sortiert sie
   // termineNachTagen), ToDos darunter: die haben keine Uhrzeit und gehoeren
   // nicht in die Zeitachse des Tages.
-  for (const t of termineDesTages) kalTagesliste.appendChild(baueTerminZeile(t));
+  //
+  // Die Zwischenueberschriften erscheinen nur, wenn der Tag BEIDES enthaelt -
+  // ueber einer einzelnen Sorte waeren sie eine Beschriftung ohne Gegenstueck.
+  const beides = termineDesTages.length > 0 && todosDesTages.length > 0;
+  if (beides) kalTagesliste.appendChild(baueGruppenKopf("Termine"));
+  for (const eintrag of termineDesTages) kalTagesliste.appendChild(baueTerminZeile(eintrag.termin));
+  if (beides) kalTagesliste.appendChild(baueGruppenKopf("ToDos"));
   for (const t of todosDesTages) kalTagesliste.appendChild(baueEintrag(t, mitDatum));
 
   if (!todosDesTages.length && !termineDesTages.length) {
@@ -456,13 +480,23 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
   }
 }
 
+function baueGruppenKopf(text) {
+  const kopf = document.createElement("p");
+  kopf.className = "kal-gruppe";
+  kopf.textContent = text;
+  return kopf;
+}
+
 // Google-Termin: rein lesend, ein Tipp klappt Ort und Beschreibung auf.
 function baueTerminZeile(t) {
   const box = document.createElement("div");
   box.className = "kal-termin-box";
 
   const kal = googleZustand.kalender.find(k => k.id === t.kalenderId);
-  const farbe = farbWert(kal && kal.farbe);
+  // Farbe kommt fertig aufgeloest vom Server (eigene Termin-Farbe schlaegt
+  // Kalender-Farbe); der Rueckgriff auf den Kalender faengt nur aeltere
+  // Antworten ohne das Feld ab.
+  const farbe = farbWert(t.farbe) || farbWert(kal && kal.farbe);
   const offen = offeneTermine.has(t.id);
   const hatDetails = !!(t.ort || t.beschreibung);
 
@@ -479,10 +513,10 @@ function baueTerminZeile(t) {
     });
   }
 
-  const punkt = document.createElement("span");
-  punkt.className = "kal-punkt kal-punkt-termin";
-  if (farbe) punkt.style.color = farbe;
-  knopf.appendChild(punkt);
+  // Kraeftiger Farbbalken am linken Rand statt eines kleinen Punktes: das ist
+  // der sichtbare Unterschied zur ToDo-Zeile und traegt zugleich die
+  // Google-Farbe gross genug, um sie ueberhaupt zu erkennen.
+  if (farbe) knopf.style.borderLeftColor = farbe;
 
   const text = document.createElement("span");
   text.className = "kal-eintrag-text";

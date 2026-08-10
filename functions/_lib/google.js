@@ -191,6 +191,24 @@ export async function kalenderListe(token) {
 }
 
 /**
+ * Farbpalette fuer EINZELNE Termine.
+ *
+ * In Google kann jeder Termin eine eigene Farbe tragen (`colorId`), die die
+ * Farbe seines Kalenders ueberschreibt. Die id ist nur ein Schluessel wie "5" -
+ * den Hexwert dazu kennt allein dieser Endpunkt. Er ist fuer alle Konten
+ * gleich und aendert sich praktisch nie, wird deshalb nur geholt, wenn im
+ * Zeitraum ueberhaupt ein Termin eine eigene Farbe hat.
+ */
+export async function farbPalette(token) {
+  const daten = await hole("/colors", token, {});
+  const palette = {};
+  for (const [id, wert] of Object.entries((daten && daten.event) || {})) {
+    palette[id] = wert.background || null;
+  }
+  return palette;
+}
+
+/**
  * Termine eines Kalenders im Zeitraum.
  *
  * singleEvents=true laesst GOOGLE die Serientermine in Einzeltermine
@@ -211,6 +229,7 @@ export async function termineVon(token, kalenderId, vonIso, bisIso) {
     .map(e => ({
       id: e.id,
       kalenderId,
+      colorId: e.colorId || null,   // eigene Farbe des Termins, siehe farbPalette()
       titel: e.summary || "(ohne Titel)",
       ganztags: !!(e.start && e.start.date),
       start: (e.start && (e.start.dateTime || e.start.date)) || null,

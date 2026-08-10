@@ -18,7 +18,7 @@ import { json } from "../../_lib/listen.js";
 import { nutzerOderFehler } from "../../_lib/zugang.js";
 import {
   fehltEinrichtung, kontoFuer, loescheKonto, frischesZugriffToken,
-  kalenderListe, termineVon,
+  kalenderListe, termineVon, farbPalette,
 } from "../../_lib/google.js";
 
 // Obergrenze fuer gleichzeitig abgefragte Kalender. Wer 30 abonnierte
@@ -61,13 +61,27 @@ export async function onRequestGet({ request, env }) {
     const listen = await Promise.all(
       ziele.map(id => termineVon(token, id, `${von}T00:00:00Z`, `${bis}T23:59:59Z`).catch(() => []))
     );
+    const termine = listen.flat();
+
+    // Farbe fertig aufgeloest mitgeben: eigene Termin-Farbe schlaegt die Farbe
+    // des Kalenders. Die Palette dafuer nur holen, wenn ueberhaupt ein Termin
+    // eine eigene Farbe traegt - sonst waere es eine Google-Anfrage umsonst.
+    const kalenderFarbe = {};
+    for (const k of kalender) kalenderFarbe[k.id] = k.farbe || null;
+    let palette = {};
+    if (termine.some(t => t.colorId)) {
+      palette = await farbPalette(token).catch(() => ({}));
+    }
+    for (const t of termine) {
+      t.farbe = (t.colorId && palette[t.colorId]) || kalenderFarbe[t.kalenderId] || null;
+    }
 
     return json({
       moeglich: true,
       verbunden: true,
       email: konto.google_email,
       kalender,
-      termine: listen.flat(),
+      termine,
     });
   } catch (e) {
     if (e && e.code === "getrennt") {
