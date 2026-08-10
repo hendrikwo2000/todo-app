@@ -103,9 +103,11 @@ nur dein **Hauptkalender** — abonnierte Kalender wie Feiertage, Geburtstage
 oder Kalenderwochen bleiben draußen. Hast du mehrere Listen, erscheinen oben im
 Kalender kleine Umschalter; damit blendest du einzelne Quellen aus.
 
-Die App liest deine Termine und darf **einen ganztägigen Termin anlegen**
-(„＋ Termin" im Kalender) — ändern oder löschen kann sie nichts. Hast du vor
-dieser Erweiterung verbunden, fehlt dem Zugang das Anlegen: einmal trennen und
+Die App liest deine Termine und darf sie **anlegen, ändern und löschen** — im
+Kalender über das **＋** bei „Termine" oder einen Tipp auf einen bestehenden
+Termin. Angefasst wird dabei nur, was im Formular steht (Titel, Zeit, Farbe,
+Notiz); Ort, Gäste und Erinnerungen bleiben unberührt. Hast du vor dieser
+Erweiterung verbunden, fehlt deinem Zugang das Schreiben: einmal trennen und
 neu verbinden, dann ist es da.
 
 Beim ersten Verbinden warnt Google, dass die App nicht verifiziert ist — über
