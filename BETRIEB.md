@@ -90,6 +90,8 @@ Unter *Pages → Settings → Environment variables*:
 | `VAPID_PUBLIC_KEY` | Öffentlicher Push-Schlüssel — steckt zusätzlich (unbedenklich) offen in `app.js` |
 | `VAPID_PRIVATE_KEY` | Privater Push-Schlüssel, signiert die Push-Nachrichten. Siehe [Benachrichtigungen](#benachrichtigungen) |
 | `PUSH_CRON_SECRET` | Geteiltes Geheimnis für `/api/push/pruefen` — ohne korrekten Header antwortet der Endpunkt mit 403 |
+| `GOOGLE_CLIENT_ID` | OAuth-Client-ID für die Google-Kalender-Verknüpfung. Fehlt sie, bleibt der ganze Abschnitt in den Einstellungen unsichtbar |
+| `GOOGLE_CLIENT_SECRET` | Zugehöriger geheimer Schlüssel — verlässt den Worker nie. Siehe [Google Kalender](#google-kalender) |
 
 Absenderadresse ist `login@mail.it-wolf.org` (fest im Code, keine Mailbox
 nötig — Resend verschickt nur, empfängt nichts). Die DNS-Einträge
@@ -615,3 +617,100 @@ Terminen gewählt, sonst steht unter einem gefüllten Raster eine leere Liste.
 Touch-Events geprüft (öffnen, schließen, senkrecht verwerfen, Mitte
 verwerfen, bei offenem Dialog blockiert), nicht mit einem echten Finger auf
 einem Gerät.
+
+## Google Kalender
+
+Verknüpftes Google-Konto je Nutzer, **ausschließlich lesend**
+(Scope `calendar.readonly`). Die Termine erscheinen im Kalender-Panel neben
+den ToDos; die App schreibt bei Google nichts und fragt auch keine
+Schreibrechte an. Serverteil in `functions/api/google/` plus
+`functions/_lib/google.js`, Anzeige in `kalender.js`.
+
+**Ablauf.** OAuth 2.0 Authorization Code, komplett serverseitig: Der
+Verbinden-Knopf verlässt die Seite Richtung Google (`/api/google/start`,
+302 — ein `fetch` könnte den Zustimmungsdialog nicht anzeigen), Google leitet
+auf `/api/google/callback` zurück, der tauscht den Code gegen Tokens. Der
+geheime Client-Schlüssel bleibt im Worker, **der Browser sieht nie ein
+Google-Token** — er fragt immer nur unsere eigenen Endpunkte. Ein
+Zufallswert (`state`) geht gleichzeitig an Google und in ein kurzlebiges
+Cookie; nur wer beides vorweist, kommt durch.
+
+**Warum nicht der Browser-Weg.** Google Identity Services im Frontend käme
+ohne Client-Schlüssel und ohne Datenbank aus, gibt aber kein Refresh-Token
+heraus: nach spätestens einer Stunde bzw. bei jedem neuen Besuch müsste man
+erneut zustimmen. Für eine PWA, die man aus dem Homescreen startet, ist das
+zu wenig.
+
+**Falle: Status „Testing" killt die Verknüpfung wöchentlich.** Solange die
+App in der Google Cloud Console nicht auf **„In Produktion"** steht,
+verfallen Refresh-Tokens nach 7 Tagen — die Verbindung bricht dann ohne
+erkennbaren Grund immer wieder ab. „In Produktion" heißt NICHT
+verifiziert: ohne Google-Prüfung bleibt es bei der einmaligen Warnung
+„Google hat diese App nicht verifiziert" und höchstens 100 verknüpften
+Konten, aber die Tokens halten.
+
+**Falle: ohne `prompt=consent` kommt beim ZWEITEN Mal kein Refresh-Token.**
+Google gibt es nur bei der ersten Zustimmung eines Kontos heraus, wenn man
+nicht ausdrücklich erneut fragt. `callback.js` bricht deshalb hart ab, wenn
+kein `refresh_token` dabei ist, statt eine Verbindung anzubieten, die morgen
+tot ist.
+
+**Einrichtung (einmalig, in der Google Cloud Console).** Projekt anlegen →
+Calendar API aktivieren → OAuth-Zustimmungsbildschirm (Extern, Bereiche
+`openid`, `email`, `calendar.readonly`) → Status „In Produktion" →
+Anmeldedaten → OAuth-Client-ID (Webanwendung) mit den Weiterleitungs-URIs
+`https://todo.it-wolf.org/api/google/callback` und
+`http://localhost:8790/api/google/callback`. Client-ID und -Schlüssel dann als
+`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` ins Pages-Projekt — **danach ein
+leerer Commit**, sonst greifen neue Umgebungsvariablen nicht (siehe
+Abschnitt Benachrichtigungen). Fehlen die Variablen, meldet
+`/api/google/status` `moeglich:false` und der ganze Abschnitt bleibt in den
+Einstellungen unsichtbar, statt in einen Fehler zu laufen.
+
+**Datenbank.** Eine Zeile je Nutzer in `google_konten` (`migration-google.sql`,
+rein additiv). `zugriff_token`/`zugriff_bis` sind nur ein Zwischenspeicher für
+das einstündige Zugriffs-Token — ohne ihn kostete jeder Termin-Abruf einen
+zusätzlichen Umtausch bei Google. Tokens liegen im Klartext: ein Schlüssel auf
+demselben Server würde nur Sicherheit vortäuschen. Das Konto hängt per
+`ON DELETE CASCADE` am Nutzer, eine Kontolöschung räumt es also mit weg.
+
+**Termine.** `/api/google/termine?von=&bis=&kalender=` liefert immer die
+Kalenderliste (für die Umschalter) und die Termine der angefragten Kalender;
+ohne `kalender`-Parameter nur den Hauptkalender. Der Server fragt
+ausschließlich Kalender-IDs ab, die er selbst gerade in der Kalenderliste
+gesehen hat — eine ungeprüft durchgereichte ID wäre eine fremdgesteuerte
+Anfrage mit unserem Token. `singleEvents=true` lässt GOOGLE die Serientermine
+auflösen; RRULE, Ausnahmen und Zeitzonen rechnet die App nicht selbst nach.
+Höchstens 8 Kalender gleichzeitig (`MAX_KALENDER`).
+
+**Fehler antworten mit 200.** Ist Google nicht erreichbar, kommt
+`{fehler:true}` statt eines Statuscodes zurück, und das Panel schreibt eine
+Zeile „Google-Termine gerade nicht erreichbar" unter die ToDos — die bleiben
+sichtbar. Nur bei `invalid_grant` (Zugriff bei Google widerrufen) löscht der
+Endpunkt die Zeile und meldet `getrennt`, damit die App wieder „verbinden"
+anbietet statt endlos in denselben Fehler zu laufen.
+
+**Anzeige.** Pro Tag stehen ganztägige Termine oben, dann die mit Uhrzeit
+chronologisch, dann die ToDos — die haben keine Uhrzeit und gehören nicht in
+die Zeitachse. Termin-Punkte im Raster sind RINGE in der Google-Kalenderfarbe
+(per `style="color:"`, nicht `background`): so bleiben sie von ToDo-Punkten
+unterscheidbar, auch wenn die Farben zufällig gleich sind. Google-Termine
+zählen **nicht** in den Überfällig-Chip und nicht in die App-Icon-Badge —
+das sind keine Aufgaben. Beschreibungen kommen teils als HTML und werden
+entschärft (Tags raus) und als reiner Text gesetzt.
+
+**Umschalter.** Eine Pille je ToDo-Liste und je Google-Kalender, ab zwei
+Quellen sichtbar. Zwei localStorage-Mengen: `kalQuellenAus` (abgewählt) und
+`kalQuellenBekannt` (je gesehen). Ein NEU auftauchender Kalender startet
+ausgeschaltet — außer dem Hauptkalender —, eine spätere eigene Entscheidung
+wird davon nie wieder überschrieben.
+
+**Nur teilweise getestet:** Der komplette echte Rundlauf mit Google
+(Zustimmung, Code-Tausch, Termine holen) ist mangels Zugangsdaten lokal NICHT
+durchgespielt worden. Geprüft sind: die erzeugte Zustimmungs-Adresse samt
+allen Parametern, die `state`-Prüfung, der Abbruch durch den Nutzer, das
+Verhalten ohne hinterlegte Zugangsdaten, ein echter (abgelehnter) Aufruf bei
+Google mit ungültigem Token samt Fehlerzeile im Panel, sowie die gesamte
+Anzeige gegen eine nachgebaute Google-Antwort (Uhrzeiten, mehrtägige
+Ganztages-Termine, Details, Umschalter, Ring-Punkte, hell/dunkel). Der
+`invalid_grant`-Zweig (Zugriff bei Google widerrufen) ist ungetestet.

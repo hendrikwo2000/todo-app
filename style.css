@@ -1512,7 +1512,9 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
 .kal-eintrag:hover { border-color: var(--accent); }
 .kal-eintrag .kal-punkt { margin-top: 6px; }
 .kal-eintrag-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.kal-eintrag-titel { font-size: 14.5px; line-height: 1.3; }
+/* overflow-wrap: ein Termintitel ohne Leerzeichen (etwa eine lange URL aus
+   dem Google-Kalender) wuerde sonst aus der Zeile laufen. */
+.kal-eintrag-titel { font-size: 14.5px; line-height: 1.3; overflow-wrap: anywhere; }
 .kal-wdh { margin-left: 5px; font-size: 11px; }
 .kal-eintrag-meta {
   font-size: 12px; color: var(--muted);
@@ -1531,3 +1533,61 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
   .kalender.animiert { transition: none; }
   .todo.kal-treffer { animation: none; }
 }
+
+/* ---------- Google-Kalender ---------- */
+/* Knopf mit dem offiziellen G, wie es Googles Marken-Vorgaben fuer
+   "Mit Google verbinden" vorsehen: Logo links, Text daneben, nichts
+   umgefaerbt. */
+.btn.google-btn { display: inline-flex; align-items: center; gap: 9px; }
+.btn.google-btn[hidden] { display: none; }
+#googleTrennen[hidden] { display: none; }
+.google-g { display: inline-flex; align-items: center; flex: none; }
+
+/* Quellen-Umschalter oben im Panel: je eine Pille pro ToDo-Liste und pro
+   Google-Kalender. Ausgeschaltet bleibt lesbar, nur zurueckgenommen -
+   ein unsichtbarer Aus-Zustand waere schwer wiederzufinden. */
+.kal-filter { display: flex; flex-wrap: wrap; gap: 5px; }
+.kal-filter[hidden] { display: none; }
+.kal-pille {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--row);
+  color: var(--text);
+  font: inherit; font-size: 12.5px; font-weight: 600;
+  cursor: pointer;
+}
+.kal-pille > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kal-pille:hover { border-color: var(--accent); }
+.kal-pille.aus { background: transparent; color: var(--muted); border-style: dashed; }
+.kal-pille.aus .kal-punkt { opacity: .35; }
+
+/* Google-Termine: Ring statt gefuelltem Punkt - ein Termin bleibt so auch
+   dann von einem ToDo unterscheidbar, wenn die Google-Kalenderfarbe zufaellig
+   einer Bereichsfarbe gleicht. Die Farbe kommt per style="color:..." und
+   faerbt ueber currentColor den RING; als background wuerde sie den
+   Unterschied wieder einebnen. */
+.kal-punkt-termin { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 2px currentColor; }
+
+.kal-termin-box { display: flex; flex-direction: column; }
+.kal-eintrag.kal-termin { border-style: dashed; }
+.kal-eintrag.kal-termin.offen { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.kal-termin-still { cursor: default; }
+.kal-termin-still:hover { border-color: var(--line); }
+.kal-termin-pfeil { margin-left: auto; align-self: center; color: var(--muted); font-size: 11px; }
+.kal-termin-details {
+  border: 1px dashed var(--line);
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  background: var(--col-bg);
+  padding: 8px 11px 10px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.kal-termin-details p { margin: 0 0 5px; overflow-wrap: anywhere; }
+.kal-termin-details p:last-child { margin-bottom: 0; }
+.kal-google-fehler { font-size: 12.5px; font-style: italic; }

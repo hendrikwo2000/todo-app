@@ -239,6 +239,23 @@ CREATE TABLE sessions (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- ------------------------------------------------------- Google-Kalender ---
+-- Verknuepftes Google-Konto je Nutzer, ausschliesslich lesend
+-- (Scope calendar.readonly). refresh_token holt bei Bedarf ein frisches
+-- Zugriffs-Token; zugriff_token/zugriff_bis sind nur dessen Zwischenspeicher,
+-- damit nicht jeder Termin-Abruf einen Umtausch bei Google kostet.
+--
+-- Die Tokens stehen im Klartext - ein Schluessel auf demselben Server wuerde
+-- nur Sicherheit vortaeuschen. Der Schutz sitzt am Datenbankzugang.
+CREATE TABLE google_konten (
+  user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  google_email   TEXT,
+  refresh_token  TEXT NOT NULL,
+  zugriff_token  TEXT,
+  zugriff_bis    TEXT,
+  verbunden_am   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- ----------------------------------------------------------------- Index ---
 -- Das Board laedt "alle Listen eines Nutzers", dann "alle Bereiche dieser
 -- Listen in Reihenfolge", dann "alle ToDos dieser Bereiche". Dafuer die

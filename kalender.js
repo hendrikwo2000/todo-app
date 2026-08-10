@@ -4,10 +4,12 @@
    Kalender – Panel am rechten Rand
 
    Zeigt alle offenen ToDos MIT Termin aus ALLEN geladenen Listen (eigene
-   und geteilte): Monatsraster oben, Tagesliste darunter. Rein lesend -
-   ein Tipp auf einen Eintrag schliesst das Panel und oeffnet das ToDo im
-   gewohnten Bearbeiten-Modus auf dem Board. Deshalb braucht der Kalender
-   keine eigene Speicher-, Wiederholungs- oder Unterpunkt-Logik.
+   und geteilte) sowie - falls verknuepft - die Termine aus Google Kalender:
+   Monatsraster oben, Tagesliste darunter. Rein lesend - ein Tipp auf ein
+   ToDo schliesst das Panel und oeffnet es im gewohnten Bearbeiten-Modus auf
+   dem Board, ein Tipp auf einen Google-Termin klappt dessen Details auf.
+   Deshalb braucht der Kalender keine eigene Speicher-, Wiederholungs- oder
+   Unterpunkt-Logik - und fuer Google gar keine Schreibrechte.
 
    Laeuft NACH app.js und liest dessen Zustand direkt (daten, listen,
    aktiveListe). Eigene Datei nur, damit app.js nicht weiter waechst; die
@@ -27,11 +29,13 @@ const kalUeberfaellig = document.getElementById("kalUeberfaellig");
 const kalWochentage  = document.getElementById("kalWochentage");
 const kalRaster      = document.getElementById("kalRaster");
 const kalTagesliste  = document.getElementById("kalTagesliste");
+const kalFilter      = document.getElementById("kalFilter");
 const kalLock        = document.getElementById("lock");
 
 const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const MONAT_FORMAT = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
 const TAG_FORMAT   = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
+const UHR_FORMAT   = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" });
 
 // Schluessel der Sonder-Auswahl "Ueberfaellig" - steht anstelle eines
 // ISO-Datums in kalAuswahl, weil Ueberfaelliges ueber viele Tage verstreut
@@ -42,6 +46,45 @@ let kalOffen = false;
 let kalJahr = 0;         // angezeigter Monat
 let kalMonatNr = 0;      // 0-basiert, wie bei Date
 let kalAuswahl = null;   // ISO-Tag, UEBERFAELLIG oder null (nichts gewaehlt)
+
+// ---------- Google-Kalender (nur lesen) ----------
+// Die Verbindung haelt der Server (functions/api/google/), die App bekommt
+// fertige Termine und kennt kein Google-Token. `moeglich` bleibt false,
+// solange im Pages-Projekt keine Zugangsdaten liegen - dann existiert die
+// Funktion fuer den Nutzer gar nicht, statt ins Leere zu laufen.
+let googleZustand = { moeglich: false, verbunden: false, email: null, kalender: [] };
+let googleTermine = [];      // Termine des geladenen Zeitraums
+let googleGeladen = null;    // Schluessel aus Monat + eingeschalteten Kalendern
+let googleLaedt = false;
+let googleFehler = false;
+let googleAus = false;       // geklaert: nicht verknuepft / nicht eingerichtet
+
+function ladeMenge(schluessel) {
+  try { return new Set(JSON.parse(localStorage.getItem(schluessel) || "[]")); }
+  catch (e) { return new Set(); }
+}
+function speichereMenge(schluessel, menge) {
+  try { localStorage.setItem(schluessel, JSON.stringify([...menge])); } catch (e) { /* voller Speicher */ }
+}
+
+// Ausgeschaltete Quellen ("liste:<id>" / "gcal:<id>") und alle je gesehenen.
+// Zwei Mengen statt einer: ein NEU auftauchender Google-Kalender soll
+// ausgeschaltet starten (ausser dem Hauptkalender), eine spaetere eigene
+// Entscheidung darf davon aber nie wieder ueberschrieben werden.
+let quellenAus = ladeMenge("kalQuellenAus");
+let quellenBekannt = ladeMenge("kalQuellenBekannt");
+
+// Aufgeklappte Google-Termine (Ort/Beschreibung), Schluessel ist die Termin-id.
+let offeneTermine = new Set();
+
+function quelleAn(schluessel) { return !quellenAus.has(schluessel); }
+
+function schalteQuelle(schluessel) {
+  if (quellenAus.has(schluessel)) quellenAus.delete(schluessel);
+  else quellenAus.add(schluessel);
+  speichereMenge("kalQuellenAus", quellenAus);
+  zeichneKalender();
+}
 
 // ---------- Daten ----------
 // Flache Liste aller offenen ToDos mit Termin, quer ueber alle Listen.
@@ -56,6 +99,7 @@ function kalenderTermine() {
 
   const termine = [];
   for (const boardId in daten) {
+    if (!quelleAn("liste:" + boardId)) continue;   // Liste im Filter abgewaehlt
     const d = daten[boardId] || {};
     const bereiche = {};
     for (const c of (d.categories || [])) bereiche[c.id] = c;
@@ -90,25 +134,204 @@ function isoTag(jahr, monat, tag) {
   return `${jahr}-${String(monat + 1).padStart(2, "0")}-${String(tag).padStart(2, "0")}`;
 }
 
+// Ortszeit-Datum eines Date-Objekts. toISOString() waere hier falsch: das
+// rechnet nach UTC um, und ein Termin um 00:30 landete einen Tag zu frueh.
+function isoVonDate(d) {
+  return isoTag(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+// ---------- Google-Termine holen ----------
+// Zeitraum ist der angezeigte Monat plus eine Woche Rand - so sind die
+// Nachbartage schon da, wenn man blaettert, und ein Monatswechsel kostet
+// genau einen Abruf.
+function zeitraumDesMonats() {
+  const von = new Date(kalJahr, kalMonatNr, 1);
+  von.setDate(von.getDate() - 7);
+  const bis = new Date(kalJahr, kalMonatNr + 1, 0);
+  bis.setDate(bis.getDate() + 7);
+  return { von: isoVonDate(von), bis: isoVonDate(bis) };
+}
+
+// Neu aufgetauchte Kalender: der Hauptkalender startet AN, alles andere AUS -
+// sonst pflastern Feiertage und Geburtstage den Monat gleich beim ersten
+// Verknuepfen zu. Einmal gesehene Kalender fasst die Regel nie wieder an.
+function merkeNeueKalender(kalender) {
+  let neu = false;
+  for (const k of kalender) {
+    const schluessel = "gcal:" + k.id;
+    if (quellenBekannt.has(schluessel)) continue;
+    quellenBekannt.add(schluessel);
+    if (!k.primaer) quellenAus.add(schluessel);
+    neu = true;
+  }
+  if (neu) {
+    speichereMenge("kalQuellenBekannt", quellenBekannt);
+    speichereMenge("kalQuellenAus", quellenAus);
+  }
+}
+
+async function ladeGoogle() {
+  // Einmal geklaert, dass nichts verknuepft ist: nicht bei jedem Monatswechsel
+  // erneut nachfragen. app.js setzt das nach Verbinden/Trennen zurueck.
+  if (googleLaedt || googleAus) return;
+  const ids = googleZustand.kalender.filter(k => quelleAn("gcal:" + k.id)).map(k => k.id);
+  const { von, bis } = zeitraumDesMonats();
+  const schluessel = `${von}|${ids.join(",")}`;
+  if (googleGeladen === schluessel) return;
+
+  googleLaedt = true;
+  try {
+    const adresse = `/api/google/termine?von=${von}&bis=${bis}`
+      + (ids.length ? `&kalender=${encodeURIComponent(ids.join(","))}` : "");
+    const antwort = await fetch(adresse);
+    if (antwort.ok) {
+      const d = await antwort.json();
+      googleZustand.moeglich = !!d.moeglich;
+      googleZustand.verbunden = !!d.verbunden;
+      googleZustand.email = d.email || null;
+      if (Array.isArray(d.kalender)) {
+        googleZustand.kalender = d.kalender;
+        merkeNeueKalender(d.kalender);
+      }
+      googleTermine = Array.isArray(d.termine) ? d.termine : [];
+      googleFehler = !!d.fehler;
+      googleGeladen = schluessel;
+      googleAus = !d.verbunden;
+      if (!d.verbunden) { googleTermine = []; googleZustand.kalender = []; }
+    } else {
+      // Serverseitiges Problem (z. B. Tabelle google_konten fehlt noch): nicht
+      // bei jedem Neuzeichnen erneut dagegenlaufen.
+      googleAus = true;
+    }
+  } catch (e) {
+    googleFehler = true;   // offline oder Server weg - ToDos bleiben sichtbar
+  }
+  googleLaedt = false;
+  if (kalOffen) zeichneKalender();
+}
+
+// An welchen Tagen steht ein Termin? Ganztaegige koennen ueber mehrere Tage
+// gehen - Google liefert deren Ende als ersten Tag DANACH, deshalb der Tag
+// Abzug. Terminierte haengen an ihrem Starttag; ueber Mitternacht laufende
+// bleiben bewusst an einem Tag stehen, alles andere waere fuer eine
+// Monatsuebersicht mehr Rauschen als Nutzen.
+function tageEinesTermins(t) {
+  if (!t.ganztags) {
+    const d = new Date(t.start);
+    return isNaN(d) ? [] : [isoVonDate(d)];
+  }
+  const start = new Date(t.start + "T00:00:00");
+  if (isNaN(start)) return [];
+  const endeRoh = t.ende ? new Date(t.ende + "T00:00:00") : null;
+  const ende = (endeRoh && !isNaN(endeRoh) && endeRoh > start)
+    ? new Date(endeRoh.getTime() - 86400000) : start;
+  const tage = [];
+  for (const d = new Date(start); d <= ende && tage.length < 62; d.setDate(d.getDate() + 1)) {
+    tage.push(isoVonDate(d));
+  }
+  return tage;
+}
+
+function termineNachTagen() {
+  const tage = {};
+  if (!googleZustand.verbunden) return tage;
+  for (const t of googleTermine) {
+    if (!quelleAn("gcal:" + t.kalenderId)) continue;
+    for (const tag of tageEinesTermins(t)) (tage[tag] = tage[tag] || []).push(t);
+  }
+  // Innerhalb eines Tages: ganztaegige zuerst, dann nach Uhrzeit.
+  for (const tag in tage) {
+    tage[tag].sort((a, b) => {
+      if (a.ganztags !== b.ganztags) return a.ganztags ? -1 : 1;
+      return String(a.start) < String(b.start) ? -1 : 1;
+    });
+  }
+  return tage;
+}
+
+// Google liefert Farben als "#7986cb". Vor dem Einsetzen in einen style-Wert
+// pruefen: alles andere waere fremder Text in unserem CSS.
+function farbWert(hex) {
+  return /^#[0-9a-f]{3,8}$/i.test(String(hex || "")) ? hex : null;
+}
+
+function zeitLabel(t) {
+  if (t.ganztags) return "Ganztägig";
+  const start = new Date(t.start);
+  if (isNaN(start)) return "";
+  const ende = t.ende ? new Date(t.ende) : null;
+  const von = UHR_FORMAT.format(start);
+  if (!ende || isNaN(ende)) return von;
+  const bis = UHR_FORMAT.format(ende);
+  return bis === von ? von : `${von}–${bis}`;
+}
+
 // ---------- Zeichnen ----------
 function zeichneKalender() {
-  const termine = kalenderTermine();
-  const tage = nachTagen(termine);
+  const todos = kalenderTermine();
+  const tage = nachTagen(todos);
+  const tageTermine = termineNachTagen();
   const heute = todayStr();
 
   kalMonatName.textContent = MONAT_FORMAT.format(new Date(kalJahr, kalMonatNr, 1));
 
-  // Ueberfaellig-Chip: nur wenn es welche gibt.
-  const ueberfaellige = termine.filter(t => t.due < heute);
+  // Ueberfaellig-Chip: nur wenn es welche gibt. Zaehlt AUSSCHLIESSLICH ToDos -
+  // ein vergangener Google-Termin ist nicht "ueberfaellig", den kann man nicht
+  // nachholen.
+  const ueberfaellige = todos.filter(t => t.due < heute);
   kalUeberfaellig.hidden = ueberfaellige.length === 0;
   kalUeberfaellig.textContent = `⚠ Überfällig (${ueberfaellige.length})`;
   kalUeberfaellig.classList.toggle("gewaehlt", kalAuswahl === UEBERFAELLIG);
 
-  zeichneRaster(tage, heute);
-  zeichneTagesliste(tage, ueberfaellige, heute);
+  zeichneFilter();
+  zeichneRaster(tage, tageTermine, heute);
+  zeichneTagesliste(tage, tageTermine, ueberfaellige, heute);
+
+  // Laeuft nebenher und zeichnet bei neuen Daten selbst noch einmal; ist der
+  // Zeitraum schon geladen (oder gar kein Google verknuepft), kostet der
+  // Aufruf nichts.
+  ladeGoogle();
 }
 
-function zeichneRaster(tage, heute) {
+// Eine Pille je Quelle: ToDo-Listen zuerst, dann die Google-Kalender.
+// Erscheint erst ab zwei Quellen - bei einer Liste ohne Google gibt es nichts
+// zu filtern und das Panel bleibt so schlicht wie vorher.
+function zeichneFilter() {
+  const quellen = listen.map(b => ({
+    schluessel: "liste:" + b.id, name: b.name, art: "liste",
+  }));
+  if (googleZustand.verbunden) {
+    for (const k of googleZustand.kalender) {
+      quellen.push({ schluessel: "gcal:" + k.id, name: k.name, farbe: farbWert(k.farbe), art: "gcal" });
+    }
+  }
+
+  kalFilter.hidden = quellen.length < 2;
+  kalFilter.innerHTML = "";
+  if (quellen.length < 2) return;
+
+  for (const q of quellen) {
+    const pille = document.createElement("button");
+    pille.type = "button";
+    pille.className = "kal-pille" + (quelleAn(q.schluessel) ? "" : " aus");
+    pille.addEventListener("click", () => schalteQuelle(q.schluessel));
+
+    const punkt = document.createElement("span");
+    punkt.className = "kal-punkt";
+    if (q.art === "gcal") {
+      punkt.classList.add("kal-punkt-termin");
+      if (q.farbe) punkt.style.color = q.farbe;   // faerbt den Ring, siehe CSS
+    }
+    pille.appendChild(punkt);
+
+    const name = document.createElement("span");
+    name.textContent = q.name;
+    pille.appendChild(name);
+    kalFilter.appendChild(pille);
+  }
+}
+
+function zeichneRaster(tage, tageTermine, heute) {
   kalWochentage.innerHTML = "";
   for (const w of WOCHENTAGE) {
     const zelle = document.createElement("span");
@@ -129,54 +352,72 @@ function zeichneRaster(tage, heute) {
 
   for (let tag = 1; tag <= tageImMonat; tag++) {
     const iso = isoTag(kalJahr, kalMonatNr, tag);
-    const eintraege = tage[iso] || [];
+    const todosDesTages = tage[iso] || [];
+    const termineDesTages = tageTermine[iso] || [];
+    const gesamt = todosDesTages.length + termineDesTages.length;
     const zelle = document.createElement("button");
     zelle.type = "button";
     zelle.className = "kal-tag";
     zelle.dataset.tag = iso;
     if (iso === heute) zelle.classList.add("heute");
     if (iso === kalAuswahl) zelle.classList.add("gewaehlt");
-    if (eintraege.length && iso < heute) zelle.classList.add("ueberfaellig");
-    if (eintraege.length > 3) zelle.classList.add("viele");
+    // Rot faerbt nur ueberfaelliges ToDo-Datum, nie ein vergangener Termin.
+    if (todosDesTages.length && iso < heute) zelle.classList.add("ueberfaellig");
+    if (gesamt > 3) zelle.classList.add("viele");
 
     const zahl = document.createElement("span");
     zahl.className = "kal-zahl";
     zahl.textContent = String(tag);
     zelle.appendChild(zahl);
 
+    // ToDo-Punkte zuerst, Termin-Punkte danach - bei mehr als drei Eintraegen
+    // steht so immer das, was man selbst zu tun hat, vorn.
     const punkte = document.createElement("span");
     punkte.className = "kal-punkte";
-    for (const t of eintraege.slice(0, 3)) {
+    for (const t of todosDesTages.slice(0, 3)) {
       const punkt = document.createElement("span");
       punkt.className = "kal-punkt" + (t.farbe ? " farbe-" + t.farbe : "");
       punkte.appendChild(punkt);
     }
+    for (const t of termineDesTages.slice(0, Math.max(0, 3 - todosDesTages.length))) {
+      const kal = googleZustand.kalender.find(k => k.id === t.kalenderId);
+      const farbe = farbWert(kal && kal.farbe);
+      const punkt = document.createElement("span");
+      punkt.className = "kal-punkt kal-punkt-termin";
+      if (farbe) punkt.style.color = farbe;
+      punkte.appendChild(punkt);
+    }
     zelle.appendChild(punkte);
 
-    if (eintraege.length) {
-      zelle.title = eintraege.length === 1 ? "1 ToDo" : `${eintraege.length} ToDos`;
+    if (gesamt) {
+      const teile = [];
+      if (todosDesTages.length) teile.push(todosDesTages.length === 1 ? "1 ToDo" : `${todosDesTages.length} ToDos`);
+      if (termineDesTages.length) teile.push(termineDesTages.length === 1 ? "1 Termin" : `${termineDesTages.length} Termine`);
+      zelle.title = teile.join(", ");
     }
     kalRaster.appendChild(zelle);
   }
 }
 
-function zeichneTagesliste(tage, ueberfaellige, heute) {
+function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
   kalTagesliste.innerHTML = "";
 
   let titel;
-  let eintraege;
+  let todosDesTages;
+  let termineDesTages = [];
   let mitDatum = false;
   if (kalAuswahl === UEBERFAELLIG) {
     titel = "Überfällig";
-    eintraege = ueberfaellige;
+    todosDesTages = ueberfaellige;
     mitDatum = true;   // liegt quer ueber viele Tage, das Datum gehoert dazu
   } else if (kalAuswahl) {
     const [j, m, t] = kalAuswahl.split("-").map(Number);
     titel = TAG_FORMAT.format(new Date(j, m - 1, t));
-    eintraege = tage[kalAuswahl] || [];
+    todosDesTages = tage[kalAuswahl] || [];
+    termineDesTages = tageTermine[kalAuswahl] || [];
   } else {
     titel = "";
-    eintraege = [];
+    todosDesTages = [];
   }
 
   if (titel) {
@@ -192,15 +433,97 @@ function zeichneTagesliste(tage, ueberfaellige, heute) {
     kalTagesliste.appendChild(kopf);
   }
 
-  if (!eintraege.length) {
+  // Termine oben (ganztaegig, dann nach Uhrzeit - so sortiert sie
+  // termineNachTagen), ToDos darunter: die haben keine Uhrzeit und gehoeren
+  // nicht in die Zeitachse des Tages.
+  for (const t of termineDesTages) kalTagesliste.appendChild(baueTerminZeile(t));
+  for (const t of todosDesTages) kalTagesliste.appendChild(baueEintrag(t, mitDatum));
+
+  if (!todosDesTages.length && !termineDesTages.length) {
     const leer = document.createElement("p");
     leer.className = "kal-leer";
     leer.textContent = kalAuswahl ? "Nichts fällig." : "In diesem Monat steht nichts an.";
     kalTagesliste.appendChild(leer);
-    return;
   }
 
-  for (const t of eintraege) kalTagesliste.appendChild(baueEintrag(t, mitDatum));
+  // Eine Zeile statt einer stillen Luecke, wenn Google gerade nicht mag -
+  // sonst sieht ein Tag leer aus, obwohl nur die Termine fehlen.
+  if (googleFehler && googleZustand.verbunden) {
+    const hinweis = document.createElement("p");
+    hinweis.className = "kal-leer kal-google-fehler";
+    hinweis.textContent = "Google-Termine gerade nicht erreichbar.";
+    kalTagesliste.appendChild(hinweis);
+  }
+}
+
+// Google-Termin: rein lesend, ein Tipp klappt Ort und Beschreibung auf.
+function baueTerminZeile(t) {
+  const box = document.createElement("div");
+  box.className = "kal-termin-box";
+
+  const kal = googleZustand.kalender.find(k => k.id === t.kalenderId);
+  const farbe = farbWert(kal && kal.farbe);
+  const offen = offeneTermine.has(t.id);
+  const hatDetails = !!(t.ort || t.beschreibung);
+
+  // Ohne Ort und Beschreibung gibt es nichts aufzuklappen - dann auch kein
+  // Knopf, der auf einen Tipp mit "nichts da" antwortet.
+  const knopf = document.createElement(hatDetails ? "button" : "div");
+  knopf.className = "kal-eintrag kal-termin" + (offen ? " offen" : "") + (hatDetails ? "" : " kal-termin-still");
+  if (hatDetails) {
+    knopf.type = "button";
+    knopf.addEventListener("click", () => {
+      if (offeneTermine.has(t.id)) offeneTermine.delete(t.id);
+      else offeneTermine.add(t.id);
+      zeichneKalender();
+    });
+  }
+
+  const punkt = document.createElement("span");
+  punkt.className = "kal-punkt kal-punkt-termin";
+  if (farbe) punkt.style.color = farbe;
+  knopf.appendChild(punkt);
+
+  const text = document.createElement("span");
+  text.className = "kal-eintrag-text";
+
+  const titel = document.createElement("span");
+  titel.className = "kal-eintrag-titel";
+  titel.textContent = t.titel;
+  text.appendChild(titel);
+
+  const meta = document.createElement("span");
+  meta.className = "kal-eintrag-meta";
+  meta.textContent = [zeitLabel(t), kal ? kal.name : ""].filter(Boolean).join(" · ");
+  text.appendChild(meta);
+
+  knopf.appendChild(text);
+  if (hatDetails) {
+    const pfeil = document.createElement("span");
+    pfeil.className = "kal-termin-pfeil";
+    pfeil.textContent = offen ? "▴" : "▾";
+    knopf.appendChild(pfeil);
+  }
+  box.appendChild(knopf);
+
+  if (offen) {
+    const details = document.createElement("div");
+    details.className = "kal-termin-details";
+    if (t.ort) {
+      const ort = document.createElement("p");
+      ort.textContent = "📍 " + t.ort;
+      details.appendChild(ort);
+    }
+    if (t.beschreibung) {
+      const bes = document.createElement("p");
+      // Beschreibungen kommen aus Google teils als HTML - als TEXT einsetzen,
+      // nie als Markup. textContent macht genau das.
+      bes.textContent = t.beschreibung.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+      details.appendChild(bes);
+    }
+    box.appendChild(details);
+  }
+  return box;
 }
 
 function baueEintrag(t, mitDatum) {
@@ -422,5 +745,17 @@ document.addEventListener("keydown", e => {
 // Aus render() aufgerufen: haelt das offene Panel auf Stand, wenn sich am
 // Board etwas aendert (Abhaken, Sync vom Server). Zugeklappt kostet es nichts.
 window.kalenderNeuZeichnen = function () {
+  if (kalOffen) zeichneKalender();
+};
+
+// Nach Verbinden/Trennen in den Einstellungen: alles zu Google vergessen und
+// beim naechsten Zeichnen frisch holen (siehe app.js).
+window.kalenderGoogleVergessen = function () {
+  googleZustand = { moeglich: false, verbunden: false, email: null, kalender: [] };
+  googleTermine = [];
+  googleGeladen = null;
+  googleAus = false;
+  googleFehler = false;
+  offeneTermine.clear();
   if (kalOffen) zeichneKalender();
 };

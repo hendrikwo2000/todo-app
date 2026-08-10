@@ -74,6 +74,32 @@ eine Zahl auf dem App-Icon. Auf dem iPhone geht das nur, wenn die App vom
 Seite einmal öffnen, über das Teilen-Symbol **„Zum Home-Bildschirm"** wählen
 und die App von dort starten.
 
+## Kalender
+
+- **📅** oben rechts — oder auf dem Handy vom **rechten Bildschirmrand**
+  nach links wischen
+- Oben der Monat mit Punkten an belegten Tagen, darunter die ToDos des
+  angetippten Tages
+- **⚠ Überfällig** zeigt alles, was liegengeblieben ist — auch aus Vormonaten
+- Ein Tipp auf ein ToDo bringt dich zu ihm auf die Liste, samt Listenwechsel
+
+Zurück geht es mit einem Wisch nach rechts, einem Tipp daneben oder Escape.
+
+## Google Kalender
+
+- **⚙️** oben rechts → **„Google Kalender"** → **„Mit Google verbinden"**
+- Bei Google anmelden und den Zugriff bestätigen
+
+Danach stehen deine Google-Termine im Kalender neben den ToDos. Die App darf
+nur **lesen** — sie ändert bei Google nichts und legt dort auch nichts an.
+Hast du mehrere Kalender oder Listen, erscheinen oben im Kalender kleine
+Umschalter; damit blendest du einzelne Quellen aus. Zuerst ist nur dein
+Hauptkalender an, damit Feiertage und Geburtstage den Monat nicht zupflastern.
+
+Beim ersten Verbinden warnt Google, dass die App nicht verifiziert ist — über
+**„Erweitert"** kommst du weiter. Trennen geht an derselben Stelle; das nimmt
+der App den Zugriff auch bei Google selbst wieder weg.
+
 ## Abmelden
 
 - **⚙️** oben rechts

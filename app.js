@@ -657,6 +657,35 @@ function resetAkkordeon() {
 // Fokus-Tracker-Zeile: Status-Text und "aktiv"-Farbe. Eigene Funktion statt
 // Teil von aktualisiereEinSubtexte(), weil sie auch direkt nach dem Freischalten
 // (ohne Akkordeon-Kontext) aufgerufen wird.
+// ---------- Google-Kalender ----------
+// Nur der Verbindungs-Zustand; die Termine selbst holt kalender.js. Der
+// ganze Abschnitt bleibt unsichtbar, solange im Pages-Projekt keine
+// Google-Zugangsdaten hinterlegt sind (moeglich=false) - eine Funktion
+// anzubieten, die dann in einen 500er laeuft, waere schlechter als keine.
+let googleVerbunden = false;
+let googleAdresse = "";
+
+async function aktualisiereGoogleAbschnitt() {
+  const abschnitt = document.getElementById("googleAbschnitt");
+  let stand = { moeglich: false, verbunden: false, email: null };
+  try {
+    const antwort = await fetch("/api/google/status");
+    if (antwort.ok) stand = await antwort.json();
+  } catch (e) { /* offline: Abschnitt bleibt aus */ }
+
+  abschnitt.hidden = !stand.moeglich;
+  googleVerbunden = !!stand.verbunden;
+  googleAdresse = stand.email || "";
+  if (!stand.moeglich) return;
+
+  document.getElementById("googleVerbinden").hidden = googleVerbunden;
+  document.getElementById("googleTrennen").hidden = !googleVerbunden;
+  document.getElementById("googleText").textContent = googleVerbunden
+    ? `Verbunden${googleAdresse ? " als " + googleAdresse : ""}. Deine Termine erscheinen im Kalender; geändert wird bei Google nichts.`
+    : "Zeigt deine Google-Termine im Kalender an. Nur lesend – die App bekommt keine Schreibrechte.";
+  document.getElementById("subGoogle").textContent = googleVerbunden ? "verbunden" : "nicht verbunden";
+}
+
 function aktualisiereFokusLink() {
   document.getElementById("subFokus").textContent = fokusZugang ? "aktiv" : "nicht aktiv";
   document.getElementById("fokusLink").classList.toggle("aktiv", fokusZugang);
@@ -694,6 +723,7 @@ function oeffneEinstellungen() {
   zeigeEinAnsicht("haupt");
   einstellungenPopup.hidden = false;
   aktualisierePushSchalter();
+  aktualisiereGoogleAbschnitt();
 }
 
 // Kleiner Knopf fuer die Listen-Zeilen.
@@ -3320,6 +3350,47 @@ async function schaltePushUm() {
   }
 }
 if (pushSwitch) pushSwitch.addEventListener("change", schaltePushUm);
+
+// Verbinden verlaesst die Seite Richtung Google (kein fetch - der
+// Zustimmungsdialog braucht einen echten Seitenwechsel). Zurueck kommt der
+// Browser auf "/?google=...", siehe unten.
+document.getElementById("googleVerbinden").addEventListener("click", () => {
+  location.href = "/api/google/start";
+});
+
+document.getElementById("googleTrennen").addEventListener("click", async () => {
+  try {
+    await fetch("/api/google/trennen", { method: "POST" });
+    snackInfo("Google-Kalender getrennt.");
+  } catch (e) {
+    snackInfo("Trennen hat nicht geklappt - bitte nochmal versuchen.");
+    return;
+  }
+  if (window.kalenderGoogleVergessen) window.kalenderGoogleVergessen();
+  aktualisiereGoogleAbschnitt();
+});
+
+// Rueckmeldung der Google-Verknuepfung aus der Adresse holen und diese
+// wieder saeubern - sonst klebt "?google=verbunden" an jedem Neuladen und der
+// Hinweis erschiene immer wieder.
+(function googleRueckmeldung() {
+  const wert = new URLSearchParams(location.search).get("google");
+  if (!wert) return;
+  const texte = {
+    verbunden: "Google-Kalender verbunden.",
+    abgebrochen: "Verbindung abgebrochen.",
+    abgelehnt: "Verbindung abgelehnt - bitte noch einmal versuchen.",
+    "kein-dauerzugriff": "Google hat keinen dauerhaften Zugriff erteilt. Bitte in den Google-Kontoeinstellungen den Zugriff für diese App entfernen und erneut verbinden.",
+    "keine-sitzung": "Anmeldung abgelaufen - bitte neu anmelden und noch einmal verbinden.",
+    "nicht-eingerichtet": "Google-Verknüpfung ist auf diesem Server nicht eingerichtet.",
+    fehlgeschlagen: "Google-Verbindung fehlgeschlagen.",
+  };
+  const url = new URL(location.href);
+  url.searchParams.delete("google");
+  history.replaceState(null, "", url.pathname + url.search + url.hash);
+  if (window.kalenderGoogleVergessen) window.kalenderGoogleVergessen();
+  setTimeout(() => snackInfo(texte[wert] || "Google: unbekannte Rückmeldung."), 400);
+})();
 
 window.addEventListener("offline", () => {
   serverErreichbar = false;
