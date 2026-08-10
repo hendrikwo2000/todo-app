@@ -31,6 +31,7 @@ const kalWochentage  = document.getElementById("kalWochentage");
 const kalRaster      = document.getElementById("kalRaster");
 const kalTagesliste  = document.getElementById("kalTagesliste");
 const kalFilter      = document.getElementById("kalFilter");
+const kalWahl        = document.getElementById("kalWahl");
 const kalLock        = document.getElementById("lock");
 
 const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -401,6 +402,7 @@ function zeichneKalender() {
   kalUeberfaellig.classList.toggle("gewaehlt", kalAuswahl === UEBERFAELLIG);
 
   zeichneFilter();
+  zeichneWahl();
   // Das Raster arbeitet mit dem Spurenplan (feste Reihen), die Tagesliste mit
   // der zeitlichen Sortierung - zwei verschiedene Fragen an dieselben Daten.
   zeichneRaster(tage, baueSpurenplan(), heute);
@@ -473,6 +475,58 @@ function kalenderwoche(datum) {
   const ersterDonnerstag = new Date(d.getFullYear(), 0, 4);
   ersterDonnerstag.setDate(ersterDonnerstag.getDate() - ((ersterDonnerstag.getDay() + 6) % 7) + 3);
   return 1 + Math.round((d - ersterDonnerstag) / (7 * 24 * 60 * 60 * 1000));
+}
+
+/* ---------- Monat und Jahr direkt waehlen ---------- */
+// Zwei scrollbare Walzen unter der Kopfzeile. Ein Tipp setzt sofort und
+// schliesst - ein zusaetzlicher "Uebernehmen"-Knopf waere fuer eine Auswahl
+// aus zwoelf bzw. gut zwanzig Werten nur ein Klick mehr.
+const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni",
+                "Juli", "August", "September", "Oktober", "November", "Dezember"];
+let wahlOffen = false;
+
+function schalteWahl() {
+  wahlOffen = !wahlOffen;
+  zeichneWahl();
+}
+
+function zeichneWahl() {
+  kalWahl.hidden = !wahlOffen;
+  kalMonatName.classList.toggle("offen", wahlOffen);
+  kalWahl.innerHTML = "";
+  if (!wahlOffen) return;
+
+  const heuteJahr = new Date().getFullYear();
+  const jahre = [];
+  for (let j = Math.min(heuteJahr, kalJahr) - 5; j <= Math.max(heuteJahr, kalJahr) + 5; j++) jahre.push(j);
+
+  const walze = (werte, aktiv, beiWahl) => {
+    const spalte = document.createElement("div");
+    spalte.className = "kal-walze";
+    for (const w of werte) {
+      const knopf = document.createElement("button");
+      knopf.type = "button";
+      knopf.className = "kal-walze-wert" + (w.wert === aktiv ? " gewaehlt" : "");
+      knopf.textContent = w.text;
+      knopf.addEventListener("click", () => beiWahl(w.wert));
+      spalte.appendChild(knopf);
+    }
+    return spalte;
+  };
+
+  kalWahl.appendChild(walze(
+    MONATE.map((name, i) => ({ wert: i, text: name })), kalMonatNr,
+    m => { wahlOffen = false; zeigeMonat(kalJahr, m); zeichneWahl(); }));
+  kalWahl.appendChild(walze(
+    jahre.map(j => ({ wert: j, text: String(j) })), kalJahr,
+    j => { wahlOffen = false; zeigeMonat(j, kalMonatNr); zeichneWahl(); }));
+
+  // Den aktuellen Wert in die Mitte holen - ohne das startet die Jahreswalze
+  // ganz oben, und man sucht erst einmal, wo man ueberhaupt steht.
+  for (const spalte of kalWahl.children) {
+    const treffer = spalte.querySelector(".gewaehlt");
+    if (treffer) spalte.scrollTop = treffer.offsetTop - spalte.clientHeight / 2 + treffer.offsetHeight / 2;
+  }
 }
 
 function zeichneRaster(tage, spuren, heute) {
@@ -699,8 +753,11 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     // Ueberschriften - dort gibt es keinen Tag, auf den sich ein ＋ beziehen
     // koennte.
     for (const t of todosDesTages) kalTagesliste.appendChild(baueEintrag(t, mitDatum));
-    if (!todosDesTages.length) {
-      kalTagesliste.appendChild(baueLeerZeile(kalAuswahl ? "Nichts fällig." : "In diesem Monat steht nichts an."));
+    // Ohne gewaehlten Tag bleibt der Bereich LEER. Die fruehere Zeile "In
+    // diesem Monat steht nichts an" war schlicht falsch - im Monat konnte
+    // eine Menge stehen, nur eben kein Tag ausgewaehlt sein.
+    if (!todosDesTages.length && kalAuswahl) {
+      kalTagesliste.appendChild(baueLeerZeile("Nichts fällig."));
     }
   }
 
@@ -1170,6 +1227,7 @@ function waehleTag(iso) {
 // Halb ausgefuelltes Formular und offene Eingabe gehoeren zu EINEM Tag - beim
 // Wechsel woandershin waeren sie nur noch Altlast.
 function schliesseEingaben() {
+  wahlOffen = false;
   formularOffen = false;
   formularTermin = null;
   formularFelder = null;
@@ -1194,6 +1252,22 @@ function zeigeMonat(jahr, monat) {
 function monatVerschieben(schritt) {
   const d = new Date(kalJahr, kalMonatNr + schritt, 1);
   zeigeMonat(d.getFullYear(), d.getMonth());
+}
+
+// Einen Kalendertag weiter oder zurueck. Laeuft der neue Tag aus dem Monat
+// heraus, blaettert das Raster mit - sonst zeigte es einen Monat, in dem der
+// gewaehlte Tag gar nicht vorkommt.
+function wechsleTag(schritt) {
+  if (!kalAuswahl || kalAuswahl === UEBERFAELLIG) return;
+  const [j, m, t] = kalAuswahl.split("-").map(Number);
+  const d = new Date(j, m - 1, t + schritt);
+  kalAuswahl = isoVonDate(d);
+  schliesseEingaben();
+  if (d.getFullYear() !== kalJahr || d.getMonth() !== kalMonatNr) {
+    kalJahr = d.getFullYear();
+    kalMonatNr = d.getMonth();
+  }
+  zeichneKalender();
 }
 
 function springeZuHeute() {
@@ -1251,6 +1325,43 @@ function setzeVersatz(v) {
   kalHintergrund.style.opacity = String(1 - v / geste.breite);
 }
 
+/**
+ * Welche Geste gehoert der Stelle, an der der Finger aufsetzt?
+ *
+ *   "monat" ueber dem Raster, "tag" ueber der Tagesliste, sonst "zu".
+ *
+ * Aufgeteilt statt einheitlich, weil ein Wisch ueber dem Raster etwas anderes
+ * bedeutet als einer ueber der Kopfzeile - und weil das Schliessen per Wisch
+ * sonst ganz verloren ginge.
+ */
+function gestenZone(ziel) {
+  if (!ziel || !ziel.closest) return "zu";
+  // In einem Eingabefeld zieht man Text, nicht den Kalender.
+  if (ziel.closest("input, textarea, select")) return null;
+  if (ziel.closest("#kalRaster, #kalWochentage")) return "monat";
+  if (ziel.closest("#kalTagesliste")) return "tag";
+  return "zu";
+}
+
+// Beim Blaettern folgt der Inhalt ein Stueck weit dem Finger - gedaempft, weil
+// er ja nicht wirklich mitwandert. Ohne diese Rueckmeldung fuehlt sich der
+// Wisch an, als haette man danebengegriffen.
+const MITGABE = 0.35;
+const BLAETTER_WEG = 55;   // px, ab denen wirklich umgeblaettert wird
+
+function blaetterElemente(modus) {
+  if (modus === "monat") return [kalWochentage, kalRaster];
+  if (modus === "tag") return [kalTagesliste];
+  return [];
+}
+
+function setzeBlaetterVersatz(dx) {
+  for (const el of blaetterElemente(geste.modus)) {
+    el.style.transform = dx ? `translateX(${dx * MITGABE}px)` : "";
+    el.style.transition = dx ? "none" : "transform .18s";
+  }
+}
+
 document.addEventListener("touchstart", e => {
   geste = null;
   if (e.touches.length !== 1) return;
@@ -1261,7 +1372,9 @@ document.addEventListener("touchstart", e => {
     geste = { x: t.clientX, y: t.clientY, achse: null, modus: "auf" };
   } else {
     if (!kalPanel.contains(e.target)) return;
-    geste = { x: t.clientX, y: t.clientY, achse: null, modus: "zu" };
+    const zone = gestenZone(e.target);
+    if (!zone) return;
+    geste = { x: t.clientX, y: t.clientY, achse: null, modus: zone };
   }
   geste.breite = kalPanel.getBoundingClientRect().width || 320;
   geste.versatz = geste.modus === "auf" ? geste.breite : 0;
@@ -1289,6 +1402,11 @@ document.addEventListener("touchmove", e => {
   }
 
   e.preventDefault();   // ab hier gehoert die Bewegung dem Panel
+  if (geste.modus === "monat" || geste.modus === "tag") {
+    geste.dx = dx;
+    setzeBlaetterVersatz(dx);
+    return;
+  }
   const roh = geste.modus === "auf" ? geste.breite + dx : dx;
   setzeVersatz(Math.min(geste.breite, Math.max(0, roh)));
 }, { passive: false });
@@ -1296,6 +1414,16 @@ document.addEventListener("touchmove", e => {
 function gesteBeenden() {
   if (!geste) return;
   const g = geste;
+  if (g.modus === "monat" || g.modus === "tag") {
+    setzeBlaetterVersatz(0);
+    geste = null;
+    if (g.achse !== "x" || Math.abs(g.dx || 0) < BLAETTER_WEG) return;
+    // Nach links wischen heisst vorwaerts - wie beim Umblaettern.
+    const schritt = g.dx < 0 ? 1 : -1;
+    if (g.modus === "monat") monatVerschieben(schritt);
+    else wechsleTag(schritt);
+    return;
+  }
   geste = null;
   if (g.achse !== "x") return;
   const auf = g.modus === "auf"
@@ -1318,6 +1446,7 @@ document.addEventListener("touchcancel", gesteBeenden);
 document.getElementById("kalenderBtn").addEventListener("click", oeffneKalender);
 document.getElementById("kalZu").addEventListener("click", schliesseKalender);
 kalHintergrund.addEventListener("click", schliesseKalender);
+kalMonatName.addEventListener("click", schalteWahl);
 document.getElementById("kalZurueck").addEventListener("click", () => monatVerschieben(-1));
 document.getElementById("kalVor").addEventListener("click", () => monatVerschieben(1));
 document.getElementById("kalHeute").addEventListener("click", springeZuHeute);

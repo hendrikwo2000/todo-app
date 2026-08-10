@@ -90,8 +90,12 @@ und die App von dort starten.
 - Ein Tipp auf einen Google-Termin öffnet ihn zum **Ändern** — dort steht auch
   der Löschen-Knopf (fragt einmal nach)
 
-Zurück geht es mit einem Wisch nach rechts, einem Tipp daneben oder Escape.
-Auf dem Handy füllt der Kalender den ganzen Bildschirm.
+**Blättern:** über dem Monatsraster nach links oder rechts wischen wechselt den
+**Monat**, über der Tagesliste den **Tag**. Ein Tipp auf „August 2026" öffnet
+zwei Walzen für Monat und Jahr.
+
+Zurück geht es mit einem Wisch in der Kopfzeile, einem Tipp daneben, ✕ oder
+Escape. Auf dem Handy füllt der Kalender den ganzen Bildschirm.
 
 ## Google Kalender
 

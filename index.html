@@ -87,11 +87,15 @@
   <aside id="kalenderPanel" class="kalender" aria-label="Kalender" aria-hidden="true">
     <div class="kal-kopf">
       <button type="button" id="kalZurueck" class="kal-pfeil" aria-label="Vorheriger Monat">‹</button>
-      <span id="kalMonatName" class="kal-monat"></span>
+      <button type="button" id="kalMonatName" class="kal-monat" aria-haspopup="true"></button>
       <button type="button" id="kalVor" class="kal-pfeil" aria-label="Nächster Monat">›</button>
       <button type="button" id="kalHeute" class="btn klein">Heute</button>
       <button type="button" id="kalZu" class="kal-schliessen" aria-label="Kalender schließen">✕</button>
     </div>
+
+    <!-- Monat und Jahr direkt waehlen: zwei scrollbare Walzen, Inhalt kommt
+         aus kalender.js. Antippen setzt sofort. -->
+    <div id="kalWahl" class="kal-wahl" hidden></div>
     <button type="button" id="kalUeberfaellig" class="kal-chip" hidden></button>
     <!-- Quellen-Umschalter: je eine Pille pro ToDo-Liste und pro
          Google-Kalender. Erscheint erst ab zwei Quellen. -->

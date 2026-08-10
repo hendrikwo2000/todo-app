@@ -924,6 +924,30 @@ Quellen sichtbar. Zwei localStorage-Mengen: `kalQuellenAus` (abgewählt) und
 ausgeschaltet — außer dem Hauptkalender —, eine spätere eigene Entscheidung
 wird davon nie wieder überschrieben.
 
+**Wischgesten sind nach BEREICH aufgeteilt** (`gestenZone()`): über dem Raster
+blättert der Wisch den Monat, über der Tagesliste den Tag, überall sonst
+(Kopfzeile, Filterzeile, Monatswahl) schließt er weiter das Panel. Ohne diese
+Aufteilung hätte das Blättern das Schließen per Wisch verdrängt — auf dem
+Handy, wo das Panel die volle Breite hat, ist das der bequemste Weg heraus. In
+Eingabefeldern greift gar keine Geste, dort zieht man Text.
+
+Der Inhalt folgt dem Finger gedämpft (`MITGABE` = 0.35) und blättert erst ab
+`BLAETTER_WEG` = 55 px wirklich um; darunter federt er zurück. Ohne diese
+Rückmeldung fühlt sich der Wisch an, als hätte man danebengegriffen. Läuft der
+Tageswechsel aus dem Monat heraus, blättert das Raster mit — sonst zeigte es
+einen Monat, in dem der gewählte Tag gar nicht vorkommt.
+
+**Monat und Jahr direkt wählen:** Ein Tipp auf den Monatsnamen klappt zwei
+scrollbare Walzen auf (`zeichneWahl()`), Antippen setzt sofort. Die Jahre
+reichen fünf Jahre um das heutige UND das gerade angezeigte Jahr, damit man
+sich beim Blättern nicht aus der Liste herausarbeitet. Beide Walzen scrollen
+ihren aktuellen Wert beim Öffnen in die Mitte — sonst startet die Jahreswalze
+oben und man sucht erst, wo man steht.
+
+**Ohne gewählten Tag bleibt der untere Bereich leer.** Dort stand vorher „In
+diesem Monat steht nichts an" — das war schlicht falsch, im Monat konnte eine
+Menge stehen, nur eben kein Tag ausgewählt sein.
+
 **Panelbreite** ist am Rechner `min(480px, 100vw)`, auf Schirmen bis 620 px die
 volle Breite (`100vw`, ohne linken Rand). Auf dem Handy bringt ein Streifen
 daneben nichts außer weniger Kalender; geschlossen wird dort per Wisch nach
