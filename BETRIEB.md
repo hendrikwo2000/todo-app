@@ -758,6 +758,16 @@ Das „+" erscheint nur, wenn wirklich etwas weggelassen wurde (mehr als drei
 ToDo-Punkte oder ein Termin ohne Spur) — nicht schon, sobald an einem Tag vier
 Dinge stehen, die alle sichtbar sind.
 
+**Kalenderwoche** in einer schmalen Spalte links vor Montag, klein und
+zurückgenommen — Orientierung am Rand, keine Information, die mit den Tagen um
+Aufmerksamkeit konkurriert. `kalenderwoche()` rechnet nach ISO 8601 (Woche 1
+ist die mit dem ersten Donnerstag; der Umweg über den Donnerstag derselben
+Woche erledigt den Jahreswechsel von selbst). **Bewusst selbst gerechnet**,
+nicht aus einem abonnierten Google-Kalender gelesen: so steht die Zahl auch
+offline und ohne Google-Verknüpfung da und hängt nicht an der Beschriftung
+eines fremden Kalenders. Wer so einen Kalender abonniert hat, schaltet ihn über
+seine Pille ab — sonst zeichnet er zusätzlich seine Balken.
+
 **Farben.** Der Server liefert je Termin eine fertig aufgelöste Farbe: die
 EIGENE Farbe des Termins (`colorId`, in Google pro Termin einstellbar) schlägt
 die Farbe seines Kalenders. Die Palette dahinter (`/colors`) wird nur geholt,

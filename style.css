@@ -1433,12 +1433,28 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
 /* display:block oben schlaegt sonst das eingebaute [hidden] des Browsers. */
 .kal-chip[hidden] { display: none; }
 
+/* Erste Spalte ist die Kalenderwoche (ISO 8601, selbst gerechnet - siehe
+   kalenderwoche() in kalender.js), danach die sieben Wochentage. */
 .kal-wochentage, .kal-raster {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: 21px repeat(7, 1fr);
   gap: 2px;
 }
 .kal-wochentage { font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; }
+
+/* Bewusst zurueckhaltend: die Wochenzahl ist Orientierung am Rand, keine
+   Information, die mit den Tagen um Aufmerksamkeit konkurrieren soll. */
+.kal-kw {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  opacity: .65;
+  font-variant-numeric: tabular-nums;
+}
+.kal-kw-kopf { font-size: 9px; letter-spacing: .03em; }
 
 .kal-tag {
   aspect-ratio: 1 / 1;

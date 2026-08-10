@@ -400,9 +400,34 @@ function zeichneFilter() {
   }
 }
 
+/**
+ * Kalenderwoche nach ISO 8601 (in Deutschland die uebliche Zaehlung):
+ * Woche 1 ist die Woche mit dem ersten Donnerstag des Jahres, die Woche
+ * beginnt am Montag.
+ *
+ * Selbst gerechnet statt aus einem abonnierten Google-Kalender gelesen: die
+ * Zahl steht damit immer da - offline, ohne Google-Verknuepfung und ohne von
+ * der Beschriftung eines fremden Kalenders abzuhaengen.
+ *
+ * Der Umweg ueber den DONNERSTAG derselben Woche erledigt den Jahreswechsel:
+ * er liegt immer in dem Jahr, zu dem die Woche zaehlt.
+ */
+function kalenderwoche(datum) {
+  const d = new Date(datum.getFullYear(), datum.getMonth(), datum.getDate());
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + 3);
+  const ersterDonnerstag = new Date(d.getFullYear(), 0, 4);
+  ersterDonnerstag.setDate(ersterDonnerstag.getDate() - ((ersterDonnerstag.getDay() + 6) % 7) + 3);
+  return 1 + Math.round((d - ersterDonnerstag) / (7 * 24 * 60 * 60 * 1000));
+}
+
 function zeichneRaster(tage, spuren, heute) {
   const { plan, ueberzaehlig } = spuren;
   kalWochentage.innerHTML = "";
+  // Erste Spalte gehoert der Kalenderwoche - im Kopf nur ein leises "KW".
+  const kwKopf = document.createElement("span");
+  kwKopf.className = "kal-kw kal-kw-kopf";
+  kwKopf.textContent = "KW";
+  kalWochentage.appendChild(kwKopf);
   for (const w of WOCHENTAGE) {
     const zelle = document.createElement("span");
     zelle.textContent = w;
@@ -426,80 +451,98 @@ function zeichneRaster(tage, spuren, heute) {
     spurenJeWoche[w] = Math.max(spurenJeWoche[w] || 0, reihen.length);
   }
 
-  // Leerzellen vor dem Monatsersten. Bewusst LEER statt blasser Nachbartage:
-  // ein Tag ohne Punkte sieht frei aus - das darf er nur, wenn es stimmt.
-  for (let i = 0; i < ersterWochentag; i++) {
-    kalRaster.appendChild(document.createElement("span"));
-  }
+  const zeilen = Math.ceil((ersterWochentag + tageImMonat) / 7);
+  for (let zeile = 0; zeile < zeilen; zeile++) {
+    // Wochenzahl aus dem Montag der Zeile - der darf ruhig im Vor- oder
+    // Folgemonat liegen, Date rechnet das von selbst um.
+    const kw = document.createElement("span");
+    kw.className = "kal-kw";
+    kw.textContent = String(kalenderwoche(new Date(kalJahr, kalMonatNr, zeile * 7 - ersterWochentag + 1)));
+    kalRaster.appendChild(kw);
 
-  for (let tag = 1; tag <= tageImMonat; tag++) {
-    const iso = isoTag(kalJahr, kalMonatNr, tag);
-    const todosDesTages = tage[iso] || [];
-    const reihen = plan[iso] || [];
-    const termineImRaster = reihen.filter(Boolean).length;
-    // "+" nur, wenn wirklich etwas WEGGELASSEN wurde - nicht schon, sobald an
-    // einem Tag vier Dinge stehen, die alle sichtbar sind.
-    const versteckt = Math.max(0, todosDesTages.length - 3) + (ueberzaehlig[iso] || 0);
-    const zelle = document.createElement("button");
-    zelle.type = "button";
-    zelle.className = "kal-tag";
-    zelle.dataset.tag = iso;
-    if (iso === heute) zelle.classList.add("heute");
-    if (iso === kalAuswahl) zelle.classList.add("gewaehlt");
-    // Rot faerbt nur ueberfaelliges ToDo-Datum, nie ein vergangener Termin.
-    if (todosDesTages.length && iso < heute) zelle.classList.add("ueberfaellig");
-    if (versteckt > 0) zelle.classList.add("viele");
-
-    const zahl = document.createElement("span");
-    zahl.className = "kal-zahl";
-    zahl.textContent = String(tag);
-    zelle.appendChild(zahl);
-
-    // Punkt = ToDo, Balken = Termin. Zwei Formen statt zweier Farbtoene: die
-    // Farben gehoeren jetzt den Bereichen bzw. Google und koennen sich
-    // gleichen, die Form bleibt eindeutig.
-    const punkte = document.createElement("span");
-    punkte.className = "kal-punkte";
-    for (const t of todosDesTages.slice(0, 3)) {
-      const punkt = document.createElement("span");
-      punkt.className = "kal-punkt" + (t.farbe ? " farbe-" + t.farbe : "");
-      punkte.appendChild(punkt);
-    }
-    zelle.appendChild(punkte);
-
-    // Balken laufen ueber die Zellgrenze hinweg zusammen, wenn der Termin am
-    // Nachbartag weitergeht - ausser am Wochenrand, dort endet die Zeile.
-    // Freie Spuren werden als unsichtbarer Platzhalter mitgezeichnet, sonst
-    // ruecken tiefere Balken nach oben und die Linie versetzt sich.
-    const spalte = (ersterWochentag + tag - 1) % 7;
-    const stapel = document.createElement("span");
-    stapel.className = "kal-balken-stapel";
-    for (let s = 0; s < (spurenJeWoche[wocheVon(tag)] || 0); s++) {
-      const eintrag = reihen[s];
-      const balken = document.createElement("span");
-      if (!eintrag) {
-        balken.className = "kal-balken kal-balken-luecke";
-        stapel.appendChild(balken);
+    for (let spalte = 0; spalte < 7; spalte++) {
+      const tag = zeile * 7 + spalte - ersterWochentag + 1;
+      // Leerzellen vor dem Monatsersten und nach dem Letzten. Bewusst LEER
+      // statt blasser Nachbartage: ein Tag ohne Punkte sieht frei aus - das
+      // darf er nur, wenn es stimmt.
+      if (tag < 1 || tag > tageImMonat) {
+        kalRaster.appendChild(document.createElement("span"));
         continue;
       }
-      balken.className = "kal-balken"
-        + (eintrag.weiterLinks && spalte > 0 ? " weiter-links" : "")
-        + (eintrag.weiterRechts && spalte < 6 ? " weiter-rechts" : "");
-      const farbe = farbWert(eintrag.termin.farbe);
-      if (farbe) balken.style.background = farbe;
-      stapel.appendChild(balken);
+      kalRaster.appendChild(baueTagesZelle(tag, spalte, {
+        tage, plan, ueberzaehlig, spurenJeWoche, wocheVon, heute,
+      }));
     }
-    zelle.appendChild(stapel);
-
-    const termineGesamt = termineImRaster + (ueberzaehlig[iso] || 0);
-    if (todosDesTages.length || termineGesamt) {
-      const teile = [];
-      if (todosDesTages.length) teile.push(todosDesTages.length === 1 ? "1 ToDo" : `${todosDesTages.length} ToDos`);
-      if (termineGesamt) teile.push(termineGesamt === 1 ? "1 Termin" : `${termineGesamt} Termine`);
-      zelle.title = teile.join(", ");
-    }
-    kalRaster.appendChild(zelle);
   }
+}
+
+function baueTagesZelle(tag, spalte, ctx) {
+  const { tage, plan, ueberzaehlig, spurenJeWoche, wocheVon, heute } = ctx;
+  const iso = isoTag(kalJahr, kalMonatNr, tag);
+  const todosDesTages = tage[iso] || [];
+  const reihen = plan[iso] || [];
+  const termineImRaster = reihen.filter(Boolean).length;
+  // "+" nur, wenn wirklich etwas WEGGELASSEN wurde - nicht schon, sobald an
+  // einem Tag vier Dinge stehen, die alle sichtbar sind.
+  const versteckt = Math.max(0, todosDesTages.length - 3) + (ueberzaehlig[iso] || 0);
+  const zelle = document.createElement("button");
+  zelle.type = "button";
+  zelle.className = "kal-tag";
+  zelle.dataset.tag = iso;
+  if (iso === heute) zelle.classList.add("heute");
+  if (iso === kalAuswahl) zelle.classList.add("gewaehlt");
+  // Rot faerbt nur ueberfaelliges ToDo-Datum, nie ein vergangener Termin.
+  if (todosDesTages.length && iso < heute) zelle.classList.add("ueberfaellig");
+  if (versteckt > 0) zelle.classList.add("viele");
+
+  const zahl = document.createElement("span");
+  zahl.className = "kal-zahl";
+  zahl.textContent = String(tag);
+  zelle.appendChild(zahl);
+
+  // Punkt = ToDo, Balken = Termin. Zwei Formen statt zweier Farbtoene: die
+  // Farben gehoeren jetzt den Bereichen bzw. Google und koennen sich
+  // gleichen, die Form bleibt eindeutig.
+  const punkte = document.createElement("span");
+  punkte.className = "kal-punkte";
+  for (const t of todosDesTages.slice(0, 3)) {
+    const punkt = document.createElement("span");
+    punkt.className = "kal-punkt" + (t.farbe ? " farbe-" + t.farbe : "");
+    punkte.appendChild(punkt);
+  }
+  zelle.appendChild(punkte);
+
+  // Balken laufen ueber die Zellgrenze hinweg zusammen, wenn der Termin am
+  // Nachbartag weitergeht - ausser am Wochenrand, dort endet die Zeile.
+  // Freie Spuren werden als unsichtbarer Platzhalter mitgezeichnet, sonst
+  // ruecken tiefere Balken nach oben und die Linie versetzt sich.
+  const stapel = document.createElement("span");
+  stapel.className = "kal-balken-stapel";
+  for (let s = 0; s < (spurenJeWoche[wocheVon(tag)] || 0); s++) {
+    const eintrag = reihen[s];
+    const balken = document.createElement("span");
+    if (!eintrag) {
+      balken.className = "kal-balken kal-balken-luecke";
+      stapel.appendChild(balken);
+      continue;
+    }
+    balken.className = "kal-balken"
+      + (eintrag.weiterLinks && spalte > 0 ? " weiter-links" : "")
+      + (eintrag.weiterRechts && spalte < 6 ? " weiter-rechts" : "");
+    const farbe = farbWert(eintrag.termin.farbe);
+    if (farbe) balken.style.background = farbe;
+    stapel.appendChild(balken);
+  }
+  zelle.appendChild(stapel);
+
+  const termineGesamt = termineImRaster + (ueberzaehlig[iso] || 0);
+  if (todosDesTages.length || termineGesamt) {
+    const teile = [];
+    if (todosDesTages.length) teile.push(todosDesTages.length === 1 ? "1 ToDo" : `${todosDesTages.length} ToDos`);
+    if (termineGesamt) teile.push(termineGesamt === 1 ? "1 Termin" : `${termineGesamt} Termine`);
+    zelle.title = teile.join(", ");
+  }
+  return zelle;
 }
 
 function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
