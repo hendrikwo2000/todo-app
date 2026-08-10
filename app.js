@@ -2606,18 +2606,11 @@ function baueAddKnopfzeile(cat) {
   const zeile = document.createElement("div");
   zeile.className = "col-tools";
 
-  const todoBtn = document.createElement("button");
-  todoBtn.type = "button";
-  todoBtn.className = "col-add-btn";
-  todoBtn.textContent = "＋ ToDo";
-  todoBtn.addEventListener("click", () => openAdd(cat.id, null));
-  zeile.appendChild(todoBtn);
-
-  // Farbe und ＋ Thema stehen seltener im Weg als ein ToDo - deshalb nur
-  // sichtbar, solange fuer DIESEN Bereich die Werkzeuge aufgeklappt sind.
+  // Farbe, ＋ ToDo, ＋ Thema - in dieser Reihenfolge. Farbe und ＋ Thema
+  // stehen seltener im Weg als ein ToDo - deshalb nur sichtbar, solange fuer
+  // DIESEN Bereich die Werkzeuge aufgeklappt sind.
+  const farbeOffen = themaWerkzeugeFuer === cat.id && farbePickerFuer === cat.id;
   if (themaWerkzeugeFuer === cat.id) {
-    const farbeOffen = farbePickerFuer === cat.id;
-
     const farbeBtn = document.createElement("button");
     farbeBtn.type = "button";
     farbeBtn.className = "farbe-punkt" + (cat.farbe ? " farbe-" + cat.farbe : "");
@@ -2650,7 +2643,16 @@ function baueAddKnopfzeile(cat) {
       });
       zeile.appendChild(popup);
     }
+  }
 
+  const todoBtn = document.createElement("button");
+  todoBtn.type = "button";
+  todoBtn.className = "col-add-btn";
+  todoBtn.textContent = "＋ ToDo";
+  todoBtn.addEventListener("click", () => openAdd(cat.id, null));
+  zeile.appendChild(todoBtn);
+
+  if (themaWerkzeugeFuer === cat.id) {
     const themaBtn = document.createElement("button");
     themaBtn.type = "button";
     themaBtn.className = "col-thema-btn";
@@ -2915,7 +2917,7 @@ function renderTodo(t) {
         </span>
         ${unterpunktOffen
           ? `<input type="text" class="edit-unterpunkt-neu" data-neuer-unterpunkt="${t.id}" placeholder="＋ Unterpunkt" autocomplete="off">`
-          : `<button type="button" class="add-icon" data-act="unterpunkt" title="Unterpunkt hinzufügen">✓</button>`}
+          : `<button type="button" class="add-icon" data-act="unterpunkt" title="Unterpunkt hinzufügen">✅</button>`}
         <button class="btn primary" data-act="save">OK</button>
         <button class="btn" data-act="cancel">Abbrechen</button>
       </div>`;
