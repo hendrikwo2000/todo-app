@@ -259,6 +259,64 @@ function termineNachTagen() {
   return tage;
 }
 
+// Wie viele Balken-Reihen ("Spuren") eine Tageszelle hoechstens zeigt.
+const MAX_SPUREN = 3;
+
+/**
+ * Spurenplan fuers Monatsraster.
+ *
+ * Jeder Termin bekommt EINE Reihe, die er ueber alle seine Tage behaelt.
+ * Vorher wurden die Balken je Tag neu einsortiert - kam an einem Tag ein
+ * Einzeltermin dazu, rutschte der mehrtaegige in eine andere Reihe oder fiel
+ * ganz aus der Anzeige, und die durchgezogene Linie riss auf.
+ *
+ * Sortiert wird nach LAENGE zuerst: die langen Termine belegen ihre Spur als
+ * Erste, an einem vollen Tag weicht also eher ein Einzeltermin unter das "+".
+ * Genau so bleibt die Linie garantiert ungebrochen.
+ *
+ * Liefert { plan, ueberzaehlig }:
+ *   plan[iso][spur] = { termin, weiterLinks, weiterRechts } (Luecken = leer)
+ *   ueberzaehlig[iso] = Anzahl Termine, die an dem Tag keine Spur bekamen
+ */
+function baueSpurenplan() {
+  const plan = {};
+  const ueberzaehlig = {};
+  if (!googleZustand.verbunden) return { plan, ueberzaehlig };
+
+  const sichtbar = googleTermine
+    .filter(t => quelleAn("gcal:" + t.kalenderId))
+    .map(t => ({ termin: t, tage: tageEinesTermins(t) }))
+    .filter(e => e.tage.length);
+
+  sichtbar.sort((a, b) => {
+    if (a.tage.length !== b.tage.length) return b.tage.length - a.tage.length;
+    if (a.termin.ganztags !== b.termin.ganztags) return a.termin.ganztags ? -1 : 1;
+    return String(a.termin.start) < String(b.termin.start) ? -1 : 1;
+  });
+
+  const belegt = {};   // iso -> Set der schon vergebenen Spuren
+  for (const e of sichtbar) {
+    let spur = -1;
+    for (let s = 0; s < MAX_SPUREN; s++) {
+      if (e.tage.every(tag => !(belegt[tag] && belegt[tag].has(s)))) { spur = s; break; }
+    }
+    if (spur < 0) {
+      for (const tag of e.tage) ueberzaehlig[tag] = (ueberzaehlig[tag] || 0) + 1;
+      continue;
+    }
+    e.tage.forEach((tag, i) => {
+      (belegt[tag] = belegt[tag] || new Set()).add(spur);
+      const reihen = plan[tag] = plan[tag] || [];
+      reihen[spur] = {
+        termin: e.termin,
+        weiterLinks: i > 0,
+        weiterRechts: i < e.tage.length - 1,
+      };
+    });
+  }
+  return { plan, ueberzaehlig };
+}
+
 // Google liefert Farben als "#7986cb". Vor dem Einsetzen in einen style-Wert
 // pruefen: alles andere waere fremder Text in unserem CSS.
 function farbWert(hex) {
@@ -294,7 +352,9 @@ function zeichneKalender() {
   kalUeberfaellig.classList.toggle("gewaehlt", kalAuswahl === UEBERFAELLIG);
 
   zeichneFilter();
-  zeichneRaster(tage, tageTermine, heute);
+  // Das Raster arbeitet mit dem Spurenplan (feste Reihen), die Tagesliste mit
+  // der zeitlichen Sortierung - zwei verschiedene Fragen an dieselben Daten.
+  zeichneRaster(tage, baueSpurenplan(), heute);
   zeichneTagesliste(tage, tageTermine, ueberfaellige, heute);
 
   // Laeuft nebenher und zeichnet bei neuen Daten selbst noch einmal; ist der
@@ -340,7 +400,8 @@ function zeichneFilter() {
   }
 }
 
-function zeichneRaster(tage, tageTermine, heute) {
+function zeichneRaster(tage, spuren, heute) {
+  const { plan, ueberzaehlig } = spuren;
   kalWochentage.innerHTML = "";
   for (const w of WOCHENTAGE) {
     const zelle = document.createElement("span");
@@ -352,6 +413,18 @@ function zeichneRaster(tage, tageTermine, heute) {
   // getDay() zaehlt ab Sonntag, das Raster beginnt aber am Montag.
   const ersterWochentag = (new Date(kalJahr, kalMonatNr, 1).getDay() + 6) % 7;
   const tageImMonat = new Date(kalJahr, kalMonatNr + 1, 0).getDate();
+  const wocheVon = tag => Math.floor((ersterWochentag + tag - 1) / 7);
+
+  // Wie viele Spuren jede WOCHE braucht. Je Woche gerechnet, nicht je Tag:
+  // innerhalb einer Zeile muessen die Balken derselben Spur auf gleicher Hoehe
+  // liegen, sonst versetzt sich die Linie von Tag zu Tag. Ruhige Wochen
+  // bleiben dafuer flach.
+  const spurenJeWoche = [];
+  for (let tag = 1; tag <= tageImMonat; tag++) {
+    const reihen = plan[isoTag(kalJahr, kalMonatNr, tag)] || [];
+    const w = wocheVon(tag);
+    spurenJeWoche[w] = Math.max(spurenJeWoche[w] || 0, reihen.length);
+  }
 
   // Leerzellen vor dem Monatsersten. Bewusst LEER statt blasser Nachbartage:
   // ein Tag ohne Punkte sieht frei aus - das darf er nur, wenn es stimmt.
@@ -362,8 +435,11 @@ function zeichneRaster(tage, tageTermine, heute) {
   for (let tag = 1; tag <= tageImMonat; tag++) {
     const iso = isoTag(kalJahr, kalMonatNr, tag);
     const todosDesTages = tage[iso] || [];
-    const termineDesTages = tageTermine[iso] || [];
-    const gesamt = todosDesTages.length + termineDesTages.length;
+    const reihen = plan[iso] || [];
+    const termineImRaster = reihen.filter(Boolean).length;
+    // "+" nur, wenn wirklich etwas WEGGELASSEN wurde - nicht schon, sobald an
+    // einem Tag vier Dinge stehen, die alle sichtbar sind.
+    const versteckt = Math.max(0, todosDesTages.length - 3) + (ueberzaehlig[iso] || 0);
     const zelle = document.createElement("button");
     zelle.type = "button";
     zelle.className = "kal-tag";
@@ -372,7 +448,7 @@ function zeichneRaster(tage, tageTermine, heute) {
     if (iso === kalAuswahl) zelle.classList.add("gewaehlt");
     // Rot faerbt nur ueberfaelliges ToDo-Datum, nie ein vergangener Termin.
     if (todosDesTages.length && iso < heute) zelle.classList.add("ueberfaellig");
-    if (gesamt > 3) zelle.classList.add("viele");
+    if (versteckt > 0) zelle.classList.add("viele");
 
     const zahl = document.createElement("span");
     zahl.className = "kal-zahl";
@@ -393,11 +469,19 @@ function zeichneRaster(tage, tageTermine, heute) {
 
     // Balken laufen ueber die Zellgrenze hinweg zusammen, wenn der Termin am
     // Nachbartag weitergeht - ausser am Wochenrand, dort endet die Zeile.
+    // Freie Spuren werden als unsichtbarer Platzhalter mitgezeichnet, sonst
+    // ruecken tiefere Balken nach oben und die Linie versetzt sich.
     const spalte = (ersterWochentag + tag - 1) % 7;
     const stapel = document.createElement("span");
     stapel.className = "kal-balken-stapel";
-    for (const eintrag of termineDesTages.slice(0, 2)) {
+    for (let s = 0; s < (spurenJeWoche[wocheVon(tag)] || 0); s++) {
+      const eintrag = reihen[s];
       const balken = document.createElement("span");
+      if (!eintrag) {
+        balken.className = "kal-balken kal-balken-luecke";
+        stapel.appendChild(balken);
+        continue;
+      }
       balken.className = "kal-balken"
         + (eintrag.weiterLinks && spalte > 0 ? " weiter-links" : "")
         + (eintrag.weiterRechts && spalte < 6 ? " weiter-rechts" : "");
@@ -407,10 +491,11 @@ function zeichneRaster(tage, tageTermine, heute) {
     }
     zelle.appendChild(stapel);
 
-    if (gesamt) {
+    const termineGesamt = termineImRaster + (ueberzaehlig[iso] || 0);
+    if (todosDesTages.length || termineGesamt) {
       const teile = [];
       if (todosDesTages.length) teile.push(todosDesTages.length === 1 ? "1 ToDo" : `${todosDesTages.length} ToDos`);
-      if (termineDesTages.length) teile.push(termineDesTages.length === 1 ? "1 Termin" : `${termineDesTages.length} Termine`);
+      if (termineGesamt) teile.push(termineGesamt === 1 ? "1 Termin" : `${termineGesamt} Termine`);
       zelle.title = teile.join(", ");
     }
     kalRaster.appendChild(zelle);

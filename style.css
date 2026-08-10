@@ -1597,6 +1597,11 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
   margin-right: -5px;
   border-top-right-radius: 0; border-bottom-right-radius: 0;
 }
+/* Freie Spur: haelt nur den Platz, damit ein Balken in Spur 2 auf allen Tagen
+   der Woche auf derselben Hoehe liegt. Ohne den Platzhalter ruecken tiefere
+   Balken nach oben und die durchgezogene Linie versetzt sich. */
+.kal-balken-luecke { background: transparent; }
+
 /* Dieselbe Form als Marke in der Filter-Pille. */
 .kal-balken-marke { flex: none; width: 13px; height: 5px; }
 

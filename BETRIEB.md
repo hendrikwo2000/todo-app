@@ -743,6 +743,21 @@ Anschluss, sonst zöge der Balken quer über den Zeilenumbruch. Vorher stand an
 jedem Tag ein einzelner Punkt, was einen mehrtägigen Termin wie mehrere
 einzelne aussehen ließ.
 
+**Feste Spuren im Raster.** `baueSpurenplan()` gibt jedem Termin EINE Reihe,
+die er über alle seine Tage behält; freie Reihen werden als unsichtbare
+Platzhalter mitgezeichnet. Vorher wurden die Balken je Tag neu einsortiert —
+kam an einem Tag ein Einzeltermin dazu, rutschte der mehrtägige in eine andere
+Reihe oder fiel unter die damalige Zwei-Balken-Grenze, und die durchgezogene
+Linie riss auf (live aufgefallen, 10.08.2026). Sortiert wird nach **Länge
+zuerst**: lange Termine belegen ihre Spur als Erste, an einem vollen Tag weicht
+also eher ein Einzeltermin unter das „+". Höchstens `MAX_SPUREN` = 3 Reihen;
+wie viele eine Zelle zeichnet, entscheidet die WOCHE, nicht der Tag — sonst
+lägen gleiche Spuren in einer Zeile auf verschiedenen Höhen.
+
+Das „+" erscheint nur, wenn wirklich etwas weggelassen wurde (mehr als drei
+ToDo-Punkte oder ein Termin ohne Spur) — nicht schon, sobald an einem Tag vier
+Dinge stehen, die alle sichtbar sind.
+
 **Farben.** Der Server liefert je Termin eine fertig aufgelöste Farbe: die
 EIGENE Farbe des Termins (`colorId`, in Google pro Termin einstellbar) schlägt
 die Farbe seines Kalenders. Die Palette dahinter (`/colors`) wird nur geholt,
