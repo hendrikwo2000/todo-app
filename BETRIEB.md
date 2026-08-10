@@ -780,7 +780,13 @@ die Zeitachse. Enthält ein Tag **beides**, trennen die Zwischenüberschriften
 „Termine" und „ToDos"; bei nur einer Sorte bleiben sie weg, sonst wäre es eine
 Beschriftung ohne Gegenstück.
 
-**Jeder Tag hat einen dezenten Rahmen**, der gewählte einen kräftigen Ring
+**Zellen: Zahl oben, Rest darunter.** `justify-content: flex-start` statt
+`center` — sonst wandert die Tageszahl je nach Anzahl der Balken auf und ab und
+steht in einer Zeile nicht mehr auf gleicher Höhe. Mindesthöhe 58 px (vorher
+44), Radius 4 px (vorher 9): im Vergleich mit Googles Monatsansicht wirkte das
+Raster gestaucht und zu stark abgerundet.
+
+**Jeder Tag hat einen dezenten Rahmen**, der gewählte einen Ring
 (`box-shadow: inset`, damit die Rasterlinie stehen bleibt und nichts um einen
 Pixel verrutscht). Vorher war der gewählte Tag vollflächig blau — das schluckte
 Balken, Punkte und Tageszahl gleich mit.

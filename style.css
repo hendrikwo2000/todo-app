@@ -1453,33 +1453,41 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
    Information, die mit den Tagen um Aufmerksamkeit konkurrieren soll. */
 .kal-kw {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  /* 7px statt der 5px Innenabstand der Tageszelle: die Wochenzahl ist
+     kleiner gesetzt und sitzt sonst optisch ueber der Tageszahl. */
+  padding-top: 7px;
   font-size: 10px;
   font-weight: 500;
   color: var(--muted);
   opacity: .65;
   font-variant-numeric: tabular-nums;
 }
-.kal-kw-kopf { font-size: 9px; letter-spacing: .03em; }
+.kal-kw-kopf { font-size: 9px; letter-spacing: .03em; align-items: center; padding-top: 0; }
 /* KW-Spalte abgeschaltet: zurueck auf sieben gleich breite Spalten. */
 .kal-wochentage.ohne-kw, .kal-raster.ohne-kw { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 
 /* Keine feste Quadratform mehr: die Hoehe kommt aus dem Inhalt, seit die
-   Balken ihren Titel tragen. Wochen ohne Termine bleiben flach. */
+   Balken ihren Titel tragen. Wochen ohne Termine bleiben flach.
+
+   Zahl OBEN statt mittig (justify-content: flex-start): so steht sie in jeder
+   Zeile auf gleicher Hoehe, die Balken haengen direkt darunter, und der freie
+   Platz sammelt sich unten - dasselbe Bild wie in einem echten Kalenderblatt.
+   Zentriert wanderte die Zahl je nach Anzahl der Balken auf und ab. */
 .kal-tag {
-  min-height: 44px;
+  min-height: 58px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 3px;
-  padding: 0;
+  padding: 5px 0 0;
   /* Dezenter Rahmen um JEDEN Tag - die Zellen sind sonst nur durch die
      2px-Luecke getrennt, und bei vollen Wochen verschwimmt, was zu welchem
      Tag gehoert. */
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 4px;
   background: none;
   color: var(--text);
   font: inherit; font-size: 13.5px;
@@ -1493,7 +1501,7 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
 .kal-tag.heute { border-color: var(--accent); font-weight: 700; }
 .kal-tag.gewaehlt {
   border-color: var(--accent);
-  box-shadow: inset 0 0 0 2px var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
   background: var(--accent-soft);
 }
 .kal-tag.ueberfaellig .kal-zahl { color: var(--red); font-weight: 700; }
