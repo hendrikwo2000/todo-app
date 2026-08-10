@@ -780,6 +780,11 @@ die Zeitachse. Enthält ein Tag **beides**, trennen die Zwischenüberschriften
 „Termine" und „ToDos"; bei nur einer Sorte bleiben sie weg, sonst wäre es eine
 Beschriftung ohne Gegenstück.
 
+**Jeder Tag hat einen dezenten Rahmen**, der gewählte einen kräftigen Ring
+(`box-shadow: inset`, damit die Rasterlinie stehen bleibt und nichts um einen
+Pixel verrutscht). Vorher war der gewählte Tag vollflächig blau — das schluckte
+Balken, Punkte und Tageszahl gleich mit.
+
 **Punkt = ToDo, Balken = Termin.** Die Unterscheidung läuft über die FORM, nicht
 über den Farbton — Bereichsfarben und Google-Kalenderfarben können sich gleichen.
 Ein erster Versuch mit farbigen RINGEN als Termin-Punkt fiel im Gebrauch durch:
@@ -861,18 +866,38 @@ Google-Termine zählen **nicht** in den Überfällig-Chip und nicht in die
 App-Icon-Badge — das sind keine Aufgaben. Beschreibungen kommen teils als HTML
 und werden entschärft (Tags raus) und als reiner Text gesetzt.
 
-**Anlegen aus dem Kalender.** Unter der Tagesliste ein Feld plus Knöpfe:
+**Der Tagesbereich hat zwei feste Abschnitte** — „Termine" und „ToDos", jeder
+mit einem ＋ in der Überschrift, auch wenn er leer ist. Ein leerer Abschnitt ist
+die ehrlichere Antwort auf „was ist an dem Tag?" als gar keiner, und das ＋
+sitzt da, wo man es sucht. Beim Tageswechsel und beim Schließen räumt
+`schliesseEingaben()` ein halb ausgefülltes Formular weg — es gehört zu genau
+einem Tag.
+
+**Formularwerte liegen in `formularFelder`, nicht im DOM.** Das Panel baut sich
+bei jeder Änderung neu auf; ein halb ausgefülltes Formular wäre sonst weg.
+Gleiche Überlegung wie bei `anlegenText`.
+
+**Anlegen aus dem Kalender.** Unter der Überschrift ein Feld plus Knopf:
 Das ToDo landet in der gerade AKTIVEN Liste und dort ohne Bereich — der
 Kalender kennt keinen Bereich, und „Ohne Bereich" ist genau der Auffang dafür.
 Das Panel bleibt offen und der Fokus im Feld, damit mehrere Tage hintereinander
-zu befüllen sind. Der Knopf „＋ Termin" erscheint nur, wenn die Verknüpfung
+zu befüllen sind. Das ＋ neben „Termine" erscheint nur, wenn die Verknüpfung
 wirklich schreiben darf (`schreiben` aus `/api/google/status`) — ein Knopf, der
-in einen 403 läuft, wäre schlechter als keiner.
+in einen 403 läuft, wäre schlechter als keiner. Aus demselben Grund öffnet ein
+Tipp auf einen Termin nur dann das Formular; ohne Schreibrecht klappt er wie
+früher Ort und Notiz auf.
 
-**Schreiben in Google.** Einziger schreibender Zugriff der App:
-`POST /api/google/termin` legt einen GANZTÄGIGEN Termin im Hauptkalender an,
-mehr nicht (keine Uhrzeit, kein Ort, keine Gäste — das macht man in Google
-selbst). Dafür trägt `SCOPES` zusätzlich `calendar.events`. **Wer vor dieser
+**Schreiben in Google.** `functions/api/google/termin.js` legt an (POST),
+ändert (PUT) und löscht (DELETE) — immer im Hauptkalender. Das Formular deckt
+Titel, ganztägig/Uhrzeit, Start- und Enddatum (auch mehrtägig), Farbe aus
+Googles Palette und Notiz ab. Richtung Google geht ein **PATCH**, kein PUT:
+was das Formular nicht kennt (Ort, Gäste, Erinnerungen), bleibt damit stehen
+statt still gelöscht zu werden. Zwei Eigenheiten stecken in `terminRumpf()`:
+ganztägig braucht `{date}` mit dem Ende als erstem Tag DANACH, terminiert
+`{dateTime}` samt Zeitzone (die schickt der Browser mit). Die Beschreibung
+wird beim LESEN großzügig gekappt (8000 Zeichen), nicht knapp — sie geht beim
+Bearbeiten wieder zurück an Google, und was hier fehlte, wäre dort weg.
+Dafür trägt `SCOPES` zusätzlich `calendar.events`. **Wer vor dieser
 Erweiterung verknüpft hat, hat den Scope nicht im Token**; `google_konten.scopes`
 hält fest, was Google tatsächlich erteilt hat (der Nutzer kann im Dialog
 einzelne Häkchen abwählen — angefragt ist nicht gleich erteilt), und

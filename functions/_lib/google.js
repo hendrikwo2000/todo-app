@@ -249,27 +249,52 @@ export async function termineVon(token, kalenderId, vonIso, bisIso) {
       start: (e.start && (e.start.dateTime || e.start.date)) || null,
       ende: (e.end && (e.end.dateTime || e.end.date)) || null,
       ort: e.location || null,
-      beschreibung: e.description ? String(e.description).slice(0, 500) : null,
+      // Grosszuegig gekappt, nicht knapp: der Text geht beim Bearbeiten im
+      // Panel wieder zurueck an Google - was hier abgeschnitten wuerde, waere
+      // beim naechsten Speichern weg.
+      beschreibung: e.description ? String(e.description).slice(0, 8000) : null,
     }))
     .filter(e => e.start);
 }
 
-/**
- * Ganztaegigen Termin anlegen.
- *
- * Ganztaegig, weil er im Panel aus einer TAGES-Zelle heraus entsteht - eine
- * Uhrzeit gibt es an der Stelle gar nicht. Google erwartet das Ende als ersten
- * Tag DANACH (exklusiv), deshalb der Tag Aufschlag.
- */
-export async function legeTerminAn(token, kalenderId, { titel, datum }) {
-  const ende = new Date(datum + "T00:00:00");
-  ende.setDate(ende.getDate() + 1);
-  const endeIso = `${ende.getFullYear()}-${String(ende.getMonth() + 1).padStart(2, "0")}-${String(ende.getDate()).padStart(2, "0")}`;
+function tagPlusEins(iso) {
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
-  const antwort = await fetch(`${API_BASE}/calendars/${encodeURIComponent(kalenderId)}/events`, {
-    method: "POST",
+/**
+ * Termin-Rumpf fuer Google aus den Feldern des Formulars.
+ *
+ * Ganztaegig gibt Google als {date} an, terminiert als {dateTime} - und beim
+ * ganztaegigen erwartet es das Ende als ersten Tag DANACH (exklusiv). Genau
+ * diese beiden Eigenheiten sind der Grund, warum das hier eine eigene
+ * Funktion ist und nicht dreimal im Endpunkt steht.
+ */
+export function terminRumpf({ titel, ganztags, startDatum, endDatum, vonZeit, bisZeit, farbe, notiz, zeitzone }) {
+  const bis = endDatum || startDatum;
+  const rumpf = {
+    summary: titel,
+    // Leerer String statt null: nur so LOESCHT Google eine vorhandene Notiz
+    // beim Aendern wieder.
+    description: notiz || "",
+    start: ganztags ? { date: startDatum } : { dateTime: `${startDatum}T${vonZeit}:00`, timeZone: zeitzone },
+    end:   ganztags ? { date: tagPlusEins(bis) } : { dateTime: `${bis}T${bisZeit}:00`, timeZone: zeitzone },
+  };
+  // colorId weglassen heisst "Farbe des Kalenders" - dafuer muss das Feld
+  // explizit auf null, sonst bleibt beim Aendern die alte Farbe stehen.
+  rumpf.colorId = farbe || null;
+  return rumpf;
+}
+
+async function schreibeTermin(methode, token, kalenderId, terminId, rumpf) {
+  const pfad = terminId
+    ? `${API_BASE}/calendars/${encodeURIComponent(kalenderId)}/events/${encodeURIComponent(terminId)}`
+    : `${API_BASE}/calendars/${encodeURIComponent(kalenderId)}/events`;
+  const antwort = await fetch(pfad, {
+    method: methode,
     headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-    body: JSON.stringify({ summary: titel, start: { date: datum }, end: { date: endeIso } }),
+    body: rumpf ? JSON.stringify(rumpf) : undefined,
   });
   if (antwort.status === 401) throw getrenntFehler("Google verweigert den Zugriff");
   // 403 heisst hier fast immer: das Token traegt den Schreib-Scope nicht,
@@ -279,8 +304,28 @@ export async function legeTerminAn(token, kalenderId, { titel, datum }) {
     e.code = "kein-schreibrecht";
     throw e;
   }
+  if (antwort.status === 404 || antwort.status === 410) {
+    const e = new Error("Termin gibt es nicht mehr");
+    e.code = "weg";
+    throw e;
+  }
   if (!antwort.ok) throw new Error("Google antwortet mit " + antwort.status);
-  return await antwort.json();
+  // DELETE antwortet mit 204 ohne Rumpf.
+  return antwort.status === 204 ? {} : await antwort.json();
+}
+
+export function legeTerminAn(token, kalenderId, felder) {
+  return schreibeTermin("POST", token, kalenderId, null, terminRumpf(felder));
+}
+
+// PATCH statt PUT: was wir nicht schicken (Ort, Gaeste, Erinnerungen),
+// bleibt bei Google unangetastet. Ein PUT wuerde es stillschweigend loeschen.
+export function aendereTermin(token, kalenderId, terminId, felder) {
+  return schreibeTermin("PATCH", token, kalenderId, terminId, terminRumpf(felder));
+}
+
+export function loescheTermin(token, kalenderId, terminId) {
+  return schreibeTermin("DELETE", token, kalenderId, terminId, null);
 }
 
 export async function widerrufe(token) {

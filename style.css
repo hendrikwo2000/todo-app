@@ -1475,7 +1475,10 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
   justify-content: center;
   gap: 3px;
   padding: 0;
-  border: 1px solid transparent;
+  /* Dezenter Rahmen um JEDEN Tag - die Zellen sind sonst nur durch die
+     2px-Luecke getrennt, und bei vollen Wochen verschwimmt, was zu welchem
+     Tag gehoert. */
+  border: 1px solid var(--line);
   border-radius: 9px;
   background: none;
   color: var(--text);
@@ -1483,10 +1486,17 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
   cursor: pointer;
 }
 .kal-tag:hover { background: var(--hover); }
+/* Heute: farbiger Rand und fette Zahl. Gewaehlt: KRAEFTIGER Ring statt einer
+   blauen Flaeche - die schluckte Balken, Punkte und Tageszahl gleich mit.
+   Der Ring liegt als inset-Schatten INNEN, damit die 1px-Rasterlinie stehen
+   bleibt und nichts um einen Pixel verrutscht. */
 .kal-tag.heute { border-color: var(--accent); font-weight: 700; }
-.kal-tag.gewaehlt { background: var(--accent); border-color: var(--accent); color: #fff; }
+.kal-tag.gewaehlt {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  background: var(--accent-soft);
+}
 .kal-tag.ueberfaellig .kal-zahl { color: var(--red); font-weight: 700; }
-.kal-tag.gewaehlt.ueberfaellig .kal-zahl { color: #fff; }
 .kal-zahl { line-height: 1; }
 
 .kal-punkte { display: flex; align-items: center; gap: 3px; height: 6px; }
@@ -1504,8 +1514,7 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
 .kal-punkt.farbe-grau    { background: var(--farbe-grau); }
 /* Mehr als drei ToDos an einem Tag: drei Punkte plus ein kleines Plus. */
 .kal-tag.viele .kal-punkte::after { content: "+"; font-size: 10px; line-height: 1; color: var(--muted); }
-.kal-tag.gewaehlt .kal-punkt { background: rgba(255, 255, 255, .92); }
-.kal-tag.gewaehlt .kal-punkte::after { color: rgba(255, 255, 255, .92); }
+
 
 .kal-liste {
   flex: 1;
@@ -1670,11 +1679,28 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
 
 /* Zwischenueberschriften in der Tagesliste - nur wenn ein Tag BEIDES hat. */
 .kal-gruppe {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin: 7px 0 1px;
   font-size: 11px; font-weight: 700;
   letter-spacing: .06em; text-transform: uppercase;
   color: var(--muted);
 }
+/* Das ＋ sitzt in der Ueberschrift, nicht am Ende der Liste: dort sucht man
+   es, wenn der Abschnitt leer ist. */
+.kal-gruppe-plus {
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--row);
+  color: var(--muted);
+  font: inherit; font-size: 13px; line-height: 1;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.kal-gruppe-plus:hover { color: var(--accent); border-color: var(--accent); }
 .kal-gruppe:first-child { margin-top: 0; }
 
 .kal-termin-box { display: flex; flex-direction: column; }
@@ -1773,3 +1799,62 @@ body.zieht, body.zieht .todo {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+
+/* ---------- Termin-Formular im Panel ---------- */
+/* Klappt an Ort und Stelle auf, damit der Tag daneben sichtbar bleibt. */
+.kal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 2px 0 4px;
+  padding: 10px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--col-bg);
+}
+.kal-form input[type="text"],
+.kal-form input[type="date"],
+.kal-form input[type="time"],
+.kal-form textarea {
+  font: inherit;
+  font-size: 13.5px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--row);
+  color: var(--text);
+  outline: none;
+  min-width: 0;
+}
+.kal-form-titel { width: 100%; font-size: 14.5px; font-weight: 600; }
+.kal-form-schalter {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--text); cursor: pointer;
+}
+.kal-form-zeile { display: flex; align-items: center; gap: 6px; }
+.kal-form-zeile input { flex: 1 1 0; }
+.kal-form-label { flex: none; width: 28px; font-size: 12px; color: var(--muted); }
+.kal-form-notiz { width: 100%; resize: vertical; }
+.kal-form-ort { margin: 0; font-size: 12.5px; color: var(--muted); }
+
+/* Farbwahl aus Googles Palette - eine eigene Skala waere im Google-Kalender
+   hinterher nicht wiederzuerkennen. */
+.kal-form-farben { display: flex; flex-wrap: wrap; gap: 6px; }
+.kal-farbe {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: var(--muted);
+  cursor: pointer;
+  padding: 0;
+}
+.kal-farbe.gewaehlt { border-color: var(--text); }
+/* "Farbe des Kalenders": kein eigener Ton, sondern ein leerer Ring. */
+.kal-farbe-standard {
+  background: transparent;
+  border: 2px dashed var(--check-border);
+}
+.kal-farbe-standard.gewaehlt { border-color: var(--text); border-style: solid; }
+
+.kal-form-knoepfe { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.kal-form-knoepfe .btn.gefahr { margin-left: auto; }

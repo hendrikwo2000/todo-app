@@ -5,11 +5,12 @@
 
    Zeigt alle offenen ToDos MIT Termin aus ALLEN geladenen Listen (eigene
    und geteilte) sowie - falls verknuepft - die Termine aus Google Kalender:
-   Monatsraster oben, Tagesliste darunter. Rein lesend - ein Tipp auf ein
-   ToDo schliesst das Panel und oeffnet es im gewohnten Bearbeiten-Modus auf
-   dem Board, ein Tipp auf einen Google-Termin klappt dessen Details auf.
-   Deshalb braucht der Kalender keine eigene Speicher-, Wiederholungs- oder
-   Unterpunkt-Logik - und fuer Google gar keine Schreibrechte.
+   Monatsraster oben, Tagesliste darunter. Ein Tipp auf ein ToDo schliesst
+   das Panel und oeffnet es im gewohnten Bearbeiten-Modus auf dem Board -
+   der Kalender braucht dadurch keine eigene Speicher-, Wiederholungs- oder
+   Unterpunkt-Logik. Google-Termine dagegen bearbeitet er selbst (Titel,
+   Dauer, Farbe, Notiz) und legt sie an; dafuer traegt die Verknuepfung den
+   Schreib-Scope, siehe functions/_lib/google.js.
 
    Laeuft NACH app.js und liest dessen Zustand direkt (daten, listen,
    aktiveListe). Eigene Datei nur, damit app.js nicht weiter waechst; die
@@ -52,7 +53,7 @@ let kalAuswahl = null;   // ISO-Tag, UEBERFAELLIG oder null (nichts gewaehlt)
 // fertige Termine und kennt kein Google-Token. `moeglich` bleibt false,
 // solange im Pages-Projekt keine Zugangsdaten liegen - dann existiert die
 // Funktion fuer den Nutzer gar nicht, statt ins Leere zu laufen.
-let googleZustand = { moeglich: false, verbunden: false, email: null, schreiben: false, kalender: [] };
+let googleZustand = { moeglich: false, verbunden: false, email: null, schreiben: false, kalender: [], palette: {} };
 let googleTermine = [];      // Termine des geladenen Zeitraums
 let googleGeladen = null;    // Schluessel aus Monat + eingeschalteten Kalendern
 let googleLaedt = false;
@@ -80,6 +81,15 @@ let offeneTermine = new Set();
 // Halb getippter Titel im Anlege-Feld. Das Panel zeichnet sich bei jeder
 // Aenderung neu; ohne diesen Zwischenspeicher waere der Text dann weg.
 let anlegenText = "";
+let todoEingabeOffen = false;
+
+// Termin-Formular: offen ja/nein, welcher Termin (null = neuer), und die
+// Feldwerte. Auch die liegen hier und nicht im DOM - das Panel baut sich bei
+// jeder Aenderung neu auf, ein halb ausgefuelltes Formular waere sonst weg.
+let formularOffen = false;
+let formularTermin = null;
+let formularFelder = null;
+let loeschFrage = false;
 
 // Schluessel der Kalenderwochen-Spalte im selben Umschalt-Vorrat wie die
 // Listen und Kalender - sie ist zwar keine Datenquelle, wird aber genauso
@@ -209,6 +219,7 @@ async function ladeGoogle() {
       googleZustand.verbunden = !!d.verbunden;
       googleZustand.email = d.email || null;
       googleZustand.schreiben = !!d.schreiben;
+      googleZustand.palette = d.palette || {};
       if (Array.isArray(d.kalender)) {
         googleZustand.kalender = d.kalender;
         merkeNeueKalender(d.kalender);
@@ -653,30 +664,44 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     kalTagesliste.appendChild(kopf);
   }
 
-  // Termine oben (ganztaegig, dann nach Uhrzeit - so sortiert sie
-  // termineNachTagen), ToDos darunter: die haben keine Uhrzeit und gehoeren
-  // nicht in die Zeitachse des Tages.
-  //
-  // Die Zwischenueberschriften erscheinen nur, wenn der Tag BEIDES enthaelt -
-  // ueber einer einzelnen Sorte waeren sie eine Beschriftung ohne Gegenstueck.
-  const beides = termineDesTages.length > 0 && todosDesTages.length > 0;
-  if (beides) kalTagesliste.appendChild(baueGruppenKopf("Termine"));
-  for (const eintrag of termineDesTages) kalTagesliste.appendChild(baueTerminZeile(eintrag.termin));
-  if (beides) kalTagesliste.appendChild(baueGruppenKopf("ToDos"));
-  for (const t of todosDesTages) kalTagesliste.appendChild(baueEintrag(t, mitDatum));
+  // Ein echter Tag ist gewaehlt: zwei feste Abschnitte, jeder mit eigener
+  // Ueberschrift und einem ＋ daneben - auch wenn er leer ist. Ein leerer
+  // Abschnitt ist die ehrlichere Antwort auf "was ist an dem Tag?" als gar
+  // keiner, und das ＋ sitzt genau da, wo man es sucht.
+  const echterTag = !!kalAuswahl && kalAuswahl !== UEBERFAELLIG;
 
-  if (!todosDesTages.length && !termineDesTages.length) {
-    const leer = document.createElement("p");
-    leer.className = "kal-leer";
-    leer.textContent = kalAuswahl ? "Nichts fällig." : "In diesem Monat steht nichts an.";
-    kalTagesliste.appendChild(leer);
-  }
+  if (echterTag) {
+    const terminePlus = googleZustand.verbunden && googleZustand.schreiben;
+    kalTagesliste.appendChild(baueGruppenKopf("Termine", terminePlus
+      ? () => oeffneTerminFormular(kalAuswahl, null) : null, "Termin"));
+    if (formularOffen && !formularTermin) {
+      kalTagesliste.appendChild(baueTerminFormular(kalAuswahl, null));
+    }
+    for (const eintrag of termineDesTages) {
+      if (formularOffen && formularTermin === eintrag.termin.id) {
+        kalTagesliste.appendChild(baueTerminFormular(kalAuswahl, eintrag.termin));
+      } else {
+        kalTagesliste.appendChild(baueTerminZeile(eintrag.termin));
+      }
+    }
+    if (!termineDesTages.length && !(formularOffen && !formularTermin)) {
+      kalTagesliste.appendChild(baueLeerZeile(googleZustand.verbunden
+        ? "Keine Termine." : "Kein Google-Kalender verbunden."));
+    }
 
-  // Anlegen direkt fuer den gewaehlten Tag - nur bei einem echten Datum, im
-  // Ueberfaellig-Ausschnitt gibt es keinen Tag, auf den es sich beziehen
-  // koennte.
-  if (kalAuswahl && kalAuswahl !== UEBERFAELLIG && aktiveListe) {
-    kalTagesliste.appendChild(baueAnlegeZeile(kalAuswahl));
+    kalTagesliste.appendChild(baueGruppenKopf("ToDos", aktiveListe
+      ? () => { todoEingabeOffen = true; zeichneKalender(); fokussiereAnlegeFeld(); } : null, "ToDo"));
+    if (todoEingabeOffen && aktiveListe) kalTagesliste.appendChild(baueAnlegeZeile(kalAuswahl));
+    for (const t of todosDesTages) kalTagesliste.appendChild(baueEintrag(t, mitDatum));
+    if (!todosDesTages.length) kalTagesliste.appendChild(baueLeerZeile("Nichts fällig."));
+  } else {
+    // Ueberfaellig-Ausschnitt (oder gar keine Auswahl): nur ToDos, ohne
+    // Ueberschriften - dort gibt es keinen Tag, auf den sich ein ＋ beziehen
+    // koennte.
+    for (const t of todosDesTages) kalTagesliste.appendChild(baueEintrag(t, mitDatum));
+    if (!todosDesTages.length) {
+      kalTagesliste.appendChild(baueLeerZeile(kalAuswahl ? "Nichts fällig." : "In diesem Monat steht nichts an."));
+    }
   }
 
   // Eine Zeile statt einer stillen Luecke, wenn Google gerade nicht mag -
@@ -687,6 +712,229 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     hinweis.textContent = "Google-Termine gerade nicht erreichbar.";
     kalTagesliste.appendChild(hinweis);
   }
+}
+
+/* ---------- Termin-Formular ---------- */
+
+function zeitAus(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? "09:00"
+    : `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+// Formularwerte aus einem bestehenden Termin - oder Vorgaben fuer einen neuen.
+function felderAusTermin(tag, t) {
+  if (!t) {
+    return { titel: "", ganztags: true, startDatum: tag, endDatum: tag,
+             vonZeit: "09:00", bisZeit: "10:00", farbe: "", notiz: "" };
+  }
+  if (t.ganztags) {
+    // Google liefert das Ende ganztaegiger Termine als ersten Tag DANACH -
+    // im Formular gehoert der letzte echte Tag hin.
+    let ende = t.start;
+    if (t.ende) {
+      const d = new Date(t.ende + "T00:00:00");
+      d.setDate(d.getDate() - 1);
+      ende = isoVonDate(d);
+      if (ende < t.start) ende = t.start;
+    }
+    return { titel: t.titel, ganztags: true, startDatum: t.start, endDatum: ende,
+             vonZeit: "09:00", bisZeit: "10:00", farbe: t.colorId || "", notiz: t.beschreibung || "" };
+  }
+  const start = new Date(t.start);
+  const ende = t.ende ? new Date(t.ende) : null;
+  return {
+    titel: t.titel, ganztags: false,
+    startDatum: isNaN(start) ? tag : isoVonDate(start),
+    endDatum: (ende && !isNaN(ende)) ? isoVonDate(ende) : (isNaN(start) ? tag : isoVonDate(start)),
+    vonZeit: zeitAus(t.start), bisZeit: t.ende ? zeitAus(t.ende) : "10:00",
+    farbe: t.colorId || "", notiz: t.beschreibung || "",
+  };
+}
+
+function oeffneTerminFormular(tag, termin) {
+  formularOffen = true;
+  formularTermin = termin ? termin.id : null;
+  formularFelder = felderAusTermin(tag, termin);
+  loeschFrage = false;
+  todoEingabeOffen = false;
+  zeichneKalender();
+  const feld = kalTagesliste.querySelector(".kal-form-titel");
+  if (feld) feld.focus();
+}
+
+function schliesseTerminFormular() {
+  formularOffen = false;
+  formularTermin = null;
+  formularFelder = null;
+  loeschFrage = false;
+  zeichneKalender();
+}
+
+function baueTerminFormular(tag, termin) {
+  const f = formularFelder;
+  const box = document.createElement("div");
+  box.className = "kal-form";
+
+  const titel = document.createElement("input");
+  titel.type = "text";
+  titel.className = "kal-form-titel";
+  titel.placeholder = "Titel des Termins";
+  titel.value = f.titel;
+  titel.addEventListener("input", () => { f.titel = titel.value; });
+  box.appendChild(titel);
+
+  // Ganztaegig blendet die Uhrzeitfelder weg - deshalb neu zeichnen.
+  const schalter = document.createElement("label");
+  schalter.className = "kal-form-schalter";
+  const haken = document.createElement("input");
+  haken.type = "checkbox";
+  haken.checked = f.ganztags;
+  haken.addEventListener("change", () => { f.ganztags = haken.checked; zeichneKalender(); });
+  schalter.appendChild(haken);
+  schalter.appendChild(document.createTextNode(" Ganztägig"));
+  box.appendChild(schalter);
+
+  const datumZeile = (beschriftung, datumsWert, beimDatum, zeitWert, beimZeit) => {
+    const zeile = document.createElement("div");
+    zeile.className = "kal-form-zeile";
+    const label = document.createElement("span");
+    label.className = "kal-form-label";
+    label.textContent = beschriftung;
+    zeile.appendChild(label);
+    const d = document.createElement("input");
+    d.type = "date";
+    d.value = datumsWert;
+    d.addEventListener("change", () => beimDatum(d.value));
+    zeile.appendChild(d);
+    if (!f.ganztags) {
+      const z = document.createElement("input");
+      z.type = "time";
+      z.value = zeitWert;
+      z.addEventListener("change", () => beimZeit(z.value));
+      zeile.appendChild(z);
+    }
+    return zeile;
+  };
+  box.appendChild(datumZeile("Von", f.startDatum, v => {
+    f.startDatum = v;
+    if (f.endDatum < v) f.endDatum = v;   // Ende zieht mit, statt ungueltig zu werden
+  }, f.vonZeit, v => { f.vonZeit = v; }));
+  box.appendChild(datumZeile("Bis", f.endDatum, v => { f.endDatum = v; }, f.bisZeit, v => { f.bisZeit = v; }));
+
+  // Farbauswahl aus Googles eigener Palette - eine eigene Farbskala waere im
+  // Google-Kalender hinterher nicht wiederzuerkennen.
+  const farben = document.createElement("div");
+  farben.className = "kal-form-farben";
+  const knopfFarbe = (id, hex, name) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "kal-farbe" + (String(f.farbe) === String(id) ? " gewaehlt" : "") + (id ? "" : " kal-farbe-standard");
+    b.title = name;
+    if (hex) b.style.background = hex;
+    b.addEventListener("click", () => { f.farbe = id; zeichneKalender(); });
+    return b;
+  };
+  farben.appendChild(knopfFarbe("", null, "Farbe des Kalenders"));
+  for (const [id, hex] of Object.entries(googleZustand.palette || {})) {
+    farben.appendChild(knopfFarbe(id, farbWert(hex), "Farbe " + id));
+  }
+  box.appendChild(farben);
+
+  const notiz = document.createElement("textarea");
+  notiz.className = "kal-form-notiz";
+  notiz.rows = 2;
+  notiz.placeholder = "Notiz (optional)";
+  notiz.value = f.notiz;
+  notiz.addEventListener("input", () => { f.notiz = notiz.value; });
+  box.appendChild(notiz);
+
+  if (termin && termin.ort) {
+    const ort = document.createElement("p");
+    ort.className = "kal-form-ort";
+    ort.textContent = "📍 " + termin.ort;
+    box.appendChild(ort);
+  }
+
+  const knoepfe = document.createElement("div");
+  knoepfe.className = "kal-form-knoepfe";
+
+  const speichern = document.createElement("button");
+  speichern.type = "button";
+  speichern.className = "btn klein primary";
+  speichern.textContent = termin ? "Speichern" : "Anlegen";
+  speichern.addEventListener("click", () => speichereTermin(termin));
+  knoepfe.appendChild(speichern);
+
+  const abbrechen = document.createElement("button");
+  abbrechen.type = "button";
+  abbrechen.className = "btn klein";
+  abbrechen.textContent = "Abbrechen";
+  abbrechen.addEventListener("click", schliesseTerminFormular);
+  knoepfe.appendChild(abbrechen);
+
+  if (termin) {
+    // Zwei Stufen: Loeschen bei Google ist endgueltig, und der Knopf sitzt
+    // direkt neben "Speichern".
+    const loeschen = document.createElement("button");
+    loeschen.type = "button";
+    loeschen.className = "btn klein gefahr";
+    loeschen.textContent = loeschFrage ? "Wirklich löschen?" : "Löschen";
+    loeschen.addEventListener("click", () => {
+      if (!loeschFrage) { loeschFrage = true; zeichneKalender(); return; }
+      loescheTerminBeiGoogle(termin);
+    });
+    knoepfe.appendChild(loeschen);
+  }
+
+  box.appendChild(knoepfe);
+  return box;
+}
+
+async function terminAnfrage(methode, rumpf) {
+  try {
+    const antwort = await fetch("/api/google/termin", {
+      method: methode,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(rumpf),
+    });
+    if (antwort.ok) return true;
+    const d = await antwort.json().catch(() => ({}));
+    snackInfo(d.neuVerknuepfen
+      ? "Dafür einmal in den Einstellungen trennen und neu verbinden."
+      : (d.error || "Google hat die Änderung nicht angenommen."));
+  } catch (e) {
+    snackInfo("Keine Verbindung zu Google.");
+  }
+  return false;
+}
+
+async function speichereTermin(termin) {
+  const f = formularFelder;
+  if (!f || !f.titel.trim()) return;
+  const rumpf = {
+    ...f,
+    titel: f.titel.trim(),
+    zeitzone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin",
+  };
+  if (termin) rumpf.id = termin.id;
+  const ok = await terminAnfrage(termin ? "PUT" : "POST", rumpf);
+  if (!ok) return;
+  schliesseTerminFormular();
+  // Frisch holen statt von Hand nachzupflegen: so steht im Panel genau das,
+  // was bei Google steht.
+  googleGeladen = null;
+  await ladeGoogle();
+  snackInfo(termin ? "Termin geändert." : "Termin angelegt.");
+}
+
+async function loescheTerminBeiGoogle(termin) {
+  const ok = await terminAnfrage("DELETE", { id: termin.id });
+  if (!ok) return;
+  schliesseTerminFormular();
+  googleGeladen = null;
+  await ladeGoogle();
+  snackInfo("Termin gelöscht.");
 }
 
 /**
@@ -720,22 +968,9 @@ function baueAnlegeZeile(tag) {
   const alsToDo = document.createElement("button");
   alsToDo.type = "button";
   alsToDo.className = "btn klein primary";
-  alsToDo.textContent = "＋ ToDo";
+  alsToDo.textContent = "Anlegen";
   alsToDo.addEventListener("click", () => legeToDoAn(tag, feld.value));
   knoepfe.appendChild(alsToDo);
-
-  // Der Termin-Knopf erscheint nur, wenn die Verknuepfung wirklich schreiben
-  // darf - eine aeltere traegt den Scope nicht, und ein Knopf, der dann in
-  // einen Fehler laeuft, waere schlechter als keiner.
-  if (googleZustand.verbunden && googleZustand.schreiben) {
-    const alsTermin = document.createElement("button");
-    alsTermin.type = "button";
-    alsTermin.className = "btn klein";
-    alsTermin.textContent = "＋ Termin";
-    alsTermin.title = "Ganztägiger Termin in deinem Google-Kalender";
-    alsTermin.addEventListener("click", () => legeTerminAn(tag, feld.value));
-    knoepfe.appendChild(alsTermin);
-  }
 
   zeile.appendChild(knoepfe);
   feld.addEventListener("keydown", e => {
@@ -756,35 +991,6 @@ function legeToDoAn(tag, text) {
   fokussiereAnlegeFeld();
 }
 
-async function legeTerminAn(tag, text) {
-  const titel = text.trim();
-  if (!titel) return;
-  anlegenText = "";
-  zeichneKalender();
-  try {
-    const antwort = await fetch("/api/google/termin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titel, datum: tag }),
-    });
-    if (!antwort.ok) {
-      const d = await antwort.json().catch(() => ({}));
-      snackInfo(d.neuVerknuepfen
-        ? "Dafür einmal in den Einstellungen trennen und neu verbinden."
-        : "Google hat den Termin nicht angenommen.");
-      return;
-    }
-    // Frisch holen statt den neuen Termin von Hand einzusortieren: so steht
-    // im Panel genau das, was bei Google steht.
-    googleGeladen = null;
-    await ladeGoogle();
-    snackInfo("Termin angelegt.");
-  } catch (e) {
-    snackInfo("Termin konnte nicht angelegt werden.");
-  }
-  fokussiereAnlegeFeld();
-}
-
 // Nach dem Anlegen zurueck ins Feld, damit der naechste Eintrag ohne
 // Mausweg folgt. Auf dem Handy haelt das nebenbei die Tastatur offen.
 function fokussiereAnlegeFeld() {
@@ -792,11 +998,29 @@ function fokussiereAnlegeFeld() {
   if (feld) feld.focus();
 }
 
-function baueGruppenKopf(text) {
+function baueGruppenKopf(text, beimPlus, einzahl) {
   const kopf = document.createElement("p");
   kopf.className = "kal-gruppe";
-  kopf.textContent = text;
+  const beschriftung = document.createElement("span");
+  beschriftung.textContent = text;
+  kopf.appendChild(beschriftung);
+  if (beimPlus) {
+    const plus = document.createElement("button");
+    plus.type = "button";
+    plus.className = "kal-gruppe-plus";
+    plus.textContent = "＋";
+    plus.title = `${einzahl || text} für diesen Tag anlegen`;
+    plus.addEventListener("click", beimPlus);
+    kopf.appendChild(plus);
+  }
   return kopf;
+}
+
+function baueLeerZeile(text) {
+  const p = document.createElement("p");
+  p.className = "kal-leer";
+  p.textContent = text;
+  return p;
 }
 
 // Google-Termin: rein lesend, ein Tipp klappt Ort und Beschreibung auf.
@@ -812,13 +1036,19 @@ function baueTerminZeile(t) {
   const offen = offeneTermine.has(t.id);
   const hatDetails = !!(t.ort || t.beschreibung);
 
-  // Ohne Ort und Beschreibung gibt es nichts aufzuklappen - dann auch kein
-  // Knopf, der auf einen Tipp mit "nichts da" antwortet.
-  const knopf = document.createElement(hatDetails ? "button" : "div");
-  knopf.className = "kal-eintrag kal-termin" + (offen ? " offen" : "") + (hatDetails ? "" : " kal-termin-still");
-  if (hatDetails) {
+  // Darf die Verknuepfung schreiben, oeffnet ein Tipp den Termin zum
+  // Bearbeiten - das ist dann die naheliegende Erwartung. Sonst bleibt es
+  // beim Aufklappen der Details, und ohne Ort und Beschreibung gibt es gar
+  // nichts anzutippen (ein Knopf, der mit "nichts da" antwortet, waere
+  // schlechter als keiner).
+  const bearbeitbar = googleZustand.verbunden && googleZustand.schreiben;
+  const anklickbar = bearbeitbar || hatDetails;
+  const knopf = document.createElement(anklickbar ? "button" : "div");
+  knopf.className = "kal-eintrag kal-termin" + (offen ? " offen" : "") + (anklickbar ? "" : " kal-termin-still");
+  if (anklickbar) {
     knopf.type = "button";
     knopf.addEventListener("click", () => {
+      if (bearbeitbar) { oeffneTerminFormular(kalAuswahl, t); return; }
       if (offeneTermine.has(t.id)) offeneTermine.delete(t.id);
       else offeneTermine.add(t.id);
       zeichneKalender();
@@ -844,11 +1074,13 @@ function baueTerminZeile(t) {
   text.appendChild(meta);
 
   knopf.appendChild(text);
-  if (hatDetails) {
-    const pfeil = document.createElement("span");
-    pfeil.className = "kal-termin-pfeil";
-    pfeil.textContent = offen ? "▴" : "▾";
-    knopf.appendChild(pfeil);
+  // Das Zeichen rechts sagt, was ein Tipp tut: Stift = oeffnet zum
+  // Bearbeiten, Pfeil = klappt nur Ort und Notiz auf.
+  if (bearbeitbar || hatDetails) {
+    const zeichen = document.createElement("span");
+    zeichen.className = "kal-termin-pfeil";
+    zeichen.textContent = bearbeitbar ? "✏️" : (offen ? "▴" : "▾");
+    knopf.appendChild(zeichen);
   }
   box.appendChild(knopf);
 
@@ -931,7 +1163,19 @@ function springeZuToDo(boardId, todoId) {
 // ---------- Auswahl / Navigation ----------
 function waehleTag(iso) {
   kalAuswahl = (kalAuswahl === iso) ? null : iso;
+  schliesseEingaben();
   zeichneKalender();
+}
+
+// Halb ausgefuelltes Formular und offene Eingabe gehoeren zu EINEM Tag - beim
+// Wechsel woandershin waeren sie nur noch Altlast.
+function schliesseEingaben() {
+  formularOffen = false;
+  formularTermin = null;
+  formularFelder = null;
+  loeschFrage = false;
+  todoEingabeOffen = false;
+  anlegenText = "";
 }
 
 // Beim Monatswechsel den ersten Tag MIT Terminen waehlen - ein leerer
@@ -979,6 +1223,7 @@ function oeffneKalender() {
 
 function schliesseKalender() {
   if (!kalOffen) return;
+  schliesseEingaben();
   kalOffen = false;
   setzePanel(false);
 }
@@ -1097,7 +1342,7 @@ window.kalenderNeuZeichnen = function () {
 // Nach Verbinden/Trennen in den Einstellungen: alles zu Google vergessen und
 // beim naechsten Zeichnen frisch holen (siehe app.js).
 window.kalenderGoogleVergessen = function () {
-  googleZustand = { moeglich: false, verbunden: false, email: null, kalender: [] };
+  googleZustand = { moeglich: false, verbunden: false, email: null, schreiben: false, kalender: [], palette: {} };
   googleTermine = [];
   googleGeladen = null;
   googleAus = false;

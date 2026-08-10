@@ -82,10 +82,13 @@ und die App von dort starten.
   angetippten Tages
 - **⚠ Überfällig** zeigt alles, was liegengeblieben ist — auch aus Vormonaten
 - Ein Tipp auf ein ToDo bringt dich zu ihm auf die Liste, samt Listenwechsel
-- Unter dem Tag ein Feld: Titel tippen, **Enter** — fertig, das ToDo hat das
-  Datum des Tages und landet in deiner aktuellen Liste (ohne Bereich)
-- Ist Google verbunden **und** darf schreiben, legt „＋ Termin" daneben einen
-  ganztägigen Termin in deinem Google-Kalender an
+- Darunter zwei Abschnitte, **Termine** und **ToDos**, jeder mit einem **＋**
+- **＋ bei ToDos:** Titel tippen, Enter — fertig, mit dem Datum des Tages, in
+  deiner aktuellen Liste (ohne Bereich)
+- **＋ bei Termine** (wenn Google verbunden ist) öffnet ein Formular: Titel,
+  ganztägig oder Uhrzeit von–bis, auch über mehrere Tage, Farbe und Notiz
+- Ein Tipp auf einen Google-Termin öffnet ihn zum **Ändern** — dort steht auch
+  der Löschen-Knopf (fragt einmal nach)
 
 Zurück geht es mit einem Wisch nach rechts, einem Tipp daneben oder Escape.
 Auf dem Handy füllt der Kalender den ganzen Bildschirm.

@@ -79,8 +79,11 @@ export async function onRequestGet({ request, env }) {
     // eine eigene Farbe traegt - sonst waere es eine Google-Anfrage umsonst.
     const kalenderFarbe = {};
     for (const k of kalender) kalenderFarbe[k.id] = k.farbe || null;
+    // Die Palette braucht das Panel auch fuer die Farbauswahl im
+    // Termin-Formular - deshalb holen, sobald geschrieben werden darf, und
+    // sonst nur, wenn ueberhaupt ein Termin eine eigene Farbe traegt.
     let palette = {};
-    if (termine.some(t => t.colorId)) {
+    if (darfSchreiben(konto) || termine.some(t => t.colorId)) {
       palette = await farbPalette(token).catch(() => ({}));
     }
     for (const t of termine) {
@@ -92,6 +95,7 @@ export async function onRequestGet({ request, env }) {
       verbunden: true,
       email: konto.google_email,
       schreiben: darfSchreiben(konto),
+      palette,
       kalender,
       termine,
     });
