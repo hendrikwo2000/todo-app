@@ -1641,10 +1641,14 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
   grid-auto-rows: minmax(0, 1fr);
   padding-bottom: max(10px, env(safe-area-inset-bottom));
 }
+/* KEIN overflow: hidden auf der Zelle. Der Balken eines mehrtaegigen Termins
+   laeuft absichtlich ueber seine Zelle hinaus (siehe --spanne weiter unten) -
+   ein Deckel hier schneidet ihn an der Zellkante ab, und aus "Sommerferien"
+   ueber zwei Wochen wird ein Kaestchen an einem Tag. Abgeschnitten wird nur
+   die ToDo-Liste, und die schneidet sich selbst ab. */
 .kalender.vollbild .kal-tag {
   min-height: 0;
   align-items: stretch;
-  overflow: hidden;
 }
 .kalender.vollbild .kal-zahl { text-align: center; }
 .kalender.vollbild .kal-punkte { display: none; }
@@ -1655,11 +1659,15 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
 /* ToDos im Vollbild: eine Zeile je ToDo, farbiger Punkt davor. Bewusst
    dieselbe Zeilenhoehe wie ein Termin-Balken - so bleibt das Bild ruhig,
    egal was an einem Tag steht. */
+/* flex: 1 1 0 statt Inhaltshoehe: nur mit einer BEGRENZTEN Hoehe kann
+   overflow: hidden ueberhaupt etwas abschneiden - sonst waechst die Liste
+   einfach aus der Zelle heraus und der Deckel bleibt wirkungslos. */
 .kal-tag-todos {
   display: flex;
   flex-direction: column;
   gap: 1px;
   padding: 0 3px 3px;
+  flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
 }
