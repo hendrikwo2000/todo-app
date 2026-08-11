@@ -31,8 +31,14 @@ const kalWochentage  = document.getElementById("kalWochentage");
 const kalRaster      = document.getElementById("kalRaster");
 const kalTagesliste  = document.getElementById("kalTagesliste");
 const kalFilter      = document.getElementById("kalFilter");
-const kalWahl        = document.getElementById("kalWahl");
 const kalLock        = document.getElementById("lock");
+
+// Die beiden Dialoge liegen ausserhalb des Panels (siehe index.html) - unter
+// dessen transform waere ein "Vollbild" nur so gross wie der Kalender.
+const kalWahl        = document.getElementById("kalWahl");
+const kalWahlBox     = kalWahl.querySelector(".kal-wahl-box");
+const kalTerminPopup = document.getElementById("kalTerminPopup");
+const kalTerminBox   = kalTerminPopup.querySelector(".kal-termin-popup-box");
 
 const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const MONAT_FORMAT = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
@@ -48,6 +54,15 @@ let kalOffen = false;
 let kalJahr = 0;         // angezeigter Monat
 let kalMonatNr = 0;      // 0-basiert, wie bei Date
 let kalAuswahl = null;   // ISO-Tag, UEBERFAELLIG oder null (nichts gewaehlt)
+
+// Vollbild: Tagesliste weg, Raster ueber die ganze Hoehe. Absichtlich NICHT
+// gemerkt - beim naechsten Oeffnen saehe man eine App ohne Tagesliste und
+// wuesste nicht, warum.
+let kalVollbild = false;
+// Wie viele Zeilen (Balken oder ToDo) eine Tageszelle im Vollbild traegt.
+// 0 = noch nicht gemessen; gefuellt wird es aus der echten Zellenhoehe, weil
+// die von der Bildschirmhoehe und der Zahl der Wochen abhaengt.
+let vollbildPlaetze = 0;
 
 // ---------- Google-Kalender (nur lesen) ----------
 // Die Verbindung haelt der Server (functions/api/google/), die App bekommt
@@ -84,11 +99,13 @@ let offeneTermine = new Set();
 let anlegenText = "";
 let todoEingabeOffen = false;
 
-// Termin-Formular: offen ja/nein, welcher Termin (null = neuer), und die
-// Feldwerte. Auch die liegen hier und nicht im DOM - das Panel baut sich bei
-// jeder Aenderung neu auf, ein halb ausgefuelltes Formular waere sonst weg.
+// Termin-Formular (eigener Dialog): offen ja/nein, welcher Termin (null =
+// neuer), auf welchen Tag er sich bezieht, und die Feldwerte. Auch die liegen
+// hier und nicht im DOM - der Dialog baut sich bei jeder Aenderung neu auf,
+// ein halb ausgefuelltes Formular waere sonst weg.
 let formularOffen = false;
-let formularTermin = null;
+let formularTermin = null;   // das Termin-Objekt, null = neuer Termin
+let formularTag = null;      // ISO-Tag, auf den sich ein neuer Termin bezieht
 let formularFelder = null;
 let loeschFrage = false;
 
@@ -295,7 +312,17 @@ function termineNachTagen() {
 // statt drei, seit die Balken ihren Titel tragen und dadurch deutlich hoeher
 // sind - drei Reihen wuerden das Raster so weit aufblaehen, dass fuer die
 // Tagesliste darunter kaum Platz bliebe.
+//
+// Im Vollbild gilt der gemessene Platz der Zelle - abzueglich EINER Zeile.
+// Die bleibt der Rest-Anzeige vorbehalten ("+3"): ohne sie fraessen an einem
+// vollen Tag die Termine alle Zeilen auf, und die ToDos verschwaenden
+// stillschweigend - ein Tag saehe erledigt aus, obwohl noch etwas ansteht.
+// Vor der ersten Messung ein grosszuegiger Wert: zu viele Spuren kosten nur
+// einen zweiten Zeichendurchgang, zu wenige zeigten beim ersten Bild zu wenig.
 const MAX_SPUREN = 2;
+function maxSpuren() {
+  return kalVollbild ? Math.max(1, (vollbildPlaetze || 6) - 1) : MAX_SPUREN;
+}
 
 /**
  * Spurenplan fuers Monatsraster.
@@ -329,10 +356,11 @@ function baueSpurenplan() {
     return String(a.termin.start) < String(b.termin.start) ? -1 : 1;
   });
 
+  const grenze = maxSpuren();
   const belegt = {};   // iso -> Set der schon vergebenen Spuren
   for (const e of sichtbar) {
     let spur = -1;
-    for (let s = 0; s < MAX_SPUREN; s++) {
+    for (let s = 0; s < grenze; s++) {
       if (e.tage.every(tag => !(belegt[tag] && belegt[tag].has(s)))) { spur = s; break; }
     }
     if (spur < 0) {
@@ -408,10 +436,60 @@ function zeichneKalender() {
   zeichneRaster(tage, baueSpurenplan(), heute);
   zeichneTagesliste(tage, tageTermine, ueberfaellige, heute);
 
+  // Im Vollbild haengt der Zelleninhalt an der Zellenhoehe. Direkt hier
+  // nachmessen, nicht per requestAnimationFrame: clientHeight erzwingt den
+  // Umbruch selbst, ein eventueller zweiter Durchgang laeuft dadurch noch vor
+  // dem Zeichnen (kein Aufblitzen) - und in einem Hintergrund-Tab, wo rAF gar
+  // nicht feuert, bliebe die Messung sonst liegen.
+  if (kalVollbild) messeVollbild();
+
   // Laeuft nebenher und zeichnet bei neuen Daten selbst noch einmal; ist der
   // Zeitraum schon geladen (oder gar kein Google verknuepft), kostet der
   // Aufruf nichts.
   ladeGoogle();
+}
+
+/* ---------- Vollbild ---------- */
+// Hoehe einer Zeile im Raster: 15px Balken bzw. ToDo-Zeile plus 1px Luecke
+// (siehe .kal-balken / .kal-tag-todo im CSS).
+const ZEILE_HOCH = 16;
+// Riegel gegen ein Hin und Her: waehrend des Nachlaufs wird nicht neu gemessen.
+let messLauf = false;
+
+/**
+ * Wie viele Zeilen traegt eine Tageszelle im Vollbild?
+ *
+ * Gemessen statt geraten: die Zellenhoehe haengt am Bildschirm und daran, ob
+ * der Monat vier, fuenf oder sechs Wochenzeilen hat. Ein fester Wert waere auf
+ * dem einen Geraet zu knapp und auf dem anderen halb leer.
+ *
+ * Aendert sich der Wert, wird EINMAL neu gezeichnet; der zweite Durchgang
+ * misst denselben Wert und bricht ab. Die Zellenhoehe haengt dank
+ * grid-auto-rows: 1fr nicht am Inhalt, ein Hin und Her kann also gar nicht
+ * entstehen - der Zaehler ist nur der Riegel davor, falls das CSS eines Tages
+ * doch anders aussieht.
+ */
+function messeVollbild() {
+  if (!kalVollbild || !kalOffen || messLauf) return;
+  const zelle = kalRaster.querySelector(".kal-tag");
+  if (!zelle) return;
+  const zahl = zelle.querySelector(".kal-zahl");
+  // Zellenhoehe minus Tageszahl, Innenabstand oben und der 3px Fuss des
+  // Balken-/ToDo-Stapels.
+  const frei = zelle.clientHeight - ((zahl && zahl.offsetHeight) || 14) - 5 - 3;
+  const plaetze = Math.max(1, Math.floor(frei / ZEILE_HOCH));
+  if (plaetze === vollbildPlaetze) return;
+  vollbildPlaetze = plaetze;
+  messLauf = true;
+  try { zeichneKalender(); } finally { messLauf = false; }
+}
+
+function setzeVollbild(an) {
+  if (kalVollbild === an) return;
+  kalVollbild = an;
+  vollbildPlaetze = 0;   // andere Hoehe, andere Zahl - neu messen
+  kalPanel.classList.toggle("vollbild", an);
+  zeichneKalender();
 }
 
 // Eine Pille je Quelle: ToDo-Listen zuerst, dann die Google-Kalender.
@@ -478,55 +556,92 @@ function kalenderwoche(datum) {
 }
 
 /* ---------- Monat und Jahr direkt waehlen ---------- */
-// Zwei scrollbare Walzen unter der Kopfzeile. Ein Tipp setzt sofort und
-// schliesst - ein zusaetzlicher "Uebernehmen"-Knopf waere fuer eine Auswahl
-// aus zwoelf bzw. gut zwanzig Werten nur ein Klick mehr.
+/**
+ * Eigener Dialog: eine Jahreszeile mit Pfeilen, darunter alle zwoelf Monate
+ * als Kacheln. Ein Tipp auf einen Monat setzt beides und schliesst.
+ *
+ * Frueher war das ein Block, der sich zwischen Kopfzeile und Raster schob -
+ * er zog Raster und Tagesliste nach unten, am Handy bis aus dem Bild heraus.
+ * Ein Dialog legt sich darueber und laesst den Kalender stehen, wo er ist.
+ *
+ * Die Jahres-Pfeile blaettern nur die VORSCHAU (wahlJahr) - erst der Tipp auf
+ * einen Monat uebernimmt. So waehlt man "Maerz 2027" in zwei Schritten, ohne
+ * dass der Kalender zwischendurch in einen Monat springt, den niemand wollte.
+ */
 const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni",
                 "Juli", "August", "September", "Oktober", "November", "Dezember"];
+const MONATE_KURZ = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
+                     "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 let wahlOffen = false;
+let wahlJahr = 0;
 
 function schalteWahl() {
   wahlOffen = !wahlOffen;
+  if (wahlOffen) wahlJahr = kalJahr;
+  zeichneWahl();
+}
+
+function schliesseWahl() {
+  if (!wahlOffen) return;
+  wahlOffen = false;
   zeichneWahl();
 }
 
 function zeichneWahl() {
   kalWahl.hidden = !wahlOffen;
   kalMonatName.classList.toggle("offen", wahlOffen);
-  kalWahl.innerHTML = "";
+  kalWahlBox.innerHTML = "";
   if (!wahlOffen) return;
 
-  const heuteJahr = new Date().getFullYear();
-  const jahre = [];
-  for (let j = Math.min(heuteJahr, kalJahr) - 5; j <= Math.max(heuteJahr, kalJahr) + 5; j++) jahre.push(j);
+  const heute = new Date();
 
-  const walze = (werte, aktiv, beiWahl) => {
-    const spalte = document.createElement("div");
-    spalte.className = "kal-walze";
-    for (const w of werte) {
-      const knopf = document.createElement("button");
-      knopf.type = "button";
-      knopf.className = "kal-walze-wert" + (w.wert === aktiv ? " gewaehlt" : "");
-      knopf.textContent = w.text;
-      knopf.addEventListener("click", () => beiWahl(w.wert));
-      spalte.appendChild(knopf);
-    }
-    return spalte;
+  const kopf = document.createElement("p");
+  kopf.className = "kal-popup-kopf";
+  kopf.appendChild(document.createTextNode("Monat wählen"));
+  const zu = document.createElement("button");
+  zu.type = "button";
+  zu.className = "kal-schliessen";
+  zu.setAttribute("aria-label", "Schließen");
+  zu.textContent = "✕";
+  zu.addEventListener("click", schliesseWahl);
+  kopf.appendChild(zu);
+  kalWahlBox.appendChild(kopf);
+
+  const jahrZeile = document.createElement("div");
+  jahrZeile.className = "kal-jahr-zeile";
+  const jahrPfeil = (zeichen, schritt, beschriftung) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "kal-pfeil";
+    b.textContent = zeichen;
+    b.setAttribute("aria-label", beschriftung);
+    b.addEventListener("click", () => { wahlJahr += schritt; zeichneWahl(); });
+    return b;
   };
+  jahrZeile.appendChild(jahrPfeil("‹", -1, "Vorheriges Jahr"));
+  const jahrWert = document.createElement("span");
+  jahrWert.className = "kal-jahr-wert";
+  jahrWert.textContent = String(wahlJahr);
+  jahrZeile.appendChild(jahrWert);
+  jahrZeile.appendChild(jahrPfeil("›", 1, "Nächstes Jahr"));
+  kalWahlBox.appendChild(jahrZeile);
 
-  kalWahl.appendChild(walze(
-    MONATE.map((name, i) => ({ wert: i, text: name })), kalMonatNr,
-    m => { wahlOffen = false; zeigeMonat(kalJahr, m); zeichneWahl(); }));
-  kalWahl.appendChild(walze(
-    jahre.map(j => ({ wert: j, text: String(j) })), kalJahr,
-    j => { wahlOffen = false; zeigeMonat(j, kalMonatNr); zeichneWahl(); }));
-
-  // Den aktuellen Wert in die Mitte holen - ohne das startet die Jahreswalze
-  // ganz oben, und man sucht erst einmal, wo man ueberhaupt steht.
-  for (const spalte of kalWahl.children) {
-    const treffer = spalte.querySelector(".gewaehlt");
-    if (treffer) spalte.scrollTop = treffer.offsetTop - spalte.clientHeight / 2 + treffer.offsetHeight / 2;
-  }
+  const kacheln = document.createElement("div");
+  kacheln.className = "kal-monate";
+  MONATE.forEach((name, i) => {
+    const k = document.createElement("button");
+    k.type = "button";
+    k.className = "kal-monat-kachel";
+    if (wahlJahr === kalJahr && i === kalMonatNr) k.classList.add("gewaehlt");
+    else if (wahlJahr === heute.getFullYear() && i === heute.getMonth()) k.classList.add("heute");
+    // Lange Namen brechen die Dreier-Reihe auf schmalen Geraeten - drei
+    // Buchstaben reichen, der volle Name steht im title.
+    k.textContent = MONATE_KURZ[i];
+    k.title = name;
+    k.addEventListener("click", () => { wahlOffen = false; zeigeMonat(wahlJahr, i); });
+    kacheln.appendChild(k);
+  });
+  kalWahlBox.appendChild(kacheln);
 }
 
 function zeichneRaster(tage, spuren, heute) {
@@ -674,6 +789,45 @@ function baueTagesZelle(tag, spalte, ctx) {
   }
   zelle.appendChild(stapel);
 
+  // Im Vollbild stehen die ToDos im Klartext unter den Terminen - das ist der
+  // eigentliche Gewinn der grossen Ansicht. Wie viele hineinpassen, sagt die
+  // gemessene Zellenhoehe abzueglich der Balken, die diese WOCHE braucht (je
+  // Woche, nicht je Tag - sonst staende jeder Tag auf anderer Hoehe).
+  if (kalVollbild && (todosDesTages.length || ueberzaehlig[iso])) {
+    const frei = Math.max(0, (vollbildPlaetze || 0) - (spurenJeWoche[wocheVon(tag)] || 0));
+    // Termine, die schon im Raster keine Spur mehr bekommen haben, zaehlen in
+    // dieselbe Restzahl - es geht um die Frage "was steht hier noch?", nicht
+    // um die Herkunft.
+    const restTermine = ueberzaehlig[iso] || 0;
+    // Passt nicht alles, geht der letzte Platz an die "+n"-Zeile: lieber eine
+    // ehrliche Restzahl als eine stillschweigend abgeschnittene Liste.
+    const passtAlles = !restTermine && todosDesTages.length <= frei;
+    const zeige = passtAlles ? todosDesTages.length : Math.max(0, frei - 1);
+    const rest = todosDesTages.length - zeige + restTermine;
+
+    const liste = document.createElement("span");
+    liste.className = "kal-tag-todos";
+    for (const t of todosDesTages.slice(0, zeige)) {
+      const zeile = document.createElement("span");
+      zeile.className = "kal-tag-todo";
+      const punkt = document.createElement("span");
+      punkt.className = "kal-punkt" + (t.farbe ? " farbe-" + t.farbe : "");
+      zeile.appendChild(punkt);
+      const text = document.createElement("span");
+      text.className = "kal-tag-todo-text";
+      text.textContent = t.text;
+      zeile.appendChild(text);
+      liste.appendChild(zeile);
+    }
+    if (rest > 0 && frei > 0) {
+      const mehr = document.createElement("span");
+      mehr.className = "kal-tag-mehr";
+      mehr.textContent = "+" + rest;
+      liste.appendChild(mehr);
+    }
+    zelle.appendChild(liste);
+  }
+
   const termineGesamt = termineImRaster + (ueberzaehlig[iso] || 0);
   if (todosDesTages.length || termineGesamt) {
     const teile = [];
@@ -728,17 +882,10 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     const terminePlus = googleZustand.verbunden && googleZustand.schreiben;
     kalTagesliste.appendChild(baueGruppenKopf("Termine", terminePlus
       ? () => oeffneTerminFormular(kalAuswahl, null) : null, "Termin"));
-    if (formularOffen && !formularTermin) {
-      kalTagesliste.appendChild(baueTerminFormular(kalAuswahl, null));
-    }
     for (const eintrag of termineDesTages) {
-      if (formularOffen && formularTermin === eintrag.termin.id) {
-        kalTagesliste.appendChild(baueTerminFormular(kalAuswahl, eintrag.termin));
-      } else {
-        kalTagesliste.appendChild(baueTerminZeile(eintrag.termin));
-      }
+      kalTagesliste.appendChild(baueTerminZeile(eintrag.termin));
     }
-    if (!termineDesTages.length && !(formularOffen && !formularTermin)) {
+    if (!termineDesTages.length) {
       kalTagesliste.appendChild(baueLeerZeile(googleZustand.verbunden
         ? "Keine Termine." : "Kein Google-Kalender verbunden."));
     }
@@ -809,23 +956,63 @@ function felderAusTermin(tag, t) {
   };
 }
 
+/**
+ * Termin anlegen oder bearbeiten - im eigenen Dialog, am Handy ueber den
+ * ganzen Bildschirm.
+ *
+ * Vorher klappte das Formular in der Tagesliste auf. Dort teilte es sich die
+ * Hoehe mit Raster und Liste, und am Handy war die Haelfte davon nicht zu
+ * sehen: man tippte den Titel, scrollte zu den Datumsfeldern, scrollte
+ * weiter zum Anlegen-Knopf. Neu und Bearbeiten teilen sich denselben Dialog -
+ * es ist dasselbe Formular, nur mit anderer Ueberschrift.
+ */
 function oeffneTerminFormular(tag, termin) {
   formularOffen = true;
-  formularTermin = termin ? termin.id : null;
+  formularTermin = termin || null;
+  formularTag = tag;
   formularFelder = felderAusTermin(tag, termin);
   loeschFrage = false;
   todoEingabeOffen = false;
   zeichneKalender();
-  const feld = kalTagesliste.querySelector(".kal-form-titel");
-  if (feld) feld.focus();
+  zeichneTerminPopup();
+  const feld = kalTerminBox.querySelector(".kal-form-titel");
+  // Nur am Rechner von selbst ins Feld springen: am Handy schoebe die
+  // Tastatur den halben Dialog aus dem Bild, bevor man ihn gesehen hat.
+  if (feld && !("ontouchstart" in window)) feld.focus();
 }
 
 function schliesseTerminFormular() {
+  if (!formularOffen) return;
   formularOffen = false;
   formularTermin = null;
+  formularTag = null;
   formularFelder = null;
   loeschFrage = false;
+  zeichneTerminPopup();
   zeichneKalender();
+}
+
+// Baut den Dialog neu. Bewusst NICHT aus zeichneKalender() heraus: das laeuft
+// auch bei jedem Sync vom Server, und ein Formular, das einem beim Tippen
+// unter den Fingern neu entsteht, verliert Fokus und Cursorposition.
+function zeichneTerminPopup() {
+  kalTerminPopup.hidden = !formularOffen;
+  kalTerminBox.innerHTML = "";
+  if (!formularOffen) return;
+
+  const kopf = document.createElement("p");
+  kopf.className = "kal-popup-kopf";
+  kopf.appendChild(document.createTextNode(formularTermin ? "Termin bearbeiten" : "Neuer Termin"));
+  const zu = document.createElement("button");
+  zu.type = "button";
+  zu.className = "kal-schliessen";
+  zu.setAttribute("aria-label", "Schließen");
+  zu.textContent = "✕";
+  zu.addEventListener("click", schliesseTerminFormular);
+  kopf.appendChild(zu);
+  kalTerminBox.appendChild(kopf);
+
+  kalTerminBox.appendChild(baueTerminFormular(formularTag, formularTermin));
 }
 
 function baueTerminFormular(tag, termin) {
@@ -847,7 +1034,7 @@ function baueTerminFormular(tag, termin) {
   const haken = document.createElement("input");
   haken.type = "checkbox";
   haken.checked = f.ganztags;
-  haken.addEventListener("change", () => { f.ganztags = haken.checked; zeichneKalender(); });
+  haken.addEventListener("change", () => { f.ganztags = haken.checked; zeichneTerminPopup(); });
   schalter.appendChild(haken);
   schalter.appendChild(document.createTextNode(" Ganztägig"));
   box.appendChild(schalter);
@@ -889,7 +1076,7 @@ function baueTerminFormular(tag, termin) {
     b.className = "kal-farbe" + (String(f.farbe) === String(id) ? " gewaehlt" : "") + (id ? "" : " kal-farbe-standard");
     b.title = name;
     if (hex) b.style.background = hex;
-    b.addEventListener("click", () => { f.farbe = id; zeichneKalender(); });
+    b.addEventListener("click", () => { f.farbe = id; zeichneTerminPopup(); });
     return b;
   };
   farben.appendChild(knopfFarbe("", null, "Farbe des Kalenders"));
@@ -938,7 +1125,7 @@ function baueTerminFormular(tag, termin) {
     loeschen.className = "btn klein gefahr";
     loeschen.textContent = loeschFrage ? "Wirklich löschen?" : "Löschen";
     loeschen.addEventListener("click", () => {
-      if (!loeschFrage) { loeschFrage = true; zeichneKalender(); return; }
+      if (!loeschFrage) { loeschFrage = true; zeichneTerminPopup(); return; }
       loescheTerminBeiGoogle(termin);
     });
     knoepfe.appendChild(loeschen);
@@ -1125,9 +1312,14 @@ function baueTerminZeile(t) {
   titel.textContent = t.titel;
   text.appendChild(titel);
 
+  // Herkunft nur bei WEITEREN Kalendern. Beim eigenen Hauptkalender stuende
+  // hier der eigene Name (Google gibt als Bezeichnung die Mailadresse heraus,
+  // die App setzt den Kontonamen ein) - der sagt nichts, was man nicht schon
+  // weiss, und stand bei jedem einzelnen Termin.
+  const herkunft = (kal && !kal.primaer) ? kalenderName(kal) : "";
   const meta = document.createElement("span");
   meta.className = "kal-eintrag-meta";
-  meta.textContent = [zeitLabel(t), kalenderName(kal)].filter(Boolean).join(" · ");
+  meta.textContent = [zeitLabel(t), herkunft].filter(Boolean).join(" · ");
   text.appendChild(meta);
 
   knopf.appendChild(text);
@@ -1219,6 +1411,15 @@ function springeZuToDo(boardId, todoId) {
 
 // ---------- Auswahl / Navigation ----------
 function waehleTag(iso) {
+  // Im Vollbild gibt es keine Tagesliste. Ein Tipp fuehrt deshalb aus dem
+  // Vollbild heraus zu genau diesem Tag - einen Tag nur zu markieren, dessen
+  // Inhalt man gar nicht sehen kann, waere eine Sackgasse.
+  if (kalVollbild) {
+    kalAuswahl = iso;
+    schliesseEingaben();
+    setzeVollbild(false);
+    return;
+  }
   kalAuswahl = (kalAuswahl === iso) ? null : iso;
   schliesseEingaben();
   zeichneKalender();
@@ -1230,10 +1431,13 @@ function schliesseEingaben() {
   wahlOffen = false;
   formularOffen = false;
   formularTermin = null;
+  formularTag = null;
   formularFelder = null;
   loeschFrage = false;
   todoEingabeOffen = false;
   anlegenText = "";
+  kalWahl.hidden = true;
+  kalTerminPopup.hidden = true;
 }
 
 // Beim Monatswechsel den ersten Tag MIT Terminen waehlen - ein leerer
@@ -1288,8 +1492,18 @@ function setzePanel(offen) {
   document.documentElement.classList.toggle("kal-offen", offen);
 }
 
+// Jedes Oeffnen startet beim heutigen Tag UND in der normalen Ansicht. Ein
+// gemerktes Vollbild saehe beim naechsten Mal aus wie eine kaputte App - die
+// Tagesliste waere weg, ohne dass man wuesste, warum.
+function frischOeffnen() {
+  kalVollbild = false;
+  vollbildPlaetze = 0;
+  kalPanel.classList.remove("vollbild");
+  springeZuHeute();
+}
+
 function oeffneKalender() {
-  if (!kalOffen) springeZuHeute();   // jedes Oeffnen startet beim heutigen Tag
+  if (!kalOffen) frischOeffnen();
   else zeichneKalender();
   kalOffen = true;
   setzePanel(true);
@@ -1314,9 +1528,30 @@ let geste = null;   // { x, y, achse, modus, breite, versatz }
 // sonst kaempft der Kalender mit dem Drag & Drop des Boards.
 function darfGeste() {
   if (!einstellungenPopup.hidden) return false;
+  if (formularOffen || wahlOffen) return false;
   if (kalLock && !kalLock.classList.contains("hidden")) return false;
   if (draggedId || draggedCat || draggedThema) return false;
   return true;
+}
+
+/* ---------- Zoom-Geste (Vollbild) ---------- */
+// Zwei Finger auseinander macht den Kalender gross, zusammen wieder klein.
+// Die Schwellen sind bewusst weit auseinander (1.25 / 0.8): ein knapper Wert
+// liesse die Ansicht bei jedem Nachgreifen hin- und herspringen.
+const ZOOM_AUF = 1.25;
+const ZOOM_ZU = 0.8;
+let zoomStart = 0;   // Fingerabstand beim Aufsetzen, 0 = keine Zoom-Geste
+
+function fingerAbstand(beruehrungen) {
+  return Math.hypot(beruehrungen[0].clientX - beruehrungen[1].clientX,
+                    beruehrungen[0].clientY - beruehrungen[1].clientY);
+}
+
+// iOS Safari macht aus zwei Fingern eigene gesture*-Ereignisse und zoomt damit
+// die SEITE - unabhaengig von touch-action. Solange der Kalender offen ist,
+// gehoert die Geste dem Kalender.
+for (const name of ["gesturestart", "gesturechange", "gestureend"]) {
+  document.addEventListener(name, e => { if (kalOffen) e.preventDefault(); });
 }
 
 function setzeVersatz(v) {
@@ -1364,6 +1599,12 @@ function setzeBlaetterVersatz(dx) {
 
 document.addEventListener("touchstart", e => {
   geste = null;
+  // Zwei Finger im offenen Panel: Zoom statt Wischen.
+  if (kalOffen && e.touches.length === 2 && kalPanel.contains(e.target) && darfGeste()) {
+    zoomStart = fingerAbstand(e.touches);
+    return;
+  }
+  zoomStart = 0;
   if (e.touches.length !== 1) return;
   const t = e.touches[0];
   if (!kalOffen) {
@@ -1381,6 +1622,15 @@ document.addEventListener("touchstart", e => {
 }, { passive: true });
 
 document.addEventListener("touchmove", e => {
+  if (zoomStart && e.touches.length === 2) {
+    e.preventDefault();   // sonst zoomt der Browser die Seite
+    const jetzt = fingerAbstand(e.touches);
+    // Nach dem Umschalten zoomStart auf 0: die Geste ist erledigt, weiteres
+    // Ziehen soll nicht gleich wieder zurueckschalten.
+    if (jetzt > zoomStart * ZOOM_AUF) { zoomStart = 0; setzeVollbild(true); }
+    else if (jetzt < zoomStart * ZOOM_ZU) { zoomStart = 0; setzeVollbild(false); }
+    return;
+  }
   if (!geste) return;
   const t = e.touches[0];
   const dx = t.clientX - geste.x;
@@ -1395,7 +1645,7 @@ document.addEventListener("touchmove", e => {
     if (geste.modus === "auf") {
       // Wie beim Knopf: jedes Oeffnen startet beim heutigen Tag, sonst haengt
       // das Panel noch im Monat, in dem man zuletzt geblaettert hat.
-      springeZuHeute();
+      frischOeffnen();
       kalHintergrund.classList.add("sichtbar");
       kalPanel.setAttribute("aria-hidden", "false");
     }
@@ -1412,6 +1662,7 @@ document.addEventListener("touchmove", e => {
 }, { passive: false });
 
 function gesteBeenden() {
+  zoomStart = 0;
   if (!geste) return;
   const g = geste;
   if (g.modus === "monat" || g.modus === "tag") {
@@ -1450,7 +1701,10 @@ kalMonatName.addEventListener("click", schalteWahl);
 document.getElementById("kalZurueck").addEventListener("click", () => monatVerschieben(-1));
 document.getElementById("kalVor").addEventListener("click", () => monatVerschieben(1));
 document.getElementById("kalHeute").addEventListener("click", springeZuHeute);
+document.getElementById("kalVollbild").addEventListener("click", () => setzeVollbild(!kalVollbild));
 kalUeberfaellig.addEventListener("click", () => {
+  // Ueberfaelliges steht in der Tagesliste - im Vollbild gibt es die nicht.
+  if (kalVollbild) setzeVollbild(false);
   kalAuswahl = kalAuswahl === UEBERFAELLIG ? null : UEBERFAELLIG;
   zeichneKalender();
 });
@@ -1458,8 +1712,27 @@ kalRaster.addEventListener("click", e => {
   const zelle = e.target.closest(".kal-tag");
   if (zelle) waehleTag(zelle.dataset.tag);
 });
+// Klick neben den Kasten schliesst - am Handy fuellt er den Bildschirm, dort
+// bleibt nur die ✕ im Kopf.
+kalWahl.addEventListener("click", e => { if (e.target === kalWahl) schliesseWahl(); });
+kalTerminPopup.addEventListener("click", e => { if (e.target === kalTerminPopup) schliesseTerminFormular(); });
+
+// Escape arbeitet sich von innen nach aussen: erst der offene Dialog, dann das
+// Vollbild, erst zuletzt das Panel. Sonst raeumte ein Tastendruck alles auf
+// einmal weg.
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && kalOffen) schliesseKalender();
+  if (e.key !== "Escape" || !kalOffen) return;
+  if (formularOffen) { schliesseTerminFormular(); return; }
+  if (wahlOffen) { schliesseWahl(); return; }
+  if (kalVollbild) { setzeVollbild(false); return; }
+  schliesseKalender();
+});
+
+// Gedrehtes Handy, geaenderte Fenstergroesse: die Zellen sind dann anders
+// hoch, und die gemessene Zeilenzahl stimmt nicht mehr. Ein Monatswechsel
+// misst von selbst nach (zeichneKalender), eine Drehung nicht.
+window.addEventListener("resize", () => {
+  if (kalOffen && kalVollbild) messeVollbild();
 });
 
 // Aus render() aufgerufen: haelt das offene Panel auf Stand, wenn sich am

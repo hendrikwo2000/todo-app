@@ -1405,6 +1405,10 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
   padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 0 14px;
   overscroll-behavior: contain;
   will-change: transform;
+  /* Zwei Finger auseinander sollen den KALENDER gross machen, nicht die Seite
+     hineinzoomen. pan-y ueberlaesst dem Browser nur das senkrechte Scrollen;
+     das waagerechte Wischen macht ohnehin JS mit preventDefault. */
+  touch-action: pan-y;
 }
 .kalender.animiert { transition: transform .26s cubic-bezier(.32, .72, 0, 1); }
 
@@ -1426,42 +1430,90 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
 .kal-monat:hover { background: var(--hover); }
 .kal-monat.offen { background: var(--accent-soft); color: var(--accent); }
 
-/* Zwei scrollbare Walzen. scroll-snap laesst sie einrasten, statt zwischen
-   zwei Werten stehen zu bleiben. */
-.kal-wahl {
+/* ---------- Kalender-Dialoge (Monat/Jahr, Termin) ---------- */
+/* Beide liegen als eigenes Overlay UEBER dem Panel, nicht darin. Frueher war
+   die Monatswahl ein Block, der sich zwischen Kopfzeile und Raster schob und
+   den ganzen Rest nach unten zog - am Handy rutschte die Tagesliste dabei aus
+   dem Bild. Am Handy fuellt der Kasten den Bildschirm, am Rechner sitzt er
+   mittig. */
+.kal-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 60;                 /* ueber dem Panel (56), unter dem Sperrbildschirm (100) */
   display: flex;
-  gap: 8px;
-  padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--row);
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .45);
+  padding: 20px;
 }
-.kal-wahl[hidden] { display: none; }
-.kal-walze {
-  flex: 1 1 0;
-  min-width: 0;
-  max-height: 186px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scroll-snap-type: y proximity;
+.kal-popup[hidden] { display: none; }
+.kal-popup-box {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 10px;
+  width: min(420px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--row);
 }
-.kal-walze-wert {
-  flex: none;
-  scroll-snap-align: center;
-  border: 0;
-  border-radius: 7px;
-  background: none;
+/* Am Handy randlos ueber den ganzen Bildschirm - ein Kasten mit Rand daneben
+   verschenkt genau die Breite, die das Formular braucht. Nur das FORMULAR:
+   die Monatswahl sind zwoelf Kacheln, die einen ganzen Bildschirm nicht
+   fuellen und ihn deshalb auch nicht bekommen. */
+@media (max-width: 560px) {
+  .kal-popup-voll { padding: 0; }
+  .kal-popup-voll .kal-popup-box {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  }
+}
+.kal-popup-kopf {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0;
+  font-size: 16px; font-weight: 700;
+}
+.kal-popup-kopf .kal-schliessen { margin-left: auto; }
+
+/* Monat/Jahr: Jahres-Zeile mit Pfeilen, darunter zwoelf Kacheln. Alles auf
+   einen Blick statt einer Scroll-Walze - am Handy trifft man Kacheln
+   zuverlaessiger, als man eine Walze auf den richtigen Wert schiebt. */
+.kal-jahr-zeile {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.kal-jahr-wert {
+  min-width: 74px; text-align: center;
+  font-size: 17px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.kal-monate {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.kal-monat-kachel {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
   color: var(--text);
   font: inherit; font-size: 14px;
-  padding: 7px 6px;
-  text-align: center;
+  padding: 13px 4px;
   cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.kal-walze-wert:hover { background: var(--hover); }
-.kal-walze-wert.gewaehlt { background: var(--accent); color: #fff; font-weight: 700; }
+.kal-monat-kachel:hover { border-color: var(--accent); }
+.kal-monat-kachel.gewaehlt { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+/* Der heutige Monat bleibt auffindbar, auch wenn gerade ein anderer gewaehlt
+   ist - sonst sucht man im Jahresraster, wo man eigentlich hingehoert. */
+.kal-monat-kachel.heute { border-color: var(--accent); font-weight: 700; }
+
 .kal-pfeil, .kal-schliessen {
   flex: none;
   border: 0; background: none; color: var(--muted);
@@ -1575,6 +1627,63 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
 /* Mehr als drei ToDos an einem Tag: drei Punkte plus ein kleines Plus. */
 .kal-tag.viele .kal-punkte::after { content: "+"; font-size: 10px; line-height: 1; color: var(--muted); }
 
+/* ---------- Vollbild ---------- */
+/* Zwei Finger auseinander (oder der ⤢-Knopf): die Tagesliste weicht, das
+   Raster nimmt die ganze Hoehe. Der Gewinn ist nicht die Groesse an sich,
+   sondern was hineinpasst - die Tage zeigen dann ihre ToDos im Klartext statt
+   als Punkte und mehr Termin-Balken. grid-auto-rows: 1fr verteilt die Hoehe
+   gleichmaessig auf die Wochenzeilen, sonst blieben ruhige Wochen flach und
+   unten stuende eine Luecke. */
+.kalender.vollbild .kal-liste { display: none; }
+.kalender.vollbild .kal-raster {
+  flex: 1;
+  min-height: 0;
+  grid-auto-rows: minmax(0, 1fr);
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+.kalender.vollbild .kal-tag {
+  min-height: 0;
+  align-items: stretch;
+  overflow: hidden;
+}
+.kalender.vollbild .kal-zahl { text-align: center; }
+.kalender.vollbild .kal-punkte { display: none; }
+.kalender.vollbild .kal-tag.viele .kal-punkte::after { content: none; }
+.kal-vollbild-knopf { font-size: 15px; }
+.kalender.vollbild .kal-vollbild-knopf { color: var(--accent); background: var(--accent-soft); }
+
+/* ToDos im Vollbild: eine Zeile je ToDo, farbiger Punkt davor. Bewusst
+   dieselbe Zeilenhoehe wie ein Termin-Balken - so bleibt das Bild ruhig,
+   egal was an einem Tag steht. */
+.kal-tag-todos {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 3px 3px;
+  min-height: 0;
+  overflow: hidden;
+}
+.kal-tag-todo {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 15px;
+  font-size: 10px;
+  line-height: 15px;
+  text-align: left;
+  color: var(--text);
+}
+.kal-tag-todo .kal-punkt { width: 5px; height: 5px; }
+.kal-tag-todo-text {
+  min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.kal-tag-mehr {
+  height: 15px; line-height: 15px;
+  font-size: 10px; font-weight: 600; color: var(--muted);
+  padding-left: 3px;
+  text-align: left;
+}
 
 .kal-liste {
   flex: 1;
@@ -1860,18 +1969,20 @@ body.zieht, body.zieht .todo {
   -webkit-touch-callout: none;
 }
 
-/* ---------- Termin-Formular im Panel ---------- */
-/* Klappt an Ort und Stelle auf, damit der Tag daneben sichtbar bleibt. */
+/* ---------- Termin-Formular ---------- */
+/* Steht im eigenen Dialog (kal-popup), am Handy ueber den ganzen Bildschirm.
+   Frueher klappte es in der Tagesliste auf - dort teilte es sich die Hoehe
+   mit Raster und Liste, und auf dem Handy war vom Formular kaum die Haelfte
+   zu sehen. */
 .kal-form {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  margin: 2px 0 4px;
-  padding: 10px;
-  border: 1px solid var(--accent);
-  border-radius: 10px;
-  background: var(--col-bg);
+  gap: 9px;
 }
+/* Die Knopfzeile bleibt am unteren Rand stehen, auch wenn das Formular kurz
+   ist - am Handy sucht man "Anlegen" sonst irgendwo in der Mitte. */
+.kal-popup .kal-form { flex: 1; min-height: 0; }
+.kal-popup .kal-form-knoepfe { margin-top: auto; padding-top: 6px; }
 .kal-form input[type="text"],
 .kal-form input[type="date"],
 .kal-form input[type="time"],
@@ -1887,6 +1998,10 @@ body.zieht, body.zieht .todo {
   min-width: 0;
 }
 .kal-form-titel { width: 100%; font-size: 14.5px; font-weight: 600; }
+/* 16px im Dialog ist kein Geschmack, sondern Pflicht: iOS Safari zoomt beim
+   Antippen in jedes Feld hinein, das kleiner gesetzt ist. */
+.kal-popup .kal-form input,
+.kal-popup .kal-form textarea { font-size: 16px; padding: 9px 10px; }
 .kal-form-schalter {
   display: flex; align-items: center; gap: 7px;
   font-size: 13px; color: var(--text); cursor: pointer;
