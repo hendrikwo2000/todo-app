@@ -1534,25 +1534,14 @@ function darfGeste() {
   return true;
 }
 
-/* ---------- Zoom-Geste (Vollbild) ---------- */
-// Zwei Finger auseinander macht den Kalender gross, zusammen wieder klein.
-// Die Schwellen sind bewusst weit auseinander (1.25 / 0.8): ein knapper Wert
-// liesse die Ansicht bei jedem Nachgreifen hin- und herspringen.
-const ZOOM_AUF = 1.25;
-const ZOOM_ZU = 0.8;
-let zoomStart = 0;   // Fingerabstand beim Aufsetzen, 0 = keine Zoom-Geste
-
-function fingerAbstand(beruehrungen) {
-  return Math.hypot(beruehrungen[0].clientX - beruehrungen[1].clientX,
-                    beruehrungen[0].clientY - beruehrungen[1].clientY);
-}
-
-// iOS Safari macht aus zwei Fingern eigene gesture*-Ereignisse und zoomt damit
-// die SEITE - unabhaengig von touch-action. Solange der Kalender offen ist,
-// gehoert die Geste dem Kalender.
-for (const name of ["gesturestart", "gesturechange", "gestureend"]) {
-  document.addEventListener(name, e => { if (kalOffen) e.preventDefault(); });
-}
+// Senkrecht ueber dem Raster wischen schaltet das Vollbild: nach UNTEN zieht
+// den Kalender gross (wie ein Rollo, das man ueber die Tagesliste zieht), nach
+// OBEN wieder klein. Vorher lag das auf einer Zwei-Finger-Zoomgeste - die war
+// am Handy einhaendig kaum zu treffen.
+//
+// Nur ueber dem Raster: die Tagesliste darunter muss senkrecht scrollbar
+// bleiben, und in der Kopfzeile wischt man zum Schliessen.
+const ZOOM_WEG = 60;   // px, ab denen wirklich umgeschaltet wird
 
 function setzeVersatz(v) {
   geste.versatz = v;
@@ -1564,6 +1553,9 @@ function setzeVersatz(v) {
  * Welche Geste gehoert der Stelle, an der der Finger aufsetzt?
  *
  *   "monat" ueber dem Raster, "tag" ueber der Tagesliste, sonst "zu".
+ *
+ * Nur "monat" kennt beide Achsen: waagerecht blaettert den Monat, senkrecht
+ * schaltet das Vollbild. Ueber der Tagesliste bleibt senkrecht das Scrollen.
  *
  * Aufgeteilt statt einheitlich, weil ein Wisch ueber dem Raster etwas anderes
  * bedeutet als einer ueber der Kopfzeile - und weil das Schliessen per Wisch
@@ -1599,12 +1591,6 @@ function setzeBlaetterVersatz(dx) {
 
 document.addEventListener("touchstart", e => {
   geste = null;
-  // Zwei Finger im offenen Panel: Zoom statt Wischen.
-  if (kalOffen && e.touches.length === 2 && kalPanel.contains(e.target) && darfGeste()) {
-    zoomStart = fingerAbstand(e.touches);
-    return;
-  }
-  zoomStart = 0;
   if (e.touches.length !== 1) return;
   const t = e.touches[0];
   if (!kalOffen) {
@@ -1622,15 +1608,6 @@ document.addEventListener("touchstart", e => {
 }, { passive: true });
 
 document.addEventListener("touchmove", e => {
-  if (zoomStart && e.touches.length === 2) {
-    e.preventDefault();   // sonst zoomt der Browser die Seite
-    const jetzt = fingerAbstand(e.touches);
-    // Nach dem Umschalten zoomStart auf 0: die Geste ist erledigt, weiteres
-    // Ziehen soll nicht gleich wieder zurueckschalten.
-    if (jetzt > zoomStart * ZOOM_AUF) { zoomStart = 0; setzeVollbild(true); }
-    else if (jetzt < zoomStart * ZOOM_ZU) { zoomStart = 0; setzeVollbild(false); }
-    return;
-  }
   if (!geste) return;
   const t = e.touches[0];
   const dx = t.clientX - geste.x;
@@ -1638,20 +1615,35 @@ document.addEventListener("touchmove", e => {
 
   if (!geste.achse) {
     if (Math.abs(dx) < SCHWELLE && Math.abs(dy) < SCHWELLE) return;
-    // Ueberwiegend senkrecht: das ist Scrollen, nicht unsere Geste.
-    if (Math.abs(dx) <= Math.abs(dy)) { geste = null; return; }
-    geste.achse = "x";
-    kalPanel.classList.remove("animiert");
-    if (geste.modus === "auf") {
-      // Wie beim Knopf: jedes Oeffnen startet beim heutigen Tag, sonst haengt
-      // das Panel noch im Monat, in dem man zuletzt geblaettert hat.
-      frischOeffnen();
-      kalHintergrund.classList.add("sichtbar");
-      kalPanel.setAttribute("aria-hidden", "false");
+    if (Math.abs(dx) <= Math.abs(dy)) {
+      // Ueberwiegend senkrecht. Ueber dem Raster ist das die Vollbild-Geste,
+      // ueberall sonst Scrollen - das gehoert dem Browser.
+      if (geste.modus !== "monat") { geste = null; return; }
+      geste.achse = "y";
+    } else {
+      geste.achse = "x";
+      kalPanel.classList.remove("animiert");
+      if (geste.modus === "auf") {
+        // Wie beim Knopf: jedes Oeffnen startet beim heutigen Tag, sonst haengt
+        // das Panel noch im Monat, in dem man zuletzt geblaettert hat.
+        frischOeffnen();
+        kalHintergrund.classList.add("sichtbar");
+        kalPanel.setAttribute("aria-hidden", "false");
+      }
     }
   }
 
   e.preventDefault();   // ab hier gehoert die Bewegung dem Panel
+
+  if (geste.achse === "y") {
+    // Nach dem Umschalten ist die Geste erledigt (geste = null), sonst
+    // schaltete ein Weiterziehen ueber die Schwelle hinaus gleich wieder
+    // zurueck.
+    if (dy > ZOOM_WEG) { geste = null; setzeVollbild(true); }
+    else if (dy < -ZOOM_WEG) { geste = null; setzeVollbild(false); }
+    return;
+  }
+
   if (geste.modus === "monat" || geste.modus === "tag") {
     geste.dx = dx;
     setzeBlaetterVersatz(dx);
@@ -1662,9 +1654,12 @@ document.addEventListener("touchmove", e => {
 }, { passive: false });
 
 function gesteBeenden() {
-  zoomStart = 0;
   if (!geste) return;
   const g = geste;
+  // Senkrecht ueber dem Raster: entweder war der Weg lang genug und das
+  // Vollbild hat schon geschaltet (dann ist geste laengst null), oder es
+  // bleibt, wie es war. Nichts zurueckzusetzen.
+  if (g.achse === "y") { geste = null; return; }
   if (g.modus === "monat" || g.modus === "tag") {
     setzeBlaetterVersatz(0);
     geste = null;
