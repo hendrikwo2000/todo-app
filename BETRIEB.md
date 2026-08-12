@@ -147,10 +147,27 @@ liegt bewusst im **Klartext** in `boards.share_token` — der Ersteller muss den
 Link jederzeit erneut kopieren können, ein Hash ließe sich nicht zurückrechnen.
 Er gewährt nur den Beitritt zu einer ToDo-Liste, kein hohes Schutzgut. Öffnet
 eine angemeldete Person den Link, hängt `beitreten` sie als `member` ein
-(doppelter Beitritt und eigene Liste sind harmlos). „Link zurücksetzen" (in
-`teilen` mit `{ reset: true }`) vergibt einen neuen Token, der alte läuft ins
-Leere. „Alle entfernen" (`mitglieder` mit `{ alle: true }`) wirft alle Mitglieder
-raus **und** setzt `share_token` auf NULL.
+(doppelter Beitritt und eigene Liste sind harmlos).
+
+**Link und Zugriffe sind getrennt** — es sind zwei verschiedene
+Entscheidungen, und keine zieht die andere nach sich:
+
+| Aktion | Endpunkt | Wirkung |
+| --- | --- | --- |
+| Link zurücksetzen | `teilen` `{ reset: true }` | neuer Token, alter Link läuft ins Leere; Mitglieder bleiben |
+| **Teilen-Link löschen** | `teilen` `{ loeschen: true }` | `share_token` auf NULL, niemand kommt mehr neu dazu; Mitglieder bleiben |
+| Alle Personen entfernen | `mitglieder` `{ alle: true }` | alle `member`-Zeilen weg; **Link bleibt bestehen** |
+| Eine Person entfernen | `mitglieder` `{ userId }` | nur diese Zeile weg |
+
+Früher setzte `{ alle: true }` den Token gleich mit auf NULL. Das nahm einem
+die Wahl: wer nur aufräumen wollte, musste den Link neu verschicken, und wer
+nur den Link totlegen wollte, warf ungewollt alle raus.
+
+In der Oberfläche führt der Weg dorthin über „Zugriff verwalten" in der
+Listen-Zeile. Der Einstieg erscheint, **sobald ein Link besteht** — auch ohne
+Beitritte, denn auch dann will man den Link wieder loswerden können. Vorher
+stand dort in diesem Fall nur der Satz „Link erstellt – noch niemand
+beigetreten", und der Link ließ sich gar nicht mehr entfernen.
 
 **Bewusst nicht konfliktfrei.** `PUT /api/todos` ersetzt den kompletten Inhalt
 der Liste. Bearbeiten zwei Leute dieselbe Liste im selben Moment, gewinnt der
@@ -199,9 +216,18 @@ sichtbar gemacht (`zeigeEinstellungenKnopf()`). Reihenfolge in beiden Ecken
 gleich: Zahnrad, dann Umschalter.
 
 **Am Handy Vollbild** (`max-width: 560px`), am Rechner ein mittiger Kasten von
-440 px — dort bleibt das Board drumherum sichtbar, und ein Vollbild-Schirm
-wäre für den Inhalt viel leerer Raum. Geschlossen wird über das **✕ oben
-links**; am Rechner zusätzlich weiterhin per Klick neben den Kasten.
+620 × max. 92vh — dort bleibt das Board drumherum sichtbar, und ein
+Vollbild-Schirm wäre für den Inhalt viel leerer Raum. Geschlossen wird über
+das **✕ oben rechts**; am Rechner zusätzlich weiterhin per Klick neben den
+Kasten.
+
+Die Größe soll das Blättern ersparen, und dafür zählt allein die **Höhe**: ab
+rund 830 px Fensterhöhe passt auch der längste Abschnitt („Meine Listen" mit
+zwei Listen, 697 px) am Stück hinein. Auf einem flachen Notebook-Fenster
+(768 px) bleibt ein Rest. Mehr Breite hilft dagegen **nicht** — nachgemessen
+ergeben 440 px und 700 px Breite dieselben 697 px, weil die Höhe aus den
+Zeilen kommt und nicht aus umbrechendem Text. Breiter ist der Dialog
+trotzdem, damit die Knopfreihen nicht so gedrängt stehen.
 
 **Aufbau: feste Kopfzeile, darunter der einzige blätternde Teil.** Die
 Kopfzeile (`<header class="ein-kopfzeile">`) trägt das ✕ und steht außerhalb
@@ -217,14 +243,27 @@ mitgreifen darf. Und `.ein-blaettern` braucht `min-height: 0` — ohne das
 wächst ein Flex-Kind über seinen Anteil hinaus, statt zu blättern.
 
 **Liste aktivieren.** Unter „Meine Listen" und „Geteilt mit mir" macht ein
-Tipp auf die Zeile die Liste zur aktiven (`macheZeileWaehlbar()`), danach
-schließt der Dialog — wer eine Liste wählt, will sie sehen. Liegt am Handy
-gerade der Kalender darüber, schaltet `window.kalenderZurListe()` zusätzlich
-auf die Liste zurück. Die aktive Zeile ist nicht wählbar (sie trägt kein
-`.waehlbar`), ihr Name bleibt ein `<span>` mit dem AKTIV-Abzeichen.
+Tipp auf die Zeile die Liste zur aktiven (`macheZeileWaehlbar()`). **Der
+Dialog bleibt dabei offen** — das AKTIV-Abzeichen wandert nur um, und wer
+danach noch etwas anderes einstellen will, muss ihn nicht neu suchen. Die
+aktive Zeile ist nicht wählbar (sie trägt kein `.waehlbar`), ihr Name bleibt
+ein `<span>` mit dem Abzeichen; `zeichneListen()` baut die Zeilen nach dem
+Wechsel neu auf, damit Abzeichen und Wählbarkeit umspringen.
 
 Klicks auf die Knöpfe IN der Zeile (Teilen, Umbenennen, 🗑️) sind
 ausgenommen — sonst löste jedes „Umbenennen" auch einen Listenwechsel aus.
+Weil der Dialog stehen bleibt, ist die **Snackbar auf `z-index: 130`** hoch
+(über die 120 des Dialogs): bei 50 lag sie darunter, und Rückmeldungen wie
+„Alle Zugriffe entzogen." wurden zwar gesetzt, sah aber niemand.
+
+**Falle, hier wieder aufgetreten:** `.admin-popup-box .btn` setzt
+`display: inline-flex` und schlägt damit das eingebaute `[hidden]` des
+Browsers — „Alle Personen entfernen" blieb ohne Mitglieder sichtbar. Behoben
+mit einer zentralen Zeile `.admin-popup-box .btn[hidden] { display: none }`
+für **jeden** Knopf im Dialog, statt wie früher je Knopf einzeln
+(`#googleTrennen`, `.google-btn` tragen ihre eigene Zeile noch aus der Zeit
+davor). Der Fehler fiel erst auf, als die Ansicht auch ohne Mitglieder
+erreichbar wurde — vorher kam man mit 0 Personen gar nicht dorthin.
 Die Zeile selbst bekommt bewusst **kein** `role="button"`: sie enthält weitere
 Knöpfe, und ein Knopf im Knopf macht die inneren für Vorleseprogramme
 unerreichbar. Stattdessen ist der **Name** bei wählbaren Zeilen ein echter

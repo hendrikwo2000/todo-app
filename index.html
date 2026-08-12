@@ -301,13 +301,21 @@
         </a>
       </div>
 
-      <!-- Zugriff einer eigenen, geteilten Liste verwalten. -->
+      <!-- Zugriff einer eigenen, geteilten Liste verwalten. Erreichbar,
+           sobald ein Teilen-Link besteht - auch wenn noch niemand
+           beigetreten ist, denn auch dann will man den Link wieder
+           loswerden koennen.
+           Link und Zugriffe sind zwei getrennte Knoepfe: den Link totlegen
+           und Leuten den Zugriff nehmen sind zwei verschiedene
+           Entscheidungen (siehe functions/api/listen/teilen.js). -->
       <div id="mitgliederAnsicht" hidden>
         <div class="admin-popup-icon">👥</div>
         <h2 id="mitgliederTitel">Zugriff verwalten</h2>
         <p id="mitgliederLeer" class="ein-hinweis" hidden>Noch niemand hat diese Liste geöffnet.</p>
         <div id="mitgliederListe" class="listen-liste"></div>
-        <button type="button" id="alleEntfernen" class="btn gefahr">Alle entfernen &amp; Link zurücksetzen</button>
+        <p id="mitgliederLinkInfo" class="ein-hinweis"></p>
+        <button type="button" id="linkLoeschen" class="btn gefahr" hidden>Teilen-Link löschen</button>
+        <button type="button" id="alleEntfernen" class="btn gefahr" hidden>Alle Personen entfernen</button>
         <button type="button" id="mitgliederZurueck" class="lock-link">Zurück</button>
       </div>
 

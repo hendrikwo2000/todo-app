@@ -3,9 +3,12 @@
  *
  *   GET  ?id=<liste>              -> wer hat Zugriff (nur echte Mitglieder)
  *   POST { id, userId }           -> diese eine Person entfernen (gezielt)
- *   POST { id, alle: true }       -> alle Mitglieder entfernen UND den Link
- *                                    zuruecksetzen, damit niemand mit dem alten
- *                                    Link erneut beitritt
+ *   POST { id, alle: true }       -> alle Mitglieder entfernen
+ *
+ * Der Teilen-Link bleibt dabei, wie er ist. Frueher setzte { alle: true } ihn
+ * gleich mit auf NULL - das nahm einem die Wahl: wer nur aufraeumen wollte,
+ * musste den Link neu verschicken, und wer nur den Link totlegen wollte, warf
+ * ungewollt alle raus. Den Link loescht jetzt teilen.js ({ loeschen: true }).
  */
 
 import { json, eigenesBoard } from "../../_lib/listen.js";
@@ -46,11 +49,9 @@ export async function onRequestPost({ request, env }) {
 
   if (body.alle) {
     try {
-      await env.DB.batch([
-        env.DB.prepare("DELETE FROM board_members WHERE board_id = ? AND role = 'member'").bind(id),
-        // Link tot machen: die Liste ist danach nicht mehr geteilt.
-        env.DB.prepare("UPDATE boards SET share_token = NULL WHERE id = ?").bind(id),
-      ]);
+      await env.DB.prepare(
+        "DELETE FROM board_members WHERE board_id = ? AND role = 'member'"
+      ).bind(id).run();
     } catch (e) {
       return json({ error: "Datenbankfehler" }, 500);
     }

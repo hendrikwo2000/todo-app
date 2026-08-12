@@ -768,19 +768,12 @@ function oeffneEinstellungen() {
   aktualisiereGoogleAbschnitt();
 }
 
-/**
- * Eine Liste aus den Einstellungen heraus zur aktiven machen.
- *
- * Der Dialog geht dabei zu: wer eine Liste waehlt, will sie sehen - sonst
- * muesste man hinterher noch selbst schliessen, um zu pruefen, ob es geklappt
- * hat.
- */
+/** Eine Liste aus den Einstellungen heraus zur aktiven machen. */
 function aktiviereListeAusEinstellungen(id) {
   wechsleListe(id);
-  einstellungenPopup.hidden = true;
-  // Am Handy kann der Kalender ueber dem Board liegen - dann saehe man von
-  // der frisch gewaehlten Liste nichts.
-  if (window.kalenderZurListe) window.kalenderZurListe();
+  // Der Dialog bleibt offen: das AKTIV-Abzeichen wandert nur um, und wer
+  // danach noch etwas anderes einstellen will, muss ihn nicht neu suchen.
+  zeichneListen();
 }
 
 /**
@@ -875,18 +868,18 @@ function baueEigeneZeile(b) {
   knoepfe.appendChild(loeschBtn);
   row.appendChild(knoepfe);
 
-  if (b.mitglieder > 0) {
+  // Einstieg in die Zugriff-Ansicht, sobald es etwas zu verwalten gibt - also
+  // auch bei einem Link, dem noch niemand gefolgt ist. Frueher stand dort nur
+  // ein Satz, und den Link wurde man nicht mehr los.
+  if (b.mitglieder > 0 || b.geteilt) {
     const verwalten = document.createElement("button");
     verwalten.type = "button";
     verwalten.className = "lz-geteilt";
-    verwalten.textContent = `Geteilt mit ${b.mitglieder} · Zugriff verwalten`;
+    verwalten.textContent = b.mitglieder > 0
+      ? `Geteilt mit ${b.mitglieder} · Zugriff verwalten`
+      : "Link erstellt, noch niemand beigetreten · verwalten";
     verwalten.addEventListener("click", () => oeffneMitglieder(b));
     row.appendChild(verwalten);
-  } else if (b.geteilt) {
-    const info = document.createElement("div");
-    info.className = "lz-geteilt-info";
-    info.textContent = "Link erstellt – noch niemand beigetreten.";
-    row.appendChild(info);
   }
   return row;
 }
@@ -1067,6 +1060,7 @@ async function oeffneMitglieder(b) {
   document.getElementById("mitgliederListe").innerHTML = "";
   document.getElementById("mitgliederLeer").hidden = true;
   document.getElementById("alleEntfernen").hidden = true;
+  zeigeLinkZustand(b);
   zeigeEinAnsicht("mitglieder");
   try {
     const res = await fetch(`/api/listen/mitglieder?id=${encodeURIComponent(b.id)}`, { cache: "no-store" });
@@ -1074,6 +1068,21 @@ async function oeffneMitglieder(b) {
     if (!res.ok) { snackInfo(d.error || "Konnte nicht laden."); zeigeEinAnsicht("haupt"); return; }
     zeichneMitglieder(d.mitglieder || []);
   } catch (e) { snackInfo("Server nicht erreichbar."); zeigeEinAnsicht("haupt"); }
+}
+
+/**
+ * Zeigt in der Zugriff-Ansicht, ob die Liste gerade einen Teilen-Link hat,
+ * und blendet den Loesch-Knopf entsprechend ein. Getrennt vom Mitglieder-
+ * Zeichnen, weil beides unabhaengig voneinander gilt: es kann einen Link ohne
+ * Mitglieder geben und Mitglieder ohne Link.
+ */
+function zeigeLinkZustand(b) {
+  const info = document.getElementById("mitgliederLinkInfo");
+  const knopf = document.getElementById("linkLoeschen");
+  info.textContent = b && b.geteilt
+    ? "Der Teilen-Link ist aktiv – wer ihn hat, kann beitreten."
+    : "Kein Teilen-Link. Über „Teilen“ legst du einen neuen an.";
+  knopf.hidden = !(b && b.geteilt);
 }
 
 function zeichneMitglieder(leute) {
@@ -1121,8 +1130,9 @@ async function entfernePerson(p) {
 async function alleEntfernen() {
   const ok = await bestaetigen({
     titel: "Alle entfernen?",
-    text: "Alle Personen entfernen und den Link zurücksetzen? "
-      + "Danach kommt niemand mehr mit dem alten Link hinein.",
+    text: "Allen Personen den Zugriff auf diese Liste nehmen? "
+      + "Der Teilen-Link bleibt bestehen – wer ihn hat, kann erneut beitreten. "
+      + "Den löschst du getrennt.",
     okText: "Entfernen",
   });
   if (!ok) return;
@@ -1135,10 +1145,41 @@ async function alleEntfernen() {
     const d = await res.json().catch(() => ({}));
     if (!res.ok) { snackInfo(d.error || "Hat nicht geklappt."); return; }
     const b = listen.find(x => x.id === mitgliederListeId);
-    if (b) { b.mitglieder = 0; b.geteilt = false; b.token = null; }
+    if (b) b.mitglieder = 0;
     zeichneListen();
-    zeigeEinAnsicht("haupt");
-    snackInfo("Zugriff entzogen, Link zurückgesetzt.");
+    if (b) oeffneMitglieder(b);   // in der Ansicht bleiben, jetzt ohne Personen
+    snackInfo("Alle Zugriffe entzogen.");
+  } catch (e) { snackInfo("Server nicht erreichbar."); }
+}
+
+/**
+ * Den Teilen-Link totlegen. Wer schon beigetreten ist, BLEIBT drin - dafuer
+ * gibt es die Knoepfe darueber. Beides in einem Zug zu erledigen nahm einem
+ * die Wahl: wer nur aufraeumen wollte, musste den Link neu verschicken.
+ */
+async function linkLoeschen() {
+  const b = listen.find(x => x.id === mitgliederListeId);
+  const drin = b && b.mitglieder > 0;
+  const ok = await bestaetigen({
+    titel: "Teilen-Link löschen?",
+    text: "Der Link führt danach ins Leere, niemand kann mehr darüber beitreten."
+      + (drin ? " Wer schon Zugriff hat, behält ihn." : "")
+      + " Einen neuen Link kannst du jederzeit erstellen – es ist dann ein anderer.",
+    okText: "Löschen",
+  });
+  if (!ok) return;
+  try {
+    const res = await fetch("/api/listen/teilen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: mitgliederListeId, loeschen: true }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { snackInfo(d.error || "Hat nicht geklappt."); return; }
+    if (b) { b.geteilt = false; b.token = null; }
+    zeichneListen();
+    zeigeLinkZustand(b);
+    snackInfo("Teilen-Link gelöscht.");
   } catch (e) { snackInfo("Server nicht erreichbar."); }
 }
 
@@ -3313,6 +3354,7 @@ document.getElementById("todoZugangAufgebenJa").addEventListener("click", async 
 document.getElementById("mitgliederZurueck")
   .addEventListener("click", () => zeigeEinAnsicht("haupt"));
 document.getElementById("alleEntfernen").addEventListener("click", alleEntfernen);
+document.getElementById("linkLoeschen").addEventListener("click", linkLoeschen);
 
 document.getElementById("einstellungenZu")
   .addEventListener("click", () => { einstellungenPopup.hidden = true; });

@@ -1045,7 +1045,11 @@ input[type="date"]:focus {
   opacity: 0;
   pointer-events: none;
   transition: opacity .18s, transform .18s;
-  z-index: 50;
+  /* Ueber ALLEM, auch ueber den Dialogen (Einstellungen 120, Sperrbildschirm
+     100). Bei 50 lag sie darunter: "Alle Zugriffe entzogen." und Geschwister
+     wurden zwar gesetzt, sah aber niemand - die Rueckmeldung zu einer Aktion
+     im Dialog gehoert vor den Dialog. */
+  z-index: 130;
 }
 .snackbar.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 .snack-undo {
@@ -1202,6 +1206,12 @@ input[type="date"]:focus {
   justify-content: center;
   padding: 10px 12px;
 }
+/* Das display oben schlaegt das eingebaute [hidden] des Browsers - ein per JS
+   versteckter Knopf bliebe sonst stehen. Einmal zentral fuer JEDEN Knopf im
+   Dialog statt je Knopf einzeln (#googleTrennen und .google-btn tragen ihre
+   eigene Zeile noch aus der Zeit davor). Aufgefallen ist es an
+   "Alle Personen entfernen", das ohne Mitglieder sichtbar blieb. */
+.admin-popup-box .btn[hidden] { display: none; }
 .admin-popup-box .lock-link {
   background: none;
   border: 0;
@@ -1246,20 +1256,30 @@ input[type="date"]:focus {
    Danebentippen) gaebe es dann keinen Weg mehr hinaus. Bewusst so geloest
    und nicht per position:sticky: unter einer Kerbe (safe-area) klebte der
    Knopf sonst hinter der Statusleiste. */
+/* Am Rechner grosszuegig, damit man nicht blaettern muss. Die Arbeit macht
+   dabei die HOEHE: ab rund 830px Fensterhoehe passt auch der laengste
+   Abschnitt ("Meine Listen" mit zwei Listen, 697px) am Stueck hinein. Auf
+   einem flachen Notebook-Fenster (768px) bleibt ein Rest zum Blaettern - die
+   Listen-Zeilen sind nun mal so hoch, mehr Breite aendert daran nichts
+   (nachgemessen: 440px und 700px Breite ergeben dieselben 697px). Die Breite
+   ist trotzdem gewachsen, damit die Knopfreihen nicht so gedraengt stehen.
+   Die 900px sind der Deckel fuer sehr hohe Bildschirme; ein Dialog ueber die
+   volle Schirmhoehe liest sich nicht besser. */
 .admin-popup-box.einstellungen {
-  width: min(440px, 100%);
-  max-height: min(82vh, 660px);
+  width: min(620px, 100%);
+  max-height: min(92vh, 900px);
   overflow: hidden;          /* geblaettert wird nur innen, siehe .ein-blaettern */
   text-align: left;
   gap: 0;
   padding: 14px 24px 20px;
 }
-.ein-kopfzeile { display: flex; flex: none; padding-bottom: 4px; }
+/* Das ✕ rechts - die linke Ecke gehoert dem Inhalt. */
+.ein-kopfzeile { display: flex; flex: none; justify-content: flex-end; padding-bottom: 4px; }
 /* Randlos in der Ecke: der Knopf traegt sein eigenes Polster, das soll nicht
    zum Polster der Box dazukommen. */
 .ein-schliessen {
   flex: none;
-  margin-left: -8px;
+  margin-right: -8px;
   border: 0; background: none; color: var(--muted);
   font: inherit; font-size: 15px; line-height: 1;
   padding: 7px 8px; border-radius: 8px; cursor: pointer;
