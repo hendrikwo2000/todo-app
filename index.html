@@ -168,15 +168,40 @@
       </div>
     </div>
 
+    <!-- Zwei Reiter statt Ueberschrift: der Platz reicht im Streifen nicht fuer
+         beides, und die Reiter sagen ohnehin, wo man ist. Gewohnheiten und
+         Timer teilen sich die Flaeche, damit der Timer gross genug fuer einen
+         Blick von der Seite wird. -->
     <div class="fok-kopf">
-      <h2 class="fok-titel">Fokus</h2>
+      <div class="fok-reiter" role="tablist" aria-label="Fokus-Ansicht">
+        <button type="button" class="fok-reiter-seg" data-fok-reiter="gewohnheiten"
+                role="tab" aria-selected="true">Gewohnheiten</button>
+        <button type="button" class="fok-reiter-seg" data-fok-reiter="timer"
+                role="tab" aria-selected="false">Timer</button>
+      </div>
       <span id="fokBilanz" class="fok-bilanz"></span>
       <button type="button" id="fokZu" class="btn icon-only" aria-label="Fokus schließen">✕</button>
     </div>
 
-    <!-- Timer und Gewohnheiten fuellt fokus.js. Der Timer steht oben, weil er
-         immer genau eine Zeile hoch ist - die Liste darunter waechst. -->
-    <div id="fokTimer" class="fok-timer"></div>
+    <!-- Timer-Reiter. Die Struktur steht fest im HTML, fokus.js setzt im
+         Sekundentakt nur Text und Ring-Versatz - ein SVG pro Sekunde neu zu
+         bauen waere Verschwendung. Die Knopfreihe wechselt dagegen ihren
+         Inhalt (Start bzw. Pause/Stopp) und wird neu gefuellt. -->
+    <div id="fokTimer" class="fok-timer" hidden>
+      <div class="fok-ring">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="fok-ring-spur" cx="60" cy="60" r="52"></circle>
+          <circle id="fokRingFuellung" class="fok-ring-fuellung" cx="60" cy="60" r="52"></circle>
+        </svg>
+        <div class="fok-ring-mitte">
+          <span id="fokZeit" class="fok-zeit"></span>
+          <span id="fokGeplant" class="fok-geplant"></span>
+        </div>
+      </div>
+      <div id="fokKnoepfe" class="fok-knoepfe"></div>
+    </div>
+
+    <!-- Gewohnheiten-Reiter, gefuellt aus fokus.js. -->
     <div id="fokInhalt" class="fok-inhalt"></div>
 
     <a class="fok-mehr" href="https://fokus.it-wolf.org" target="_blank" rel="noopener">

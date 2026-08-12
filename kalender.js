@@ -594,27 +594,37 @@ function kalenderwoche(datum) {
 
 /* ---------- Monat und Jahr direkt waehlen ---------- */
 /**
- * Eigener Dialog: eine Jahreszeile mit Pfeilen, darunter alle zwoelf Monate
- * als Kacheln. Ein Tipp auf einen Monat setzt beides und schliesst.
+ * Eigener Dialog mit zwei Walzen: Monat links, Jahr rechts. Was in der Mitte
+ * einrastet, gilt sofort - der Kalender dahinter zieht mit, geschlossen wird
+ * ueber ✕ oder einen Tipp daneben.
  *
  * Frueher war das ein Block, der sich zwischen Kopfzeile und Raster schob -
  * er zog Raster und Tagesliste nach unten, am Handy bis aus dem Bild heraus.
  * Ein Dialog legt sich darueber und laesst den Kalender stehen, wo er ist.
  *
- * Die Jahres-Pfeile blaettern nur die VORSCHAU (wahlJahr) - erst der Tipp auf
- * einen Monat uebernimmt. So waehlt man "Maerz 2027" in zwei Schritten, ohne
- * dass der Kalender zwischendurch in einen Monat springt, den niemand wollte.
+ * Davor stand hier ein Kachelraster mit Jahres-Pfeilen und einem
+ * Zwei-Schritt-Weg (erst Jahr blaettern, dann Monat tippen). Das Rad braucht
+ * dafuer nur eine Geste, und lange Monatsnamen passen wieder hinein - im
+ * Raster mussten sie auf drei Buchstaben gekuerzt werden.
  */
 const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni",
                 "Juli", "August", "September", "Oktober", "November", "Dezember"];
-const MONATE_KURZ = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
-                     "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 let wahlOffen = false;
-let wahlJahr = 0;
+// Steht das Rad schon im DOM? Ein Einrasten laesst den Kalender neu zeichnen,
+// und der ruft zeichneWahl() mit - ohne dieses Flag baute sich das Rad dabei
+// selbst neu auf, verloere seine Scrollposition und loeste damit das naechste
+// Scroll-Ereignis aus. Eine Schleife, die man nicht mehr anhalten kann.
+let radGebaut = false;
+// Zeilenhoehe der Walzen in px. Gehoert zu --rad-zeile in style.css - die
+// Rechnung "welcher Wert steht in der Mitte" haengt an genau dieser Zahl.
+const RAD_ZEILE = 40;
+// Wie weit die Jahreswalze reicht. Termine liegen praktisch nie weiter weg;
+// wer doch dorthin will, blaettert mit den Pfeilen im Kopf des Kalenders.
+const JAHR_ZURUECK = 5;
+const JAHR_VOR = 10;
 
 function schalteWahl() {
   wahlOffen = !wahlOffen;
-  if (wahlOffen) wahlJahr = kalJahr;
   zeichneWahl();
 }
 
@@ -624,13 +634,94 @@ function schliesseWahl() {
   zeichneWahl();
 }
 
+function jahrBereich() {
+  const jetzt = new Date().getFullYear();
+  let von = jetzt - JAHR_ZURUECK, bis = jetzt + JAHR_VOR;
+  // Wer ueber die Pfeile weit hinausgeblaettert hat, soll sein Jahr im Rad
+  // trotzdem wiederfinden.
+  if (kalJahr < von) von = kalJahr;
+  if (kalJahr > bis) bis = kalJahr;
+  const jahre = [];
+  for (let j = von; j <= bis; j++) jahre.push(j);
+  return jahre;
+}
+
+/**
+ * Eine Walze: eine scrollbare Spalte, in der immer ein Wert in der Mitte
+ * einrastet (scroll-snap). Ober- und unterhalb steht Luft von zwei Zeilen,
+ * sonst kaeme der erste und letzte Wert nie in die Mitte.
+ *
+ * Gerechnet wird beim Anhalten, nicht bei jedem Scroll-Ereignis: waehrend des
+ * Schwungs stuende sonst jeder durchlaufende Monat kurz im Kalender.
+ */
+function baueWalze(werte, aktiv, beiWahl) {
+  const spalte = document.createElement("div");
+  spalte.className = "kal-rad-spalte";
+
+  const luft = () => {
+    const d = document.createElement("div");
+    d.className = "kal-rad-luft";
+    return d;
+  };
+  spalte.appendChild(luft());
+
+  werte.forEach((w, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "kal-rad-wert" + (i === aktiv ? " gewaehlt" : "");
+    b.textContent = w.text;
+    b.dataset.radIndex = String(i);
+    // Ein Tipp uebernimmt SOFORT und scrollt zusaetzlich hin. Nur zu scrollen
+    // und auf das Einrasten zu warten waere elegantere Theorie: klickt jemand
+    // den Wert an, der schon in der Mitte steht, bewegt sich nichts - und ohne
+    // Scroll-Ereignis passierte dann auch nichts. Der Scroll-Handler unten
+    // rechnet dasselbe Ergebnis noch einmal aus, das schadet nicht.
+    b.addEventListener("click", () => {
+      markiereWalze(spalte, i);
+      beiWahl(werte[i].wert);
+      spalte.scrollTo({ top: i * RAD_ZEILE, behavior: "smooth" });
+    });
+    spalte.appendChild(b);
+  });
+
+  spalte.appendChild(luft());
+
+  let ruhe = null;
+  spalte.addEventListener("scroll", () => {
+    clearTimeout(ruhe);
+    ruhe = setTimeout(() => {
+      const i = Math.max(0, Math.min(werte.length - 1,
+        Math.round(spalte.scrollTop / RAD_ZEILE)));
+      markiereWalze(spalte, i);
+      beiWahl(werte[i].wert);
+    }, 120);
+  });
+
+  // Die Startposition kann hier noch nicht gesetzt werden: die Spalte haengt
+  // noch nicht im Dokument, hat also keine Hoehe - und scrollTop bliebe still
+  // auf 0. Sie wird deshalb gemerkt und nach dem Einhaengen gesetzt.
+  spalte.dataset.radStart = String(aktiv);
+  return spalte;
+}
+
+function markiereWalze(spalte, index) {
+  for (const b of spalte.querySelectorAll(".kal-rad-wert")) {
+    b.classList.toggle("gewaehlt", Number(b.dataset.radIndex) === index);
+  }
+}
+
 function zeichneWahl() {
   kalWahl.hidden = !wahlOffen;
   kalMonatName.classList.toggle("offen", wahlOffen);
-  kalWahlBox.innerHTML = "";
-  if (!wahlOffen) return;
-
-  const heute = new Date();
+  if (!wahlOffen) {
+    kalWahlBox.replaceChildren();
+    radGebaut = false;
+    return;
+  }
+  // Steht das Rad schon, gilt: Finger weg. Der Nutzer scrollt gerade darin.
+  if (radGebaut) return;
+  radGebaut = true;
+  kalWahlBox.replaceChildren();
 
   const kopf = document.createElement("p");
   kopf.className = "kal-popup-kopf";
@@ -644,41 +735,34 @@ function zeichneWahl() {
   kopf.appendChild(zu);
   kalWahlBox.appendChild(kopf);
 
-  const jahrZeile = document.createElement("div");
-  jahrZeile.className = "kal-jahr-zeile";
-  const jahrPfeil = (zeichen, schritt, beschriftung) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "kal-pfeil";
-    b.textContent = zeichen;
-    b.setAttribute("aria-label", beschriftung);
-    b.addEventListener("click", () => { wahlJahr += schritt; zeichneWahl(); });
-    return b;
-  };
-  jahrZeile.appendChild(jahrPfeil("‹", -1, "Vorheriges Jahr"));
-  const jahrWert = document.createElement("span");
-  jahrWert.className = "kal-jahr-wert";
-  jahrWert.textContent = String(wahlJahr);
-  jahrZeile.appendChild(jahrWert);
-  jahrZeile.appendChild(jahrPfeil("›", 1, "Nächstes Jahr"));
-  kalWahlBox.appendChild(jahrZeile);
+  const rad = document.createElement("div");
+  rad.className = "kal-rad";
 
-  const kacheln = document.createElement("div");
-  kacheln.className = "kal-monate";
-  MONATE.forEach((name, i) => {
-    const k = document.createElement("button");
-    k.type = "button";
-    k.className = "kal-monat-kachel";
-    if (wahlJahr === kalJahr && i === kalMonatNr) k.classList.add("gewaehlt");
-    else if (wahlJahr === heute.getFullYear() && i === heute.getMonth()) k.classList.add("heute");
-    // Lange Namen brechen die Dreier-Reihe auf schmalen Geraeten - drei
-    // Buchstaben reichen, der volle Name steht im title.
-    k.textContent = MONATE_KURZ[i];
-    k.title = name;
-    k.addEventListener("click", () => { wahlOffen = false; zeigeMonat(wahlJahr, i); });
-    kacheln.appendChild(k);
-  });
-  kalWahlBox.appendChild(kacheln);
+  // Das Fenster liegt UEBER den Walzen und zeigt, welche Zeile gilt. Als
+  // eigenes Element, weil es sich nicht mitscrollen darf.
+  const fenster = document.createElement("div");
+  fenster.className = "kal-rad-fenster";
+  rad.appendChild(fenster);
+
+  rad.appendChild(baueWalze(
+    MONATE.map((name, i) => ({ text: name, wert: i })),
+    kalMonatNr,
+    monat => zeigeMonat(kalJahr, monat)));
+
+  const jahre = jahrBereich();
+  rad.appendChild(baueWalze(
+    jahre.map(j => ({ text: String(j), wert: j })),
+    jahre.indexOf(kalJahr),
+    jahr => zeigeMonat(jahr, kalMonatNr)));
+
+  kalWahlBox.appendChild(rad);
+
+  // Jetzt steht das Rad im Dokument und hat Hoehe - erst hier laesst sich der
+  // gewaehlte Wert in die Mitte schieben. Ohne Animation: das Rad soll beim
+  // Aufklappen dastehen, nicht erst hinfahren.
+  for (const spalte of rad.querySelectorAll(".kal-rad-spalte")) {
+    spalte.scrollTop = Number(spalte.dataset.radStart) * RAD_ZEILE;
+  }
 }
 
 function zeichneRaster(tage, spuren, heute) {
@@ -967,7 +1051,7 @@ function zeitAus(iso) {
 function felderAusTermin(tag, t) {
   if (!t) {
     return { titel: "", ganztags: true, startDatum: tag, endDatum: tag,
-             vonZeit: "09:00", bisZeit: "10:00", farbe: "", notiz: "" };
+             vonZeit: "09:00", bisZeit: "10:00", farbe: "", notiz: "", ort: "" };
   }
   if (t.ganztags) {
     // Google liefert das Ende ganztaegiger Termine als ersten Tag DANACH -
@@ -980,7 +1064,8 @@ function felderAusTermin(tag, t) {
       if (ende < t.start) ende = t.start;
     }
     return { titel: t.titel, ganztags: true, startDatum: t.start, endDatum: ende,
-             vonZeit: "09:00", bisZeit: "10:00", farbe: t.colorId || "", notiz: t.beschreibung || "" };
+             vonZeit: "09:00", bisZeit: "10:00", farbe: t.colorId || "",
+             notiz: t.beschreibung || "", ort: t.ort || "" };
   }
   const start = new Date(t.start);
   const ende = t.ende ? new Date(t.ende) : null;
@@ -989,7 +1074,7 @@ function felderAusTermin(tag, t) {
     startDatum: isNaN(start) ? tag : isoVonDate(start),
     endDatum: (ende && !isNaN(ende)) ? isoVonDate(ende) : (isNaN(start) ? tag : isoVonDate(start)),
     vonZeit: zeitAus(t.start), bisZeit: t.ende ? zeitAus(t.ende) : "10:00",
-    farbe: t.colorId || "", notiz: t.beschreibung || "",
+    farbe: t.colorId || "", notiz: t.beschreibung || "", ort: t.ort || "",
   };
 }
 
@@ -1130,12 +1215,22 @@ function baueTerminFormular(tag, termin) {
   notiz.addEventListener("input", () => { f.notiz = notiz.value; });
   box.appendChild(notiz);
 
-  if (termin && termin.ort) {
-    const ort = document.createElement("p");
-    ort.className = "kal-form-ort";
-    ort.textContent = "📍 " + termin.ort;
-    box.appendChild(ort);
-  }
+  // Frueher stand hier nur ein vorhandener Ort als Text. Google nimmt das Feld
+  // beim Schreiben genauso entgegen wie die Notiz - es gab keinen Grund, es
+  // nicht bearbeitbar zu machen.
+  const ortZeile = document.createElement("div");
+  ortZeile.className = "kal-form-zeile";
+  const ortLabel = document.createElement("span");
+  ortLabel.className = "kal-form-label";
+  ortLabel.textContent = "📍";
+  const ortFeld = document.createElement("input");
+  ortFeld.type = "text";
+  ortFeld.placeholder = "Ort (optional)";
+  ortFeld.value = f.ort;
+  ortFeld.setAttribute("aria-label", "Ort");
+  ortFeld.addEventListener("input", () => { f.ort = ortFeld.value; });
+  ortZeile.append(ortLabel, ortFeld);
+  box.appendChild(ortZeile);
 
   const knoepfe = document.createElement("div");
   knoepfe.className = "kal-form-knoepfe";
@@ -1462,6 +1557,10 @@ function waehleTag(iso) {
     return;
   }
   kalAuswahl = (kalAuswahl === iso) ? null : iso;
+  // Ein gewaehlter Tag braucht die untere Haelfte des Streifens - und die
+  // gehoert gerade dem Fokus-Panel. Nur beim Abwaehlen (zweiter Tipp auf
+  // denselben Tag) bleibt alles, wie es ist.
+  if (kalAuswahl !== null) window.fokusSchliessen?.(true);
   schliesseEingaben();
   zeichneKalender();
 }
@@ -1490,7 +1589,9 @@ function zeigeMonat(jahr, monat) {
   const treffer = Object.keys(tage)
     .filter(iso => iso.startsWith(`${jahr}-${String(monat + 1).padStart(2, "0")}`))
     .sort();
-  kalAuswahl = treffer[0] || null;
+  // Wie in springeZuHeute(): steht das Fokus-Panel offen, gehoert ihm die
+  // untere Haelfte des Streifens - nur Blaettern oeffnet die Tagesliste nicht.
+  kalAuswahl = window.fokusIstOffen?.() ? null : (treffer[0] || null);
   zeichneKalender();
 }
 
@@ -1519,9 +1620,28 @@ function springeZuHeute() {
   const heute = new Date();
   kalJahr = heute.getFullYear();
   kalMonatNr = heute.getMonth();
-  kalAuswahl = todayStr();
+  // Steht das Fokus-Panel offen, gehoert ihm die untere Haelfte des Streifens -
+  // dann bleibt die Tagesliste zu, bis jemand einen Tag antippt. Sonst laegen
+  // beide uebereinander und draengten sich gegenseitig aus dem Bild.
+  kalAuswahl = window.fokusIstOffen?.() ? null : todayStr();
   zeichneKalender();
 }
+
+/**
+ * Fuer fokus.js: Das Panel raeumt beim Oeffnen die Tagesliste weg und gibt den
+ * Platz beim Schliessen wieder zurueck (dann bei heute, wie bei jedem Oeffnen
+ * des Kalenders).
+ */
+window.kalenderTagAbwaehlen = function () {
+  if (!kalOffen || kalAuswahl === null) return;
+  kalAuswahl = null;
+  schliesseEingaben();
+  zeichneKalender();
+};
+window.kalenderTagZurueck = function () {
+  if (!kalOffen || kalAuswahl !== null) return;
+  springeZuHeute();
+};
 
 // ---------- Oeffnen / Schliessen ----------
 /**
@@ -1813,7 +1933,12 @@ kalHintergrund.addEventListener("click", schliesseKalender);
 kalMonatName.addEventListener("click", schalteWahl);
 document.getElementById("kalZurueck").addEventListener("click", () => monatVerschieben(-1));
 document.getElementById("kalVor").addEventListener("click", () => monatVerschieben(1));
-document.getElementById("kalHeute").addEventListener("click", springeZuHeute);
+// "Heute" ist ein Tipp auf einen Tag wie jeder andere - also macht er dem
+// Fokus-Panel Platz, bevor der Tag gewaehlt wird (springeZuHeute fragt danach).
+document.getElementById("kalHeute").addEventListener("click", () => {
+  window.fokusSchliessen?.(true);
+  springeZuHeute();
+});
 document.getElementById("kalVollbild").addEventListener("click", () => setzeVollbild(!kalVollbild));
 kalUeberfaellig.addEventListener("click", () => {
   // Ueberfaelliges steht in der Tagesliste - im Vollbild gibt es die nicht.

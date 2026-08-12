@@ -82,17 +82,20 @@ und die App von dort starten.
   angetippten Tages
 - **⚠ Überfällig** zeigt alles, was liegengeblieben ist — auch aus Vormonaten
 - Ein Tipp auf ein ToDo bringt dich zu ihm auf die Liste, samt Listenwechsel
+- Ein Tipp auf denselben Tag klappt die Liste darunter wieder zu. Steht der
+  Fokus-Bereich offen, macht ein Tipp auf einen Tag ihm Platz
 - Darunter zwei Abschnitte, **Termine** und **ToDos**, jeder mit einem **＋**
 - **＋ bei ToDos:** Titel tippen, Enter — fertig, mit dem Datum des Tages, in
   deiner aktuellen Liste (ohne Bereich)
 - **＋ bei Termine** (wenn Google verbunden ist) öffnet ein Formular: Titel,
-  ganztägig oder Uhrzeit von–bis, auch über mehrere Tage, Farbe und Notiz
+  ganztägig oder Uhrzeit von–bis, auch über mehrere Tage, Farbe, Notiz und Ort
 - Ein Tipp auf einen Google-Termin öffnet ihn zum **Ändern** — dort steht auch
   der Löschen-Knopf (fragt einmal nach)
 
 **Blättern:** über dem Monatsraster nach links oder rechts wischen wechselt den
 **Monat**, über der Tagesliste den **Tag**. Ein Tipp auf „August 2026" öffnet
-zwei Walzen für Monat und Jahr.
+ein Drehrad mit zwei Walzen — was in der Mitte einrastet, gilt sofort, der
+Kalender dahinter zieht mit.
 
 Zurück geht es mit einem Wisch in der Kopfzeile, einem Tipp daneben, ✕ oder
 Escape. Auf dem Handy füllt der Kalender den ganzen Bildschirm.
@@ -106,9 +109,11 @@ freigeschaltet ist — sonst gibt es den Knopf gar nicht.
 - **Abhaken** mit dem Haken rechts, bei Gewohnheiten mit Menge über **− Zahl +**
 - Neben jedem Namen steht die **Flamme**, also wie viele Tage (oder Wochen) die
   Kette schon hält
+- Oben zwei Reiter: **Gewohnheiten** und **Timer**. Läuft gerade eine Sitzung,
+  ist der Timer schon vorne
 - **▶ Start** beginnt eine Sitzung mit deiner Standarddauer, **⏸** hält sie an,
   **⏹** beendet sie (ab einer Minute mit Rückfrage — geloggte Zeit lässt sich
-  nicht mehr ändern)
+  nicht mehr ändern). Der Ring zeigt, wie weit die Sitzung ist
 - Läuft eine Sitzung, steht die **Restzeit am 🔥-Knopf**; du kannst das Panel
   also zumachen. Am Handy ist es ein kleiner Punkt, die Zeit steht dann im
   Tab-Titel. Am Ende gibt es einen Ton.

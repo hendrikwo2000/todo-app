@@ -70,6 +70,9 @@ function felderLesen(body, mitId) {
 
   const farbe = String((body && body.farbe) || "");
   const notiz = String((body && body.notiz) || "").slice(0, 8000);
+  // Google nimmt hier freien Text (Adresse, Raum, Link) - nur die Laenge wird
+  // gedeckelt, wie bei der Notiz.
+  const ort = String((body && body.ort) || "").trim().slice(0, 300);
   // Zeitzonen-Namen sind IANA-Kennungen wie "Europe/Berlin"; alles andere
   // waere fremder Text in einer Anfrage, die wir mit unserem Token stellen.
   const zeitzone = /^[A-Za-z_+\-]+\/[A-Za-z_+\-/]+$/.test(String((body && body.zeitzone) || ""))
@@ -79,7 +82,7 @@ function felderLesen(body, mitId) {
     id,
     felder: {
       titel: titel.slice(0, 300), ganztags, startDatum, endDatum, vonZeit, bisZeit,
-      farbe: FARBEN.has(farbe) ? farbe : null, notiz, zeitzone,
+      farbe: FARBEN.has(farbe) ? farbe : null, notiz, ort, zeitzone,
     },
   };
 }

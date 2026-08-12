@@ -2988,6 +2988,32 @@ function updateDateButton(calBtn, clearBtn, value) {
 // Analog zu updateDateButton: zeigt das Wiederholungsmuster kompakt im Knopf
 // ("🔁 Wöchentlich"), damit der Bearbeiten-Dialog kein breites <select> mehr
 // dauerhaft in der Zeile braucht - Klick oeffnet die Auswahl (siehe renderTodo).
+/**
+ * Symbol-Knopf plus verstecktes <select> - dasselbe Muster wie bei der
+ * Wiederholung. Der Knopf traegt den gewaehlten Namen, damit man ihn sieht,
+ * ohne die Liste zu oeffnen; ohne Auswahl bleibt nur das Symbol stehen.
+ */
+function verdrahteWahlSymbol(wrap, art, symbol, titelLeer) {
+  const knopf = wrap.querySelector(`[data-act="${art}"]`);
+  if (!knopf) return;   // Bereich gibt es nur "ohne Bereich", Thema nur mit Themen
+  const feld = knopf.parentElement.querySelector("select");
+  const nachziehen = () => {
+    const name = feld.selectedOptions[0] ? feld.selectedOptions[0].textContent : "";
+    // Die leere Option traegt einen Platzhaltertext ("— kein Über-Thema —"),
+    // der als Beschriftung des Knopfes keinen Sinn ergaebe.
+    const gesetzt = !!feld.value;
+    // Namen sind frei waehlbar und koennen lang sein - ungekuerzt schoebe einer
+    // die ganze Knopfreihe auseinander. Der volle Name steht im title.
+    const kurz = name.length > 18 ? name.slice(0, 17) + "…" : name;
+    knopf.classList.toggle("active", gesetzt);
+    knopf.textContent = gesetzt ? `${symbol} ${kurz}` : symbol;
+    knopf.title = gesetzt ? `${name} – zum Ändern klicken` : titelLeer;
+  };
+  nachziehen();
+  knopf.addEventListener("click", () => openDatePicker(feld));
+  feld.addEventListener("change", nachziehen);
+}
+
 function updateWiederholungButton(btn, value) {
   const muster = WIEDERHOLUNGEN.find(w => w.id === value);
   btn.classList.toggle("active", !!muster);
@@ -3085,29 +3111,37 @@ function renderTodo(t) {
     // der verlaessliche (auch mobile) Weg, ein ToDo zuzuordnen oder wieder frei
     // zu stellen - Drag & Drop ist nur der Desktop-Komfort obendrauf.
     const themenDesBereichs = themenIn(t.categoryId);
+    // Wie die Wiederholung: sichtbar ist nur ein Symbol, das <select> liegt
+    // unsichtbar darunter und wird per showPicker() geoeffnet. Als breites
+    // Auswahlfeld nahmen die beiden zwei ganze Zeilen ueber der Knopfreihe ein.
     const themaWahl = themenDesBereichs.length ? `
-      <select class="edit-thema" data-edit-thema="${t.id}" aria-label="Über-Thema">
-        <option value="">— kein Über-Thema —</option>
-        ${themenDesBereichs.map(th =>
-          `<option value="${escapeHtml(th.id)}"${th.id === t.themaId ? " selected" : ""}>${escapeHtml(th.name)}</option>`
-        ).join("")}
-      </select>` : "";
+      <span class="date-field">
+        <button type="button" class="add-icon" data-act="thema">🏷️</button>
+        <select class="edit-thema" data-edit-thema="${t.id}" aria-label="Über-Thema" tabindex="-1">
+          <option value="">— kein Über-Thema —</option>
+          ${themenDesBereichs.map(th =>
+            `<option value="${escapeHtml(th.id)}"${th.id === t.themaId ? " selected" : ""}>${escapeHtml(th.name)}</option>`
+          ).join("")}
+        </select>
+      </span>` : "";
     // Bereich-Auswahl nur bei ToDos, die gerade "Ohne Bereich" liegen - der
     // verlaessliche (auch mobile) Weg, sie einem Bereich zuzuordnen. Zugeordnete
     // ToDos verschiebt man wie bisher per Drag & Drop.
     const echteBereiche = state.categories.filter(c => !istOhneBereich(c.id));
     const bereichWahl = (istOhneBereich(t.categoryId) && echteBereiche.length) ? `
-      <select class="edit-thema edit-bereich" data-edit-bereich="${t.id}" aria-label="Bereich zuordnen">
-        <option value="">— Ohne Bereich —</option>
-        ${echteBereiche.map(c =>
-          `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`
-        ).join("")}
-      </select>` : "";
+      <span class="date-field">
+        <button type="button" class="add-icon" data-act="bereich">📂</button>
+        <select class="edit-thema edit-bereich" data-edit-bereich="${t.id}" aria-label="Bereich zuordnen" tabindex="-1">
+          <option value="">— Ohne Bereich —</option>
+          ${echteBereiche.map(c =>
+            `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`
+          ).join("")}
+        </select>
+      </span>` : "";
     const unterpunktOffen = unterpunktEingabeOffen === t.id;
     wrap.innerHTML = `
       <input type="text" data-edit-text="${t.id}" value="${escapeHtml(t.text)}">
       <textarea data-edit-note placeholder="Notiz (optional)" rows="2"></textarea>
-      ${bereichWahl}${themaWahl}
       <div class="edit-buttons">
         <span class="date-field">
           <button type="button" class="add-icon add-cal" data-act="cal">📅</button>
@@ -3123,6 +3157,7 @@ function renderTodo(t) {
             ).join("")}
           </select>
         </span>
+        ${bereichWahl}${themaWahl}
         ${unterpunktOffen
           ? `<input type="text" class="edit-unterpunkt-neu" data-neuer-unterpunkt="${t.id}" placeholder="＋ Unterpunkt" autocomplete="off">`
           : `<button type="button" class="add-icon" data-act="unterpunkt" title="Unterpunkt hinzufügen">✅</button>`}
@@ -3151,6 +3186,12 @@ function renderTodo(t) {
     dateInput.addEventListener("change", syncDateUi);
     wiederholungBtn.addEventListener("click", () => openDatePicker(wiederholungSelect));
     wiederholungSelect.addEventListener("change", () => updateWiederholungButton(wiederholungBtn, wiederholungSelect.value));
+
+    // Bereich und Ueber-Thema nach demselben Muster: Symbol oeffnet die Liste,
+    // und sobald etwas gewaehlt ist, steht der Name daneben. Ohne ihn muesste
+    // man die Liste aufklappen, nur um zu sehen, wo das ToDo gerade liegt.
+    verdrahteWahlSymbol(wrap, "bereich", "📂", "Bereich zuordnen");
+    verdrahteWahlSymbol(wrap, "thema", "🏷️", "Über-Thema wählen");
 
     const unterpunktBtn = wrap.querySelector('[data-act="unterpunkt"]');
     if (unterpunktBtn) {

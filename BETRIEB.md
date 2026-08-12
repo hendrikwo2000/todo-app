@@ -697,6 +697,22 @@ Im Dialog steckt die Auswahl seit der Kompakt-Zeile hinter einem
 genau wie beim 📅-Knopf für den Termin selbst; der Knopftext zeigt das
 gewählte Muster kompakt an (`updateWiederholungButton()`).
 
+**Bereich (📂) und Über-Thema (🏷️) folgen seit 13.08.2026 demselben Muster**
+(`verdrahteWahlSymbol()` in `app.js`). Vorher standen beide als breite
+`<select>` über der Knopfreihe und nahmen dort je eine ganze Zeile ein; jetzt
+sind es zwei weitere Symbole in der Reihe. Ist etwas gewählt, steht der Name
+neben dem Symbol — auf 18 Zeichen gekürzt, denn Namen sind frei wählbar und
+schöben die Reihe sonst auseinander (der volle Name steht im `title`).
+
+📂 gibt es nur bei ToDos ohne Bereich, 🏷️ nur, wenn der Bereich Themen hat —
+`verdrahteWahlSymbol()` steigt still aus, wenn der Knopf fehlt.
+
+**Dabei musste `.edit-thema` aus der CSS weichen.** Die Regel gab dem Feld ein
+eigenes Aussehen (volle Breite, Rahmen) und stand SPÄTER in der Datei als
+`.date-field select`, bei gleicher Spezifität — das `<select>` wäre also
+sichtbar geblieben und hätte den neuen Knopf verdrängt. Dieselbe Familie von
+Fallen wie an mehreren anderen Stellen in dieser Datei.
+
 **Sichtbarkeit.** Die neu erzeugte Ausgabe erscheint nicht sofort nach dem
 Abhaken, sondern erst ab ihrem eigenen Fälligkeitstag
 (`nochNichtFaellig()` in `app.js`, gefiltert in `renderColumn()` und
@@ -872,6 +888,40 @@ sonst zeigt der Sprung aus dem Kalender ins Leere.
 über Vormonate liegt und im Raster des laufenden Monats gar nicht auftaucht.
 Auswahl `kalAuswahl` hält deshalb entweder ein ISO-Datum oder den
 Sonderwert `"ueberfaellig"`.
+
+**Monat/Jahr ist ein Drehrad** (seit 13.08.2026): zwei Walzen nebeneinander,
+Monat links, Jahr rechts. Was in der Mitte einrastet, gilt **sofort** — der
+Kalender dahinter zieht mit, geschlossen wird über ✕ oder einen Tipp daneben.
+Davor lag hier ein Kachelraster mit Jahres-Pfeilen; das zeigte alles auf einen
+Blick, brauchte für „März 2027" aber zwei Schritte und kürzte die Monatsnamen
+auf drei Buchstaben.
+
+Zwei Dinge, die beim Bauen Ärger gemacht haben und es wieder tun würden:
+
+* **`RAD_ZEILE` in `kalender.js` und `--rad-zeile` in `style.css` gehören
+  zusammen.** Aus `scrollTop` und dieser Höhe fällt die Entscheidung, welcher
+  Wert in der Mitte steht — laufen die Zahlen auseinander, wählt das Rad den
+  falschen Monat.
+* **`zeichneWahl()` baut das Rad nur EINMAL** (Flag `radGebaut`). Das Einrasten
+  ruft `zeigeMonat()`, das lässt den Kalender neu zeichnen, und der ruft
+  `zeichneWahl()` mit. Ohne das Flag baute sich das Rad dabei selbst neu auf,
+  verlöre seine Scrollposition und löste damit das nächste Scroll-Ereignis aus.
+
+Ein **Tipp auf einen Wert übernimmt sofort** und scrollt zusätzlich hin. Nur zu
+scrollen und aufs Einrasten zu warten wäre die elegantere Theorie: tippt jemand
+den Wert an, der schon in der Mitte steht, bewegt sich nichts — und ohne
+Scroll-Ereignis passierte dann auch nichts.
+
+**Der Ort eines Termins lässt sich bearbeiten** (seit 13.08.2026). Vorher stand
+ein vorhandener Ort nur als Text im Formular. Google nimmt das Feld
+(`location`) beim Schreiben genauso entgegen wie die Notiz; leer geschickt
+löscht es einen bestehenden Ort, deshalb geht dort ein leerer String hin und
+nicht `null`.
+
+**Die Knopfreihe im Termin-Formular ist 44 px hoch.** Mit `.btn.klein` waren es
+25 px — unter dem Maß, ab dem ein Finger regelmäßig danebenlangt. Die Klasse
+bleibt an den Knöpfen, `.kal-form-knoepfe .btn` holt Höhe und Schriftgröße
+zurück.
 
 **Wischgeste.** Start nur innerhalb von 24 px am RECHTEN Bildschirmrand
 (links liegt auf iOS/Android die Zurück-Geste des Browsers). Die Achse
@@ -1275,6 +1325,57 @@ Gemerkt wird getrennt: `kalAnsicht` (`liste`/`kalender`) und `fokAnsicht`
 dass beide offen sind. Sind beim Laden im schmalen Fenster beide gemerkt,
 behält der Kalender den Vorrang.
 
+### Zwei Reiter: Gewohnheiten oder Timer
+
+Beide teilen sich die Fläche des Panels, statt übereinander zu stehen
+(seit 13.08.2026). Nebeneinander blieb für den Timer nur eine Zeile, und eine
+Zeile liest sich nicht vom Schreibtisch aus. Jetzt füllt er das Panel: ein
+Fortschrittsring, die Restzeit in der Mitte, die Knöpfe darunter.
+
+**Beim Öffnen stehen die Gewohnheiten vorn — außer es läuft eine Sitzung**,
+dann der Timer (`fokReiter` wird in `ladeFokus()` gesetzt). Sobald man selbst
+auf einen Reiter tippt, gilt diese Wahl bis zum Schließen des Panels
+(`fokReiterGewaehlt`).
+
+**Die SVG-Struktur des Rings steht fest in `index.html`**, `fokus.js` setzt im
+Sekundentakt nur Text und `stroke-dashoffset`. Ein SVG pro Sekunde neu zu bauen
+wäre Verschwendung. Die Knopfreihe wechselt dagegen ihren Inhalt (Start bzw.
+Pause/Stopp) und wird bei jedem Zustandswechsel neu gefüllt — aber nur dann,
+sonst flackerte sie im Takt.
+
+`display: block` am SVG ist Pflicht: als Inline-Element steht es auf der
+Textgrundlinie, und die Lücke darunter machte den Kreis fünf Pixel höher als
+breit — aus dem Ring wurde ein Ei.
+
+Die Ringgröße hängt am Modus: im Split ist das Panel selbst auf 45vh gedeckelt,
+dort passt nur `clamp(120px, 22vh, 190px)`. Im Vollbild-Panel des schmalen
+Fensters sind es `clamp(180px, 38vh, 280px)`.
+
+### Tagesliste und Fokus teilen sich die untere Hälfte
+
+Beide wollen denselben Platz, also gilt: **wer zuletzt gefragt wurde,
+bekommt ihn.**
+
+* Fokus öffnen räumt die Tagesliste weg (`window.kalenderTagAbwaehlen()` — auch
+  beim Wiederherstellen nach dem Laden, nicht nur beim Antippen von 🔥).
+* Ein Tipp auf einen Tag schließt Fokus und zeigt die Liste
+  (`window.fokusSchliessen(true)`). Das `true` ist wichtig: ohne es holte sich
+  der Kalender sofort wieder „heute", und der eben gewählte Tag wäre weg.
+* Fokus über 🔥 zu schließen gibt die Tagesliste bei **heute** zurück
+  (`window.kalenderTagZurueck()`), statt den Kalender leer stehen zu lassen.
+* `springeZuHeute()` und `zeigeMonat()` fragen beide
+  `window.fokusIstOffen()` — beim bloßen Blättern im Monat soll die Tagesliste
+  nicht von selbst aufgehen.
+
+**Falle:** `fokHintergrund.addEventListener("click", schliesseFokus)` wäre
+falsch. Das Klick-Ereignis läge dann auf dem Parameter `tagBehalten`, und der
+Kalender bekäme seine Tagesliste nie zurück — deshalb steht dort eine
+Pfeilfunktion.
+
+Die Regel gilt **überall**, nicht nur im Split (Hendriks Entscheidung). Am
+Handy fällt sie kaum auf, weil jedes Öffnen des Kalenders ohnehin bei heute
+startet.
+
 ### Was das Panel kann — und was nicht
 
 Abhaken (einfach oder mit Menge über −/Zahl/+), Flammen sehen, Timer starten,
@@ -1297,7 +1398,14 @@ Minute nach — eine geloggte Sitzung ist nachträglich nicht mehr änderbar.
 in denen der Umschalter steckt. Am Handy passt die Zahl nicht in die Pille
 (dort stehen schon Titel und Zahnrad in derselben Zeile); aus ihr wird per CSS
 ein 6-px-Glutpunkt (`font-size: 0`), und die Zeit steht stattdessen im
-Tab-Titel. Nachgemessen: mit Punkt ist die Pille 127 px breit, die Kopfzeile
+Tab-Titel.
+
+Bei zugeklapptem Panel trägt das Segment sonst `opacity: .45` wie jedes nicht
+gewählte. Die Zeit soll darin aber nicht verblassen — und die Deckkraft eines
+Elternteils lässt sich auf einem Kind nicht zurücknehmen, eine Gruppe wird als
+Ganzes komponiert. Also andersherum: `.ansicht-seg.laeuft` bleibt voll deckend,
+und die **Flamme allein** wird gedimmt, damit sie sich weiter wie ein
+ausgeschaltetes Segment liest. Nachgemessen: mit Punkt ist die Pille 127 px breit, die Kopfzeile
 bleibt auch bei 360 px zweizeilig.
 
 Am Sitzungsende gibt es **Ton und Tab-Titel**, aber bewusst **keine

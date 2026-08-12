@@ -271,13 +271,14 @@ function tagPlusEins(iso) {
  * diese beiden Eigenheiten sind der Grund, warum das hier eine eigene
  * Funktion ist und nicht dreimal im Endpunkt steht.
  */
-export function terminRumpf({ titel, ganztags, startDatum, endDatum, vonZeit, bisZeit, farbe, notiz, zeitzone }) {
+export function terminRumpf({ titel, ganztags, startDatum, endDatum, vonZeit, bisZeit, farbe, notiz, ort, zeitzone }) {
   const bis = endDatum || startDatum;
   const rumpf = {
     summary: titel,
-    // Leerer String statt null: nur so LOESCHT Google eine vorhandene Notiz
-    // beim Aendern wieder.
+    // Leerer String statt null: nur so LOESCHEN Notiz und Ort sich beim
+    // Aendern wieder, wenn man das Feld leert.
     description: notiz || "",
+    location: ort || "",
     start: ganztags ? { date: startDatum } : { dateTime: `${startDatum}T${vonZeit}:00`, timeZone: zeitzone },
     end:   ganztags ? { date: tagPlusEins(bis) } : { dateTime: `${bis}T${bisZeit}:00`, timeZone: zeitzone },
   };

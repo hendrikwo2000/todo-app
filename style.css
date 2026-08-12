@@ -287,6 +287,13 @@ html.breit .ansicht-seg[aria-pressed="true"] {
   color: var(--accent);
   font-weight: 600;
 }
+/* Eine laufende Sitzung soll bei zugeklapptem Panel nicht verblassen. Die
+   opacity des Knopfes auf einem Kind zurueckzunehmen geht nicht - eine Gruppe
+   wird als Ganzes komponiert, Werte ueber 1 sind wirkungslos. Also andersherum:
+   der Knopf bleibt voll deckend, und die Flamme allein wird gedimmt, damit sie
+   sich weiter wie ein ausgeschaltetes Segment liest. */
+.ansicht-seg.laeuft { opacity: 1; }
+.ansicht-seg.laeuft:not([aria-pressed="true"]) .fok-flamme { opacity: .45; }
 .fok-rest[hidden] { display: none; }
 html:not(.breit) .fok-rest {
   width: 6px;
@@ -934,25 +941,15 @@ input[type="date"]:focus {
    ohne eine schwere Box um die Gruppe zu ziehen. */
 .thema-list { margin-left: 9px; padding-left: 8px; border-left: 2px solid var(--line); }
 
-/* Ueber-Thema-Auswahl im Bearbeiten-Dialog eines ToDos. */
-.edit-thema {
-  width: 100%;
-  font-family: inherit;
-  font-size: 13px;
-  padding: 7px 9px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--row);
-  color: var(--text);
-  outline: none;
-  transition: border-color .15s, box-shadow .15s;
-}
-.edit-thema:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+/* Bereich, Ueber-Thema und Wiederholung im Bearbeiten-Dialog brauchen KEIN
+   eigenes Aussehen: alle drei sind ein unsichtbares <select> unter einem
+   sichtbaren Symbol-Knopf (siehe .date-field, .date-field select), der Klick
+   oeffnet die native Auswahl.
 
-/* Wiederholungs-Auswahl im Bearbeiten-Dialog: wie das Termin-Feld ein
-   unsichtbares <select> unter einem sichtbaren 🔁-Knopf (siehe .date-field,
-   .date-field select) - der Knopf zeigt das Muster kompakt an, Klick oeffnet
-   die native Auswahl. Kein eigenes Aussehen mehr noetig. */
+   .edit-thema trug frueher ein eigenes Feld-Aussehen (volle Breite, Rahmen).
+   Das musste weg, nicht nur weil es ungenutzt ist: die Regel stand SPAETER in
+   der Datei als `.date-field select` und war gleich spezifisch - das Feld waere
+   also sichtbar geblieben und haette den Knopf verdraengt. */
 
 /* Checklisten-Abschnitt im Bearbeiten-Dialog. */
 .edit-unterpunkte { display: flex; flex-direction: column; gap: 4px; }
@@ -1776,37 +1773,67 @@ html:not(.breit) #fokZu { display: none; }
 }
 .kal-popup-kopf .kal-schliessen { margin-left: auto; }
 
-/* Monat/Jahr: Jahres-Zeile mit Pfeilen, darunter zwoelf Kacheln. Alles auf
-   einen Blick statt einer Scroll-Walze - am Handy trifft man Kacheln
-   zuverlaessiger, als man eine Walze auf den richtigen Wert schiebt. */
-.kal-jahr-zeile {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
+/* Monat/Jahr als Drehrad: zwei Walzen, in denen ein Wert in der Mitte
+   einrastet. Davor lag hier ein Kachelraster - das zeigte alles auf einen
+   Blick, brauchte fuer "Maerz 2027" aber zwei Schritte (Jahr blaettern, Monat
+   tippen) und kuerzte die Monatsnamen auf drei Buchstaben.
+
+   --rad-zeile gehoert zu RAD_ZEILE in kalender.js: dort faellt aus scrollTop
+   und dieser Hoehe die Entscheidung, welcher Wert gerade in der Mitte steht.
+   Werden die Zahlen verschieden, waehlt das Rad den falschen Monat. */
+.kal-rad {
+  --rad-zeile: 40px;
+  position: relative;
+  display: flex;
+  gap: 10px;
+  /* Fuenf Zeilen: die gewaehlte plus zwei zur Orientierung nach oben und
+     unten. Mit dreien wirkt es wie ein Ausschnitt ohne Zusammenhang. */
+  height: calc(var(--rad-zeile) * 5);
 }
-.kal-jahr-wert {
-  min-width: 74px; text-align: center;
-  font-size: 17px; font-weight: 700;
-  font-variant-numeric: tabular-nums;
+.kal-rad-spalte {
+  flex: 1 1 0;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  /* Das Rad faengt sein eigenes Scrollen ab - sonst zieht ein Schwung am Ende
+     der Walze das Panel dahinter mit. */
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  text-align: center;
 }
-.kal-monate {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.kal-monat-kachel {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit; font-size: 14px;
-  padding: 13px 4px;
+.kal-rad-spalte::-webkit-scrollbar { display: none; }
+/* Luft von zwei Zeilen oben und unten, damit auch der erste und der letzte
+   Wert in die Mitte gescrollt werden koennen. */
+.kal-rad-luft { height: calc(var(--rad-zeile) * 2); flex: none; }
+.kal-rad-wert {
+  display: block;
+  width: 100%;
+  height: var(--rad-zeile);
+  scroll-snap-align: center;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 15px;
   cursor: pointer;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: color .12s, transform .12s;
 }
-.kal-monat-kachel:hover { border-color: var(--accent); }
-.kal-monat-kachel.gewaehlt { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
-/* Der heutige Monat bleibt auffindbar, auch wenn gerade ein anderer gewaehlt
-   ist - sonst sucht man im Jahresraster, wo man eigentlich hingehoert. */
-.kal-monat-kachel.heute { border-color: var(--accent); font-weight: 700; }
+.kal-rad-wert.gewaehlt {
+  color: var(--text);
+  font-weight: 700;
+  font-size: 17px;
+}
+/* Das Fenster markiert die Zeile, die gilt. Liegt ueber den Walzen, darf aber
+   keine Tipps abfangen - sonst waere der Wert in der Mitte der einzige, den
+   man nicht anklicken kann. */
+.kal-rad-fenster {
+  position: absolute;
+  left: 0; right: 0;
+  top: calc(var(--rad-zeile) * 2);
+  height: var(--rad-zeile);
+  border-radius: 10px;
+  background: var(--accent-soft);
+  pointer-events: none;
+}
 
 .kal-pfeil, .kal-schliessen {
   flex: none;
@@ -2318,7 +2345,6 @@ body.zieht, body.zieht .todo {
 .kal-form-zeile input { flex: 1 1 0; }
 .kal-form-label { flex: none; width: 28px; font-size: 12px; color: var(--muted); }
 .kal-form-notiz { width: 100%; resize: vertical; }
-.kal-form-ort { margin: 0; font-size: 12.5px; color: var(--muted); }
 
 /* Farbwahl aus Googles Palette - eine eigene Skala waere im Google-Kalender
    hinterher nicht wiederzuerkennen. */
@@ -2341,6 +2367,16 @@ body.zieht, body.zieht .todo {
 
 .kal-form-knoepfe { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .kal-form-knoepfe .btn.gefahr { margin-left: auto; }
+/* Speichern, Abbrechen, Loeschen sind die Knöpfe, die man am Handy wirklich
+   trifft - mit .btn.klein waren sie 25 px hoch. 44 px ist das Mass, unter dem
+   ein Finger regelmaessig danebenlangt. Die Klasse .klein bleibt am Element,
+   nur Hoehe und Schrift werden hier zurueckgeholt; ein eigener Knopftyp waere
+   fuer drei Knöpfe zu viel. */
+.kal-form-knoepfe .btn {
+  min-height: 44px;
+  padding: 6px 16px;
+  font-size: 14px;
+}
 
 /* ====================================================================
    Fokus-Panel
@@ -2408,7 +2444,6 @@ html.fok-split.kal-split .fokus-panel {
   gap: 8px;
   flex: none;
 }
-.fok-titel { margin: 0; font-size: 17px; }
 .fok-bilanz {
   font-size: 12.5px;
   color: var(--muted);
@@ -2417,32 +2452,110 @@ html.fok-split.kal-split .fokus-panel {
   margin-right: auto;
 }
 
+/* ---------- Reiter ---------- */
+/* Gewohnheiten und Timer teilen sich die Flaeche, statt uebereinander zu
+   stehen: nebeneinander blieb fuer den Timer nur eine Zeile, und eine Zeile
+   liest sich vom Schreibtisch aus nicht. */
+.fok-reiter {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--col-bg);
+}
+.fok-reiter-seg {
+  border: 0;
+  border-radius: 8px;
+  padding: 4px 10px;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.fok-reiter-seg[aria-selected="true"] {
+  background: var(--row);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .10);
+  color: var(--text);
+  font-weight: 600;
+  cursor: default;
+}
+.fok-bilanz[hidden] { display: none; }
+
 /* ---------- Timer ---------- */
+/* Nimmt den ganzen Platz unter den Reitern ein: der Ring zentriert sich in dem,
+   was uebrig bleibt, die Knoepfe stehen darunter. */
 .fok-timer {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 18px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 0;
+}
+.fok-timer[hidden] { display: none; }
+
+.fok-ring {
+  position: relative;
+  /* Fuellt das Panel, ohne die Knoepfe darunter hinauszudraengen. Der Wert
+     gilt fuer das Vollbild-Panel im schmalen Fenster - im Split steht darunter
+     eine engere Fassung, dort ist das Panel selbst auf 45vh gedeckelt. */
+  width: clamp(180px, 38vh, 280px);
+  aspect-ratio: 1;
   flex: none;
-  flex-wrap: wrap;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--row);
+}
+html.fok-split .fok-ring { width: clamp(120px, 22vh, 190px); }
+/* display:block ist Pflicht: als inline-Element steht das SVG auf der
+   Textgrundlinie, und die Luecke darunter machte den Kreis fuenf Pixel hoeher
+   als breit - aus dem Ring wurde ein Ei. */
+.fok-ring svg { display: block; width: 100%; height: 100%; transform: rotate(-90deg); }
+.fok-ring circle {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+.fok-ring-spur { stroke: var(--line); }
+.fok-ring-fuellung {
+  stroke: var(--accent);
+  /* Ohne Uebergang springt der Ring im Sekundentakt; mit einem kurzen wandert
+     er. Laenger als eine Sekunde darf er nicht dauern, sonst holt ihn der
+     naechste Takt ein. */
+  transition: stroke-dashoffset .9s linear;
+}
+/* Ohne laufende Sitzung ist der Ring leer - dann faellt auch die Farbe der
+   Zeit auf grau zurueck, damit die Uhr nicht scharf gestellt aussieht. */
+.fok-ring-mitte {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
 }
 .fok-zeit {
-  font-size: 22px;
+  font-size: clamp(30px, 9vh, 44px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
+  line-height: 1.1;
 }
-.fok-zeit.laeuft { color: var(--accent); }
-.fok-knoepfe { display: flex; gap: 6px; margin-left: auto; }
-.fok-start { background: var(--accent); color: #fff; border-color: var(--accent); }
+.fok-timer.laeuft .fok-zeit { color: var(--accent); }
 .fok-geplant {
-  flex-basis: 100%;
   font-size: 12px;
   color: var(--muted);
+  padding: 0 12px;
 }
+.fok-knoepfe { display: flex; gap: 8px; flex: none; }
+/* Fingergerecht, hier ist Platz dafuer - anders als in der alten Zeile. */
+.fok-knoepfe .btn { min-height: 44px; padding: 6px 18px; }
+.fok-start { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 /* ---------- Gewohnheiten ---------- */
 .fok-inhalt {

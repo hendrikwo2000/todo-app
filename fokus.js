@@ -34,6 +34,14 @@ const fokHintergrund = document.getElementById("fokusHintergrund");
 const fokTimerBox    = document.getElementById("fokTimer");
 const fokInhalt      = document.getElementById("fokInhalt");
 const fokBilanzText  = document.getElementById("fokBilanz");
+const fokZeitText    = document.getElementById("fokZeit");
+const fokGeplantText = document.getElementById("fokGeplant");
+const fokKnopfReihe  = document.getElementById("fokKnoepfe");
+const fokRing        = document.getElementById("fokRingFuellung");
+
+// Umfang des Fortschrittsrings (r=52 im SVG). Ueber stroke-dasharray/-offset
+// wird daraus der gefuellte Anteil.
+const RING_UMFANG = 2 * Math.PI * 52;
 
 // Gemerkter Zustand, eigener Schluessel neben kalAnsicht: die beiden Panels
 // sind im Split unabhaengig, ein gemeinsamer Wert koennte sie gar nicht beide
@@ -45,6 +53,11 @@ const FOK_MAX_MENGE = 99999;
 
 let fokOffen = false;
 let fokZugang = false;
+// Welcher Reiter gilt: "gewohnheiten" oder "timer".
+let fokReiter = "gewohnheiten";
+// Hat der Nutzer den Reiter selbst gewaehlt? Dann bleibt seine Wahl stehen -
+// sonst darf eine laufende Sitzung beim Oeffnen den Timer nach vorn holen.
+let fokReiterGewaehlt = false;
 let fokListe = null;        // Antwort von gewohnheiten/heute
 let fokSitzung = null;      // { geplanteMin, verstrichenSek, pausiert } oder null
 let fokStandardMin = 25;
@@ -118,6 +131,9 @@ async function ladeFokus() {
   if (t.ok) {
     uebernimmSitzung(t.daten.offen);
     fokStandardMin = t.daten.einstellungen?.arbeitMin || 25;
+    // Laeuft gerade etwas, ist der Timer das, weswegen man aufmacht - solange
+    // man nicht selbst schon auf einen Reiter getippt hat.
+    if (fokSitzung && !fokReiterGewaehlt) fokReiter = "timer";
   }
   zeichneFokus();
 }
@@ -147,36 +163,62 @@ function fokKnopf(text, klasse, aufruf) {
   return k;
 }
 
+/**
+ * Zeit, Ring und Knopfreihe des Timers.
+ *
+ * Laeuft im Sekundentakt, deshalb wird nur gesetzt, nicht neu gebaut - die
+ * SVG-Struktur steht fest in index.html. Einzig die Knopfreihe wechselt ihren
+ * Inhalt (Start bzw. Pause/Stopp), und das nur bei einem Zustandswechsel.
+ */
+let letzteKnopfLage = "";
 function zeichneTimer() {
-  fokTimerBox.replaceChildren();
-
-  const zeit = document.createElement("span");
-  zeit.className = "fok-zeit" + (fokSitzung ? " laeuft" : "");
-  zeit.textContent = fokSitzung
+  const laeuft = !!fokSitzung;
+  fokTimerBox.classList.toggle("laeuft", laeuft);
+  fokZeitText.textContent = laeuft
     ? fokZeit(restSek())
-    : `${fokStandardMin} Min`;
-  fokTimerBox.appendChild(zeit);
-
-  const knoepfe = document.createElement("div");
-  knoepfe.className = "fok-knoepfe";
-
-  if (!fokSitzung) {
-    knoepfe.appendChild(fokKnopf("▶ Start", "fok-start", starteSitzung));
-  } else {
-    knoepfe.appendChild(fokKnopf(
-      fokSitzung.pausiert ? "▶ Weiter" : "⏸ Pause", "klein", schaltePause));
-    knoepfe.appendChild(fokKnopf("⏹ Stopp", "klein", () => beendeSitzung(false)));
-  }
-  fokTimerBox.appendChild(knoepfe);
-
+    : `${fokStandardMin}:00`;
   // Die Dauer stellt man drueben ein - hier steht nur, welche gerade gilt.
-  if (fokSitzung) {
-    const hinweis = document.createElement("span");
-    hinweis.className = "fok-geplant";
-    hinweis.textContent = `von ${fokSitzung.geplanteMin} Min`
-      + (fokSitzung.pausiert ? " · pausiert" : "");
-    fokTimerBox.appendChild(hinweis);
+  fokGeplantText.textContent = laeuft
+    ? `von ${fokSitzung.geplanteMin} Min` + (fokSitzung.pausiert ? " · pausiert" : "")
+    : "Standarddauer";
+
+  const anteil = laeuft
+    ? Math.min(1, verstrichenSek() / (fokSitzung.geplanteMin * 60))
+    : 0;
+  fokRing.style.strokeDasharray = String(RING_UMFANG);
+  fokRing.style.strokeDashoffset = String(RING_UMFANG * (1 - anteil));
+
+  const lage = !laeuft ? "aus" : (fokSitzung.pausiert ? "pause" : "an");
+  if (lage === letzteKnopfLage) return;
+  letzteKnopfLage = lage;
+  fokKnopfReihe.replaceChildren();
+  if (!laeuft) {
+    fokKnopfReihe.appendChild(fokKnopf("▶ Start", "fok-start", starteSitzung));
+  } else {
+    fokKnopfReihe.appendChild(fokKnopf(
+      fokSitzung.pausiert ? "▶ Weiter" : "⏸ Pause", "", schaltePause));
+    fokKnopfReihe.appendChild(fokKnopf("⏹ Stopp", "", () => beendeSitzung(false)));
   }
+}
+
+/**
+ * Reiter umschalten. `vomNutzer` unterscheidet den Klick von der automatischen
+ * Wahl beim Oeffnen - nur der Klick friert die Entscheidung ein.
+ */
+function setzeReiter(welcher, vomNutzer) {
+  fokReiter = welcher;
+  if (vomNutzer) fokReiterGewaehlt = true;
+  for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
+    seg.setAttribute("aria-selected", String(seg.dataset.fokReiter === welcher));
+  }
+  const timerVorn = welcher === "timer";
+  fokTimerBox.hidden = !timerVorn || !!fokFehler;
+  fokInhalt.hidden = timerVorn;
+  // Die Tagesbilanz gehoert zu den Gewohnheiten - im Timer stuende sie ohne
+  // Bezug neben der Uhr.
+  fokBilanzText.hidden = timerVorn;
+  if (timerVorn) zeichneTimer();
+  messeHoehe();
 }
 
 /**
@@ -300,14 +342,14 @@ function zeichneFokus() {
   aktualisiereSegmente();
   if (!fokOffen) return;
 
-  // Bei einem Fehler bleibt der Timer weg: er zeigte sonst die zuletzt
-  // bekannte Dauer und einen Start-Knopf, der nur in eine zweite Fehlermeldung
-  // laufen kann.
-  fokTimerBox.hidden = !!fokFehler;
-  if (!fokFehler) zeichneTimer();
   fokInhalt.replaceChildren();
 
   if (fokFehler) {
+    // Bei einem Fehler bleibt der Timer weg (setzeReiter prueft fokFehler mit)
+    // und die Meldung steht im Inhaltsbereich: ein Start-Knopf koennte hier nur
+    // in eine zweite Fehlermeldung laufen.
+    setzeReiter("gewohnheiten");
+    fokInhalt.hidden = false;
     const p = document.createElement("p");
     p.className = "fok-hinweis";
     p.textContent = fokFehler;
@@ -316,6 +358,8 @@ function zeichneFokus() {
     fokBilanzText.textContent = "";
     return;
   }
+
+  setzeReiter(fokReiter);
 
   if (!fokListe) {
     const p = document.createElement("p");
@@ -511,16 +555,29 @@ window.fokusHoeheMessen = messeHoehe;
 function oeffneFokus() {
   // Im schmalen Fenster liegt immer nur EIN Panel vor der Liste.
   if (!istSplit()) schliesseKalender();
+  // Im Split teilen sich beide den Streifen, und die Tagesliste des Kalenders
+  // braucht genau den Platz, den dieses Panel gleich einnimmt.
+  window.kalenderTagAbwaehlen?.();
   fokOffen = true;
+  // Jedes Oeffnen beginnt bei den Gewohnheiten; ob eine laufende Sitzung den
+  // Timer nach vorn holt, entscheidet ladeFokus() gleich danach.
+  fokReiterGewaehlt = false;
+  fokReiter = "gewohnheiten";
   setzeFokPanel(true);
   zeichneFokus();
   ladeFokus();
 }
 
-function schliesseFokus() {
+/**
+ * `tagBehalten` kommt aus dem Kalender: dort hat gerade jemand einen Tag
+ * angetippt, dessen Liste den Platz hier bekommt. Ohne das Flag holte der
+ * Kalender sich sofort wieder „heute" - und der eben gewaehlte Tag waere weg.
+ */
+function schliesseFokus(tagBehalten) {
   if (!fokOffen) return;
   fokOffen = false;
   setzeFokPanel(false);
+  if (!tagBehalten) window.kalenderTagZurueck?.();
 }
 
 // Aus kalender.js, wenn dort im schmalen Fenster ein Panel aufgeht.
@@ -568,6 +625,9 @@ function stelleFokusHer() {
   // er ist der aeltere Teil der App.
   if (auf && !istSplit() && window.kalenderIstOffen?.()) auf = false;
   if (!auf) { setzeFokPanel(false, true); return; }
+  // Wie in oeffneFokus(): der Kalender hat sich beim Wiederherstellen gerade
+  // erst auf heute gestellt und braucht seine Tagesliste hier nicht mehr.
+  window.kalenderTagAbwaehlen?.();
   fokOffen = true;
   setzeFokPanel(true, true);
   zeichneFokus();
@@ -585,7 +645,7 @@ setInterval(() => {
     return;
   }
   aktualisiereSegmente();
-  if (fokOffen) zeichneTimer();
+  if (fokOffen && fokReiter === "timer") zeichneTimer();
 }, 1000);
 
 // Zurueck im Tab: der Fertig-Hinweis im Titel hat seinen Zweck erfuellt. Und
@@ -610,8 +670,13 @@ for (const seg of document.querySelectorAll(".ansicht-seg")) {
     }
   });
 }
-document.getElementById("fokZu").addEventListener("click", schliesseFokus);
-fokHintergrund.addEventListener("click", schliesseFokus);
+for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
+  seg.addEventListener("click", () => setzeReiter(seg.dataset.fokReiter, true));
+}
+document.getElementById("fokZu").addEventListener("click", () => schliesseFokus());
+// Mit Pfeilfunktion, nicht direkt: sonst laege das Klick-Ereignis auf
+// `tagBehalten` und der Kalender bekaeme seine Tagesliste nie zurueck.
+fokHintergrund.addEventListener("click", () => schliesseFokus());
 
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && fokOffen) schliesseFokus();
