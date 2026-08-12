@@ -192,7 +192,10 @@ body { transition: background .2s, color .2s, padding-right .26s cubic-bezier(.3
    der Mitte der Kopfzeile absetzen. Aussen steht der Umschalter, siehe
    index.html. */
 #einstellungenBtn { margin-left: auto; }
-#einstellungenBtn[hidden] { display: none; }
+/* Beide Zahnraeder (Kopfzeile und Kalender): eigene display-Regel auf .btn
+   schlaegt sonst das eingebaute [hidden] des Browsers, und sie stuenden schon
+   auf dem Sperrbildschirm. */
+#einstellungenBtn[hidden], .ein-knopf[hidden] { display: none; }
 
 /* ---------- Umschalter Liste / Kalender ---------- */
 /* Zwei Haelften in einer Pille, die aktive liegt als hellere Karte obenauf -
@@ -1235,19 +1238,62 @@ input[type="date"]:focus {
 
 /* ---------- Einstellungen ---------- */
 /* Breiter und scrollbar als die schmalen Ja/Nein-Dialoge, links ausgerichtet
-   (die einzelnen Ansichten teilen sich einen Dialog). */
+   (die einzelnen Ansichten teilen sich einen Dialog).
+
+   Aufbau: feste Kopfzeile mit dem ✕, darunter der einzige blaetternde Teil.
+   Frueher scrollte die ganze Box - das ✕ oben waere damit nach ein paar
+   Zeilen aus dem Bild gewesen, und am Handy (Vollbild, kein Rand zum
+   Danebentippen) gaebe es dann keinen Weg mehr hinaus. Bewusst so geloest
+   und nicht per position:sticky: unter einer Kerbe (safe-area) klebte der
+   Knopf sonst hinter der Statusleiste. */
 .admin-popup-box.einstellungen {
   width: min(440px, 100%);
   max-height: min(82vh, 660px);
-  overflow-y: auto;
+  overflow: hidden;          /* geblaettert wird nur innen, siehe .ein-blaettern */
   text-align: left;
-  gap: 4px;
+  gap: 0;
+  padding: 14px 24px 20px;
 }
-.admin-popup-box.einstellungen > div { display: flex; flex-direction: column; gap: 12px; }
-.admin-popup-box.einstellungen > div[hidden] { display: none; }
+.ein-kopfzeile { display: flex; flex: none; padding-bottom: 4px; }
+/* Randlos in der Ecke: der Knopf traegt sein eigenes Polster, das soll nicht
+   zum Polster der Box dazukommen. */
+.ein-schliessen {
+  flex: none;
+  margin-left: -8px;
+  border: 0; background: none; color: var(--muted);
+  font: inherit; font-size: 15px; line-height: 1;
+  padding: 7px 8px; border-radius: 8px; cursor: pointer;
+}
+.ein-schliessen:hover { color: var(--accent); background: var(--hover); }
+
+.ein-blaettern {
+  flex: 1 1 auto;
+  min-height: 0;             /* ohne das waechst der Kasten statt zu blaettern */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.ein-blaettern > div { display: flex; flex-direction: column; gap: 12px; }
+.ein-blaettern > div[hidden] { display: none; }
 /* Icon und Ueberschrift jeder Ansicht mittig, wie in den anderen Dialogen. */
-.admin-popup-box.einstellungen > div > .admin-popup-icon { align-self: center; }
+.ein-blaettern > div > .admin-popup-icon { align-self: center; }
 .admin-popup-box.einstellungen h2 { text-align: center; }
+
+/* Am Handy ueber den ganzen Bildschirm. Ein Kasten mit Rand daneben
+   verschenkt genau die Breite, die die Listen-Zeilen und das Akkordeon
+   brauchen - dieselbe Entscheidung wie beim Termin-Dialog des Kalenders,
+   deshalb auch dieselbe Schwelle. */
+@media (max-width: 560px) {
+  #einstellungenPopup { padding: 0; }
+  #einstellungenPopup .admin-popup-box.einstellungen {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    padding: max(14px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+  }
+}
 
 /* Jeder Abschnitt ein <details> - zu wieviel auf einmal offenstand, war
    genau die Klage ("alles steht offen"). Der toggle-Listener in app.js
@@ -1331,7 +1377,6 @@ input[type="date"]:focus {
 .ein-reihe { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 #neueListe:disabled { opacity: .5; cursor: not-allowed; }
 #neueListe:disabled:hover { color: var(--text); border-color: var(--line); }
-#einstellungenZu { align-self: center; margin-top: 8px; }
 
 /* Listen-Zeilen (Meine Listen / Geteilt mit mir / Mitglieder) */
 .listen-liste { display: flex; flex-direction: column; gap: 8px; }
@@ -1343,8 +1388,24 @@ input[type="date"]:focus {
   border-radius: 11px;
   background: var(--bg);
 }
+/* Ein Tipp irgendwo auf die Zeile macht die Liste zur aktiven. Die Knoepfe
+   darin (Teilen, Umbenennen, 🗑️) behalten ihre eigene Aufgabe, das trennt
+   der Klick-Handler. Die aktive Zeile traegt die Klasse nicht - sie ist ja
+   schon da, wo der Tipp hinfuehren wuerde. */
+.listen-zeile.waehlbar { cursor: pointer; transition: border-color .12s, background .12s; }
+.listen-zeile.waehlbar:hover { border-color: var(--accent); background: var(--hover); }
 .lz-kopf { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .lz-name { font-size: 15px; font-weight: 600; }
+/* Der Name ist bei waehlbaren Zeilen ein echter Knopf - die Zeile selbst
+   bekommt bewusst KEIN role="button": sie enthaelt weitere Knoepfe, und ein
+   Knopf im Knopf macht die inneren fuer Vorleseprogramme unerreichbar. So
+   gibt es die grosse Flaeche fuer den Finger UND einen sauberen Weg mit der
+   Tastatur. */
+button.lz-name {
+  background: none; border: 0; padding: 0;
+  font-family: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+button.lz-name:hover { color: var(--accent); }
 .lz-name.aktiv::after {
   content: "aktiv"; margin-left: 8px;
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
@@ -1523,6 +1584,9 @@ html:not(.kal-split) #kalZu { display: none; }
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  /* Derselbe Abstand wie zwischen Zahnrad und Umschalter in der Kopfzeile -
+     die Ecke soll in beiden Ansichten gleich aussehen. */
+  gap: 12px;
   /* Die Zeile ist genauso hoch wie die Titelzeile der App (h1: 24px auf
      line-height 1.4). Zusammen mit align-items:center landet die Pille damit
      auf derselben Mittellinie wie dort - egal wie hoch sie gerade ist. Ein
@@ -1535,6 +1599,12 @@ html:not(.kal-split) #kalZu { display: none; }
   min-height: 34px;
   padding-top: max(0px, calc(24px - max(14px, env(safe-area-inset-top))));
   padding-right: max(0px, calc(26px - max(14px, env(safe-area-inset-right))));
+}
+/* Muss HIER stehen und nicht oben beim Umschalter: die Basisregel darueber
+   kommt spaeter in der Datei und schluege eine gleich spezifische Regel von
+   dort. Der Wert zieht mit der column-gap der Kopfzeile gleich. */
+@media (max-width: 480px) {
+  .kal-ansicht-zeile { gap: 8px; }
 }
 
 .kal-kopf { display: flex; align-items: center; gap: 4px; }

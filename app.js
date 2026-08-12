@@ -82,7 +82,11 @@ const pushSwitch       = document.getElementById("pushSwitch");
 const pushSwitchLabel  = document.getElementById("pushSwitchLabel");
 const pushSwitchWrap   = document.getElementById("pushSwitchWrap");
 const pushHinweis      = document.getElementById("pushHinweis");
-const einstellungenBtn = document.getElementById("einstellungenBtn");
+// Das Zahnrad steckt ZWEIMAL im Dokument: in der Kopfzeile der App und im
+// Kalender, der die Kopfzeile am Handy verdeckt. Beide tragen .ein-knopf,
+// beide starten versteckt und erscheinen erst mit der Anmeldung.
+const einKnoepfe = [...document.querySelectorAll(".ein-knopf")];
+function zeigeEinstellungenKnopf() { for (const b of einKnoepfe) b.hidden = false; }
 const listenMenue  = document.getElementById("listenMenue");
 const snackbar     = document.getElementById("snackbar");
 const titel        = document.getElementById("titel");
@@ -764,6 +768,51 @@ function oeffneEinstellungen() {
   aktualisiereGoogleAbschnitt();
 }
 
+/**
+ * Eine Liste aus den Einstellungen heraus zur aktiven machen.
+ *
+ * Der Dialog geht dabei zu: wer eine Liste waehlt, will sie sehen - sonst
+ * muesste man hinterher noch selbst schliessen, um zu pruefen, ob es geklappt
+ * hat.
+ */
+function aktiviereListeAusEinstellungen(id) {
+  wechsleListe(id);
+  einstellungenPopup.hidden = true;
+  // Am Handy kann der Kalender ueber dem Board liegen - dann saehe man von
+  // der frisch gewaehlten Liste nichts.
+  if (window.kalenderZurListe) window.kalenderZurListe();
+}
+
+/**
+ * Namensfeld einer Listen-Zeile. Bei der aktiven Liste ein schlichtes <span>
+ * (es gibt nichts zu tun), sonst ein echter Knopf - siehe die Begruendung an
+ * .lz-name in style.css.
+ */
+function baueListenName(b, istAktiv) {
+  const name = document.createElement(istAktiv ? "span" : "button");
+  name.className = "lz-name" + (istAktiv ? " aktiv" : "");
+  name.textContent = b.name;
+  if (!istAktiv) {
+    name.type = "button";
+    name.title = `Zu „${b.name}“ wechseln`;
+    name.addEventListener("click", () => aktiviereListeAusEinstellungen(b.id));
+  }
+  return name;
+}
+
+/**
+ * Die ganze Zeile antippbar machen. Klicks auf die Knoepfe darin gehoeren
+ * ihnen - ohne diese Ausnahme loeste jedes "Umbenennen" auch noch einen
+ * Listenwechsel aus.
+ */
+function macheZeileWaehlbar(row, b) {
+  row.classList.add("waehlbar");
+  row.addEventListener("click", e => {
+    if (e.target.closest("button")) return;
+    aktiviereListeAusEinstellungen(b.id);
+  });
+}
+
 // Kleiner Knopf fuer die Listen-Zeilen.
 function machBtn(text, fn, extra) {
   const b = document.createElement("button");
@@ -800,15 +849,14 @@ function zeichneListen() {
 }
 
 function baueEigeneZeile(b) {
+  const istAktiv = b.id === aktiveListe;
   const row = document.createElement("div");
   row.className = "listen-zeile";
+  if (!istAktiv) macheZeileWaehlbar(row, b);
 
   const kopf = document.createElement("div");
   kopf.className = "lz-kopf";
-  const name = document.createElement("span");
-  name.className = "lz-name" + (b.id === aktiveListe ? " aktiv" : "");
-  name.textContent = b.name;
-  kopf.appendChild(name);
+  kopf.appendChild(baueListenName(b, istAktiv));
   row.appendChild(kopf);
 
   const knoepfe = document.createElement("div");
@@ -844,14 +892,15 @@ function baueEigeneZeile(b) {
 }
 
 function baueGeteilteZeile(b) {
+  const istAktiv = b.id === aktiveListe;
   const row = document.createElement("div");
   row.className = "listen-zeile";
+  // Geteilte Listen genauso: es sind Listen, zwischen denen man wechselt.
+  if (!istAktiv) macheZeileWaehlbar(row, b);
 
   const kopf = document.createElement("div");
   kopf.className = "lz-kopf";
-  const name = document.createElement("span");
-  name.className = "lz-name" + (b.id === aktiveListe ? " aktiv" : "");
-  name.textContent = b.name;
+  const name = baueListenName(b, istAktiv);
   const von = document.createElement("span");
   von.className = "lz-von";
   von.textContent = b.besitzerName ? `von ${b.besitzerName}` : "geteilt";
@@ -1547,7 +1596,7 @@ function wiederherstellenAusCache() {
   canSave = true;
   document.getElementById("kontoName").textContent = eigenerName || "Konto";
   document.getElementById("kontoAdresse").textContent = eigeneEmail;
-  einstellungenBtn.hidden = false;
+  zeigeEinstellungenKnopf();
   mischePendingEin();
   const gemerkt = localStorage.getItem("aktiveListe");
   aktiveListe = (gemerkt && listen.some(b => b.id === gemerkt))
@@ -1597,7 +1646,7 @@ async function loadState() {
     document.getElementById("kontoAdresse").textContent = eigeneEmail;
     // Erst jetzt anzeigen: vorher stuenden die Knoepfe auch auf dem
     // Sperrbildschirm.
-    einstellungenBtn.hidden = false;
+    zeigeEinstellungenKnopf();
     zeigeHinweise();
 
     listen = Array.isArray(antwort.listen) ? antwort.listen : [];
@@ -3207,8 +3256,9 @@ document.addEventListener("click", e => {
   schliesseMenue();
 });
 
-// Der ehemalige Abmelden-Knopf oeffnet jetzt die Einstellungen.
-einstellungenBtn.addEventListener("click", oeffneEinstellungen);
+// Der ehemalige Abmelden-Knopf oeffnet jetzt die Einstellungen. Beide
+// Zahnraeder (Kopfzeile und Kalender) tun dasselbe.
+for (const b of einKnoepfe) b.addEventListener("click", oeffneEinstellungen);
 document.getElementById("neueListe").addEventListener("click", neueListeAnlegen);
 
 document.getElementById("kontoAbmelden")

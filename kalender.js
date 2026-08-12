@@ -1824,6 +1824,14 @@ window.kalenderNeuZeichnen = function () {
   if (kalOffen) zeichneKalender();
 };
 
+// Aus app.js: zurueck auf die Liste schalten. Gebraucht, wenn man in den
+// Einstellungen eine andere Liste waehlt - die will man dann auch sehen, und
+// im Umschalt-Modus liegt der Kalender davor. Im Split ist nichts zu tun,
+// dort steht das Board ohnehin daneben.
+window.kalenderZurListe = function () {
+  if (!istSplit()) schliesseKalender();
+};
+
 // Nach Verbinden/Trennen in den Einstellungen: alles zu Google vergessen und
 // beim naechsten Zeichnen frisch holen (siehe app.js).
 window.kalenderGoogleVergessen = function () {

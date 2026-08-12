@@ -182,6 +182,54 @@ wrangler d1 execute todo --file=migration-boards.sql
 Rollback: das Backup zurückspielen. Für eine **frische** Datenbank reicht
 `schema.sql` (enthält das neue Schema bereits).
 
+## Einstellungen
+
+Ein Dialog (`#einstellungenPopup`) mit mehreren Ansichten, die sich denselben
+Kasten teilen: Hauptansicht (Akkordeon aus Darstellung, Benachrichtigungen,
+Google, Listen, Konto …) plus die Rückfragen (Abmelden, Konto löschen, Zugriff
+verwalten). Umgeschaltet wird über `zeigeEinAnsicht()`, das die Ansichten nach
+ihrer ID ein- und ausblendet.
+
+**Das Zahnrad gibt es zweimal.** Einmal in der Kopfzeile der App
+(`#einstellungenBtn`), einmal im Kalender (`.kal-ansicht-zeile`) — am Handy
+verdeckt der Kalender die Kopfzeile, und ohne das zweite käme man aus der
+Kalenderansicht gar nicht mehr in die Einstellungen. Beide tragen
+`.ein-knopf`, werden gemeinsam verdrahtet und gemeinsam mit der Anmeldung
+sichtbar gemacht (`zeigeEinstellungenKnopf()`). Reihenfolge in beiden Ecken
+gleich: Zahnrad, dann Umschalter.
+
+**Am Handy Vollbild** (`max-width: 560px`), am Rechner ein mittiger Kasten von
+440 px — dort bleibt das Board drumherum sichtbar, und ein Vollbild-Schirm
+wäre für den Inhalt viel leerer Raum. Geschlossen wird über das **✕ oben
+links**; am Rechner zusätzlich weiterhin per Klick neben den Kasten.
+
+**Aufbau: feste Kopfzeile, darunter der einzige blätternde Teil.** Die
+Kopfzeile (`<header class="ein-kopfzeile">`) trägt das ✕ und steht außerhalb
+von `.ein-blaettern`, das als einziges `overflow-y: auto` hat. Früher scrollte
+die ganze Box — das ✕ wäre nach ein paar Zeilen aus dem Bild gewesen, und am
+Handy (Vollbild, kein Rand zum Danebentippen, keine Escape-Taste) gäbe es dann
+keinen Weg mehr hinaus. Bewusst **nicht** per `position: sticky` gelöst: unter
+einer Gerätekerbe (`safe-area`) klebte der Knopf sonst hinter der Statusleiste.
+
+Zwei Fallstricke dabei: die Kopfzeile ist ein `<header>` und kein `<div>`,
+weil die Regel `.einstellungen > div` den ANSICHTEN gilt und hier nicht
+mitgreifen darf. Und `.ein-blaettern` braucht `min-height: 0` — ohne das
+wächst ein Flex-Kind über seinen Anteil hinaus, statt zu blättern.
+
+**Liste aktivieren.** Unter „Meine Listen" und „Geteilt mit mir" macht ein
+Tipp auf die Zeile die Liste zur aktiven (`macheZeileWaehlbar()`), danach
+schließt der Dialog — wer eine Liste wählt, will sie sehen. Liegt am Handy
+gerade der Kalender darüber, schaltet `window.kalenderZurListe()` zusätzlich
+auf die Liste zurück. Die aktive Zeile ist nicht wählbar (sie trägt kein
+`.waehlbar`), ihr Name bleibt ein `<span>` mit dem AKTIV-Abzeichen.
+
+Klicks auf die Knöpfe IN der Zeile (Teilen, Umbenennen, 🗑️) sind
+ausgenommen — sonst löste jedes „Umbenennen" auch einen Listenwechsel aus.
+Die Zeile selbst bekommt bewusst **kein** `role="button"`: sie enthält weitere
+Knöpfe, und ein Knopf im Knopf macht die inneren für Vorleseprogramme
+unerreichbar. Stattdessen ist der **Name** bei wählbaren Zeilen ein echter
+`<button>` — große Fläche für den Finger, sauberer Weg mit der Tastatur.
+
 ## Benachrichtigungen
 
 Zwei Bausteine, unabhaengig voneinander nutzbar: eine echte Push-Meldung
@@ -658,8 +706,10 @@ dann ist Umschalten ehrlicher als Nebeneinander.
 **Umschalter 📋 | 📅.** Steckt ZWEIMAL im Dokument: in der Kopfzeile der App
 (`#ansichtSchalter`) und noch einmal im Kalender selbst
 (`.kal-ansicht-zeile`), weil der im Umschalt-Modus die Kopfzeile verdeckt.
-Sichtbar ist immer nur einer — die Zeile im Kalender blendet sich im Split
-aus, das ✕ im Kalenderkopf umgekehrt im Umschalt-Modus. Beide Instanzen
+Dasselbe gilt fürs Zahnrad, das in derselben Zeile links davon steht — siehe
+„Einstellungen". Sichtbar ist immer nur eine der beiden Ecken: die Zeile im
+Kalender blendet sich im Split aus, das ✕ im Kalenderkopf umgekehrt im
+Umschalt-Modus. Beide Instanzen
 hängen an derselben Verdrahtung, und ihre Abstände sind so gesetzt, dass die
 Pille beim Umschalten **an Ort und Stelle stehen bleibt** (`.kal-ansicht-zeile`
 holt die Differenz der Innenabstände von `.app` und `.kalender` nach) — sonst

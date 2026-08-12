@@ -45,7 +45,7 @@
       <button id="addTodoBtn" class="btn add-cat" title="ToDo anlegen – landet ohne Bereich, bis du es zuordnest">＋ ToDo</button>
       <button id="addCatBtn" class="btn add-cat">＋ Bereich</button>
       <span id="saveStatus" class="save-status"></span>
-      <button id="einstellungenBtn" class="btn icon-only" title="Einstellungen" hidden>⚙️</button>
+      <button id="einstellungenBtn" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
       <!-- Umschalter Liste/Kalender, aussen rechts. Die Ecke gehoert ihm und
            nicht dem Zahnrad, weil er im Umschalt-Modus im Kalender noch einmal
            auftaucht - und zwar an genau derselben Bildschirmstelle. Stuende
@@ -97,10 +97,14 @@
        kalender.js. -->
   <div id="kalenderHintergrund" class="kal-hintergrund"></div>
   <aside id="kalenderPanel" class="kalender" aria-label="Kalender" aria-hidden="true">
-    <!-- Derselbe Umschalter wie in der Kopfzeile, an derselben Bildschirm-
-         stelle. Nur im Umschalt-Modus sichtbar - im Split-Modus liegt der
-         Kalender neben der App, dort tut es der Schalter in der Kopfzeile. -->
+    <!-- Dieselbe Ecke wie in der Kopfzeile der App, in derselben Reihenfolge:
+         Zahnrad, dann Umschalter. Nur im Umschalt-Modus sichtbar - im Split
+         liegt der Kalender neben der App, dort ist die Kopfzeile selbst da.
+         Das Zahnrad muss mit: am Handy verdeckt der Kalender die Kopfzeile,
+         und ohne dieses hier kaeme man aus der Kalenderansicht gar nicht in
+         die Einstellungen. -->
     <div class="kal-ansicht-zeile">
+      <button type="button" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
       <div class="ansicht-schalter" role="group" aria-label="Ansicht">
         <button type="button" class="ansicht-seg" data-ansicht="liste"
                 aria-pressed="false" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
@@ -156,6 +160,21 @@
        was drinsteckt. -->
   <div id="einstellungenPopup" class="admin-popup" hidden>
     <div class="admin-popup-box einstellungen">
+
+      <!-- Kopfzeile mit dem Schliessen-Kreuz. Bewusst ein <header> und kein
+           <div>: die Regel .einstellungen > div gilt den ANSICHTEN, und die
+           duerfte hier nicht mitgreifen. Steht ausserhalb von .ein-blaettern
+           und scrollt deshalb nicht mit weg - am Handy fuellt der Dialog den
+           ganzen Bildschirm, ein weggescrolltes ✕ waere dort eine Sackgasse
+           (kein Rand zum Danebentippen, kein Escape auf der Tastatur). -->
+      <header class="ein-kopfzeile">
+        <button type="button" id="einstellungenZu" class="ein-schliessen"
+                aria-label="Einstellungen schließen" title="Schließen">✕</button>
+      </header>
+
+      <!-- Nur dieser Kasten blaettert. Frueher scrollte die ganze Box, dann
+           waere die Kopfzeile oben mitgewandert. -->
+      <div class="ein-blaettern">
 
       <div id="einstellungenHaupt">
         <div class="admin-popup-icon">⚙️</div>
@@ -334,7 +353,7 @@
         <button type="button" id="kontoLoeschenZurueck" class="lock-link">Zurück</button>
       </div>
 
-      <button type="button" id="einstellungenZu" class="lock-link">Schließen</button>
+      </div><!-- /.ein-blaettern -->
     </div>
   </div>
 
