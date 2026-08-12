@@ -655,8 +655,8 @@ Die 1000 px kommen aus dem Platz: 440 px Kalender lassen darunter noch zwei
 Board-Spalten (min. 250 px) übrig. Bei weniger bliebe eine einzige Spalte, und
 dann ist Umschalten ehrlicher als Nebeneinander.
 
-**Umschalter „Liste | Kalender".** Steckt ZWEIMAL im Dokument: in der
-Kopfzeile der App (`#ansichtSchalter`) und noch einmal im Kalender selbst
+**Umschalter 📋 | 📅.** Steckt ZWEIMAL im Dokument: in der Kopfzeile der App
+(`#ansichtSchalter`) und noch einmal im Kalender selbst
 (`.kal-ansicht-zeile`), weil der im Umschalt-Modus die Kopfzeile verdeckt.
 Sichtbar ist immer nur einer — die Zeile im Kalender blendet sich im Split
 aus, das ✕ im Kalenderkopf umgekehrt im Umschalt-Modus. Beide Instanzen
@@ -665,14 +665,30 @@ Pille beim Umschalten **an Ort und Stelle stehen bleibt** (`.kal-ansicht-zeile`
 holt die Differenz der Innenabstände von `.app` und `.kalender` nach) — sonst
 springt genau das Bedienelement, an dem man sich festhält.
 
-Am Handy (`max-width: 480px`) ist dafür das **Zahnrad in die zweite
-Kopfzeile** gerutscht: der Umschalter ist mit Text breiter als der 📅-Knopf,
-den er ersetzt, und zu dritt hätte die erste Zeile umgebrochen — die Kopfzeile
-wäre drei Zeilen hoch geworden. Dort ist die Pille außerdem **schlanker**
-(117×27 statt 131×32 px): neben einer 24px-Überschrift und auf schmalem
-Bildschirm wirkte die volle Größe klobig.
+**Symbole statt Text**, und das ist keine reine Geschmacksfrage: mit
+„Liste | Kalender" war die Pille 131 px breit, drängte am Handy das Zahnrad
+aus der ersten Kopfzeile und wirkte neben der 24px-Überschrift klobig. Mit
+📋/📅 sind es 89 px (am Handy 78), und alles passt wieder nebeneinander.
+Die beiden Zeichen benutzt die App an anderer Stelle schon für dasselbe
+(📋 „Meine Listen" in den Einstellungen, 📅 der frühere Kalender-Knopf); den
+Namen tragen die Knöpfe in `aria-label` und `title`. **Der ausgeschaltete
+Zustand hängt an der Deckkraft** (`opacity: .45`), nicht an der Textfarbe —
+Emoji nehmen keine `color` an, sonst leuchteten beide Hälften gleich hell und
+man sähe nur noch am Kästchen, welche gilt.
 
-Dass sie in beiden Ansichten auf derselben Mittellinie steht, macht
+**Der Umschalter sitzt außen rechts, das Zahnrad links davon** — deshalb
+trägt `#einstellungenBtn` das `margin-left: auto` und nicht der Umschalter.
+Stünde das Zahnrad außen, wäre die Pille in der Kopfzeile um dessen Breite
+nach innen versetzt und spränge beim Umschalten in den Kalender.
+
+Am Handy (`max-width: 480px`) bekommt `.topbar h1` außerdem `flex: 1 1 0`
+statt `auto`. Das ist der Unterschied zwischen zwei und drei Kopfzeilen:
+umgebrochen wird nach der HYPOTHETISCHEN Breite, und die ist bei `basis: auto`
+die volle Textbreite des Listennamens — ein langer Name schob damit das
+Zahnrad aus der Zeile. Mit `0` nimmt der Titel nur, was übrig bleibt, und
+kürzt sich notfalls selbst (`.titel-name` hat `text-overflow: ellipsis`).
+
+Dass die Pille in beiden Ansichten auf derselben Mittellinie steht, macht
 `.kal-ansicht-zeile` mit `min-height: 34px` (Höhe der Titelzeile) plus
 `align-items: center` — das stimmt bei jeder Pillengröße von selbst, ein
 fester Versatz stimmte nur für eine. **`box-sizing: content-box` ist dabei

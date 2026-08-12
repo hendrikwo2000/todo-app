@@ -45,15 +45,18 @@
       <button id="addTodoBtn" class="btn add-cat" title="ToDo anlegen – landet ohne Bereich, bis du es zuordnest">＋ ToDo</button>
       <button id="addCatBtn" class="btn add-cat">＋ Bereich</button>
       <span id="saveStatus" class="save-status"></span>
-      <!-- Umschalter Liste/Kalender. Steht an der Stelle, an der frueher der
-           📅-Knopf sass. Im Split-Modus (breites Fenster) ist das der einzige
-           Schalter; im Umschalt-Modus gibt es denselben noch einmal im
-           Kalender, weil der dort die ganze Kopfzeile verdeckt. -->
-      <div id="ansichtSchalter" class="ansicht-schalter" role="group" aria-label="Ansicht">
-        <button type="button" class="ansicht-seg" data-ansicht="liste" aria-pressed="true">Liste</button>
-        <button type="button" class="ansicht-seg" data-ansicht="kalender" aria-pressed="false">Kalender</button>
-      </div>
       <button id="einstellungenBtn" class="btn icon-only" title="Einstellungen" hidden>⚙️</button>
+      <!-- Umschalter Liste/Kalender, aussen rechts. Die Ecke gehoert ihm und
+           nicht dem Zahnrad, weil er im Umschalt-Modus im Kalender noch einmal
+           auftaucht - und zwar an genau derselben Bildschirmstelle. Stuende
+           dort das Zahnrad daneben, spraenge die Pille beim Umschalten.
+           Im Split-Modus (breites Fenster) ist dies der einzige Schalter. -->
+      <div id="ansichtSchalter" class="ansicht-schalter" role="group" aria-label="Ansicht">
+        <button type="button" class="ansicht-seg" data-ansicht="liste"
+                aria-pressed="true" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
+        <button type="button" class="ansicht-seg" data-ansicht="kalender"
+                aria-pressed="false" aria-label="Kalender" title="Kalender">📅</button>
+      </div>
 
       <!-- Umschalter zwischen den Listen. Inhalt kommt per JS, erscheint nur
            bei mehr als einer Liste. -->
@@ -99,8 +102,10 @@
          Kalender neben der App, dort tut es der Schalter in der Kopfzeile. -->
     <div class="kal-ansicht-zeile">
       <div class="ansicht-schalter" role="group" aria-label="Ansicht">
-        <button type="button" class="ansicht-seg" data-ansicht="liste" aria-pressed="false">Liste</button>
-        <button type="button" class="ansicht-seg" data-ansicht="kalender" aria-pressed="true">Kalender</button>
+        <button type="button" class="ansicht-seg" data-ansicht="liste"
+                aria-pressed="false" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
+        <button type="button" class="ansicht-seg" data-ansicht="kalender"
+                aria-pressed="true" aria-label="Kalender" title="Kalender">📅</button>
       </div>
     </div>
 

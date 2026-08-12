@@ -187,18 +187,23 @@ body { transition: background .2s, color .2s, padding-right .26s cubic-bezier(.3
 .btn.icon-only { padding: 7px 10px; font-size: 16px; line-height: 1; }
 /* Rechtsbuendig in der Kopfzeile: schiebt sich ueber den frei bleibenden
    Platz nach rechts, ohne den restlichen Knoepfen ihre Position zu nehmen.
-   Das margin-left:auto traegt nur der UMSCHALTER fuer beide Nachbarn -
+   Das margin-left:auto traegt nur das ZAHNRAD als erstes der beiden -
    zwei auto-Raender wuerden sich den freien Platz TEILEN und das Zahnrad in
-   der Mitte der Kopfzeile absetzen. */
-#ansichtSchalter { margin-left: auto; }
+   der Mitte der Kopfzeile absetzen. Aussen steht der Umschalter, siehe
+   index.html. */
+#einstellungenBtn { margin-left: auto; }
 #einstellungenBtn[hidden] { display: none; }
 
 /* ---------- Umschalter Liste / Kalender ---------- */
 /* Zwei Haelften in einer Pille, die aktive liegt als hellere Karte obenauf -
    dasselbe Zweiflaechen-Prinzip wie beim Hell/Dunkel-Schalter weiter unten.
-   Bewusst Text statt Symbolen: "Kalender" ist eindeutig, ein Symbol muesste
-   man einmal raten. Das Element steckt zweimal im Dokument (Kopfzeile und
-   Kalender), verdrahtet werden beide ueber die Klasse. */
+   Symbole statt Text: mit "Liste | Kalender" war die Pille am Handy so breit,
+   dass sie neben dem Titel klobig wirkte UND das Zahnrad aus der ersten Zeile
+   draengte. 📋 und 📅 sind dieselben Zeichen, die die App an anderer Stelle
+   schon fuer Listen und Kalender benutzt (Einstellungen, frueherer
+   Kalender-Knopf); den Namen tragen sie in aria-label und title.
+   Das Element steckt zweimal im Dokument (Kopfzeile und Kalender),
+   verdrahtet werden beide ueber die Klasse. */
 /* display unten schlaegt sonst das eingebaute [hidden] des Browsers - dieselbe
    Falle wie bei .offline-banner und #einstellungenBtn. Heute versteckt sie
    niemand per Attribut; die Zeile steht hier, damit es beim naechsten Mal
@@ -216,52 +221,51 @@ body { transition: background .2s, color .2s, padding-right .26s cubic-bezier(.3
 .ansicht-seg {
   border: 0;
   border-radius: 8px;
-  padding: 5px 11px;
+  padding: 4px 10px;
   background: none;
-  color: var(--muted);
   font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.25;
-  white-space: nowrap;
+  font-size: 15px;
+  line-height: 1.2;
   cursor: pointer;
-  transition: background .15s, color .15s;
+  /* Symbole nehmen keine Textfarbe an - der ausgeschaltete Zustand braucht
+     deshalb die Deckkraft. Mit color allein leuchteten beide Haelften gleich
+     hell, und man saehe nur noch am Kaestchen, welche gilt. */
+  opacity: .45;
+  transition: background .15s, opacity .15s;
 }
-.ansicht-seg:hover { color: var(--text); }
+.ansicht-seg:hover { opacity: .8; }
 .ansicht-seg[aria-pressed="true"] {
   background: var(--row);
-  color: var(--text);
   box-shadow: 0 1px 2px rgba(0, 0, 0, .10);
+  opacity: 1;
   cursor: default;
 }
-/* Am Handy schlanker. Dieselbe Pille wirkt dort klobig: sie steht neben einer
-   24px-Ueberschrift statt neben 14px-Knoepfen, und der Bildschirm ist
-   schmaler - beides laesst sie groesser aussehen, als sie ist. Getroffen wird
-   sie trotzdem sicher, beide Haelften bleiben ueber 40px breit. */
+/* Am Handy eine Spur kleiner - dort steht die Pille neben einer
+   24px-Ueberschrift statt neben 14px-Knoepfen und wirkt sonst groesser, als
+   sie ist. Beide Haelften bleiben ueber 30px breit und damit sicher zu
+   treffen. */
 @media (max-width: 480px) {
   .ansicht-schalter { border-radius: 8px; }
-  .ansicht-seg { padding: 3px 9px; font-size: 12px; border-radius: 6px; }
+  .ansicht-seg { padding: 2px 8px; font-size: 14px; border-radius: 6px; }
 }
 /* Gleiche Falle wie oben: display:flex auf .btn schlaegt [hidden]. */
 #todoZugangAufgebenStart[hidden] { display: none; }
-/* Schmale Screens: der Titel teilt sich die erste Zeile mit dem Umschalter,
-   alles andere rueckt in die zweite. Das Zahnrad sass frueher oben rechts,
-   muss aber weichen: der Umschalter ist mit Text breiter als der 📅-Knopf, den
-   er ersetzt, und zu dritt braeuchte die erste Zeile einen Umbruch - dann
-   waere die Kopfzeile drei Zeilen hoch. Oben bleibt jetzt, wonach man dort
-   greift (wo bin ich, und wie komme ich zur anderen Ansicht). */
+/* Schmale Screens: der Titel teilt sich die erste Zeile mit Zahnrad und
+   Umschalter, die Anlege-Knoepfe ruecken gemeinsam in die zweite. */
 @media (max-width: 480px) {
   /* row-gap halbiert: die unsichtbare Umbruch-Zeile unten steckt zwischen
      zwei Luecken, macht aus 12px sonst 24px Abstand zum Titel. */
-  .topbar { flex-wrap: wrap; row-gap: 6px; }
-  .topbar h1 { flex: 1 1 auto; }
+  .topbar { flex-wrap: wrap; row-gap: 6px; column-gap: 8px; }
+  /* flex-basis 0 statt auto, und das ist der Unterschied zwischen zwei und
+     drei Kopfzeilen: umgebrochen wird nach der HYPOTHETISCHEN Breite, und die
+     ist bei basis:auto die volle Textbreite des Listennamens. Ein langer Name
+     schob damit das Zahnrad aus der Zeile. Mit 0 nimmt der Titel nur, was
+     uebrig bleibt, und kuerzt sich notfalls selbst (.titel-name). */
+  .topbar h1 { flex: 1 1 0; }
   /* Unsichtbarer Umbruch-Punkt statt flex-basis:100% auf addTodoBtn - der
      haette die beiden Knoepfe wieder auf getrennte Zeilen verteilt. */
   .topbar::after { content: ""; order: 2; flex-basis: 100%; width: 0; }
-  #addTodoBtn, #addCatBtn, #saveStatus, #einstellungenBtn { order: 3; }
-  /* Rechtsbuendig am Ende der zweiten Zeile - dieselbe Ecke wie vorher, nur
-     eine Zeile tiefer. */
-  #einstellungenBtn { margin-left: auto; }
+  #addTodoBtn, #addCatBtn, #saveStatus { order: 3; }
 }
 
 input[type="text"],
