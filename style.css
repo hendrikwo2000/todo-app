@@ -67,6 +67,11 @@ html, body {
   line-height: 1.4;
   transition: background .2s, color .2s;
 }
+/* padding-right macht im Split-Modus dem Kalender Platz (siehe html.kal-split
+   weiter unten). Der Uebergang steht hier und nicht dort, damit er in BEIDE
+   Richtungen laeuft - an einer Regel, die beim Zuklappen selbst verschwindet,
+   gaebe es beim Zuklappen keine Animation. */
+body { transition: background .2s, color .2s, padding-right .26s cubic-bezier(.32, .72, 0, 1); }
 
 .app {
   max-width: 1900px;
@@ -182,26 +187,73 @@ html, body {
 .btn.icon-only { padding: 7px 10px; font-size: 16px; line-height: 1; }
 /* Rechtsbuendig in der Kopfzeile: schiebt sich ueber den frei bleibenden
    Platz nach rechts, ohne den restlichen Knoepfen ihre Position zu nehmen.
-   Das margin-left:auto traegt nur der KALENDER-Knopf fuer beide Icon-Knoepfe -
+   Das margin-left:auto traegt nur der UMSCHALTER fuer beide Nachbarn -
    zwei auto-Raender wuerden sich den freien Platz TEILEN und das Zahnrad in
    der Mitte der Kopfzeile absetzen. */
-#kalenderBtn { margin-left: auto; }
+#ansichtSchalter { margin-left: auto; }
 #einstellungenBtn[hidden] { display: none; }
+
+/* ---------- Umschalter Liste / Kalender ---------- */
+/* Zwei Haelften in einer Pille, die aktive liegt als hellere Karte obenauf -
+   dasselbe Zweiflaechen-Prinzip wie beim Hell/Dunkel-Schalter weiter unten.
+   Bewusst Text statt Symbolen: "Kalender" ist eindeutig, ein Symbol muesste
+   man einmal raten. Das Element steckt zweimal im Dokument (Kopfzeile und
+   Kalender), verdrahtet werden beide ueber die Klasse. */
+/* display unten schlaegt sonst das eingebaute [hidden] des Browsers - dieselbe
+   Falle wie bei .offline-banner und #einstellungenBtn. Heute versteckt sie
+   niemand per Attribut; die Zeile steht hier, damit es beim naechsten Mal
+   nicht stillschweigend nicht wirkt. */
+.ansicht-schalter[hidden], .kal-ansicht-zeile[hidden] { display: none; }
+.ansicht-schalter {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--col-bg);
+}
+.ansicht-seg {
+  border: 0;
+  border-radius: 8px;
+  padding: 5px 11px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.ansicht-seg:hover { color: var(--text); }
+.ansicht-seg[aria-pressed="true"] {
+  background: var(--row);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .10);
+  cursor: default;
+}
 /* Gleiche Falle wie oben: display:flex auf .btn schlaegt [hidden]. */
 #todoZugangAufgebenStart[hidden] { display: none; }
-/* Schmale Screens: der Titel nimmt sich nur so viel Platz wie noetig und
-   teilt sich die erste Zeile mit dem Zahnrad (weiterhin rechtsbuendig). Die
-   Anlege-Knoepfe ruecken gemeinsam in die zweite Zeile. */
+/* Schmale Screens: der Titel teilt sich die erste Zeile mit dem Umschalter,
+   alles andere rueckt in die zweite. Das Zahnrad sass frueher oben rechts,
+   muss aber weichen: der Umschalter ist mit Text breiter als der 📅-Knopf, den
+   er ersetzt, und zu dritt braeuchte die erste Zeile einen Umbruch - dann
+   waere die Kopfzeile drei Zeilen hoch. Oben bleibt jetzt, wonach man dort
+   greift (wo bin ich, und wie komme ich zur anderen Ansicht). */
 @media (max-width: 480px) {
   /* row-gap halbiert: die unsichtbare Umbruch-Zeile unten steckt zwischen
      zwei Luecken, macht aus 12px sonst 24px Abstand zum Titel. */
   .topbar { flex-wrap: wrap; row-gap: 6px; }
   .topbar h1 { flex: 1 1 auto; }
-  #einstellungenBtn { order: 1; }
   /* Unsichtbarer Umbruch-Punkt statt flex-basis:100% auf addTodoBtn - der
      haette die beiden Knoepfe wieder auf getrennte Zeilen verteilt. */
   .topbar::after { content: ""; order: 2; flex-basis: 100%; width: 0; }
-  #addTodoBtn, #addCatBtn, #saveStatus { order: 3; }
+  #addTodoBtn, #addCatBtn, #saveStatus, #einstellungenBtn { order: 3; }
+  /* Rechtsbuendig am Ende der zweiten Zeile - dieselbe Ecke wie vorher, nur
+     eine Zeile tiefer. */
+  #einstellungenBtn { margin-left: auto; }
 }
 
 input[type="text"],
@@ -1373,7 +1425,44 @@ input[type="date"]:focus {
    Logik in kalender.js. Das Panel traegt seine Verschiebung als INLINE
    transform (JS folgt damit dem Finger); hier steht nur der Ruhezustand
    und der Uebergang fuer den animierten Rest des Weges. */
-html.kal-offen, html.kal-offen body { overflow: hidden; }
+/* Nur im Umschalt-Modus: dort liegt der Kalender ueber der Liste, und ein
+   mitscrollender Hintergrund waere Unsinn. Im Split-Modus stehen beide
+   nebeneinander und die Liste muss scrollbar bleiben. */
+html.kal-offen:not(.kal-split),
+html.kal-offen:not(.kal-split) body { overflow: hidden; }
+
+/* ---------- Split-Modus (breite Fenster) ---------- */
+/* Ab einer Fensterbreite von SPLIT_AB (kalender.js) ist der Kalender kein
+   Overlay mehr, sondern die rechte Spalte des Bildschirms. Das Panel bleibt
+   dabei technisch position:fixed - so gelten seine ganze Hoehe und alle
+   inneren Flex-Regeln unveraendert weiter; Platz macht ihm stattdessen der
+   body per padding-right. Geschaltet wird ueber die Klasse html.kal-split aus
+   dem JS statt ueber eine Media Query, weil der Kalender auch am Rechner
+   zugeklappt sein darf - die Breite allein entscheidet das nicht. */
+:root { --kal-breite: min(440px, 38vw); }
+
+html.kal-split body { padding-right: var(--kal-breite); }
+html.kal-split .kalender {
+  width: var(--kal-breite);
+  /* Der Schlagschatten trennte das schwebende Panel vom Inhalt darunter.
+     Nebeneinander reicht die Trennlinie - ein Schatten sieht hier aus, als
+     laege die Liste im Halbdunkel. */
+  box-shadow: none;
+}
+/* Kein Abdunkeln: die Liste daneben bleibt bedienbar. */
+html.kal-split .kal-hintergrund { display: none; }
+/* Die Snackbar haengt als position:fixed am Bildschirm, nicht am body - ohne
+   diesen Versatz stuende sie mittig ueber BEIDEN Haelften und schoebe sich bei
+   knappem Split unter das Panel (z-index 50 gegen 56). Sie gehoert zum Board,
+   also zentriert sie sich auch darueber. */
+html.kal-split .snackbar { left: calc(50% - var(--kal-breite) / 2); }
+/* Der Umschalter steht im Split-Modus in der Kopfzeile der App, die hier ja
+   sichtbar bleibt. Ein zweiter daneben waere nur doppelt. */
+html.kal-split .kal-ansicht-zeile { display: none; }
+/* Umgekehrt im Umschalt-Modus: dort sitzt die Pille direkt ueber dem Kopf und
+   fuehrt zurueck zur Liste - ein ✕ daneben waere derselbe Weg zweimal. Escape
+   und der Wisch nach rechts schliessen weiterhin. */
+html:not(.kal-split) #kalZu { display: none; }
 
 .kal-hintergrund {
   position: fixed;
@@ -1407,6 +1496,23 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
   will-change: transform;
 }
 .kalender.animiert { transition: transform .26s cubic-bezier(.32, .72, 0, 1); }
+
+/* Eigene Zeile ueber dem Kopf, damit der Umschalter genau dort sitzt wie in
+   der Listen-Ansicht: oben rechts. In die Kopfzeile selbst passt er auf einem
+   schmalen Handy nicht mehr neben Monatsname, "Heute" und ⤢ - der Monatsname
+   bliebe als abgeschnittener Rest uebrig.
+
+   Die Abstaende holen die Differenz zu .app nach (24/26 dort gegen 14 hier):
+   der Schalter soll beim Umschalten an Ort und Stelle stehen bleiben, sonst
+   springt genau das Bedienelement, an dem man sich festhaelt. Sobald ein
+   Geraeterand (safe-area) groesser ist als der jeweilige Grundabstand, zaehlt
+   ohnehin auf beiden Seiten der Rand - dann faellt die Differenz auf 0. */
+.kal-ansicht-zeile {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: max(0px, calc(24px - max(14px, env(safe-area-inset-top))));
+  padding-right: max(0px, calc(26px - max(14px, env(safe-area-inset-right))));
+}
 
 .kal-kopf { display: flex; align-items: center; gap: 4px; }
 /* Der Monatsname ist ein Knopf: ein Tipp klappt die Monats- und Jahreswahl
@@ -1760,6 +1866,7 @@ html.kal-offen, html.kal-offen body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .kalender.animiert { transition: none; }
   .todo.kal-treffer { animation: none; }
+  body { transition: background .2s, color .2s; }
 }
 
 /* ---------- Google-Kalender ---------- */

@@ -632,11 +632,54 @@ DOM-Update statt des vollen `render()` — beides über den Rahmen dieser
 
 ## Kalender
 
-Panel am rechten Rand (`kalender.js`, Markup in `index.html`, CSS-Block
-„Kalender" in `style.css`): Monatsraster oben, Tagesliste darunter. Zeigt
-alle OFFENEN ToDos mit Termin aus ALLEN geladenen Listen — eigene wie
+Rechte Hälfte des Bildschirms (`kalender.js`, Markup in `index.html`,
+CSS-Block „Kalender" in `style.css`): Monatsraster oben, Tagesliste darunter.
+Zeigt alle OFFENEN ToDos mit Termin aus ALLEN geladenen Listen — eigene wie
 geteilte —, also bewusst mehr als das Board, das immer nur eine Liste zeigt.
 Erledigte bleiben draußen, ToDos ohne Termin tauchen gar nicht auf.
+
+**Zwei Modi, entschieden allein an der Fensterbreite** (`SPLIT_AB` = 1000 px
+in `kalender.js`, dazu `--kal-breite` und `html.kal-split` in `style.css` —
+die beiden Zahlen gehören zusammen):
+
+* **Split** (breites Fenster): der Kalender steht fest neben der Liste. Das
+  Panel bleibt technisch `position: fixed` — so gelten seine volle Höhe und
+  alle inneren Flex-Regeln unverändert weiter; Platz macht ihm stattdessen der
+  `body` per `padding-right`. Kein Abdunkeln, keine Scroll-Sperre, kein
+  Wisch-Zuziehen: die Liste daneben bleibt vollständig bedienbar.
+* **Umschalt-Modus** (Handy, schmales Fenster): der Kalender legt sich als
+  Panel über die Liste, mit abgedunkeltem Hintergrund und `overflow: hidden`
+  am `html` — also alles wie vor dem Umbau.
+
+Die 1000 px kommen aus dem Platz: 440 px Kalender lassen darunter noch zwei
+Board-Spalten (min. 250 px) übrig. Bei weniger bliebe eine einzige Spalte, und
+dann ist Umschalten ehrlicher als Nebeneinander.
+
+**Umschalter „Liste | Kalender".** Steckt ZWEIMAL im Dokument: in der
+Kopfzeile der App (`#ansichtSchalter`) und noch einmal im Kalender selbst
+(`.kal-ansicht-zeile`), weil der im Umschalt-Modus die Kopfzeile verdeckt.
+Sichtbar ist immer nur einer — die Zeile im Kalender blendet sich im Split
+aus, das ✕ im Kalenderkopf umgekehrt im Umschalt-Modus. Beide Instanzen
+hängen an derselben Verdrahtung, und ihre Abstände sind so gesetzt, dass die
+Pille beim Umschalten **an Ort und Stelle stehen bleibt** (`.kal-ansicht-zeile`
+holt die Differenz der Innenabstände von `.app` und `.kalender` nach) — sonst
+springt genau das Bedienelement, an dem man sich festhält.
+
+Am Handy (`max-width: 480px`) ist dafür das **Zahnrad in die zweite
+Kopfzeile** gerutscht: der Umschalter ist mit Text breiter als der 📅-Knopf,
+den er ersetzt, und zu dritt hätte die erste Zeile umgebrochen — die Kopfzeile
+wäre drei Zeilen hoch geworden.
+
+**Gemerkt wird die Ansicht** in `localStorage` unter `kalAnsicht`
+(`"liste"` / `"kalender"`), EIN Schlüssel für beide Modi. Geschrieben wird in
+`setzePanel()`, also an genau einer Stelle für alle vier Wege (Umschalter,
+Escape, Wisch, Wiederherstellen). Ohne gemerkten Wert entscheidet der Platz:
+am Rechner steht der Kalender gleich daneben, am Handy nähme er der Liste den
+Bildschirm weg. Wiederhergestellt wird in `stelleAnsichtHer()`, aufgehängt am
+ersten `kalenderNeuZeichnen()` und nicht am Laden der Datei — erst dann steht
+fest, dass jemand angemeldet ist und Daten da sind; solange die Anmeldemaske
+steht, wird der Versuch verschoben. Beim Wiederherstellen fährt das Panel
+nicht herein (`sofort`-Flag), es steht einfach da.
 
 **Eigene Datei, kein Build-Schritt.** `kalender.js` wird nach `app.js`
 geladen und liest dessen Zustand direkt (`daten`, `listen`, `aktiveListe`) —
@@ -646,12 +689,15 @@ ein offenes Panel bei Änderungen am Board mitzieht. Grund für die Trennung
 ist schlicht die Größe von `app.js` (>3300 Zeilen), nicht eine technische
 Notwendigkeit.
 
-**Rein lesend.** Ein Tipp auf einen Eintrag schließt das Panel, wechselt bei
-Bedarf die Liste (`wechsleListe()`) und öffnet das ToDo im gewohnten
-Bearbeiten-Modus (`startEdit()`), die Karte blinkt kurz auf
-(`.todo.kal-treffer`). Kein Abhaken, kein Termin-Ziehen im Kalender — sonst
-läge dieselbe Logik (Wiederholung, Unterpunkt-Automatik, Speichern) an zwei
-Stellen.
+**Rein lesend.** Ein Tipp auf einen Eintrag wechselt bei Bedarf die Liste
+(`wechsleListe()`) und öffnet das ToDo im gewohnten Bearbeiten-Modus
+(`startEdit()`), die Karte blinkt kurz auf (`.todo.kal-treffer`). Kein
+Abhaken, kein Termin-Ziehen im Kalender — sonst läge dieselbe Logik
+(Wiederholung, Unterpunkt-Automatik, Speichern) an zwei Stellen.
+Im Umschalt-Modus schließt sich das Panel dabei, sonst läge die Bearbeitung
+unsichtbar dahinter; **im Split bleibt es offen** — das Board steht ja schon
+daneben, und Zuklappen wäre ein ungefragter Rückbau der eingestellten
+Ansicht.
 
 **Wiederkehrende ToDos erscheinen erst ab ihrem Fälligkeitstag**, im
 Kalender genauso wie auf dem Board — `kalenderTermine()` filtert mit
@@ -675,9 +721,14 @@ und das Panel folgt dem Finger (Inline-`transform`, deshalb steht im CSS nur
 der Ruhezustand). Beim Loslassen entscheidet die Strecke (65 % zum Öffnen,
 35 % zum Schließen). Blockiert, solange ein Dialog offen ist oder etwas
 gezogen wird (`darfGeste()`) — sonst kämpft die Geste mit dem Drag & Drop des
-Boards. Am Rechner führt der 📅-Knopf in der Kopfzeile zum selben Ziel.
+Boards. Der Umschalter in der Kopfzeile führt zum selben Ziel.
+**Im Split ist die Geste aus**: Öffnen und Zuziehen macht dort der
+Umschalter, denn eine Spalte wandert nicht mit dem Finger. Das Blättern
+im Raster und in der Tagesliste bleibt auch dort erhalten — ein Tablet quer
+hat Platz UND Finger.
 
-**Jedes Öffnen startet bei heute** — Knopf wie Wisch (`springeZuHeute()`);
+**Jedes Öffnen startet bei heute** — Umschalter, Wisch und das
+Wiederherstellen nach dem Laden gleichermaßen (`springeZuHeute()`);
 sonst hinge das Panel noch in dem Monat, in dem man zuletzt geblättert hat.
 Beim Blättern in einen anderen Monat wird automatisch der erste Tag MIT
 Terminen gewählt, sonst steht unter einem gefüllten Raster eine leere Liste.

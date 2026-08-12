@@ -1,7 +1,7 @@
 "use strict";
 
 /* ====================================================================
-   Kalender – Panel am rechten Rand
+   Kalender – rechte Haelfte des Bildschirms
 
    Zeigt alle offenen ToDos MIT Termin aus ALLEN geladenen Listen (eigene
    und geteilte) sowie - falls verknuepft - die Termine aus Google Kalender:
@@ -17,10 +17,22 @@
    einzige Beruehrung in der Gegenrichtung ist window.kalenderNeuZeichnen()
    aus render().
 
-   Aufruf: Wisch vom RECHTEN Bildschirmrand nach links (rechts, weil der
-   linke Rand auf iOS/Android fuer "Zurueck" belegt ist), am Rechner der
-   Knopf in der Kopfzeile. Escape, Hintergrund-Klick, ✕ oder ein Wisch
-   nach rechts schliessen wieder.
+   Zwei Modi, unterschieden allein an der Fensterbreite (SPLIT_AB):
+
+   - Split (breites Fenster): der Kalender steht fest neben der Liste. Der
+     body macht ihm per padding-right Platz, das Panel selbst bleibt
+     position:fixed.
+   - Umschalt-Modus (Handy, schmales Fenster): der Kalender legt sich als
+     Panel ueber die Liste, mit abgedunkeltem Hintergrund.
+
+   Bedient wird beides ueber denselben Umschalter "Liste | Kalender" - in der
+   Kopfzeile der App, und noch einmal im Kalender an genau derselben Stelle,
+   weil der im Umschalt-Modus die Kopfzeile verdeckt. Welche Ansicht zuletzt
+   galt, steht in localStorage (ANSICHT_KEY) und wird beim naechsten Start
+   wiederhergestellt. Dazu weiterhin: Wisch vom RECHTEN Bildschirmrand nach
+   links zum Oeffnen (rechts, weil der linke Rand auf iOS/Android fuer
+   "Zurueck" belegt ist), Escape, Hintergrund-Klick und Wisch nach rechts
+   zum Schliessen.
    ==================================================================== */
 
 const kalPanel       = document.getElementById("kalenderPanel");
@@ -49,6 +61,19 @@ const UHR_FORMAT   = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute:
 // ISO-Datums in kalAuswahl, weil Ueberfaelliges ueber viele Tage verstreut
 // liegt und sonst in irgendeinem Vormonat verschwinden wuerde.
 const UEBERFAELLIG = "ueberfaellig";
+
+// Ab dieser Fensterbreite steht der Kalender NEBEN der Liste (Split) statt
+// darueber. Die Zahl kommt aus dem Platz: rund 440px Kalender lassen darunter
+// noch zwei Board-Spalten (min. 250px) uebrig - bei weniger bliebe eine
+// einzige Spalte, und dann ist Umschalten ehrlicher als Nebeneinander.
+// Gehoert zu --kal-breite und html.kal-split in style.css.
+const SPLIT_AB = 1000;
+// Gemerkte Ansicht ("liste" / "kalender"). EIN Schluessel fuer beide Modi:
+// wer den Kalender am Rechner zuklappt, will ihn beim naechsten Laden auch
+// nicht sehen - und am Handy gilt dasselbe.
+const ANSICHT_KEY = "kalAnsicht";
+
+function istSplit() { return window.innerWidth >= SPLIT_AB; }
 
 let kalOffen = false;
 let kalJahr = 0;         // angezeigter Monat
@@ -1395,11 +1420,15 @@ function baueEintrag(t, mitDatum) {
 }
 
 // ---------- Springen ----------
-// Der Kalender bearbeitet selbst nichts: er schliesst sich, holt die
-// richtige Liste nach vorne und uebergibt an den Bearbeiten-Modus des
-// Boards. Das kurze Aufblinken zeigt, wo man gelandet ist.
+// Der Kalender bearbeitet selbst nichts: er holt die richtige Liste nach
+// vorne und uebergibt an den Bearbeiten-Modus des Boards. Das kurze
+// Aufblinken zeigt, wo man gelandet ist.
 function springeZuToDo(boardId, todoId) {
-  schliesseKalender();
+  // Im Umschalt-Modus liegt der Kalender ueber dem Board und muss weichen,
+  // sonst landet die Bearbeitung unsichtbar dahinter. Im Split steht das
+  // Board schon daneben - dort waere Zuklappen ein ungefragter Rueckbau der
+  // Ansicht, die man sich eingestellt hat.
+  if (!istSplit()) schliesseKalender();
   if (boardId !== aktiveListe) wechsleListe(boardId);
   startEdit(todoId);
   const karte = document.querySelector(`.todo[data-id="${todoId}"]`);
@@ -1483,13 +1512,49 @@ function springeZuHeute() {
 }
 
 // ---------- Oeffnen / Schliessen ----------
-function setzePanel(offen) {
-  kalPanel.classList.add("animiert");
+/**
+ * Einzige Stelle, an der sich der Zustand des Panels niederschlaegt: Klassen,
+ * Umschalter und der gemerkte Zustand haengen alle hier dran. Die vier
+ * Aufrufer (Umschalter, Escape, Wisch, Wiederherstellen) setzen vorher
+ * kalOffen und muessen sich sonst um nichts kuemmern.
+ *
+ * `sofort` laesst die Animation weg - beim Wiederherstellen nach dem Laden
+ * soll der Kalender einfach dastehen und nicht erst hereinfahren.
+ */
+function setzePanel(offen, sofort) {
+  const split = istSplit();
+  document.documentElement.classList.toggle("kal-split", offen && split);
+  kalPanel.classList.toggle("animiert", !sofort);
   kalPanel.style.transform = offen ? "translateX(0)" : "";
   kalHintergrund.style.opacity = "";
-  kalHintergrund.classList.toggle("sichtbar", offen);
+  // Im Split verdunkelt nichts - die Liste daneben bleibt bedienbar.
+  kalHintergrund.classList.toggle("sichtbar", offen && !split);
   kalPanel.setAttribute("aria-hidden", offen ? "false" : "true");
   document.documentElement.classList.toggle("kal-offen", offen);
+  for (const seg of document.querySelectorAll(".ansicht-seg")) {
+    seg.setAttribute("aria-pressed", String((seg.dataset.ansicht === "kalender") === offen));
+  }
+  try { localStorage.setItem(ANSICHT_KEY, offen ? "kalender" : "liste"); }
+  catch (e) { /* voller Speicher - dann eben ungemerkt */ }
+}
+
+// Gemerkte Ansicht wiederherstellen, einmalig. Haengt am ersten Zeichnen und
+// nicht am Laden der Datei: erst danach steht fest, dass jemand angemeldet ist
+// und Daten da sind. Vorher waere der Kalender leer und laege ausserdem hinter
+// der Anmeldemaske.
+let ansichtHergestellt = false;
+function stelleAnsichtHer() {
+  if (ansichtHergestellt) return;
+  if (kalLock && !kalLock.classList.contains("hidden")) return;   // spaeter nochmal
+  ansichtHergestellt = true;
+  const gemerkt = localStorage.getItem(ANSICHT_KEY);
+  // Ohne gemerkten Zustand entscheidet der Platz: am Rechner steht der
+  // Kalender gleich daneben, am Handy naehme er der Liste den Bildschirm weg.
+  const auf = gemerkt ? gemerkt === "kalender" : istSplit();
+  if (!auf) { setzePanel(false, true); return; }
+  frischOeffnen();
+  kalOffen = true;
+  setzePanel(true, true);
 }
 
 // Jedes Oeffnen startet beim heutigen Tag UND in der normalen Ansicht. Ein
@@ -1527,6 +1592,9 @@ let geste = null;   // { x, y, achse, modus, breite, versatz }
 // Keine Geste, solange ein Dialog offen ist oder gerade etwas gezogen wird -
 // sonst kaempft der Kalender mit dem Drag & Drop des Boards.
 function darfGeste() {
+  // Im Split ist der Kalender kein Panel, das man hereinzieht, sondern eine
+  // Spalte, die da ist oder nicht - das macht der Umschalter.
+  if (istSplit()) return false;
   if (!einstellungenPopup.hidden) return false;
   if (formularOffen || wahlOffen) return false;
   if (kalLock && !kalLock.classList.contains("hidden")) return false;
@@ -1567,7 +1635,9 @@ function gestenZone(ziel) {
   if (ziel.closest("input, textarea, select")) return null;
   if (ziel.closest("#kalRaster, #kalWochentage")) return "monat";
   if (ziel.closest("#kalTagesliste")) return "tag";
-  return "zu";
+  // Blaettern bleibt auch im Split (ein Tablet quer hat Platz UND Finger),
+  // nur Zuziehen nicht: die Spalte wandert nicht mit dem Finger.
+  return istSplit() ? null : "zu";
 }
 
 // Beim Blaettern folgt der Inhalt ein Stueck weit dem Finger - gedaempft, weil
@@ -1689,7 +1759,15 @@ document.addEventListener("touchend", gesteBeenden);
 document.addEventListener("touchcancel", gesteBeenden);
 
 // ---------- Verdrahtung ----------
-document.getElementById("kalenderBtn").addEventListener("click", oeffneKalender);
+// Der Umschalter steckt zweimal im Dokument: in der Kopfzeile der App und im
+// Kalender selbst (der die Kopfzeile im Umschalt-Modus verdeckt). Sichtbar ist
+// immer nur einer, verdrahtet sind beide gleich.
+for (const seg of document.querySelectorAll(".ansicht-seg")) {
+  seg.addEventListener("click", () => {
+    if (seg.dataset.ansicht === "kalender") oeffneKalender();
+    else schliesseKalender();
+  });
+}
 document.getElementById("kalZu").addEventListener("click", schliesseKalender);
 kalHintergrund.addEventListener("click", schliesseKalender);
 kalMonatName.addEventListener("click", schalteWahl);
@@ -1726,13 +1804,23 @@ document.addEventListener("keydown", e => {
 // Gedrehtes Handy, geaenderte Fenstergroesse: die Zellen sind dann anders
 // hoch, und die gemessene Zeilenzahl stimmt nicht mehr. Ein Monatswechsel
 // misst von selbst nach (zeichneKalender), eine Drehung nicht.
+//
+// Ausserdem kann das Fenster ueber SPLIT_AB hinweg wachsen oder schrumpfen -
+// aus dem Panel wird dann eine Spalte oder umgekehrt. Ohne diesen Abgleich
+// bliebe ein am Handy geoeffneter Kalender nach dem Drehen ein Overlay, das
+// die halbe Liste verdeckt.
 window.addEventListener("resize", () => {
-  if (kalOffen && kalVollbild) messeVollbild();
+  if (!kalOffen) return;
+  if (istSplit() !== document.documentElement.classList.contains("kal-split")) {
+    setzePanel(true, true);
+  }
+  if (kalVollbild) messeVollbild();
 });
 
 // Aus render() aufgerufen: haelt das offene Panel auf Stand, wenn sich am
 // Board etwas aendert (Abhaken, Sync vom Server). Zugeklappt kostet es nichts.
 window.kalenderNeuZeichnen = function () {
+  stelleAnsichtHer();
   if (kalOffen) zeichneKalender();
 };
 
