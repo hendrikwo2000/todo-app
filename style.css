@@ -234,6 +234,14 @@ body { transition: background .2s, color .2s, padding-right .26s cubic-bezier(.3
   box-shadow: 0 1px 2px rgba(0, 0, 0, .10);
   cursor: default;
 }
+/* Am Handy schlanker. Dieselbe Pille wirkt dort klobig: sie steht neben einer
+   24px-Ueberschrift statt neben 14px-Knoepfen, und der Bildschirm ist
+   schmaler - beides laesst sie groesser aussehen, als sie ist. Getroffen wird
+   sie trotzdem sicher, beide Haelften bleiben ueber 40px breit. */
+@media (max-width: 480px) {
+  .ansicht-schalter { border-radius: 8px; }
+  .ansicht-seg { padding: 3px 9px; font-size: 12px; border-radius: 6px; }
+}
 /* Gleiche Falle wie oben: display:flex auf .btn schlaegt [hidden]. */
 #todoZugangAufgebenStart[hidden] { display: none; }
 /* Schmale Screens: der Titel teilt sich die erste Zeile mit dem Umschalter,
@@ -1509,7 +1517,18 @@ html:not(.kal-split) #kalZu { display: none; }
    ohnehin auf beiden Seiten der Rand - dann faellt die Differenz auf 0. */
 .kal-ansicht-zeile {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  /* Die Zeile ist genauso hoch wie die Titelzeile der App (h1: 24px auf
+     line-height 1.4). Zusammen mit align-items:center landet die Pille damit
+     auf derselben Mittellinie wie dort - egal wie hoch sie gerade ist. Ein
+     fester Versatz stimmte nur fuer EINE Pillengroesse und ginge schief,
+     sobald sie sich aendert (am Handy ist sie schlanker).
+     content-box ist dabei Pflicht: mit dem global gesetzten border-box
+     steckte das padding-top schon in den 34px, die Zeile waere damit sofort
+     hoeher als ihr Mindestmass und richtete gar nichts mehr aus. */
+  box-sizing: content-box;
+  min-height: 34px;
   padding-top: max(0px, calc(24px - max(14px, env(safe-area-inset-top))));
   padding-right: max(0px, calc(26px - max(14px, env(safe-area-inset-right))));
 }

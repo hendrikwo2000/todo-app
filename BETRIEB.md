@@ -668,7 +668,17 @@ springt genau das Bedienelement, an dem man sich festhält.
 Am Handy (`max-width: 480px`) ist dafür das **Zahnrad in die zweite
 Kopfzeile** gerutscht: der Umschalter ist mit Text breiter als der 📅-Knopf,
 den er ersetzt, und zu dritt hätte die erste Zeile umgebrochen — die Kopfzeile
-wäre drei Zeilen hoch geworden.
+wäre drei Zeilen hoch geworden. Dort ist die Pille außerdem **schlanker**
+(117×27 statt 131×32 px): neben einer 24px-Überschrift und auf schmalem
+Bildschirm wirkte die volle Größe klobig.
+
+Dass sie in beiden Ansichten auf derselben Mittellinie steht, macht
+`.kal-ansicht-zeile` mit `min-height: 34px` (Höhe der Titelzeile) plus
+`align-items: center` — das stimmt bei jeder Pillengröße von selbst, ein
+fester Versatz stimmte nur für eine. **`box-sizing: content-box` ist dabei
+Pflicht**: mit dem global gesetzten `border-box` steckte das `padding-top`
+schon in den 34 px, die Zeile wäre sofort höher als ihr Mindestmaß und
+richtete gar nichts mehr aus.
 
 **Gemerkt wird die Ansicht** in `localStorage` unter `kalAnsicht`
 (`"liste"` / `"kalender"`), EIN Schlüssel für beide Modi. Geschrieben wird in
