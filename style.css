@@ -255,26 +255,12 @@ body { transition: background .2s, color .2s, padding-right .26s cubic-bezier(.3
    Fokus-Segment wird per Attribut versteckt, solange kein Zugang besteht. */
 .ansicht-seg[hidden] { display: none; }
 
-/* ---------- Umschalter im breiten Fenster ----------
-   Dort ist es keine Auswahl mehr: die Liste steht immer, und Kalender und
-   Fokus duerfen gleichzeitig offen sein. Also faellt 📋 weg, und aus der
-   Pille werden zwei freistehende Ein/Aus-Knoepfe - eine Pille, in der zwei
-   Haelften gleichzeitig leuchten, saehe aus wie eine kaputte Auswahl. */
-html.breit .ansicht-seg[data-ansicht="liste"] { display: none; }
-html.breit .ansicht-schalter {
-  border-color: transparent;
-  background: none;
-  padding: 0;
-  gap: 6px;
-}
-/* Gedrueckt heisst hier "Panel ist offen" - ein Kasten drumherum statt der
-   Pillen-Fuellung, sonst waere der Unterschied zum Ruhezustand nur die
-   Deckkraft. Nochmal antippen macht es zu, deshalb kein cursor:default. */
-html.breit .ansicht-seg[aria-pressed="true"] {
-  background: var(--accent-soft);
-  box-shadow: none;
-  cursor: pointer;
-}
+/* Die Pille ist in JEDER Fenstergroesse dieselbe echte Auswahl: 📋 = Streifen
+   zu, 📅 = Streifen auf mit dem Tag unten, 🔥 = mit Fokus unten. Es gab hier
+   einmal eine zweite Bedienform fuers breite Fenster (📋 weg, 📅/🔥 als
+   unabhaengige Ein/Aus-Knoepfe) - die brauchte es, solange Kalender und Fokus
+   zwei getrennte Panels waren. Seit beide sich denselben unteren Teil teilen,
+   gibt es nichts Unabhaengiges mehr zu schalten.
 
 /* Restzeit einer laufenden Sitzung am 🔥-Knopf. Im breiten Fenster als Zahl
    neben der Flamme; am Handy passt sie nicht in die Pille (die Kopfzeile
@@ -1585,9 +1571,7 @@ button.lz-name:hover { color: var(--accent); }
    mitscrollender Hintergrund waere Unsinn. Im Split-Modus stehen beide
    nebeneinander und die Liste muss scrollbar bleiben. */
 html.kal-offen:not(.kal-split),
-html.kal-offen:not(.kal-split) body,
-html.fok-offen:not(.fok-split),
-html.fok-offen:not(.fok-split) body { overflow: hidden; }
+html.kal-offen:not(.kal-split) body { overflow: hidden; }
 
 /* ---------- Split-Modus (breite Fenster) ---------- */
 /* Ab einer Fensterbreite von SPLIT_AB (kalender.js) ist der Kalender kein
@@ -1599,14 +1583,7 @@ html.fok-offen:not(.fok-split) body { overflow: hidden; }
    zugeklappt sein darf - die Breite allein entscheidet das nicht. */
 :root { --kal-breite: min(440px, 38vw); }
 
-/* Der Streifen ist derselbe, egal welches der beiden Panels ihn belegt -
-   deshalb macht der body auch fuer das Fokus-Panel allein Platz. */
-html.kal-split body,
-html.fok-split body { padding-right: var(--kal-breite); }
-/* Stehen beide da, endet der Kalender an der Oberkante des Fokus-Panels.
-   Dessen Hoehe misst fokus.js (messeHoehe) und legt sie hier ab - eine feste
-   Zahl ginge nicht, das Panel ist mit zwei Gewohnheiten flacher als mit zehn. */
-html.kal-split.fok-split .kalender { bottom: var(--fok-hoehe, 0px); }
+html.kal-split body { padding-right: var(--kal-breite); }
 html.kal-split .kalender {
   width: var(--kal-breite);
   /* Der Schlagschatten trennte das schwebende Panel vom Inhalt darunter.
@@ -1616,22 +1593,18 @@ html.kal-split .kalender {
 }
 /* Kein Abdunkeln: die Liste daneben bleibt bedienbar. */
 html.kal-split .kal-hintergrund { display: none; }
-html.fok-split .fok-hintergrund { display: none; }
 /* Die Snackbar haengt als position:fixed am Bildschirm, nicht am body - ohne
    diesen Versatz stuende sie mittig ueber BEIDEN Haelften und schoebe sich bei
    knappem Split unter das Panel (z-index 50 gegen 56). Sie gehoert zum Board,
    also zentriert sie sich auch darueber. */
-html.kal-split .snackbar,
-html.fok-split .snackbar { left: calc(50% - var(--kal-breite) / 2); }
+html.kal-split .snackbar { left: calc(50% - var(--kal-breite) / 2); }
 /* Der Umschalter steht im breiten Fenster in der Kopfzeile der App, die dort
-   sichtbar bleibt. Ein zweiter im Panel waere nur doppelt. Haengt an `breit`
-   und nicht an `kal-split`: der Streifen kann auch ohne Kalender belegt sein. */
+   sichtbar bleibt. Ein zweiter im Streifen waere nur doppelt. */
 html.breit .kal-ansicht-zeile { display: none; }
 /* Umgekehrt im schmalen Fenster: dort sitzt die Pille direkt ueber dem Kopf
    und fuehrt zurueck zur Liste - ein ✕ daneben waere derselbe Weg zweimal.
    Escape und der Wisch nach rechts schliessen weiterhin. */
-html:not(.breit) #kalZu,
-html:not(.breit) #fokZu { display: none; }
+html:not(.breit) #kalZu { display: none; }
 
 .kal-hintergrund {
   position: fixed;
@@ -2019,6 +1992,27 @@ html:not(.breit) #fokZu { display: none; }
   text-align: left;
 }
 
+/* Der untere Teil des Streifens: Tag, Gewohnheiten oder Timer - immer genau
+   eines, und immer gleich hoch. Die Hoehe ist schlicht der Rest unter dem
+   Raster, deshalb flex:1 hier und min-height:0, damit die Kinder blaettern
+   duerfen statt den Streifen aufzublaehen. */
+.kal-unten {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Damit der Timer weiss, wie flach es hier zugeht (siehe @container unten). */
+  container-type: size;
+  container-name: unten;
+}
+/* Im Vollbild nimmt das Raster die ganze Hoehe - dann gibt es unten nichts. */
+.kalender.vollbild .kal-unten { display: none; }
+/* display:flex unten schluege sonst das eingebaute [hidden] des Browsers.
+   Dieselbe Falle wie bei .offline-banner, und genau hier ist sie schon einmal
+   zugeschnappt: die Gewohnheiten blieben neben dem Timer stehen. */
+.kal-liste[hidden] { display: none; }
+
 .kal-liste {
   flex: 1;
   min-height: 0;
@@ -2379,76 +2373,26 @@ body.zieht, body.zieht .todo {
 }
 
 /* ====================================================================
-   Fokus-Panel
+   Fokus im unteren Teil des Streifens
 
-   Teilt sich den rechten Streifen mit dem Kalender: im breiten Fenster steht
-   es UNTER ihm und ist nur so hoch wie sein Inhalt, im schmalen legt es sich
-   wie er ueber die Liste. Die Grundform ist deshalb dieselbe wie bei
-   .kalender - was hier abweicht, steht in den Split-Regeln weiter unten.
-   Verhalten und Herkunft der Daten: fokus.js.
+   Kein eigenes Panel mehr (bis 13.08.2026 war es eines, mit gemessener Hoehe
+   unter dem Kalender): Gewohnheiten und Timer fuellen denselben Bereich wie
+   die Tagesliste - #kalUnten. Deshalb steht hier nur noch, wie ihr Inhalt
+   aussieht, nicht mehr wo er liegt.
    ==================================================================== */
-/* display:flex unten schluege sonst das eingebaute [hidden] - dieselbe Falle
-   wie bei .offline-banner. Das Panel ist ohne Fokus-Zugang versteckt. */
-.fokus-panel[hidden] { display: none; }
-
-.fok-hintergrund {
-  position: fixed;
-  inset: 0;
-  z-index: 55;
-  background: rgba(0, 0, 0, .38);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .26s;
-}
-.fok-hintergrund.sichtbar { opacity: 1; pointer-events: auto; }
-
-.fokus-panel {
-  position: fixed;
-  top: 0; right: 0; bottom: 0;
-  z-index: 56;
-  width: min(480px, 100vw);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: var(--bg);
-  border-left: 1px solid var(--line);
-  box-shadow: -10px 0 30px rgba(0, 0, 0, .20);
-  transform: translateX(100%);
-  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 14px 14px;
-  overscroll-behavior: contain;
-  will-change: transform;
-}
-.fokus-panel.animiert { transition: transform .26s cubic-bezier(.32, .72, 0, 1); }
-
-/* ---------- Breites Fenster: die untere Haelfte des Streifens ---------- */
-html.fok-split .fokus-panel {
-  width: var(--kal-breite);
-  box-shadow: none;
-}
-/* Steht der Kalender darueber, waechst das Panel von UNTEN nach oben: top:auto
-   plus height:auto heisst "so hoch wie noetig". Der Deckel bei 45vh haelt den
-   Kalender lesbar, wenn jemand zehn Gewohnheiten hat - darueber blaettert das
-   Panel in sich selbst. */
-html.fok-split.kal-split .fokus-panel {
-  top: auto;
-  height: auto;
-  max-height: 45vh;
-  overflow-y: auto;
-  border-top: 1px solid var(--line);
-}
-
-/* ---------- Kopfzeile ---------- */
+/* ---------- Kopfzeile des Fokus-Bereichs ---------- */
 .fok-kopf {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: none;
 }
+.fok-kopf[hidden] { display: none; }
 .fok-bilanz {
   font-size: 12.5px;
   color: var(--muted);
-  /* Schiebt das ✕ nach aussen, ohne dass es dafuer einen eigenen Abstand
-     braucht - und steht selbst direkt hinter dem Titel. */
+  /* Schiebt den Link nach aussen, ohne dass es dafuer einen eigenen Abstand
+     braucht - und steht selbst direkt hinter den Reitern. */
   margin-right: auto;
 }
 
@@ -2499,17 +2443,28 @@ html.fok-split.kal-split .fokus-panel {
   padding: 8px 0;
 }
 .fok-timer[hidden] { display: none; }
+/* Wird es trotz allem zu eng (sehr flacher Bereich, sehr grosse Schrift),
+   blaettert der Timer in sich, statt aus dem Streifen zu laufen. */
+.fok-timer { overflow-y: auto; }
 
 .fok-ring {
   position: relative;
-  /* Fuellt das Panel, ohne die Knoepfe darunter hinauszudraengen. Der Wert
-     gilt fuer das Vollbild-Panel im schmalen Fenster - im Split steht darunter
-     eine engere Fassung, dort ist das Panel selbst auf 45vh gedeckelt. */
-  width: clamp(180px, 38vh, 280px);
+  /* Der Ring nimmt die HOEHE, die unter den Reitern uebrig bleibt, und leitet
+     seine Breite daraus ab (aspect-ratio). An der Fensterhoehe zu haengen ging
+     schief: am Handy blieben unter dem Monatsraster 205 px, der Ring nahm sich
+     280 und schob die Knoepfe aus dem Bild.
+     max-height deckelt ihn, wo viel Platz ist - sonst wuechse er auf einem
+     hohen Bildschirm ins Alberne. */
+  flex: 1 1 auto;
+  min-height: 0;
+  width: auto;
+  max-width: 100%;
+  max-height: 280px;
   aspect-ratio: 1;
-  flex: none;
+  /* Damit die Zeit in der Mitte mit dem Ring skaliert statt mit dem Fenster. */
+  container-type: size;
 }
-html.fok-split .fok-ring { width: clamp(120px, 22vh, 190px); }
+html.kal-split .fok-ring { max-height: 190px; }
 /* display:block ist Pflicht: als inline-Element steht das SVG auf der
    Textgrundlinie, und die Luecke darunter machte den Kreis fuenf Pixel hoeher
    als breit - aus dem Ring wurde ein Ei. */
@@ -2540,7 +2495,10 @@ html.fok-split .fok-ring { width: clamp(120px, 22vh, 190px); }
   text-align: center;
 }
 .fok-zeit {
-  font-size: clamp(30px, 9vh, 44px);
+  /* cqmin = Anteil der kleineren Ringseite: schrumpft der Ring, schrumpft die
+     Zahl mit. clamp faengt beide Enden ab (und den Fall, dass ein Browser mit
+     Container-Abfragen nichts anfangen kann). */
+  font-size: clamp(20px, 22cqmin, 44px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
@@ -2548,11 +2506,21 @@ html.fok-split .fok-ring { width: clamp(120px, 22vh, 190px); }
 }
 .fok-timer.laeuft .fok-zeit { color: var(--accent); }
 .fok-geplant {
-  font-size: 12px;
+  font-size: clamp(10px, 6cqmin, 12px);
   color: var(--muted);
   padding: 0 12px;
 }
 .fok-knoepfe { display: flex; gap: 8px; flex: none; }
+
+/* Flacher Bereich (am Handy bleiben unter dem Monatsraster oft nur gut 200 px):
+   dann stellt sich der Timer quer. Der Ring nimmt die volle Hoehe und die
+   Knoepfe daneben die Breite - uebereinander bliebe fuer den Ring ein Rest von
+   rund 90 px, und darin ist eine Uhrzeit nicht mehr zu lesen. */
+@container unten (max-height: 280px) {
+  .fok-timer { flex-direction: row; justify-content: center; gap: 14px; }
+  .fok-ring { height: 100%; width: auto; max-height: none; max-width: 58%; flex: 0 1 auto; }
+  .fok-knoepfe { flex-direction: column; }
+}
 /* Fingergerecht, hier ist Platz dafuer - anders als in der alten Zeile. */
 .fok-knoepfe .btn { min-height: 44px; padding: 6px 18px; }
 .fok-start { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -2562,11 +2530,16 @@ html.fok-split .fok-ring { width: clamp(120px, 22vh, 190px); }
   display: flex;
   flex-direction: column;
   gap: 7px;
-  /* Der einzige blaetternde Teil im schmalen Fenster - im Split blaettert das
-     ganze Panel (siehe oben), dort steht min-height:0 dem nicht im Weg. */
+  /* Blaettert in sich, statt den Streifen aufzublaehen - genau wie die
+     Tagesliste, an deren Stelle er steht. */
+  flex: 1;
   overflow-y: auto;
   min-height: 0;
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
 }
+/* Und wieder die [hidden]-Falle: ohne diese Zeile blieben die Gewohnheiten
+   neben dem Timer stehen. Genau das ist am 13.08.2026 passiert. */
+.fok-inhalt[hidden] { display: none; }
 .fok-hinweis { margin: 4px 0; font-size: 13px; color: var(--muted); }
 .fok-woche-fertig { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
 
@@ -2649,9 +2622,13 @@ html.fok-split .fok-ring { width: clamp(120px, 22vh, 190px); }
   color: #fff;
 }
 
+/* Nur noch das Pfeilsymbol in der Kopfzeile: eine eigene Zeile am Fuss haette
+   dem Timer Hoehe genommen, die er besser fuer den Ring braucht. */
 .fok-mehr {
   flex: none;
-  font-size: 12.5px;
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px;
   color: var(--muted);
   text-decoration: none;
 }
@@ -2667,7 +2644,6 @@ html.fok-split .fok-ring { width: clamp(120px, 22vh, 190px); }
 }
 /* Gleiche [hidden]-Falle wie oben: display:flex schluege es sonst. Bei einem
    Fehler bleibt der Timer-Kasten leer und damit weg. */
-.fok-timer[hidden] { display: none; }
 /* Zahlenfeld ohne Browser-Spinner: Minus und Plus sind der Weg, und die
    winzigen Pfeile daneben sind mit dem Finger ohnehin nicht zu treffen. */
 .fok-menge input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }

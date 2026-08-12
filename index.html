@@ -47,22 +47,20 @@
       <span id="saveStatus" class="save-status"></span>
       <button id="einstellungenBtn" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
       <!-- Umschalter Liste/Kalender/Fokus, aussen rechts. Die Ecke gehoert ihm
-           und nicht dem Zahnrad, weil er im Umschalt-Modus in den Panels noch
+           und nicht dem Zahnrad, weil er im Umschalt-Modus im Kalender noch
            einmal auftaucht - und zwar an genau derselben Bildschirmstelle.
            Stuende dort das Zahnrad daneben, spraenge die Pille beim Umschalten.
 
-           Zwei Bedienformen, je nach Platz:
-           - schmal: eine echte Auswahl, genau eine der drei Ansichten gilt.
-           - breit: 📋 faellt weg (die Liste steht immer), 📅 und 🔥 werden zu
-             zwei unabhaengigen Ein/Aus-Knoepfen - dort passen beide Panels
-             uebereinander in den rechten Streifen. Die Pillen-Optik faellt
-             dann weg, sonst saehe ein Kontrollkaestchen wie eine Auswahl aus.
+           Eine echte Auswahl, in jeder Fenstergroesse: 📋 = Streifen zu,
+           📅 = Streifen auf mit dem Tag unten, 🔥 = mit Fokus unten. Beide
+           Panels sind derselbe Streifen, es gibt also nichts, was unabhaengig
+           auf und zu gehen koennte.
            🔥 erscheint nur mit Fokus-Zugang (fokus.js). -->
       <div id="ansichtSchalter" class="ansicht-schalter" role="group" aria-label="Ansicht">
         <button type="button" class="ansicht-seg" data-ansicht="liste"
                 aria-pressed="true" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
         <button type="button" class="ansicht-seg" data-ansicht="kalender"
-                aria-pressed="false" aria-label="Kalender" title="Kalender">📅</button>
+                aria-pressed="false" aria-label="Kalender" title="Tag">📅</button>
         <button type="button" class="ansicht-seg fok-seg" data-ansicht="fokus" hidden
                 aria-pressed="false" aria-label="Fokus" title="Fokus"><span class="fok-flamme">🔥</span><span class="fok-rest" hidden></span></button>
       </div>
@@ -142,72 +140,51 @@
     <div id="kalFilter" class="kal-filter" hidden></div>
     <div id="kalWochentage" class="kal-wochentage"></div>
     <div id="kalRaster" class="kal-raster"></div>
-    <div id="kalTagesliste" class="kal-liste"></div>
-  </aside>
-
-  <!-- Fokus: Gewohnheiten von heute und der Fokus-Timer, beides aus der
-       Fokus-App (fokus.it-wolf.org) ueber /api/fokus/ geholt. Im breiten
-       Fenster steht das Panel UNTER dem Kalender im selben rechten Streifen
-       und ist nur so hoch wie sein Inhalt; im schmalen legt es sich wie der
-       Kalender ueber die Liste. Erscheint nur mit Fokus-Zugang.
-       Inhalt kommt aus fokus.js. -->
-  <div id="fokusHintergrund" class="fok-hintergrund"></div>
-  <aside id="fokusPanel" class="fokus-panel" aria-label="Fokus" aria-hidden="true" hidden>
-    <!-- Dieselbe Ecke wie in der Kopfzeile und im Kalender, gleiche
-         Reihenfolge: Zahnrad, dann Umschalter. Nur im schmalen Fenster
-         sichtbar - dort verdeckt das Panel die Kopfzeile. -->
-    <div class="kal-ansicht-zeile">
-      <button type="button" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
-      <div class="ansicht-schalter" role="group" aria-label="Ansicht">
-        <button type="button" class="ansicht-seg" data-ansicht="liste"
-                aria-pressed="false" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
-        <button type="button" class="ansicht-seg" data-ansicht="kalender"
-                aria-pressed="false" aria-label="Kalender" title="Kalender">📅</button>
-        <button type="button" class="ansicht-seg fok-seg" data-ansicht="fokus"
-                aria-pressed="true" aria-label="Fokus" title="Fokus"><span class="fok-flamme">🔥</span><span class="fok-rest" hidden></span></button>
-      </div>
-    </div>
-
-    <!-- Zwei Reiter statt Ueberschrift: der Platz reicht im Streifen nicht fuer
-         beides, und die Reiter sagen ohnehin, wo man ist. Gewohnheiten und
-         Timer teilen sich die Flaeche, damit der Timer gross genug fuer einen
-         Blick von der Seite wird. -->
-    <div class="fok-kopf">
-      <div class="fok-reiter" role="tablist" aria-label="Fokus-Ansicht">
-        <button type="button" class="fok-reiter-seg" data-fok-reiter="gewohnheiten"
-                role="tab" aria-selected="true">Gewohnheiten</button>
-        <button type="button" class="fok-reiter-seg" data-fok-reiter="timer"
-                role="tab" aria-selected="false">Timer</button>
-      </div>
-      <span id="fokBilanz" class="fok-bilanz"></span>
-      <button type="button" id="fokZu" class="btn icon-only" aria-label="Fokus schließen">✕</button>
-    </div>
-
-    <!-- Timer-Reiter. Die Struktur steht fest im HTML, fokus.js setzt im
-         Sekundentakt nur Text und Ring-Versatz - ein SVG pro Sekunde neu zu
-         bauen waere Verschwendung. Die Knopfreihe wechselt dagegen ihren
-         Inhalt (Start bzw. Pause/Stopp) und wird neu gefuellt. -->
-    <div id="fokTimer" class="fok-timer" hidden>
-      <div class="fok-ring">
-        <svg viewBox="0 0 120 120" aria-hidden="true">
-          <circle class="fok-ring-spur" cx="60" cy="60" r="52"></circle>
-          <circle id="fokRingFuellung" class="fok-ring-fuellung" cx="60" cy="60" r="52"></circle>
-        </svg>
-        <div class="fok-ring-mitte">
-          <span id="fokZeit" class="fok-zeit"></span>
-          <span id="fokGeplant" class="fok-geplant"></span>
+    <!-- Der untere Teil des Streifens. Er zeigt IMMER genau eines von dreien -
+         den gewaehlten Tag, die Gewohnheiten oder den Timer - und ist dabei
+         immer gleich hoch: alles, was unter dem Raster uebrig bleibt.
+         Umgeschaltet wird ueber die Pille oben (📅/🔥), ueber einen Tipp auf
+         einen Tag im Raster und ueber die Reiter hier drin. Inhalt: kalender.js
+         fuer den Tag, fokus.js fuer die beiden anderen. -->
+    <div id="kalUnten" class="kal-unten">
+      <!-- Nur im Fokus-Modus sichtbar. -->
+      <div id="fokKopf" class="fok-kopf" hidden>
+        <div class="fok-reiter" role="tablist" aria-label="Fokus-Ansicht">
+          <button type="button" class="fok-reiter-seg" data-fok-reiter="gewohnheiten"
+                  role="tab" aria-selected="true">Gewohnheiten</button>
+          <button type="button" class="fok-reiter-seg" data-fok-reiter="timer"
+                  role="tab" aria-selected="false">Timer</button>
         </div>
+        <span id="fokBilanz" class="fok-bilanz"></span>
+        <a class="fok-mehr" href="https://fokus.it-wolf.org" target="_blank" rel="noopener"
+           title="Fokus-Tracker öffnen">↗</a>
       </div>
-      <div id="fokKnoepfe" class="fok-knoepfe"></div>
+
+      <div id="kalTagesliste" class="kal-liste"></div>
+
+      <!-- Timer-Reiter. Die Struktur steht fest im HTML, fokus.js setzt im
+           Sekundentakt nur Text und Ring-Versatz - ein SVG pro Sekunde neu zu
+           bauen waere Verschwendung. Die Knopfreihe wechselt dagegen ihren
+           Inhalt (Start bzw. Pause/Stopp) und wird neu gefuellt. -->
+      <div id="fokTimer" class="fok-timer" hidden>
+        <div class="fok-ring">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="fok-ring-spur" cx="60" cy="60" r="52"></circle>
+            <circle id="fokRingFuellung" class="fok-ring-fuellung" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="fok-ring-mitte">
+            <span id="fokZeit" class="fok-zeit"></span>
+            <span id="fokGeplant" class="fok-geplant"></span>
+          </div>
+        </div>
+        <div id="fokKnoepfe" class="fok-knoepfe"></div>
+      </div>
+
+      <!-- Gewohnheiten-Reiter, gefuellt aus fokus.js. -->
+      <div id="fokInhalt" class="fok-inhalt" hidden></div>
     </div>
-
-    <!-- Gewohnheiten-Reiter, gefuellt aus fokus.js. -->
-    <div id="fokInhalt" class="fok-inhalt"></div>
-
-    <a class="fok-mehr" href="https://fokus.it-wolf.org" target="_blank" rel="noopener">
-      Fokus-Tracker öffnen ↗
-    </a>
   </aside>
+
 
   <!-- Die beiden Kalender-Dialoge stehen AUSSERHALB des Panels, und das ist
        Pflicht: das Panel traegt ein transform, und darunter richtet sich

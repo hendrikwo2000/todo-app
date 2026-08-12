@@ -68,10 +68,16 @@ const UEBERFAELLIG = "ueberfaellig";
 // einzige Spalte, und dann ist Umschalten ehrlicher als Nebeneinander.
 // Gehoert zu --kal-breite und html.kal-split in style.css.
 const SPLIT_AB = 1000;
-// Gemerkte Ansicht ("liste" / "kalender"). EIN Schluessel fuer beide Modi:
-// wer den Kalender am Rechner zuklappt, will ihn beim naechsten Laden auch
-// nicht sehen - und am Handy gilt dasselbe.
+// Gemerkte Ansicht: "liste" (Streifen zu), "tag" oder "fokus". EIN Schluessel
+// fuer beide Modi - wer den Streifen am Rechner zuklappt, will ihn beim
+// naechsten Laden auch nicht sehen, und am Handy gilt dasselbe.
+// Der alte Wert "kalender" wird beim Lesen als "tag" verstanden.
 const ANSICHT_KEY = "kalAnsicht";
+
+// Was steht im unteren Teil des Streifens: "tag" oder "fokus". Immer genau
+// eines von beiden, und beide bekommen denselben Platz - alles, was unter dem
+// Monatsraster uebrig bleibt.
+let kalUntenModus = "tag";
 
 function istSplit() { return window.innerWidth >= SPLIT_AB; }
 
@@ -472,6 +478,7 @@ function zeichneKalender() {
   // der zeitlichen Sortierung - zwei verschiedene Fragen an dieselben Daten.
   zeichneRaster(tage, baueSpurenplan(), heute);
   zeichneTagesliste(tage, tageTermine, ueberfaellige, heute);
+  zeichneUnten();
 
   // Im Vollbild haengt der Zelleninhalt an der Zellenhoehe. Direkt hier
   // nachmessen, nicht per requestAnimationFrame: clientHeight erzwingt den
@@ -526,7 +533,7 @@ function setzeVollbild(an) {
   kalVollbild = an;
   vollbildPlaetze = 0;   // andere Hoehe, andere Zahl - neu messen
   kalPanel.classList.toggle("vollbild", an);
-  zeichneKalender();
+  zeichneKalender();   // zeichneUnten() raeumt den unteren Teil mit weg
 }
 
 // Eine Pille je Quelle: ToDo-Listen zuerst, dann die Google-Kalender.
@@ -1556,12 +1563,21 @@ function waehleTag(iso) {
     setzeVollbild(false);
     return;
   }
-  kalAuswahl = (kalAuswahl === iso) ? null : iso;
-  // Ein gewaehlter Tag braucht die untere Haelfte des Streifens - und die
-  // gehoert gerade dem Fokus-Panel. Nur beim Abwaehlen (zweiter Tipp auf
-  // denselben Tag) bleibt alles, wie es ist.
-  if (kalAuswahl !== null) window.fokusSchliessen?.(true);
+  // Steht unten gerade Fokus, holt der erste Tipp den Tag nach vorn, ohne die
+  // Auswahl zu verwerfen - sonst muesste man denselben Tag zweimal antippen.
+  if (kalUntenModus === "fokus") {
+    kalAuswahl = iso;
+    kalUntenModus = "tag";
+  } else if (kalAuswahl === iso) {
+    // Zweiter Tipp auf denselben Tag: zurueck zu Fokus, wenn es ihn gibt.
+    // Ohne Fokus-Zugang bleibt es beim blossen Abwaehlen wie bisher.
+    if (window.fokusHatZugang?.()) kalUntenModus = "fokus";
+    else kalAuswahl = null;
+  } else {
+    kalAuswahl = iso;
+  }
   schliesseEingaben();
+  setzePanel(kalOffen, true);
   zeichneKalender();
 }
 
@@ -1589,9 +1605,7 @@ function zeigeMonat(jahr, monat) {
   const treffer = Object.keys(tage)
     .filter(iso => iso.startsWith(`${jahr}-${String(monat + 1).padStart(2, "0")}`))
     .sort();
-  // Wie in springeZuHeute(): steht das Fokus-Panel offen, gehoert ihm die
-  // untere Haelfte des Streifens - nur Blaettern oeffnet die Tagesliste nicht.
-  kalAuswahl = window.fokusIstOffen?.() ? null : (treffer[0] || null);
+  kalAuswahl = treffer[0] || null;
   zeichneKalender();
 }
 
@@ -1620,28 +1634,11 @@ function springeZuHeute() {
   const heute = new Date();
   kalJahr = heute.getFullYear();
   kalMonatNr = heute.getMonth();
-  // Steht das Fokus-Panel offen, gehoert ihm die untere Haelfte des Streifens -
-  // dann bleibt die Tagesliste zu, bis jemand einen Tag antippt. Sonst laegen
-  // beide uebereinander und draengten sich gegenseitig aus dem Bild.
-  kalAuswahl = window.fokusIstOffen?.() ? null : todayStr();
+  // Der Tag wird immer gewaehlt, auch wenn unten gerade Fokus steht: sobald
+  // jemand dorthin zurueckschaltet, soll der heutige Tag dastehen.
+  kalAuswahl = todayStr();
   zeichneKalender();
 }
-
-/**
- * Fuer fokus.js: Das Panel raeumt beim Oeffnen die Tagesliste weg und gibt den
- * Platz beim Schliessen wieder zurueck (dann bei heute, wie bei jedem Oeffnen
- * des Kalenders).
- */
-window.kalenderTagAbwaehlen = function () {
-  if (!kalOffen || kalAuswahl === null) return;
-  kalAuswahl = null;
-  schliesseEingaben();
-  zeichneKalender();
-};
-window.kalenderTagZurueck = function () {
-  if (!kalOffen || kalAuswahl !== null) return;
-  springeZuHeute();
-};
 
 // ---------- Oeffnen / Schliessen ----------
 /**
@@ -1663,22 +1660,43 @@ function setzePanel(offen, sofort) {
   kalHintergrund.classList.toggle("sichtbar", offen && !split);
   kalPanel.setAttribute("aria-hidden", offen ? "false" : "true");
   document.documentElement.classList.toggle("kal-offen", offen);
-  // 📋 gilt, wenn GAR kein Panel offen ist - das Fokus-Panel zaehlt mit, sonst
-  // saehe die Liste im schmalen Fenster aktiv aus, waehrend Fokus davor liegt.
+  // Genau eines der drei Segmente gilt: 📋 wenn der Streifen zu ist, sonst das
+  // zum unteren Teil passende. Eine echte Auswahl, in jeder Fenstergroesse -
+  // es gibt nichts mehr, was unabhaengig voneinander auf und zu gehen koennte.
   for (const seg of document.querySelectorAll(".ansicht-seg")) {
-    if (seg.dataset.ansicht === "kalender") seg.setAttribute("aria-pressed", String(offen));
-    else if (seg.dataset.ansicht === "liste") {
-      seg.setAttribute("aria-pressed", String(!offen && !window.fokusIstOffen?.()));
-    }
+    const art = seg.dataset.ansicht;
+    const gilt = offen
+      ? (art === "fokus" ? kalUntenModus === "fokus" : art === "kalender" && kalUntenModus === "tag")
+      : art === "liste";
+    seg.setAttribute("aria-pressed", String(gilt));
   }
-  // Im Split teilen sich beide Panels den Streifen: der Kalender endet an der
-  // Oberkante des Fokus-Panels (--fok-hoehe). Dessen Hoehe haengt aber davon
-  // ab, ob der Kalender ueberhaupt da ist - also hier neu messen lassen. Der
-  // ResizeObserver in fokus.js zoege sonst erst einen Frame spaeter nach, und
-  // fuer diesen einen Frame reichte der Kalender ueber das Panel hinweg.
-  window.fokusHoeheMessen?.();
-  try { localStorage.setItem(ANSICHT_KEY, offen ? "kalender" : "liste"); }
+  try { localStorage.setItem(ANSICHT_KEY, offen ? kalUntenModus : "liste"); }
   catch (e) { /* voller Speicher - dann eben ungemerkt */ }
+}
+
+/**
+ * Was steht unten: der Tag oder Fokus. Die Sichtbarkeit haengt an genau dieser
+ * Stelle, damit "immer genau eines" nicht an zwei Orten entschieden wird.
+ *
+ * Ohne Fokus-Zugang gibt es nur den Tag - ein gemerktes "fokus" faellt dann
+ * still auf ihn zurueck (etwa wenn jemand den Zugang wieder aufgibt).
+ */
+function zeichneUnten() {
+  if (kalUntenModus === "fokus" && !window.fokusHatZugang?.()) kalUntenModus = "tag";
+  // Im Vollbild gibt es den unteren Teil gar nicht (das Raster nimmt die ganze
+  // Hoehe). Der Modus bleibt gemerkt und steht beim Verlassen wieder da.
+  const fokus = kalUntenModus === "fokus" && !kalVollbild;
+  kalTagesliste.hidden = fokus;
+  if (fokus) window.fokusZeigen?.();
+  else window.fokusVerstecken?.();
+}
+
+// Den unteren Teil umschalten, ohne den Streifen selbst anzufassen.
+function setzeUnten(modus) {
+  if (kalUntenModus === modus) return;
+  kalUntenModus = modus;
+  zeichneUnten();
+  setzePanel(kalOffen, true);
 }
 
 // Gemerkte Ansicht wiederherstellen, einmalig. Haengt am ersten Zeichnen und
@@ -1692,12 +1710,16 @@ function stelleAnsichtHer() {
   ansichtHergestellt = true;
   const gemerkt = localStorage.getItem(ANSICHT_KEY);
   // Ohne gemerkten Zustand entscheidet der Platz: am Rechner steht der
-  // Kalender gleich daneben, am Handy naehme er der Liste den Bildschirm weg.
-  const auf = gemerkt ? gemerkt === "kalender" : istSplit();
+  // Streifen gleich daneben, am Handy naehme er der Liste den Bildschirm weg.
+  // "kalender" ist der alte Wert von vor der Dreiteilung und heisst "tag".
+  const auf = gemerkt ? gemerkt !== "liste" : istSplit();
   if (!auf) { setzePanel(false, true); return; }
+  // Ein gemerktes "fokus" gilt nur mit Zugang - zeichneUnten() faengt das ab.
+  kalUntenModus = gemerkt === "fokus" ? "fokus" : "tag";
   frischOeffnen();
   kalOffen = true;
   setzePanel(true, true);
+  zeichneUnten();
 }
 
 // Jedes Oeffnen startet beim heutigen Tag UND in der normalen Ansicht. Ein
@@ -1710,20 +1732,19 @@ function frischOeffnen() {
   springeZuHeute();
 }
 
-function oeffneKalender() {
-  // Im schmalen Fenster liegt immer nur EIN Panel vor der Liste. Im Split
-  // passen beide uebereinander in den rechten Streifen, dort bleibt das
-  // Fokus-Panel stehen.
-  if (!istSplit()) window.fokusSchliessen?.();
+function oeffneKalender(modus) {
+  if (modus) kalUntenModus = modus;
   if (!kalOffen) frischOeffnen();
   else zeichneKalender();
   kalOffen = true;
   setzePanel(true);
+  zeichneUnten();
 }
 
-// Fuer fokus.js: dasselbe Bedienelement schaltet beide Panels, und jedes muss
-// den Zustand des anderen kennen (siehe setzePanel).
+// Fuer fokus.js: ob der Fokus-Teil gerade ueberhaupt zu sehen ist. Der
+// Sekundentakt des Timers zeichnet sonst ins Verborgene.
 window.kalenderIstOffen = () => kalOffen;
+window.kalenderZeigtFokus = () => kalOffen && kalUntenModus === "fokus" && !kalVollbild;
 
 function schliesseKalender() {
   if (!kalOffen) return;
@@ -1913,19 +1934,16 @@ document.addEventListener("touchcancel", gesteBeenden);
 // Der Umschalter steckt zweimal im Dokument: in der Kopfzeile der App und im
 // Kalender selbst (der die Kopfzeile im Umschalt-Modus verdeckt). Sichtbar ist
 // immer nur einer, verdrahtet sind beide gleich.
-// 🔥 gehoert fokus.js, das seinen eigenen Listener an dieselben Knoepfe haengt.
-// Hier zaehlt nur: 📅 schaltet den Kalender, 📋 raeumt ihn weg.
+// Eine echte Auswahl: 📋 raeumt den Streifen weg, 📅 und 🔥 oeffnen ihn mit
+// dem jeweiligen Inhalt unten. Ein Tipp auf die schon gewaehlte Ansicht tut
+// nichts, wie bei jeder Pille.
 for (const seg of document.querySelectorAll(".ansicht-seg")) {
   seg.addEventListener("click", () => {
-    if (seg.dataset.ansicht === "kalender") {
-      // Im Split ist 📅 ein Ein/Aus-Knopf (beide Panels duerfen offen sein),
-      // im schmalen Fenster eine Auswahl - dort tut ein Klick auf die schon
-      // gewaehlte Ansicht nichts, wie bei jeder Pille.
-      if (istSplit() && kalOffen) schliesseKalender();
-      else oeffneKalender();
-    } else if (seg.dataset.ansicht === "liste") {
-      schliesseKalender();
-    }
+    const art = seg.dataset.ansicht;
+    if (art === "liste") { schliesseKalender(); return; }
+    const modus = art === "fokus" ? "fokus" : "tag";
+    if (kalOffen) { setzeUnten(modus); return; }
+    oeffneKalender(modus);
   });
 }
 document.getElementById("kalZu").addEventListener("click", schliesseKalender);
@@ -1933,16 +1951,18 @@ kalHintergrund.addEventListener("click", schliesseKalender);
 kalMonatName.addEventListener("click", schalteWahl);
 document.getElementById("kalZurueck").addEventListener("click", () => monatVerschieben(-1));
 document.getElementById("kalVor").addEventListener("click", () => monatVerschieben(1));
-// "Heute" ist ein Tipp auf einen Tag wie jeder andere - also macht er dem
-// Fokus-Panel Platz, bevor der Tag gewaehlt wird (springeZuHeute fragt danach).
+// "Heute" ist ein Tipp auf einen Tag wie jeder andere: er holt auch den Tag in
+// den unteren Teil, wenn dort gerade Fokus steht.
 document.getElementById("kalHeute").addEventListener("click", () => {
-  window.fokusSchliessen?.(true);
+  setzeUnten("tag");
   springeZuHeute();
 });
 document.getElementById("kalVollbild").addEventListener("click", () => setzeVollbild(!kalVollbild));
 kalUeberfaellig.addEventListener("click", () => {
-  // Ueberfaelliges steht in der Tagesliste - im Vollbild gibt es die nicht.
+  // Ueberfaelliges steht in der Tagesliste - im Vollbild gibt es die nicht,
+  // und wenn unten gerade Fokus steht, muss der Tag zuerst nach vorn.
   if (kalVollbild) setzeVollbild(false);
+  setzeUnten("tag");
   kalAuswahl = kalAuswahl === UEBERFAELLIG ? null : UEBERFAELLIG;
   zeichneKalender();
 });

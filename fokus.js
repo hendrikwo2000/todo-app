@@ -17,20 +17,23 @@
    nichts selbst, es zeichnet nur.
 
    WO ES STEHT
-   Wie der Kalender, mit dem es sich den rechten Streifen teilt:
-   - breites Fenster (istSplit aus kalender.js): das Panel steht UNTER dem
-     Kalender, nur so hoch wie sein Inhalt (hoechstens 45vh). Beide duerfen
-     gleichzeitig offen sein, 📅 und 🔥 sind dort zwei Ein/Aus-Knoepfe.
-   - schmales Fenster: das Panel legt sich ueber die Liste, und es gilt
-     genau eine Ansicht - 📋 | 📅 | 🔥 ist dort eine echte Auswahl.
+   Kein eigenes Panel: Fokus fuellt den UNTEREN TEIL des Kalender-Streifens
+   (#kalUnten in index.html) - denselben Platz, den sonst die Tagesliste
+   einnimmt. Dort steht immer genau eines von dreien: der gewaehlte Tag, die
+   Gewohnheiten oder der Timer, und alle drei sind gleich hoch.
 
-   Laeuft NACH kalender.js und benutzt dessen istSplit(),
-   schliesseKalender() und kalenderIstOffen(). In der Gegenrichtung gibt es
-   window.fokusIstOffen() und window.fokusSchliessen().
+   Wer das umschaltet, entscheidet kalender.js (kalUntenModus). Diese Datei
+   liefert nur den Inhalt und wird ueber window.fokusZeigen() /
+   window.fokusVerstecken() ein- und ausgeblendet; window.fokusHatZugang()
+   sagt umgekehrt, ob es 🔥 ueberhaupt gibt.
+
+   Frueher war das ein zweites Panel unter dem Kalender, mit eigener
+   Hoehenmessung und eigenem Umschalter. Beide Teile stritten sich um denselben
+   Platz - der Umbau am 13.08.2026 hat daraus einen Bereich mit drei Inhalten
+   gemacht.
    ==================================================================== */
 
-const fokPanel       = document.getElementById("fokusPanel");
-const fokHintergrund = document.getElementById("fokusHintergrund");
+const fokKopf        = document.getElementById("fokKopf");
 const fokTimerBox    = document.getElementById("fokTimer");
 const fokInhalt      = document.getElementById("fokInhalt");
 const fokBilanzText  = document.getElementById("fokBilanz");
@@ -43,15 +46,12 @@ const fokRing        = document.getElementById("fokRingFuellung");
 // wird daraus der gefuellte Anteil.
 const RING_UMFANG = 2 * Math.PI * 52;
 
-// Gemerkter Zustand, eigener Schluessel neben kalAnsicht: die beiden Panels
-// sind im Split unabhaengig, ein gemeinsamer Wert koennte sie gar nicht beide
-// abbilden.
-const FOK_KEY = "fokAnsicht";
-
 // Wie in Fokus' _lib/tag.js - Deckel gegen Vertipper im Zahlenfeld.
 const FOK_MAX_MENGE = 99999;
 
-let fokOffen = false;
+// Ob der Fokus-Teil gerade sichtbar ist. Der gemerkte Zustand liegt nicht mehr
+// hier, sondern in kalAnsicht (kalender.js) - es ist eine Ansicht von dreien.
+let fokSichtbar = false;
 let fokZugang = false;
 // Welcher Reiter gilt: "gewohnheiten" oder "timer".
 let fokReiter = "gewohnheiten";
@@ -65,7 +65,6 @@ let fokBasisMs = 0;         // wann verstrichenSek gemessen wurde
 let fokGemeldet = false;    // Sitzungsende schon gemeldet?
 let fokLaedt = false;
 let fokFehler = "";
-let fokHergestellt = false;
 
 // ---------- Zugriff auf die Fokus-API ----------
 async function fokApi(pfad, optionen = {}) {
@@ -212,13 +211,12 @@ function setzeReiter(welcher, vomNutzer) {
     seg.setAttribute("aria-selected", String(seg.dataset.fokReiter === welcher));
   }
   const timerVorn = welcher === "timer";
-  fokTimerBox.hidden = !timerVorn || !!fokFehler;
-  fokInhalt.hidden = timerVorn;
+  fokTimerBox.hidden = !fokSichtbar || !timerVorn || !!fokFehler;
+  fokInhalt.hidden = !fokSichtbar || timerVorn;
   // Die Tagesbilanz gehoert zu den Gewohnheiten - im Timer stuende sie ohne
   // Bezug neben der Uhr.
   fokBilanzText.hidden = timerVorn;
-  if (timerVorn) zeichneTimer();
-  messeHoehe();
+  if (timerVorn && fokSichtbar) zeichneTimer();
 }
 
 /**
@@ -340,7 +338,7 @@ function zeichneKarte(g) {
 
 function zeichneFokus() {
   aktualisiereSegmente();
-  if (!fokOffen) return;
+  if (!fokSichtbar) return;
 
   fokInhalt.replaceChildren();
 
@@ -393,8 +391,6 @@ function zeichneFokus() {
     p.textContent = `Diese Woche schon geschafft: ${fokListe.wochenFertig.join(", ")}`;
     fokInhalt.appendChild(p);
   }
-
-  messeHoehe();
 }
 
 // ---------- Schreiben ----------
@@ -512,77 +508,31 @@ function meldeFertig(minuten) {
   snackInfo(`Fokus-Sitzung fertig — ${minutenText(minuten)}`);
 }
 
-// ---------- Oeffnen / Schliessen ----------
+// ---------- Zeigen / Verstecken ----------
 /**
- * Einzige Stelle, an der sich der Zustand des Panels niederschlaegt - Klassen,
- * gemerkter Wert und die Hoehenmessung haengen alle hier dran.
- *
- * `sofort` laesst die Animation weg, beim Wiederherstellen nach dem Laden.
+ * Von kalender.js gerufen, wenn der untere Teil des Streifens auf Fokus
+ * umschaltet. Jedes Zeigen beginnt bei den Gewohnheiten; ob eine laufende
+ * Sitzung den Timer nach vorn holt, entscheidet ladeFokus() gleich danach.
  */
-function setzeFokPanel(offen, sofort) {
-  const split = istSplit();
-  fokPanel.hidden = !fokZugang;
-  document.documentElement.classList.toggle("fok-offen", offen);
-  document.documentElement.classList.toggle("fok-split", offen && split);
-  fokPanel.classList.toggle("animiert", !sofort);
-  fokPanel.style.transform = offen ? "translateX(0)" : "";
-  // Im Split verdunkelt nichts - die Liste daneben bleibt bedienbar.
-  fokHintergrund.classList.toggle("sichtbar", offen && !split);
-  fokPanel.setAttribute("aria-hidden", offen ? "false" : "true");
-  aktualisiereSegmente();
-  messeHoehe();
-  try { localStorage.setItem(FOK_KEY, offen ? "auf" : "zu"); }
-  catch (e) { /* voller Speicher - dann eben ungemerkt */ }
-}
-
-/**
- * Wie hoch das Panel im Split gerade ist. Der Kalender darueber endet an
- * diesem Wert (`bottom: var(--fok-hoehe)` in style.css) - ohne die Messung
- * muesste seine Hoehe fest sein, und ein Panel mit zwei Gewohnheiten naehme
- * genauso viel Platz weg wie eines mit zehn.
- */
-function messeHoehe() {
-  const teilen = fokOffen && istSplit() && window.kalenderIstOffen?.();
-  const wert = teilen ? fokPanel.offsetHeight : 0;
-  document.documentElement.style.setProperty("--fok-hoehe", wert + "px");
-}
-// Der Beobachter faengt alles ab, was die Hoehe von innen aendert (eine Karte
-// mehr, ein Timer, der eine Zeile dazubekommt). Von aussen stoesst kalender.js
-// die Messung an, sobald sich dort ein Panel oeffnet oder schliesst.
-if (window.ResizeObserver) new ResizeObserver(messeHoehe).observe(fokPanel);
-window.fokusHoeheMessen = messeHoehe;
-
-function oeffneFokus() {
-  // Im schmalen Fenster liegt immer nur EIN Panel vor der Liste.
-  if (!istSplit()) schliesseKalender();
-  // Im Split teilen sich beide den Streifen, und die Tagesliste des Kalenders
-  // braucht genau den Platz, den dieses Panel gleich einnimmt.
-  window.kalenderTagAbwaehlen?.();
-  fokOffen = true;
-  // Jedes Oeffnen beginnt bei den Gewohnheiten; ob eine laufende Sitzung den
-  // Timer nach vorn holt, entscheidet ladeFokus() gleich danach.
+window.fokusZeigen = function () {
+  fokKopf.hidden = false;
+  if (fokSichtbar) { zeichneFokus(); return; }
+  fokSichtbar = true;
   fokReiterGewaehlt = false;
   fokReiter = "gewohnheiten";
-  setzeFokPanel(true);
   zeichneFokus();
   ladeFokus();
-}
+};
 
-/**
- * `tagBehalten` kommt aus dem Kalender: dort hat gerade jemand einen Tag
- * angetippt, dessen Liste den Platz hier bekommt. Ohne das Flag holte der
- * Kalender sich sofort wieder „heute" - und der eben gewaehlte Tag waere weg.
- */
-function schliesseFokus(tagBehalten) {
-  if (!fokOffen) return;
-  fokOffen = false;
-  setzeFokPanel(false);
-  if (!tagBehalten) window.kalenderTagZurueck?.();
-}
+window.fokusVerstecken = function () {
+  fokSichtbar = false;
+  fokKopf.hidden = true;
+  fokTimerBox.hidden = true;
+  fokInhalt.hidden = true;
+};
 
-// Aus kalender.js, wenn dort im schmalen Fenster ein Panel aufgeht.
-window.fokusSchliessen = schliesseFokus;
-window.fokusIstOffen = () => fokOffen;
+// Fuer kalender.js: ohne Zugang gibt es weder das 🔥-Segment noch den Modus.
+window.fokusHatZugang = () => fokZugang;
 
 /**
  * Der Zustand der drei Segmente - in allen drei Ecken, in denen der Umschalter
@@ -593,45 +543,17 @@ window.fokusIstOffen = () => fokOffen;
  * dafuer kein Platz - dort wird daraus ein Punkt (style.css).
  */
 function aktualisiereSegmente() {
-  for (const seg of document.querySelectorAll(".ansicht-seg")) {
-    const art = seg.dataset.ansicht;
-    if (art === "fokus") {
-      seg.hidden = !fokZugang;
-      seg.setAttribute("aria-pressed", String(fokOffen));
-      const rest = seg.querySelector(".fok-rest");
-      if (rest) {
-        rest.hidden = !fokSitzung;
-        if (fokSitzung) rest.textContent = fokZeit(restSek());
-      }
-      seg.classList.toggle("laeuft", !!fokSitzung);
-    } else if (art === "liste") {
-      seg.setAttribute("aria-pressed",
-        String(!fokOffen && !window.kalenderIstOffen?.()));
+  // Nur Sichtbarkeit und Restzeit - welches Segment gedrueckt ist, entscheidet
+  // setzePanel() in kalender.js. Zwei Stellen dafuer waeren eine zu viel.
+  for (const seg of document.querySelectorAll('.ansicht-seg[data-ansicht="fokus"]')) {
+    seg.hidden = !fokZugang;
+    const rest = seg.querySelector(".fok-rest");
+    if (rest) {
+      rest.hidden = !fokSitzung;
+      if (fokSitzung) rest.textContent = fokZeit(restSek());
     }
+    seg.classList.toggle("laeuft", !!fokSitzung);
   }
-}
-
-// Gemerkte Ansicht wiederherstellen, einmalig - wie beim Kalender erst, wenn
-// feststeht, dass jemand angemeldet ist und Zugang hat.
-function stelleFokusHer() {
-  if (fokHergestellt || !fokZugang) return;
-  fokHergestellt = true;
-  const gemerkt = localStorage.getItem(FOK_KEY);
-  // Ohne gemerkten Zustand entscheidet der Platz: am Rechner steht das Panel
-  // gleich da, am Handy naehme es der Liste den Bildschirm weg.
-  let auf = gemerkt ? gemerkt === "auf" : istSplit();
-  // Im schmalen Fenster gilt genau eine Ansicht. Sind beide gemerkt (am
-  // Rechner geoeffnet, am Handy geladen), behaelt der Kalender den Vorrang -
-  // er ist der aeltere Teil der App.
-  if (auf && !istSplit() && window.kalenderIstOffen?.()) auf = false;
-  if (!auf) { setzeFokPanel(false, true); return; }
-  // Wie in oeffneFokus(): der Kalender hat sich beim Wiederherstellen gerade
-  // erst auf heute gestellt und braucht seine Tagesliste hier nicht mehr.
-  window.kalenderTagAbwaehlen?.();
-  fokOffen = true;
-  setzeFokPanel(true, true);
-  zeichneFokus();
-  ladeFokus();
 }
 
 // ---------- Takt ----------
@@ -645,7 +567,7 @@ setInterval(() => {
     return;
   }
   aktualisiereSegmente();
-  if (fokOffen && fokReiter === "timer") zeichneTimer();
+  if (fokSichtbar && fokReiter === "timer" && window.kalenderZeigtFokus?.()) zeichneTimer();
 }, 1000);
 
 // Zurueck im Tab: der Fertig-Hinweis im Titel hat seinen Zweck erfuellt. Und
@@ -654,44 +576,15 @@ setInterval(() => {
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) return;
   document.title = FOK_TITEL;
-  if (fokZugang && fokOffen) ladeFokus();
+  if (fokZugang && fokSichtbar) ladeFokus();
 });
 
 // ---------- Verdrahtung ----------
-for (const seg of document.querySelectorAll(".ansicht-seg")) {
-  seg.addEventListener("click", () => {
-    if (seg.dataset.ansicht === "fokus") {
-      // Im Split ein Ein/Aus-Knopf, im schmalen Fenster eine Auswahl - dort
-      // tut ein Klick auf die schon gewaehlte Ansicht nichts.
-      if (istSplit() && fokOffen) schliesseFokus();
-      else oeffneFokus();
-    } else if (seg.dataset.ansicht === "liste") {
-      schliesseFokus();
-    }
-  });
-}
+// Nur die beiden Reiter. Die Pille oben (📋/📅/🔥), Escape und die Wischgeste
+// gehoeren dem Kalender-Streifen als Ganzem und stehen in kalender.js.
 for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
   seg.addEventListener("click", () => setzeReiter(seg.dataset.fokReiter, true));
 }
-document.getElementById("fokZu").addEventListener("click", () => schliesseFokus());
-// Mit Pfeilfunktion, nicht direkt: sonst laege das Klick-Ereignis auf
-// `tagBehalten` und der Kalender bekaeme seine Tagesliste nie zurueck.
-fokHintergrund.addEventListener("click", () => schliesseFokus());
-
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && fokOffen) schliesseFokus();
-});
-
-// Wandert das Fenster ueber die Split-Grenze, wird aus dem Overlay eine Spalte
-// oder umgekehrt. Ohne diesen Abgleich bliebe ein am Handy geoeffnetes Panel
-// nach dem Drehen ein Overlay, das die halbe Liste verdeckt.
-window.addEventListener("resize", () => {
-  if (!fokOffen) { messeHoehe(); return; }
-  if (istSplit() !== document.documentElement.classList.contains("fok-split")) {
-    setzeFokPanel(true, true);
-  }
-  messeHoehe();
-});
 
 /**
  * Aus render() in app.js, wie window.kalenderNeuZeichnen.
@@ -703,11 +596,9 @@ window.addEventListener("resize", () => {
 window.fokusNeuZeichnen = function () {
   const vorher = fokZugang;
   fokZugang = window.hatFokusZugang?.() === true;
-  if (fokZugang !== vorher) {
-    aktualisiereSegmente();
-    fokPanel.hidden = !fokZugang;
-    // Zugang gerade aufgegeben: das Panel darf nicht offen stehenbleiben.
-    if (!fokZugang && fokOffen) schliesseFokus();
-  }
-  stelleFokusHer();
+  if (fokZugang === vorher) return;
+  aktualisiereSegmente();
+  // Zugang gerade aufgegeben, waehrend Fokus unten stand: der Kalender raeumt
+  // beim naechsten Zeichnen auf sich selbst um (zeichneUnten prueft mit).
+  if (!fokZugang && fokSichtbar) window.kalenderNeuZeichnen?.();
 };

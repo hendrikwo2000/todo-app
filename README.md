@@ -82,8 +82,8 @@ und die App von dort starten.
   angetippten Tages
 - **⚠ Überfällig** zeigt alles, was liegengeblieben ist — auch aus Vormonaten
 - Ein Tipp auf ein ToDo bringt dich zu ihm auf die Liste, samt Listenwechsel
-- Ein Tipp auf denselben Tag klappt die Liste darunter wieder zu. Steht der
-  Fokus-Bereich offen, macht ein Tipp auf einen Tag ihm Platz
+- Ein Tipp auf denselben Tag klappt die Liste darunter wieder zu — oder
+  wechselt zu Fokus, wenn du ihn freigeschaltet hast
 - Darunter zwei Abschnitte, **Termine** und **ToDos**, jeder mit einem **＋**
 - **＋ bei ToDos:** Titel tippen, Enter — fertig, mit dem Datum des Tages, in
   deiner aktuellen Liste (ohne Bereich)
@@ -105,7 +105,8 @@ Escape. Auf dem Handy füllt der Kalender den ganzen Bildschirm.
 Nur wenn dein Konto auch für den [Fokus-Tracker](https://fokus.it-wolf.org)
 freigeschaltet ist — sonst gibt es den Knopf gar nicht.
 
-- **🔥** oben rechts öffnet die Gewohnheiten von heute und den Fokus-Timer
+- **🔥** oben rechts zeigt statt der Tagesliste die Gewohnheiten von heute
+  bzw. den Fokus-Timer — im selben Bereich, unter dem Monatsraster
 - **Abhaken** mit dem Haken rechts, bei Gewohnheiten mit Menge über **− Zahl +**
 - Neben jedem Namen steht die **Flamme**, also wie viele Tage (oder Wochen) die
   Kette schon hält
@@ -118,8 +119,9 @@ freigeschaltet ist — sonst gibt es den Knopf gar nicht.
   also zumachen. Am Handy ist es ein kleiner Punkt, die Zeit steht dann im
   Tab-Titel. Am Ende gibt es einen Ton.
 
-Am Rechner steht Fokus **unter dem Kalender** — beide dürfen gleichzeitig offen
-sein, 📅 und 🔥 schalten unabhängig. Auf dem Handy gilt eine Ansicht auf einmal.
+Unter dem Monatsraster steht immer genau **eines**: der Tag, die Gewohnheiten
+oder der Timer. Ein Tipp auf einen Tag holt den Tag nach vorn, ein zweiter Tipp
+auf denselben Tag geht zurück zu Fokus — 📅 und 🔥 tun dasselbe.
 
 Alles andere — Gewohnheiten anlegen und ändern, Verlauf, Statistik, Dauer
 einstellen — machst du weiter im Fokus-Tracker selbst; der Link dazu steht

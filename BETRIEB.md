@@ -803,8 +803,8 @@ Die 1000 px kommen aus dem Platz: 440 px Kalender lassen darunter noch zwei
 Board-Spalten (min. 250 px) übrig. Bei weniger bliebe eine einzige Spalte, und
 dann ist Umschalten ehrlicher als Nebeneinander.
 
-**Umschalter 📋 | 📅.** Steckt ZWEIMAL im Dokument: in der Kopfzeile der App
-(`#ansichtSchalter`) und noch einmal im Kalender selbst
+**Umschalter 📋 | 📅 | 🔥.** Steckt ZWEIMAL im Dokument: in der Kopfzeile
+der App (`#ansichtSchalter`) und noch einmal im Kalender selbst
 (`.kal-ansicht-zeile`), weil der im Umschalt-Modus die Kopfzeile verdeckt.
 Dasselbe gilt fürs Zahnrad, das in derselben Zeile links davon steht — siehe
 „Einstellungen". Sichtbar ist immer nur eine der beiden Ecken: die Zeile im
@@ -1234,9 +1234,10 @@ Markup in `index.html`, Verhalten in `fokus.js`, CSS-Block „Fokus-Panel".
 **Sichtbar nur mit Fokus-Zugang.** `fokusZugang` steht im Bootstrap von
 `/api/todos` und wird über `window.hatFokusZugang()` gelesen — vorher weiß
 niemand, ob dieses Konto den Tracker überhaupt benutzen darf. Ohne Zugang gibt
-es weder den 🔥-Knopf noch das Panel. Holt man ihn sich in den Einstellungen,
-taucht beides sofort auf (`window.fokusNeuZeichnen()` am Ende des Klick-
-Handlers, sonst erst beim nächsten `render()`).
+es das 🔥-Segment nicht, und ein gemerktes `"fokus"` fällt in `zeichneUnten()`
+still auf den Tag zurück (etwa wenn jemand den Zugang wieder aufgibt). Holt man
+ihn sich in den Einstellungen, ist 🔥 sofort da (`window.fokusNeuZeichnen()` am
+Ende des Klick-Handlers, sonst erst beim nächsten `render()`).
 
 ### Warum die Daten über einen Durchreicher kommen
 
@@ -1273,69 +1274,92 @@ live gilt der Standardwert `https://fokus.it-wolf.org`. Zum Testen müssen
 **beide** Dev-Server laufen und in **beiden** lokalen D1-Dateien dieselbe
 Sitzungszeile stehen — die Datenbanken sind lokal getrennt, anders als live.
 
-### Zwei Panels, ein Streifen
+### Ein Streifen, drei Inhalte
 
-Im breiten Fenster (`istSplit()`, dieselbe 1000-px-Grenze wie beim Kalender)
-steht der Kalender oben und das Fokus-Panel darunter, beide 440 px breit.
-Damit braucht das Panel **keine zusätzliche Breite** — mit zwei Gewohnheiten
-ist es ohnehin flach.
+Der rechte Streifen ist **ein** Panel (der Kalender). Oben das Monatsraster,
+darunter `#kalUnten` — ein Bereich, in dem immer genau **eines** von dreien
+steht:
 
-* Das Fokus-Panel wächst von unten: `top: auto`, Höhe nach Inhalt, gedeckelt
-  bei 45vh (darüber blättert es in sich selbst).
-* Der Kalender endet an seiner Oberkante: `bottom: var(--fok-hoehe)`. Den Wert
-  misst `messeHoehe()` in `fokus.js` und legt ihn am `<html>` ab. Eine feste
-  Zahl ginge nicht — die Höhe hängt am Inhalt.
-* Angestoßen wird die Messung aus **beiden** Richtungen: von innen durch einen
-  `ResizeObserver`, von außen durch `window.fokusHoeheMessen()` am Ende von
-  `setzePanel()` in `kalender.js`. Ohne den zweiten Weg zöge der Observer erst
-  einen Frame später nach, und für diesen Frame reichte der Kalender über das
-  Panel hinweg.
-* Ist nur das Fokus-Panel offen, füllt es den Streifen allein (`--fok-hoehe`
-  ist dann 0, der Kalender liegt ohnehin draußen).
+| Inhalt | wer zeichnet | wann |
+| --- | --- | --- |
+| Tagesliste (`#kalTagesliste`) | `kalender.js` | Standard |
+| Gewohnheiten (`#fokInhalt`) | `fokus.js` | 🔥, Reiter „Gewohnheiten" |
+| Timer (`#fokTimer`) | `fokus.js` | 🔥, Reiter „Timer" |
 
-Im schmalen Fenster gilt weiter genau **eine** Ansicht: das Öffnen des einen
-Panels schließt das andere (`window.fokusSchliessen()` in `oeffneKalender()`
-und umgekehrt `schliesseKalender()` in `oeffneFokus()`).
+**Alle drei sind gleich hoch**, weil die Höhe schlicht der Rest unter dem
+Raster ist (`.kal-unten { flex: 1; min-height: 0 }`). Es gibt nichts zu messen
+und nichts zu rechnen.
 
-### Der Umschalter hat jetzt drei Segmente
+Bis zum 13.08.2026 war Fokus ein **zweites Panel** unter dem Kalender, mit
+eigener Höhenmessung (`--fok-hoehe`), eigenem Hintergrund und eigenem
+Öffnen/Schließen. Beide Teile stritten sich um denselben Platz: die Tagesliste
+musste weichen, wenn Fokus aufging, und ihre Rückgabe brauchte eine
+Extra-Regel. Der Umbau hat daraus einen Bereich mit drei Inhalten gemacht —
+und dabei rund 120 Zeilen CSS und JS gestrichen.
 
-📋 | 📅 | 🔥 — aber in zwei Bedienformen, und das ist Absicht:
+**Wer umschaltet:** `kalUntenModus` in `kalender.js` (`"tag"` / `"fokus"`),
+gesetzt über `setzeUnten()`. `zeichneUnten()` ist die **einzige** Stelle, an
+der Sichtbarkeit entschieden wird — sonst stünde „genau eines" an zwei Orten.
+`fokus.js` liefert nur den Inhalt und wird über `window.fokusZeigen()` /
+`window.fokusVerstecken()` gerufen; `window.fokusHatZugang()` sagt umgekehrt,
+ob es 🔥 überhaupt gibt.
 
-* **schmal:** eine echte Auswahl wie bisher, genau eines gilt. Ein Tipp auf die
-  schon gewählte Ansicht tut nichts.
-* **breit:** 📋 fällt weg (die Liste steht dort immer), und 📅/🔥 werden zu
-  zwei unabhängigen Ein/Aus-Knöpfen — nochmal antippen macht zu. Dazu
-  verschwindet die Pillen-Optik (Rahmen und Füllung), denn eine Pille, in der
-  zwei Hälften gleichzeitig leuchten, sähe aus wie eine kaputte Auswahl.
+**Falle, hier zweimal zugeschnappt:** `.kal-liste` und `.fok-inhalt` haben
+`display: flex`, das schlägt das eingebaute `[hidden]` des Browsers. Ohne
+`.kal-liste[hidden]` bzw. `.fok-inhalt[hidden] { display: none }` bleiben sie
+sichtbar, obwohl das Attribut gesetzt ist — genau so standen die Gewohnheiten
+eine Zeit lang neben dem Timer. Dieselbe Familie wie bei `.offline-banner`.
 
-Unterschieden wird über die Klasse **`html.breit`**, die `kalender.js` pflegt
-(`pflegeBreit()`, beim Laden und bei jedem `resize`). `kal-split` reicht dafür
-nicht mehr: die Klasse sagt „Kalender offen UND breit", der Streifen kann aber
-auch ohne Kalender belegt sein. An `breit` hängen deshalb auch die Regeln, die
-vorher an `kal-split` hingen (Umschalter-Zeile im Panel ausblenden, ✕ zeigen).
+**Im Vollbild** (⤢) gibt es den unteren Teil nicht; `zeichneUnten()` prüft
+`kalVollbild` mit. Der Modus bleibt gemerkt und steht beim Verlassen wieder da.
 
-Beide Dateien hängen einen eigenen Klick-Handler an **dieselben** Knöpfe:
-`kalender.js` kümmert sich um 📅, `fokus.js` um 🔥, und beide reagieren auf
-📋. Der gedrückte Zustand von 📋 heißt „gar kein Panel offen" — dafür fragt
-jede Datei die andere über `window.kalenderIstOffen()` bzw.
-`window.fokusIstOffen()`.
+### Der Umschalter: eine Auswahl, überall gleich
 
-Gemerkt wird getrennt: `kalAnsicht` (`liste`/`kalender`) und `fokAnsicht`
-(`auf`/`zu`). Ein gemeinsamer Schlüssel könnte im Split gar nicht abbilden,
-dass beide offen sind. Sind beim Laden im schmalen Fenster beide gemerkt,
-behält der Kalender den Vorrang.
+📋 | 📅 | 🔥, und genau eines gilt:
+
+* **📋** — Streifen zu
+* **📅** — Streifen auf, unten der Tag
+* **🔥** — Streifen auf, unten Fokus (nur mit Zugang, sonst ist das Segment
+  per `[hidden]` weg)
+
+Dazwischen gab es eine zweite Bedienform fürs breite Fenster: 📋 verschwand,
+📅 und 🔥 wurden zu unabhängigen Ein/Aus-Knöpfen ohne Pillen-Optik. Das war
+richtig, solange es zwei Panels gab, die beide gleichzeitig offen sein konnten.
+Seit sie sich denselben Bereich teilen, gibt es nichts Unabhängiges mehr — die
+Sonderregeln (`html.breit .ansicht-seg…`) sind wieder raus.
+
+Gemerkt wird in **einem** Schlüssel, `kalAnsicht`: `"liste"`, `"tag"` oder
+`"fokus"`. Der alte Wert `"kalender"` wird beim Lesen als `"tag"` verstanden,
+sonst stünde nach dem Update der Streifen zu. `fokAnsicht` gibt es nicht mehr.
+
+Gesetzt wird `aria-pressed` **nur** in `setzePanel()` (kalender.js).
+`fokus.js` fasst am Segment ausschließlich Sichtbarkeit und Restzeit an.
+
+### Ein Tipp auf den Tag schaltet um
+
+Das ist der zweite Weg zwischen Tag und Fokus, und er kennt drei Fälle
+(`waehleTag()`):
+
+1. Unten steht **Fokus** → der Tag kommt nach vorn, mit dem angetippten Datum.
+2. Unten steht der **Tag**, ein **anderes** Datum wird angetippt → Wechsel des
+   Datums, sonst nichts.
+3. Unten steht der **Tag**, dasselbe Datum nochmal → zurück zu Fokus. Ohne
+   Fokus-Zugang wird stattdessen abgewählt, wie vor der Integration.
+
+„Heute" und der Überfällig-Chip holen den Tag ebenfalls nach vorn — beide
+zeigen ihr Ergebnis in der Tagesliste, sonst tippte man ins Leere.
 
 ### Zwei Reiter: Gewohnheiten oder Timer
 
-Beide teilen sich die Fläche des Panels, statt übereinander zu stehen
-(seit 13.08.2026). Nebeneinander blieb für den Timer nur eine Zeile, und eine
-Zeile liest sich nicht vom Schreibtisch aus. Jetzt füllt er das Panel: ein
-Fortschrittsring, die Restzeit in der Mitte, die Knöpfe darunter.
+Beide teilen sich den unteren Bereich, statt übereinander zu stehen (seit
+13.08.2026). Nebeneinander blieb für den Timer nur eine Zeile, und eine Zeile
+liest sich nicht vom Schreibtisch aus. Jetzt füllt er den ganzen Bereich: ein
+Fortschrittsring, die Restzeit in der Mitte, die Knöpfe daneben oder darunter.
 
 **Beim Öffnen stehen die Gewohnheiten vorn — außer es läuft eine Sitzung**,
 dann der Timer (`fokReiter` wird in `ladeFokus()` gesetzt). Sobald man selbst
-auf einen Reiter tippt, gilt diese Wahl bis zum Schließen des Panels
-(`fokReiterGewaehlt`).
+auf einen Reiter tippt, gilt diese Wahl, bis der Fokus-Teil das nächste Mal neu
+aufgerufen wird (`fokReiterGewaehlt`).
 
 **Die SVG-Struktur des Rings steht fest in `index.html`**, `fokus.js` setzt im
 Sekundentakt nur Text und `stroke-dashoffset`. Ein SVG pro Sekunde neu zu bauen
@@ -1347,41 +1371,27 @@ sonst flackerte sie im Takt.
 Textgrundlinie, und die Lücke darunter machte den Kreis fünf Pixel höher als
 breit — aus dem Ring wurde ein Ei.
 
-Die Ringgröße hängt am Modus: im Split ist das Panel selbst auf 45vh gedeckelt,
-dort passt nur `clamp(120px, 22vh, 190px)`. Im Vollbild-Panel des schmalen
-Fensters sind es `clamp(180px, 38vh, 280px)`.
+**Der Ring richtet sich nach dem Platz, nicht nach dem Fenster.** Er nimmt die
+Höhe, die unter den Reitern übrig bleibt (`flex: 1 1 auto`), und leitet seine
+Breite daraus ab (`aspect-ratio: 1`). An `vh` zu hängen ging schief: am Handy
+bleiben unter dem Monatsraster gut 200 px, der Ring nahm sich 280 und schob die
+Knöpfe 88 px aus dem Bild.
 
-### Tagesliste und Fokus teilen sich die untere Hälfte
+**Unter 280 px Bereichshöhe stellt sich der Timer quer** (`@container unten`):
+Ring links über die volle Höhe, Knöpfe rechts untereinander. Übereinander
+blieben für den Ring rund 90 px, und darin ist eine Uhrzeit nicht mehr zu
+lesen. Am Handy misst er so 150 statt 88 px.
 
-Beide wollen denselben Platz, also gilt: **wer zuletzt gefragt wurde,
-bekommt ihn.**
+Die Zahl in der Mitte skaliert mit dem Ring statt mit dem Fenster
+(`font-size: clamp(20px, 22cqmin, 44px)`, dafür ist `.fok-ring` selbst ein
+`container-type: size`).
 
-* Fokus öffnen räumt die Tagesliste weg (`window.kalenderTagAbwaehlen()` — auch
-  beim Wiederherstellen nach dem Laden, nicht nur beim Antippen von 🔥).
-* Ein Tipp auf einen Tag schließt Fokus und zeigt die Liste
-  (`window.fokusSchliessen(true)`). Das `true` ist wichtig: ohne es holte sich
-  der Kalender sofort wieder „heute", und der eben gewählte Tag wäre weg.
-* Fokus über 🔥 zu schließen gibt die Tagesliste bei **heute** zurück
-  (`window.kalenderTagZurueck()`), statt den Kalender leer stehen zu lassen.
-* `springeZuHeute()` und `zeigeMonat()` fragen beide
-  `window.fokusIstOffen()` — beim bloßen Blättern im Monat soll die Tagesliste
-  nicht von selbst aufgehen.
-
-**Falle:** `fokHintergrund.addEventListener("click", schliesseFokus)` wäre
-falsch. Das Klick-Ereignis läge dann auf dem Parameter `tagBehalten`, und der
-Kalender bekäme seine Tagesliste nie zurück — deshalb steht dort eine
-Pfeilfunktion.
-
-Die Regel gilt **überall**, nicht nur im Split (Hendriks Entscheidung). Am
-Handy fällt sie kaum auf, weil jedes Öffnen des Kalenders ohnehin bei heute
-startet.
-
-### Was das Panel kann — und was nicht
+### Was der Fokus-Teil kann — und was nicht
 
 Abhaken (einfach oder mit Menge über −/Zahl/+), Flammen sehen, Timer starten,
 pausieren, beenden. Sonst nichts: Gewohnheiten anlegen, ändern, archivieren,
 Verlauf, Statistik, Standarddauer und Export bleiben in der Fokus-App, dorthin
-führt ein Link am Fuß des Panels.
+führt das ↗ in der Kopfzeile des Bereichs.
 
 Nach jedem Haken wird **zweimal** aktualisiert: sofort aus der Antwort von
 `log` (Menge, Ziel, Zustand, Flamme stehen dort drin) und gleich danach die
