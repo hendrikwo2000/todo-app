@@ -3818,8 +3818,67 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") versucheAusstehendeZuSynchronisieren();
 });
 
+// ---------- Rueckkehr nach der Anmeldung (?weiter=) ----------
+/**
+ * Das Schul-Dashboard (schule.it-wolf.org) hat keine eigene Anmeldemaske. Wer
+ * dort nicht angemeldet ist, wird hierher geschickt und soll danach von selbst
+ * zurueckkommen - dafuer haengt es `?weiter=<seine Adresse>` an.
+ *
+ * Der Wert wandert sofort in den sessionStorage und aus der Adresszeile heraus.
+ * Zwei Gruende: ein Neuladen soll die Weiterleitung nicht wiederholen, und der
+ * Anmeldelink aus der Mail landet auf "/" ganz ohne Parameter. Der gemerkte
+ * Wert ueberlebt beides - wird der Link im selben Tab geoeffnet, steht er noch
+ * da; wird er in einem zweiten geoeffnet, leitet der wartende erste Tab weiter,
+ * sobald die Status-Abfrage die frische Sitzung sieht.
+ *
+ * NUR EIGENE ZIELE. Ohne diese Pruefung waere das eine offene Weiterleitung:
+ * ein Link "todo.it-wolf.org/?weiter=https://boese.example" saehe
+ * vertrauenswuerdig aus und landete nach der Anmeldung woanders.
+ */
+const WEITER_SCHLUESSEL = "weiterNachAnmeldung";
+
+function istEigenesZiel(wert) {
+  try {
+    const url = new URL(wert);
+    if (url.protocol !== "https:") return false;
+    return url.hostname === "it-wolf.org" || url.hostname.endsWith(".it-wolf.org");
+  } catch (e) {
+    return false;
+  }
+}
+
+(function merkeWeiter() {
+  const url = new URL(location.href);
+  const wert = url.searchParams.get("weiter");
+  if (!wert) return;
+  url.searchParams.delete("weiter");
+  history.replaceState(null, "", url.pathname + url.search + url.hash);
+  if (istEigenesZiel(wert)) sessionStorage.setItem(WEITER_SCHLUESSEL, wert);
+})();
+
+/**
+ * True, wenn weitergeleitet wurde - dann lohnt es nicht mehr, diese Seite
+ * fertig aufzubauen.
+ *
+ * `canSave` allein reicht als Beleg fuer "angemeldet" nicht: es wird auch beim
+ * Wiederherstellen aus dem Offline-Cache gesetzt. Erst zusammen mit
+ * `serverErreichbar` heisst es, dass der Bootstrap wirklich durchlief.
+ */
+function evtlWeiterleiten() {
+  const ziel = sessionStorage.getItem(WEITER_SCHLUESSEL);
+  if (!ziel) return false;
+  // In jedem Fall vergessen, auch wenn gleich nicht weitergeleitet wird -
+  // sonst haengt der Wunsch an der Sitzung und schiebt einen spaeter aus dem
+  // Nichts von der ToDo-Liste weg.
+  sessionStorage.removeItem(WEITER_SCHLUESSEL);
+  if (!canSave || !serverErreichbar || !istEigenesZiel(ziel)) return false;
+  location.replace(ziel);
+  return true;
+}
+
 (async function init() {
   await loadState();
+  if (evtlWeiterleiten()) return;   // ?weiter=<url> aus dem Dashboard
   await evtlBeitreten();   // ?beitreten=<token> aus dem Teilen-Link einloesen
   aktualisiereMenue();
   render();

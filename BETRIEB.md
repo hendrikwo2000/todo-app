@@ -117,6 +117,36 @@ Ohne `RESEND_KEY` schlägt jeder Mailversand fehl. `request-code` bricht dann
 ab, *bevor* gespeichert wird — es entsteht also gar kein Anmeldelink zum
 Testen; der Datensatz muss von Hand in `login_codes`.
 
+### Rückkehr nach der Anmeldung (`?weiter=`)
+
+Diese App ist seit dem 12.08.2026 die **Anmeldestelle für alle drei Apps**.
+Das Schul-Dashboard (`schule.it-wolf.org`) hat bewusst keine eigene
+Anmeldemaske: wer dort nicht angemeldet ist, landet hier mit
+`?weiter=<seine Adresse>` und soll danach von selbst zurückkommen.
+
+Das steckt in `app.js` direkt über `init()` (`merkeWeiter` /
+`evtlWeiterleiten`) und ist **reines Frontend** — die Anmeldekette selbst
+(`request-code`, `verify-code`, `link.js`) weiß davon nichts.
+
+Der Wert wandert sofort in den `sessionStorage` und aus der Adresszeile:
+
+- Ein Neuladen soll die Weiterleitung nicht wiederholen.
+- Der Anmeldelink aus der Mail landet auf `/` ganz **ohne** Parameter. Wird er
+  im selben Tab geöffnet, steht der gemerkte Wert noch da; wird er in einem
+  zweiten geöffnet, springt der wartende erste Tab, sobald seine
+  Status-Abfrage die frische Sitzung sieht.
+
+**Akzeptiert werden nur `https:`-Ziele auf `it-wolf.org`.** Ohne diese Prüfung
+wäre das eine offene Weiterleitung — ein Link
+`todo.it-wolf.org/?weiter=https://boese.example` sähe vertrauenswürdig aus und
+landete nach der Anmeldung woanders. Geprüft wird zusätzlich auf `canSave &&
+serverErreichbar`: `canSave` allein wird auch beim Wiederherstellen aus dem
+Offline-Cache gesetzt und wäre kein Beleg für eine echte Anmeldung.
+
+Der Merker wird beim ersten Blick darauf gelöscht, auch wenn nicht
+weitergeleitet wird — sonst hinge der Wunsch an der Sitzung und schöbe einen
+später aus dem Nichts von der ToDo-Liste weg.
+
 ## Listen und Teilen
 
 Eine **Liste** (`boards`) ist die teilbare Einheit über den Bereichen. Wer sie
