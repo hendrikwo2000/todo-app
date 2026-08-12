@@ -46,16 +46,25 @@
       <button id="addCatBtn" class="btn add-cat">＋ Bereich</button>
       <span id="saveStatus" class="save-status"></span>
       <button id="einstellungenBtn" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
-      <!-- Umschalter Liste/Kalender, aussen rechts. Die Ecke gehoert ihm und
-           nicht dem Zahnrad, weil er im Umschalt-Modus im Kalender noch einmal
-           auftaucht - und zwar an genau derselben Bildschirmstelle. Stuende
-           dort das Zahnrad daneben, spraenge die Pille beim Umschalten.
-           Im Split-Modus (breites Fenster) ist dies der einzige Schalter. -->
+      <!-- Umschalter Liste/Kalender/Fokus, aussen rechts. Die Ecke gehoert ihm
+           und nicht dem Zahnrad, weil er im Umschalt-Modus in den Panels noch
+           einmal auftaucht - und zwar an genau derselben Bildschirmstelle.
+           Stuende dort das Zahnrad daneben, spraenge die Pille beim Umschalten.
+
+           Zwei Bedienformen, je nach Platz:
+           - schmal: eine echte Auswahl, genau eine der drei Ansichten gilt.
+           - breit: 📋 faellt weg (die Liste steht immer), 📅 und 🔥 werden zu
+             zwei unabhaengigen Ein/Aus-Knoepfen - dort passen beide Panels
+             uebereinander in den rechten Streifen. Die Pillen-Optik faellt
+             dann weg, sonst saehe ein Kontrollkaestchen wie eine Auswahl aus.
+           🔥 erscheint nur mit Fokus-Zugang (fokus.js). -->
       <div id="ansichtSchalter" class="ansicht-schalter" role="group" aria-label="Ansicht">
         <button type="button" class="ansicht-seg" data-ansicht="liste"
                 aria-pressed="true" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
         <button type="button" class="ansicht-seg" data-ansicht="kalender"
                 aria-pressed="false" aria-label="Kalender" title="Kalender">📅</button>
+        <button type="button" class="ansicht-seg fok-seg" data-ansicht="fokus" hidden
+                aria-pressed="false" aria-label="Fokus" title="Fokus"><span class="fok-flamme">🔥</span><span class="fok-rest" hidden></span></button>
       </div>
 
       <!-- Umschalter zwischen den Listen. Inhalt kommt per JS, erscheint nur
@@ -110,6 +119,8 @@
                 aria-pressed="false" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
         <button type="button" class="ansicht-seg" data-ansicht="kalender"
                 aria-pressed="true" aria-label="Kalender" title="Kalender">📅</button>
+        <button type="button" class="ansicht-seg fok-seg" data-ansicht="fokus" hidden
+                aria-pressed="false" aria-label="Fokus" title="Fokus"><span class="fok-flamme">🔥</span><span class="fok-rest" hidden></span></button>
       </div>
     </div>
 
@@ -132,6 +143,45 @@
     <div id="kalWochentage" class="kal-wochentage"></div>
     <div id="kalRaster" class="kal-raster"></div>
     <div id="kalTagesliste" class="kal-liste"></div>
+  </aside>
+
+  <!-- Fokus: Gewohnheiten von heute und der Fokus-Timer, beides aus der
+       Fokus-App (fokus.it-wolf.org) ueber /api/fokus/ geholt. Im breiten
+       Fenster steht das Panel UNTER dem Kalender im selben rechten Streifen
+       und ist nur so hoch wie sein Inhalt; im schmalen legt es sich wie der
+       Kalender ueber die Liste. Erscheint nur mit Fokus-Zugang.
+       Inhalt kommt aus fokus.js. -->
+  <div id="fokusHintergrund" class="fok-hintergrund"></div>
+  <aside id="fokusPanel" class="fokus-panel" aria-label="Fokus" aria-hidden="true" hidden>
+    <!-- Dieselbe Ecke wie in der Kopfzeile und im Kalender, gleiche
+         Reihenfolge: Zahnrad, dann Umschalter. Nur im schmalen Fenster
+         sichtbar - dort verdeckt das Panel die Kopfzeile. -->
+    <div class="kal-ansicht-zeile">
+      <button type="button" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
+      <div class="ansicht-schalter" role="group" aria-label="Ansicht">
+        <button type="button" class="ansicht-seg" data-ansicht="liste"
+                aria-pressed="false" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
+        <button type="button" class="ansicht-seg" data-ansicht="kalender"
+                aria-pressed="false" aria-label="Kalender" title="Kalender">📅</button>
+        <button type="button" class="ansicht-seg fok-seg" data-ansicht="fokus"
+                aria-pressed="true" aria-label="Fokus" title="Fokus"><span class="fok-flamme">🔥</span><span class="fok-rest" hidden></span></button>
+      </div>
+    </div>
+
+    <div class="fok-kopf">
+      <h2 class="fok-titel">Fokus</h2>
+      <span id="fokBilanz" class="fok-bilanz"></span>
+      <button type="button" id="fokZu" class="btn icon-only" aria-label="Fokus schließen">✕</button>
+    </div>
+
+    <!-- Timer und Gewohnheiten fuellt fokus.js. Der Timer steht oben, weil er
+         immer genau eine Zeile hoch ist - die Liste darunter waechst. -->
+    <div id="fokTimer" class="fok-timer"></div>
+    <div id="fokInhalt" class="fok-inhalt"></div>
+
+    <a class="fok-mehr" href="https://fokus.it-wolf.org" target="_blank" rel="noopener">
+      Fokus-Tracker öffnen ↗
+    </a>
   </aside>
 
   <!-- Die beiden Kalender-Dialoge stehen AUSSERHALB des Panels, und das ist
@@ -408,5 +458,8 @@
        (daten, listen, aktiveListe) und muss danach laufen. -->
   <script src="app.js"></script>
   <script src="kalender.js"></script>
+  <!-- Nach kalender.js: fokus.js benutzt dessen istSplit()/schliesseKalender()
+       und haengt sich in denselben Umschalter. -->
+  <script src="fokus.js"></script>
 </body>
 </html>

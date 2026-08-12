@@ -251,6 +251,52 @@ body { transition: background .2s, color .2s, padding-right .26s cubic-bezier(.3
   .ansicht-schalter { border-radius: 8px; }
   .ansicht-seg { padding: 2px 8px; font-size: 14px; border-radius: 6px; }
 }
+/* Gleiche Falle wie oben: display:inline-flex/flex schlaegt [hidden]. Das
+   Fokus-Segment wird per Attribut versteckt, solange kein Zugang besteht. */
+.ansicht-seg[hidden] { display: none; }
+
+/* ---------- Umschalter im breiten Fenster ----------
+   Dort ist es keine Auswahl mehr: die Liste steht immer, und Kalender und
+   Fokus duerfen gleichzeitig offen sein. Also faellt 📋 weg, und aus der
+   Pille werden zwei freistehende Ein/Aus-Knoepfe - eine Pille, in der zwei
+   Haelften gleichzeitig leuchten, saehe aus wie eine kaputte Auswahl. */
+html.breit .ansicht-seg[data-ansicht="liste"] { display: none; }
+html.breit .ansicht-schalter {
+  border-color: transparent;
+  background: none;
+  padding: 0;
+  gap: 6px;
+}
+/* Gedrueckt heisst hier "Panel ist offen" - ein Kasten drumherum statt der
+   Pillen-Fuellung, sonst waere der Unterschied zum Ruhezustand nur die
+   Deckkraft. Nochmal antippen macht es zu, deshalb kein cursor:default. */
+html.breit .ansicht-seg[aria-pressed="true"] {
+  background: var(--accent-soft);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+/* Restzeit einer laufenden Sitzung am 🔥-Knopf. Im breiten Fenster als Zahl
+   neben der Flamme; am Handy passt sie nicht in die Pille (die Kopfzeile
+   traegt dort schon Titel und Zahnrad), dort bleibt ein Glutpunkt - die Zeit
+   selbst steht dann im Tab-Titel. */
+.fok-seg { display: inline-flex; align-items: center; gap: 5px; }
+.fok-rest {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  font-weight: 600;
+}
+.fok-rest[hidden] { display: none; }
+html:not(.breit) .fok-rest {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  font-size: 0;
+  overflow: hidden;
+}
 /* Gleiche Falle wie oben: display:flex auf .btn schlaegt [hidden]. */
 #todoZugangAufgebenStart[hidden] { display: none; }
 /* Schmale Screens: der Titel teilt sich die erste Zeile mit Zahnrad und
@@ -1542,7 +1588,9 @@ button.lz-name:hover { color: var(--accent); }
    mitscrollender Hintergrund waere Unsinn. Im Split-Modus stehen beide
    nebeneinander und die Liste muss scrollbar bleiben. */
 html.kal-offen:not(.kal-split),
-html.kal-offen:not(.kal-split) body { overflow: hidden; }
+html.kal-offen:not(.kal-split) body,
+html.fok-offen:not(.fok-split),
+html.fok-offen:not(.fok-split) body { overflow: hidden; }
 
 /* ---------- Split-Modus (breite Fenster) ---------- */
 /* Ab einer Fensterbreite von SPLIT_AB (kalender.js) ist der Kalender kein
@@ -1554,7 +1602,14 @@ html.kal-offen:not(.kal-split) body { overflow: hidden; }
    zugeklappt sein darf - die Breite allein entscheidet das nicht. */
 :root { --kal-breite: min(440px, 38vw); }
 
-html.kal-split body { padding-right: var(--kal-breite); }
+/* Der Streifen ist derselbe, egal welches der beiden Panels ihn belegt -
+   deshalb macht der body auch fuer das Fokus-Panel allein Platz. */
+html.kal-split body,
+html.fok-split body { padding-right: var(--kal-breite); }
+/* Stehen beide da, endet der Kalender an der Oberkante des Fokus-Panels.
+   Dessen Hoehe misst fokus.js (messeHoehe) und legt sie hier ab - eine feste
+   Zahl ginge nicht, das Panel ist mit zwei Gewohnheiten flacher als mit zehn. */
+html.kal-split.fok-split .kalender { bottom: var(--fok-hoehe, 0px); }
 html.kal-split .kalender {
   width: var(--kal-breite);
   /* Der Schlagschatten trennte das schwebende Panel vom Inhalt darunter.
@@ -1564,18 +1619,22 @@ html.kal-split .kalender {
 }
 /* Kein Abdunkeln: die Liste daneben bleibt bedienbar. */
 html.kal-split .kal-hintergrund { display: none; }
+html.fok-split .fok-hintergrund { display: none; }
 /* Die Snackbar haengt als position:fixed am Bildschirm, nicht am body - ohne
    diesen Versatz stuende sie mittig ueber BEIDEN Haelften und schoebe sich bei
    knappem Split unter das Panel (z-index 50 gegen 56). Sie gehoert zum Board,
    also zentriert sie sich auch darueber. */
-html.kal-split .snackbar { left: calc(50% - var(--kal-breite) / 2); }
-/* Der Umschalter steht im Split-Modus in der Kopfzeile der App, die hier ja
-   sichtbar bleibt. Ein zweiter daneben waere nur doppelt. */
-html.kal-split .kal-ansicht-zeile { display: none; }
-/* Umgekehrt im Umschalt-Modus: dort sitzt die Pille direkt ueber dem Kopf und
-   fuehrt zurueck zur Liste - ein ✕ daneben waere derselbe Weg zweimal. Escape
-   und der Wisch nach rechts schliessen weiterhin. */
-html:not(.kal-split) #kalZu { display: none; }
+html.kal-split .snackbar,
+html.fok-split .snackbar { left: calc(50% - var(--kal-breite) / 2); }
+/* Der Umschalter steht im breiten Fenster in der Kopfzeile der App, die dort
+   sichtbar bleibt. Ein zweiter im Panel waere nur doppelt. Haengt an `breit`
+   und nicht an `kal-split`: der Streifen kann auch ohne Kalender belegt sein. */
+html.breit .kal-ansicht-zeile { display: none; }
+/* Umgekehrt im schmalen Fenster: dort sitzt die Pille direkt ueber dem Kopf
+   und fuehrt zurueck zur Liste - ein ✕ daneben waere derselbe Weg zweimal.
+   Escape und der Wisch nach rechts schliessen weiterhin. */
+html:not(.breit) #kalZu,
+html:not(.breit) #fokZu { display: none; }
 
 .kal-hintergrund {
   position: fixed;
@@ -2282,3 +2341,221 @@ body.zieht, body.zieht .todo {
 
 .kal-form-knoepfe { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .kal-form-knoepfe .btn.gefahr { margin-left: auto; }
+
+/* ====================================================================
+   Fokus-Panel
+
+   Teilt sich den rechten Streifen mit dem Kalender: im breiten Fenster steht
+   es UNTER ihm und ist nur so hoch wie sein Inhalt, im schmalen legt es sich
+   wie er ueber die Liste. Die Grundform ist deshalb dieselbe wie bei
+   .kalender - was hier abweicht, steht in den Split-Regeln weiter unten.
+   Verhalten und Herkunft der Daten: fokus.js.
+   ==================================================================== */
+/* display:flex unten schluege sonst das eingebaute [hidden] - dieselbe Falle
+   wie bei .offline-banner. Das Panel ist ohne Fokus-Zugang versteckt. */
+.fokus-panel[hidden] { display: none; }
+
+.fok-hintergrund {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(0, 0, 0, .38);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .26s;
+}
+.fok-hintergrund.sichtbar { opacity: 1; pointer-events: auto; }
+
+.fokus-panel {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  z-index: 56;
+  width: min(480px, 100vw);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg);
+  border-left: 1px solid var(--line);
+  box-shadow: -10px 0 30px rgba(0, 0, 0, .20);
+  transform: translateX(100%);
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 14px 14px;
+  overscroll-behavior: contain;
+  will-change: transform;
+}
+.fokus-panel.animiert { transition: transform .26s cubic-bezier(.32, .72, 0, 1); }
+
+/* ---------- Breites Fenster: die untere Haelfte des Streifens ---------- */
+html.fok-split .fokus-panel {
+  width: var(--kal-breite);
+  box-shadow: none;
+}
+/* Steht der Kalender darueber, waechst das Panel von UNTEN nach oben: top:auto
+   plus height:auto heisst "so hoch wie noetig". Der Deckel bei 45vh haelt den
+   Kalender lesbar, wenn jemand zehn Gewohnheiten hat - darueber blaettert das
+   Panel in sich selbst. */
+html.fok-split.kal-split .fokus-panel {
+  top: auto;
+  height: auto;
+  max-height: 45vh;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- Kopfzeile ---------- */
+.fok-kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.fok-titel { margin: 0; font-size: 17px; }
+.fok-bilanz {
+  font-size: 12.5px;
+  color: var(--muted);
+  /* Schiebt das ✕ nach aussen, ohne dass es dafuer einen eigenen Abstand
+     braucht - und steht selbst direkt hinter dem Titel. */
+  margin-right: auto;
+}
+
+/* ---------- Timer ---------- */
+.fok-timer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--row);
+}
+.fok-zeit {
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.fok-zeit.laeuft { color: var(--accent); }
+.fok-knoepfe { display: flex; gap: 6px; margin-left: auto; }
+.fok-start { background: var(--accent); color: #fff; border-color: var(--accent); }
+.fok-geplant {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---------- Gewohnheiten ---------- */
+.fok-inhalt {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  /* Der einzige blaetternde Teil im schmalen Fenster - im Split blaettert das
+     ganze Panel (siehe oben), dort steht min-height:0 dem nicht im Weg. */
+  overflow-y: auto;
+  min-height: 0;
+}
+.fok-hinweis { margin: 4px 0; font-size: 13px; color: var(--muted); }
+.fok-woche-fertig { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+
+.fok-gew {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: 10px;
+  background: var(--row);
+}
+.fok-gew.erledigt { border-left-color: var(--green); }
+.fok-gew.teilweise { border-left-color: var(--yellow); }
+.fok-gew.ueberschritten { border-left-color: var(--red); }
+/* "ruht": eine Obergrenze, in die heute nichts eingetragen ist. Sie verlangt
+   nichts, sieht deshalb aus wie unbeschrieben - und nicht wie offen. */
+.fok-gew.ruht { opacity: .72; }
+
+.fok-gew-haupt { flex: 1 1 auto; min-width: 0; }
+.fok-gew-name {
+  font-size: 14px;
+  /* Ein langer Name darf die Karte nicht auseinanderziehen - Haken und
+     Mengenfeld sollen an ihrer Stelle bleiben. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fok-gew-zeile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.fok-flammen-zahl.aktiv { color: var(--orange); }
+
+.fok-menge { display: flex; align-items: center; gap: 3px; flex: none; }
+.fok-menge button {
+  width: 28px; height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.fok-menge button:hover { background: var(--hover); }
+.fok-menge input {
+  width: 46px;
+  padding: 4px 2px;
+  text-align: center;
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.fok-haken {
+  flex: none;
+  width: 32px; height: 32px;
+  border: 1.5px solid var(--check-border);
+  border-radius: 50%;
+  background: none;
+  color: transparent;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.fok-haken:hover { border-color: var(--green); color: var(--check-border); }
+.fok-haken.an {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.fok-mehr {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.fok-mehr:hover { color: var(--accent); text-decoration: underline; }
+
+/* Schmale Karten: bei wenig Platz rutscht das Mengenfeld unter den Namen,
+   sonst bleiben fuer den Text nur noch ein paar Dutzend Pixel und die Namen
+   brechen zeichenweise um. Dieselbe Grenze wie in der Fokus-App. */
+@media (max-width: 420px) {
+  .fok-gew.mit-menge { flex-wrap: wrap; }
+  .fok-gew.mit-menge .fok-gew-haupt { flex-basis: 100%; }
+  .fok-menge { margin-left: auto; }
+}
+/* Gleiche [hidden]-Falle wie oben: display:flex schluege es sonst. Bei einem
+   Fehler bleibt der Timer-Kasten leer und damit weg. */
+.fok-timer[hidden] { display: none; }
+/* Zahlenfeld ohne Browser-Spinner: Minus und Plus sind der Weg, und die
+   winzigen Pfeile daneben sind mit dem Finger ohnehin nicht zu treffen. */
+.fok-menge input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.fok-menge input[type="number"] { -moz-appearance: textfield; appearance: textfield; }

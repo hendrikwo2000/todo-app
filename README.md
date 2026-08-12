@@ -97,6 +97,29 @@ zwei Walzen für Monat und Jahr.
 Zurück geht es mit einem Wisch in der Kopfzeile, einem Tipp daneben, ✕ oder
 Escape. Auf dem Handy füllt der Kalender den ganzen Bildschirm.
 
+## Fokus
+
+Nur wenn dein Konto auch für den [Fokus-Tracker](https://fokus.it-wolf.org)
+freigeschaltet ist — sonst gibt es den Knopf gar nicht.
+
+- **🔥** oben rechts öffnet die Gewohnheiten von heute und den Fokus-Timer
+- **Abhaken** mit dem Haken rechts, bei Gewohnheiten mit Menge über **− Zahl +**
+- Neben jedem Namen steht die **Flamme**, also wie viele Tage (oder Wochen) die
+  Kette schon hält
+- **▶ Start** beginnt eine Sitzung mit deiner Standarddauer, **⏸** hält sie an,
+  **⏹** beendet sie (ab einer Minute mit Rückfrage — geloggte Zeit lässt sich
+  nicht mehr ändern)
+- Läuft eine Sitzung, steht die **Restzeit am 🔥-Knopf**; du kannst das Panel
+  also zumachen. Am Handy ist es ein kleiner Punkt, die Zeit steht dann im
+  Tab-Titel. Am Ende gibt es einen Ton.
+
+Am Rechner steht Fokus **unter dem Kalender** — beide dürfen gleichzeitig offen
+sein, 📅 und 🔥 schalten unabhängig. Auf dem Handy gilt eine Ansicht auf einmal.
+
+Alles andere — Gewohnheiten anlegen und ändern, Verlauf, Statistik, Dauer
+einstellen — machst du weiter im Fokus-Tracker selbst; der Link dazu steht
+unten im Panel.
+
 ## Google Kalender
 
 - **⚙️** oben rechts → **„Google Kalender"** → **„Mit Google verbinden"**

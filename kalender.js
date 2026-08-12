@@ -75,6 +75,18 @@ const ANSICHT_KEY = "kalAnsicht";
 
 function istSplit() { return window.innerWidth >= SPLIT_AB; }
 
+/**
+ * Die Klasse `breit` am <html> sagt dem CSS, ob NEBENEINANDER ueberhaupt geht -
+ * unabhaengig davon, ob gerade ein Panel offen ist. `kal-split` allein reicht
+ * dafuer nicht mehr: seit es ein zweites Panel gibt (fokus.js), kann der
+ * rechte Streifen auch ohne Kalender belegt sein, und Regeln wie "die
+ * Umschalter-Zeile im Panel ausblenden" gelten dann trotzdem.
+ */
+function pflegeBreit() {
+  document.documentElement.classList.toggle("breit", istSplit());
+}
+pflegeBreit();
+
 let kalOffen = false;
 let kalJahr = 0;         // angezeigter Monat
 let kalMonatNr = 0;      // 0-basiert, wie bei Date
@@ -1531,9 +1543,20 @@ function setzePanel(offen, sofort) {
   kalHintergrund.classList.toggle("sichtbar", offen && !split);
   kalPanel.setAttribute("aria-hidden", offen ? "false" : "true");
   document.documentElement.classList.toggle("kal-offen", offen);
+  // 📋 gilt, wenn GAR kein Panel offen ist - das Fokus-Panel zaehlt mit, sonst
+  // saehe die Liste im schmalen Fenster aktiv aus, waehrend Fokus davor liegt.
   for (const seg of document.querySelectorAll(".ansicht-seg")) {
-    seg.setAttribute("aria-pressed", String((seg.dataset.ansicht === "kalender") === offen));
+    if (seg.dataset.ansicht === "kalender") seg.setAttribute("aria-pressed", String(offen));
+    else if (seg.dataset.ansicht === "liste") {
+      seg.setAttribute("aria-pressed", String(!offen && !window.fokusIstOffen?.()));
+    }
   }
+  // Im Split teilen sich beide Panels den Streifen: der Kalender endet an der
+  // Oberkante des Fokus-Panels (--fok-hoehe). Dessen Hoehe haengt aber davon
+  // ab, ob der Kalender ueberhaupt da ist - also hier neu messen lassen. Der
+  // ResizeObserver in fokus.js zoege sonst erst einen Frame spaeter nach, und
+  // fuer diesen einen Frame reichte der Kalender ueber das Panel hinweg.
+  window.fokusHoeheMessen?.();
   try { localStorage.setItem(ANSICHT_KEY, offen ? "kalender" : "liste"); }
   catch (e) { /* voller Speicher - dann eben ungemerkt */ }
 }
@@ -1568,11 +1591,19 @@ function frischOeffnen() {
 }
 
 function oeffneKalender() {
+  // Im schmalen Fenster liegt immer nur EIN Panel vor der Liste. Im Split
+  // passen beide uebereinander in den rechten Streifen, dort bleibt das
+  // Fokus-Panel stehen.
+  if (!istSplit()) window.fokusSchliessen?.();
   if (!kalOffen) frischOeffnen();
   else zeichneKalender();
   kalOffen = true;
   setzePanel(true);
 }
+
+// Fuer fokus.js: dasselbe Bedienelement schaltet beide Panels, und jedes muss
+// den Zustand des anderen kennen (siehe setzePanel).
+window.kalenderIstOffen = () => kalOffen;
 
 function schliesseKalender() {
   if (!kalOffen) return;
@@ -1762,10 +1793,19 @@ document.addEventListener("touchcancel", gesteBeenden);
 // Der Umschalter steckt zweimal im Dokument: in der Kopfzeile der App und im
 // Kalender selbst (der die Kopfzeile im Umschalt-Modus verdeckt). Sichtbar ist
 // immer nur einer, verdrahtet sind beide gleich.
+// 🔥 gehoert fokus.js, das seinen eigenen Listener an dieselben Knoepfe haengt.
+// Hier zaehlt nur: 📅 schaltet den Kalender, 📋 raeumt ihn weg.
 for (const seg of document.querySelectorAll(".ansicht-seg")) {
   seg.addEventListener("click", () => {
-    if (seg.dataset.ansicht === "kalender") oeffneKalender();
-    else schliesseKalender();
+    if (seg.dataset.ansicht === "kalender") {
+      // Im Split ist 📅 ein Ein/Aus-Knopf (beide Panels duerfen offen sein),
+      // im schmalen Fenster eine Auswahl - dort tut ein Klick auf die schon
+      // gewaehlte Ansicht nichts, wie bei jeder Pille.
+      if (istSplit() && kalOffen) schliesseKalender();
+      else oeffneKalender();
+    } else if (seg.dataset.ansicht === "liste") {
+      schliesseKalender();
+    }
   });
 }
 document.getElementById("kalZu").addEventListener("click", schliesseKalender);
@@ -1810,6 +1850,9 @@ document.addEventListener("keydown", e => {
 // bliebe ein am Handy geoeffneter Kalender nach dem Drehen ein Overlay, das
 // die halbe Liste verdeckt.
 window.addEventListener("resize", () => {
+  // Vor dem Ausstieg: die Klasse gilt auch bei zugeklapptem Kalender, das
+  // Fokus-Panel haengt ebenfalls daran.
+  pflegeBreit();
   if (!kalOffen) return;
   if (istSplit() !== document.documentElement.classList.contains("kal-split")) {
     setzePanel(true, true);

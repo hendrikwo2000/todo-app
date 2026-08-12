@@ -82,9 +82,9 @@ const pushSwitch       = document.getElementById("pushSwitch");
 const pushSwitchLabel  = document.getElementById("pushSwitchLabel");
 const pushSwitchWrap   = document.getElementById("pushSwitchWrap");
 const pushHinweis      = document.getElementById("pushHinweis");
-// Das Zahnrad steckt ZWEIMAL im Dokument: in der Kopfzeile der App und im
-// Kalender, der die Kopfzeile am Handy verdeckt. Beide tragen .ein-knopf,
-// beide starten versteckt und erscheinen erst mit der Anmeldung.
+// Das Zahnrad steckt DREIMAL im Dokument: in der Kopfzeile der App und in den
+// beiden Panels (Kalender, Fokus), die die Kopfzeile am Handy verdecken. Alle
+// tragen .ein-knopf, alle starten versteckt und erscheinen mit der Anmeldung.
 const einKnoepfe = [...document.querySelectorAll(".ein-knopf")];
 function zeigeEinstellungenKnopf() { for (const b of einKnoepfe) b.hidden = false; }
 const listenMenue  = document.getElementById("listenMenue");
@@ -111,8 +111,11 @@ let istAdmin = false;
 let eigeneEmail = "";
 let eigenerName = "";
 // Ob das Konto zusaetzlich Zugang zum Fokus-Tracker hat - fuer den
-// Abschnitt "Fokus-Tracker" in den Einstellungen.
+// Abschnitt "Fokus-Tracker" in den Einstellungen und fuer das Fokus-Panel
+// (fokus.js liest den Wert ueber window.hatFokusZugang, weil es eine eigene
+// Datei ist und hier nichts importieren kann).
 let fokusZugang = false;
+window.hatFokusZugang = () => fokusZugang;
 
 // ---------- Hilfsfunktionen ----------
 function uid() {
@@ -2363,6 +2366,10 @@ function render() {
   // Offenes Kalender-Panel mitziehen (siehe kalender.js). Zugeklappt und
   // solange die Datei noch nicht geladen ist, kostet der Aufruf nichts.
   if (window.kalenderNeuZeichnen) window.kalenderNeuZeichnen();
+  // Dasselbe fuers Fokus-Panel (fokus.js): hier faellt auch die Entscheidung,
+  // ob es den 🔥-Knopf ueberhaupt gibt - fokusZugang steht erst nach dem
+  // Bootstrap fest.
+  if (window.fokusNeuZeichnen) window.fokusNeuZeichnen();
   synchronisiereOhneBereich();
   if (addingCat && !state.categories.some(c => c.id === addingCat)) { addingCat = null; addingThema = null; }
   if (addingThema && !state.themen.some(th => th.id === addingThema)) addingThema = null;
@@ -3333,6 +3340,9 @@ document.getElementById("fokusLink").addEventListener("click", async e => {
     if (!res.ok) { snackInfo("Hat nicht geklappt - bitte nochmal versuchen."); return; }
     fokusZugang = true;
     aktualisiereFokusLink();
+    // Ab jetzt gibt es auch das Fokus-Panel - ohne diesen Anstoss taucht der
+    // 🔥-Knopf erst beim naechsten render() auf.
+    window.fokusNeuZeichnen?.();
     snackInfo("Zugang zum Fokus-Tracker freigeschaltet.");
   } catch (e) {
     snackInfo("Hat nicht geklappt - bitte nochmal versuchen.");

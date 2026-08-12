@@ -1173,3 +1173,136 @@ Google mit ungültigem Token samt Fehlerzeile im Panel, sowie die gesamte
 Anzeige gegen eine nachgebaute Google-Antwort (Uhrzeiten, mehrtägige
 Ganztages-Termine, Details, Umschalter, Ring-Punkte, hell/dunkel). Der
 `invalid_grant`-Zweig (Zugriff bei Google widerrufen) ist ungetestet.
+
+## Fokus-Panel
+
+Zweites Panel im rechten Streifen, unter dem Kalender: die Gewohnheiten von
+heute zum Abhaken und der Fokus-Timer. Die Daten kommen aus dem
+Fokus-Tracker (`fokus.it-wolf.org`), nicht aus der eigenen Datenbank.
+Markup in `index.html`, Verhalten in `fokus.js`, CSS-Block „Fokus-Panel".
+
+**Sichtbar nur mit Fokus-Zugang.** `fokusZugang` steht im Bootstrap von
+`/api/todos` und wird über `window.hatFokusZugang()` gelesen — vorher weiß
+niemand, ob dieses Konto den Tracker überhaupt benutzen darf. Ohne Zugang gibt
+es weder den 🔥-Knopf noch das Panel. Holt man ihn sich in den Einstellungen,
+taucht beides sofort auf (`window.fokusNeuZeichnen()` am Ende des Klick-
+Handlers, sonst erst beim nächsten `render()`).
+
+### Warum die Daten über einen Durchreicher kommen
+
+`functions/api/fokus/[[pfad]].js` nimmt die Anfrage an, prüft Sitzung und
+`fokus_zugang`, und stellt sie der Fokus-App. Beide Apps benutzen dieselbe
+D1-Datenbank, dieser Worker könnte die Tabellen also direkt lesen — und genau
+das wäre der Fehler: Flammen, Rhythmus und Obergrenzen-Regeln sind dort rund
+1200 Zeilen, als zweite Kopie hier wären sie irgendwann eine zweite Wahrheit.
+
+Die Fokus-App liefert die Tagesliste deshalb **fertig gerechnet**
+(`GET /api/gewohnheiten/heute`, dort neu gebaut). Dieses Panel entscheidet
+nichts selbst — welche Gewohnheit heute erscheint, ob sie ruht, wie lang die
+Flamme ist, steht alles in der Antwort.
+
+**Nicht direkt aus dem Browser**, obwohl beide Apps auf `it-wolf.org` liegen:
+das Sitzungscookie ist `SameSite=Lax`. Ein `fetch` von `todo.it-wolf.org` nach
+`fokus.it-wolf.org` bekäme es nicht mit, die Fokus-App sähe einen Fremden. Von
+Worker zu Worker geht der Cookie-Kopf dagegen mit.
+
+**Nur sechs Routen sind freigeschaltet** (Tabelle `ROUTEN` im Durchreicher),
+je mit fester Methode. Ohne diese Liste hinge an `/api/fokus/` die ganze
+Fokus-API, auch `DELETE /api/gewohnheiten` und der Export. Alles, was nicht
+in der Tabelle steht, bekommt 404 — auch bei falscher Methode, denn was es
+hier nicht gibt, muss auch nicht verraten, dass es das woanders gäbe.
+
+**Preis:** Ist die Fokus-App nicht erreichbar (Deploy, Störung), antwortet der
+Durchreicher mit 502 und das Panel zeigt „Der Fokus-Tracker ist gerade nicht
+erreichbar." samt Knopf zum erneuten Versuchen. Der Timer bleibt dann ganz
+weg — er zeigte sonst eine Dauer und einen Start-Knopf, der nur in die nächste
+Fehlermeldung laufen kann. Die ToDo-Liste selbst merkt davon nichts.
+
+Lokal zeigt `FOKUS_BASIS` (in `.dev.vars`) auf den Fokus-Dev-Server nebenan,
+live gilt der Standardwert `https://fokus.it-wolf.org`. Zum Testen müssen
+**beide** Dev-Server laufen und in **beiden** lokalen D1-Dateien dieselbe
+Sitzungszeile stehen — die Datenbanken sind lokal getrennt, anders als live.
+
+### Zwei Panels, ein Streifen
+
+Im breiten Fenster (`istSplit()`, dieselbe 1000-px-Grenze wie beim Kalender)
+steht der Kalender oben und das Fokus-Panel darunter, beide 440 px breit.
+Damit braucht das Panel **keine zusätzliche Breite** — mit zwei Gewohnheiten
+ist es ohnehin flach.
+
+* Das Fokus-Panel wächst von unten: `top: auto`, Höhe nach Inhalt, gedeckelt
+  bei 45vh (darüber blättert es in sich selbst).
+* Der Kalender endet an seiner Oberkante: `bottom: var(--fok-hoehe)`. Den Wert
+  misst `messeHoehe()` in `fokus.js` und legt ihn am `<html>` ab. Eine feste
+  Zahl ginge nicht — die Höhe hängt am Inhalt.
+* Angestoßen wird die Messung aus **beiden** Richtungen: von innen durch einen
+  `ResizeObserver`, von außen durch `window.fokusHoeheMessen()` am Ende von
+  `setzePanel()` in `kalender.js`. Ohne den zweiten Weg zöge der Observer erst
+  einen Frame später nach, und für diesen Frame reichte der Kalender über das
+  Panel hinweg.
+* Ist nur das Fokus-Panel offen, füllt es den Streifen allein (`--fok-hoehe`
+  ist dann 0, der Kalender liegt ohnehin draußen).
+
+Im schmalen Fenster gilt weiter genau **eine** Ansicht: das Öffnen des einen
+Panels schließt das andere (`window.fokusSchliessen()` in `oeffneKalender()`
+und umgekehrt `schliesseKalender()` in `oeffneFokus()`).
+
+### Der Umschalter hat jetzt drei Segmente
+
+📋 | 📅 | 🔥 — aber in zwei Bedienformen, und das ist Absicht:
+
+* **schmal:** eine echte Auswahl wie bisher, genau eines gilt. Ein Tipp auf die
+  schon gewählte Ansicht tut nichts.
+* **breit:** 📋 fällt weg (die Liste steht dort immer), und 📅/🔥 werden zu
+  zwei unabhängigen Ein/Aus-Knöpfen — nochmal antippen macht zu. Dazu
+  verschwindet die Pillen-Optik (Rahmen und Füllung), denn eine Pille, in der
+  zwei Hälften gleichzeitig leuchten, sähe aus wie eine kaputte Auswahl.
+
+Unterschieden wird über die Klasse **`html.breit`**, die `kalender.js` pflegt
+(`pflegeBreit()`, beim Laden und bei jedem `resize`). `kal-split` reicht dafür
+nicht mehr: die Klasse sagt „Kalender offen UND breit", der Streifen kann aber
+auch ohne Kalender belegt sein. An `breit` hängen deshalb auch die Regeln, die
+vorher an `kal-split` hingen (Umschalter-Zeile im Panel ausblenden, ✕ zeigen).
+
+Beide Dateien hängen einen eigenen Klick-Handler an **dieselben** Knöpfe:
+`kalender.js` kümmert sich um 📅, `fokus.js` um 🔥, und beide reagieren auf
+📋. Der gedrückte Zustand von 📋 heißt „gar kein Panel offen" — dafür fragt
+jede Datei die andere über `window.kalenderIstOffen()` bzw.
+`window.fokusIstOffen()`.
+
+Gemerkt wird getrennt: `kalAnsicht` (`liste`/`kalender`) und `fokAnsicht`
+(`auf`/`zu`). Ein gemeinsamer Schlüssel könnte im Split gar nicht abbilden,
+dass beide offen sind. Sind beim Laden im schmalen Fenster beide gemerkt,
+behält der Kalender den Vorrang.
+
+### Was das Panel kann — und was nicht
+
+Abhaken (einfach oder mit Menge über −/Zahl/+), Flammen sehen, Timer starten,
+pausieren, beenden. Sonst nichts: Gewohnheiten anlegen, ändern, archivieren,
+Verlauf, Statistik, Standarddauer und Export bleiben in der Fokus-App, dorthin
+führt ein Link am Fuß des Panels.
+
+Nach jedem Haken wird **zweimal** aktualisiert: sofort aus der Antwort von
+`log` (Menge, Ziel, Zustand, Flamme stehen dort drin) und gleich danach die
+ganze Liste frisch. Das zweite ist nötig, weil sich das Drumherum ändern kann —
+die Tagesbilanz, und bei „X Mal die Woche" verschwindet die Gewohnheit mit dem
+erreichten Ziel ganz aus der Liste.
+
+**Der Timer ist reine Anzeige**, gerechnet wird aus dem Startzeitpunkt vom
+Server (siehe `BETRIEB.md` der Fokus-App). Die Dauer kommt aus der dortigen
+Standardeinstellung und lässt sich hier nicht ändern. Beenden fragt ab einer
+Minute nach — eine geloggte Sitzung ist nachträglich nicht mehr änderbar.
+
+**Bei laufender Sitzung trägt der 🔥-Knopf die Restzeit**, in allen drei Ecken,
+in denen der Umschalter steckt. Am Handy passt die Zahl nicht in die Pille
+(dort stehen schon Titel und Zahnrad in derselben Zeile); aus ihr wird per CSS
+ein 6-px-Glutpunkt (`font-size: 0`), und die Zeit steht stattdessen im
+Tab-Titel. Nachgemessen: mit Punkt ist die Pille 127 px breit, die Kopfzeile
+bleibt auch bei 360 px zweizeilig.
+
+Am Sitzungsende gibt es **Ton und Tab-Titel**, aber bewusst **keine
+Browser-Benachrichtigung**: die schickt die Fokus-App schon, und bei zwei
+offenen Tabs meldete sich dasselbe Sitzungsende sonst doppelt.
+
+**Offline funktioniert das Panel nicht.** Die Warteschlange der ToDo-Liste
+gilt nur für ToDos; hier erscheint die Fehlermeldung von oben.
