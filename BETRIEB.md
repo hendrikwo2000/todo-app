@@ -221,13 +221,14 @@ Vollbild-Schirm wäre für den Inhalt viel leerer Raum. Geschlossen wird über
 das **✕ oben rechts**; am Rechner zusätzlich weiterhin per Klick neben den
 Kasten.
 
-Die Größe soll das Blättern ersparen, und dafür zählt allein die **Höhe**: ab
-rund 830 px Fensterhöhe passt auch der längste Abschnitt („Meine Listen" mit
-zwei Listen, 697 px) am Stück hinein. Auf einem flachen Notebook-Fenster
-(768 px) bleibt ein Rest. Mehr Breite hilft dagegen **nicht** — nachgemessen
-ergeben 440 px und 700 px Breite dieselben 697 px, weil die Höhe aus den
+Die Größe soll das Blättern ersparen. Mehr **Breite** hilft dabei nicht —
+nachgemessen ergeben 440 px und 700 px dieselbe Inhaltshöhe, weil die aus den
 Zeilen kommt und nicht aus umbrechendem Text. Breiter ist der Dialog
-trotzdem, damit die Knopfreihen nicht so gedrängt stehen.
+trotzdem, damit die Knopfreihen nicht so gedrängt stehen. Was wirklich half,
+waren die **kompakteren Listen-Zeilen** (siehe unten): „Meine Listen" fiel
+damit von 697 auf 538 px, und bei 1366 × 768 blättert nichts mehr. Ab rund
+780 px Fensterhöhe passt auch der längste Abschnitt („Konto", 595 px) mit
+Reserve.
 
 **Aufbau: feste Kopfzeile, darunter der einzige blätternde Teil.** Die
 Kopfzeile (`<header class="ein-kopfzeile">`) trägt das ✕ und steht außerhalb
@@ -255,6 +256,20 @@ ausgenommen — sonst löste jedes „Umbenennen" auch einen Listenwechsel aus.
 Weil der Dialog stehen bleibt, ist die **Snackbar auf `z-index: 130`** hoch
 (über die 120 des Dialogs): bei 50 lag sie darunter, und Rückmeldungen wie
 „Alle Zugriffe entzogen." wurden zwar gesetzt, sah aber niemand.
+
+**Kompakte Listen-Zeilen.** Name links, Knöpfe rechts **daneben** statt
+darunter — das spart je Zeile eine ganze Textzeile samt Abstand, rund 29 px
+(Zeilenhöhe von ~105 auf 50 px). Der Umbruch bleibt eingebaut: `.listen-zeile`
+ist `flex-wrap: wrap`, `.lz-kopf` wächst (`flex: 1 1 auto`), `.lz-knoepfe`
+nicht (`flex: none`). Wird der Name zu lang, rutschen die Knöpfe von selbst
+auf die zweite Zeile — genau das Bild von vorher, am Handy der Normalfall.
+Bewusst `flex-basis: auto` statt `0` am Kopf: ein halber Listenname wäre
+schlechter als eine zweite Zeile.
+
+`.lz-loeschen` trug früher `margin-left: auto`, um die 🗑️ an den rechten
+Zeilenrand zu schieben. Das ging, solange die Knopfgruppe die ganze Breite
+einnahm; jetzt ist sie nur so breit wie ihr Inhalt und `auto` hätte nichts
+mehr zu verteilen — daher ein fester Abstand, der dieselbe Trennung erzeugt.
 
 **Falle, hier wieder aufgetreten:** `.admin-popup-box .btn` setzt
 `display: inline-flex` und schlägt damit das eingebaute `[hidden]` des

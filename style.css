@@ -1399,11 +1399,20 @@ input[type="date"]:focus {
 #neueListe:disabled:hover { color: var(--text); border-color: var(--line); }
 
 /* Listen-Zeilen (Meine Listen / Geteilt mit mir / Mitglieder) */
-.listen-liste { display: flex; flex-direction: column; gap: 8px; }
+/* Name links, Knoepfe rechts DANEBEN statt darunter: das spart je Zeile eine
+   ganze Textzeile samt Abstand (rund 29px) und ist der Grund, warum "Meine
+   Listen" am Rechner ohne Blaettern hineinpasst.
+   Der Umbruch bleibt eingebaut: wird der Listenname zu lang, rutschen die
+   Knoepfe von selbst auf die zweite Zeile - genau das Bild von vorher. Am
+   Handy passiert das regelmaessig, und dort ist es auch richtig so. */
+.listen-liste { display: flex; flex-direction: column; gap: 7px; }
 .listen-liste:empty { display: none; }
 .listen-zeile {
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 7px 12px;
   border: 1px solid var(--line);
   border-radius: 11px;
   background: var(--bg);
@@ -1414,7 +1423,10 @@ input[type="date"]:focus {
    schon da, wo der Tipp hinfuehren wuerde. */
 .listen-zeile.waehlbar { cursor: pointer; transition: border-color .12s, background .12s; }
 .listen-zeile.waehlbar:hover { border-color: var(--accent); background: var(--hover); }
-.lz-kopf { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+/* Nimmt den Platz links. flex-basis auto (nicht 0), damit ein langer Name die
+   Knoepfe umbrechen laesst, statt sich selbst abzuschneiden - ein halber
+   Listenname waere hier schlechter als eine zweite Zeile. */
+.lz-kopf { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; flex: 1 1 auto; }
 .lz-name { font-size: 15px; font-weight: 600; }
 /* Der Name ist bei waehlbaren Zeilen ein echter Knopf - die Zeile selbst
    bekommt bewusst KEIN role="button": sie enthaelt weitere Knoepfe, und ein
@@ -1433,15 +1445,23 @@ button.lz-name:hover { color: var(--accent); }
   padding: 1px 6px; border-radius: 6px;
 }
 .lz-von { font-size: 12px; color: var(--muted); word-break: break-all; }
-.lz-knoepfe { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.btn.klein { padding: 5px 10px; font-size: 12.5px; }
+/* flex: none - die Gruppe ist so breit wie ihre Knoepfe und wird durch das
+   flex-grow des Namens an den rechten Rand geschoben. */
+.lz-knoepfe { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: none; }
+.btn.klein { padding: 4px 10px; font-size: 12.5px; }
 /* Loeschen als eigenes Symbol statt gleichrangiger dritter Text-Knopf neben
-   Teilen/Umbenennen - an den rechten Rand der Zeile geschoben, damit die
-   unwiderrufliche Aktion nicht einfach mittendrin steht. */
-.lz-loeschen { margin-left: auto; }
+   Teilen/Umbenennen. Es steht am Ende der Zeile, aber mit etwas mehr Luft
+   davor, damit die unwiderrufliche Aktion nicht direkt an "Umbenennen"
+   klebt. Frueher stand hier margin-left: auto - das ging, solange die
+   Knopfgruppe die ganze Zeilenbreite einnahm; jetzt ist sie nur so breit wie
+   ihr Inhalt, und auto haette gar nichts mehr zu verteilen. */
+.lz-loeschen { margin-left: 6px; }
 .lz-geteilt {
+  /* Eigene Zeile unter Name und Knoepfen: der Hinweis gehoert zur ganzen
+     Zeile, nicht neben einen der beiden. */
+  flex-basis: 100%;
   align-self: flex-start;
-  background: none; border: 0; padding: 2px 0;
+  background: none; border: 0; padding: 0;
   font: inherit; font-size: 12px; font-weight: 600; color: var(--accent);
   cursor: pointer; text-align: left;
 }
