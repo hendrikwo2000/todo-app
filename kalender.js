@@ -38,7 +38,6 @@
 const kalPanel       = document.getElementById("kalenderPanel");
 const kalHintergrund = document.getElementById("kalenderHintergrund");
 const kalMonatName   = document.getElementById("kalMonatName");
-const kalUeberfaellig = document.getElementById("kalUeberfaellig");
 const kalWochentage  = document.getElementById("kalWochentage");
 const kalRaster      = document.getElementById("kalRaster");
 const kalTagesliste  = document.getElementById("kalTagesliste");
@@ -60,7 +59,6 @@ const UHR_FORMAT   = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute:
 // Schluessel der Sonder-Auswahl "Ueberfaellig" - steht anstelle eines
 // ISO-Datums in kalAuswahl, weil Ueberfaelliges ueber viele Tage verstreut
 // liegt und sonst in irgendeinem Vormonat verschwinden wuerde.
-const UEBERFAELLIG = "ueberfaellig";
 
 // Ab dieser Fensterbreite steht der Kalender NEBEN der Liste (Split) statt
 // darueber. Die Zahl kommt aus dem Platz: rund 440px Kalender lassen darunter
@@ -100,7 +98,7 @@ pflegeBreit();
 let kalOffen = false;
 let kalJahr = 0;         // angezeigter Monat
 let kalMonatNr = 0;      // 0-basiert, wie bei Date
-let kalAuswahl = null;   // ISO-Tag, UEBERFAELLIG oder null (nichts gewaehlt)
+let kalAuswahl = null;   // ISO-Tag oder null (vor dem ersten Zeichnen)
 
 // Vollbild: Tagesliste weg, Raster ueber die ganze Hoehe. Absichtlich NICHT
 // gemerkt - beim naechsten Oeffnen saehe man eine App ohne Tagesliste und
@@ -472,14 +470,6 @@ function zeichneKalender() {
   // ein vergangener Google-Termin ist nicht "ueberfaellig", den kann man nicht
   // nachholen.
   const ueberfaellige = todos.filter(t => t.due < heute);
-  // data-leer merkt sich die EIGENE Entscheidung dieses Elements. zeichneUnten()
-  // blendet im Fokus-Modus alles Raster-Zubehoer aus und muss beim Zurueck-
-  // schalten wissen, was davon ueberhaupt wieder auftauchen darf.
-  kalUeberfaellig.dataset.leer = ueberfaellige.length === 0 ? "1" : "0";
-  kalUeberfaellig.hidden = ueberfaellige.length === 0;
-  kalUeberfaellig.textContent = `⚠ Überfällig (${ueberfaellige.length})`;
-  kalUeberfaellig.classList.toggle("gewaehlt", kalAuswahl === UEBERFAELLIG);
-
   zeichneFilter();
   zeichneWahl();
   // Das Raster arbeitet mit dem Spurenplan (feste Reihen), die Tagesliste mit
@@ -560,8 +550,9 @@ function zeichneFilter() {
   // Datenquelle - und sie ist immer da, auch ohne Google.
   quellen.push({ schluessel: KW_QUELLE, name: "KW", art: "kw" });
 
-  // data-leer: siehe kalUeberfaellig oben - zeichneUnten() darf beim Zurueck
-  // aus dem Fokus nur wieder einblenden, was hier nicht selbst abgewaehlt ist.
+  // data-leer merkt die EIGENE Entscheidung dieses Elements: zeichneUnten()
+  // blendet im Fokus-Modus alles Raster-Zubehoer aus und darf beim Zurueck
+  // nur einblenden, was hier nicht selbst abgewaehlt ist.
   kalFilter.dataset.leer = quellen.length < 2 ? "1" : "0";
   kalFilter.hidden = quellen.length < 2;
   kalFilter.innerHTML = "";
@@ -863,6 +854,10 @@ function zeichneRaster(tage, spuren, heute) {
   }
 
   const zeilen = Math.ceil((ersterWochentag + tageImMonat) / 7);
+  // Das CSS rechnet daraus die Wunsch- und die Mindesthoehe des Rasters (siehe
+  // --kal-zeilen in style.css). Ein Monat mit 5 Wochen soll nicht so hoch sein
+  // wie einer mit 6, und schrumpfen darf es nur bis zur Untergrenze.
+  kalRaster.style.setProperty("--kal-zeilen", String(zeilen));
   for (let zeile = 0; zeile < zeilen; zeile++) {
     // Wochenzahl aus dem Montag der Zeile - der darf ruhig im Vor- oder
     // Folgemonat liegen, Date rechnet das von selbst um.
@@ -1027,17 +1022,14 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
   let titel;
   let todosDesTages;
   let termineDesTages = [];
-  let mitDatum = false;
-  if (kalAuswahl === UEBERFAELLIG) {
-    titel = "Überfällig";
-    todosDesTages = ueberfaellige;
-    mitDatum = true;   // liegt quer ueber viele Tage, das Datum gehoert dazu
-  } else if (kalAuswahl) {
+  if (kalAuswahl) {
     const [j, m, t] = kalAuswahl.split("-").map(Number);
     titel = TAG_FORMAT.format(new Date(j, m - 1, t));
     todosDesTages = tage[kalAuswahl] || [];
     termineDesTages = tageTermine[kalAuswahl] || [];
   } else {
+    // Sollte nicht vorkommen (jedes Oeffnen waehlt heute), aber ein leerer
+    // Bereich ist die ehrlichere Antwort als eine erfundene.
     titel = "";
     todosDesTages = [];
   }
@@ -1055,22 +1047,22 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     kalTagesliste.appendChild(kopf);
   }
 
-  // Ein echter Tag ist gewaehlt: zwei feste Abschnitte, jeder mit eigener
-  // Ueberschrift und einem ＋ daneben - auch wenn er leer ist. Ein leerer
-  // Abschnitt ist die ehrlichere Antwort auf "was ist an dem Tag?" als gar
-  // keiner, und das ＋ sitzt genau da, wo man es sucht.
-  const echterTag = !!kalAuswahl && kalAuswahl !== UEBERFAELLIG;
-
-  if (echterTag) {
+  // Ein gewaehlter Tag hat feste Abschnitte, jeder mit eigener Ueberschrift -
+  // der ToDo-Abschnitt auch dann, wenn er leer ist. Ein leerer Abschnitt ist
+  // die ehrlichere Antwort auf "was ist an dem Tag?" als gar keiner, und das
+  // ＋ sitzt genau da, wo man es sucht.
+  if (kalAuswahl) {
     // Faelliges ist ROT - Ueberschrift und Zeilenrand. Das ist die Regel aus
     // dem Raster ("rot = da liegt was an"), hier zu Ende gefuehrt: wer den
     // Streifen aufmacht, soll sehen, was drueckt, ohne erst zu lesen.
     const faelligHeute = kalAuswahl === heute;
 
     // Liegengebliebenes gehoert an den Anfang des heutigen Tages: es ist
-    // faellig, nur eben schon laenger. Frueher lag es allein hinter dem
-    // ⚠-Chip - wer nur auf "heute" schaute, sah es also nie. An anderen Tagen
-    // hat es nichts zu suchen, dort ist es weder faellig noch entstanden.
+    // faellig, nur eben schon laenger. Bis zum 13.08.2026 lag es allein hinter
+    // einem ⚠-Chip ueber dem Raster - wer nur auf "heute" schaute, sah es also
+    // nie. Der Chip ist raus, seit es hier steht: derselbe Inhalt zweimal,
+    // und die 41 px fehlten dem Tagesbereich. An anderen Tagen hat es nichts
+    // zu suchen, dort ist es weder faellig noch entstanden.
     if (faelligHeute && ueberfaellige.length) {
       kalTagesliste.appendChild(baueGruppenKopf(
         `Überfällig (${ueberfaellige.length})`, null, null, true));
@@ -1082,7 +1074,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
       "ToDo", faelligHeute && todosDesTages.length > 0));
     if (todoEingabeOffen && aktiveListe) kalTagesliste.appendChild(baueAnlegeZeile(kalAuswahl));
     for (const t of todosDesTages) {
-      kalTagesliste.appendChild(baueEintrag(t, mitDatum, faelligHeute));
+      kalTagesliste.appendChild(baueEintrag(t, false, faelligHeute));
     }
     if (!todosDesTages.length) kalTagesliste.appendChild(baueLeerZeile("Nichts fällig."));
 
@@ -1113,17 +1105,6 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
         kalTagesliste.appendChild(baueLeerZeile(googleZustand.verbunden
           ? "Keine Termine." : "Kein Google-Kalender verbunden."));
       }
-    }
-  } else {
-    // Ueberfaellig-Ausschnitt (oder gar keine Auswahl): nur ToDos, ohne
-    // Ueberschriften - dort gibt es keinen Tag, auf den sich ein ＋ beziehen
-    // koennte.
-    for (const t of todosDesTages) kalTagesliste.appendChild(baueEintrag(t, mitDatum));
-    // Ohne gewaehlten Tag bleibt der Bereich LEER. Die fruehere Zeile "In
-    // diesem Monat steht nichts an" war schlicht falsch - im Monat konnte
-    // eine Menge stehen, nur eben kein Tag ausgewaehlt sein.
-    if (!todosDesTages.length && kalAuswahl) {
-      kalTagesliste.appendChild(baueLeerZeile("Nichts fällig."));
     }
   }
 
@@ -1725,7 +1706,7 @@ function monatVerschieben(schritt) {
 // heraus, blaettert das Raster mit - sonst zeigte es einen Monat, in dem der
 // gewaehlte Tag gar nicht vorkommt.
 function wechsleTag(schritt) {
-  if (!kalAuswahl || kalAuswahl === UEBERFAELLIG) return;
+  if (!kalAuswahl) return;
   const [j, m, t] = kalAuswahl.split("-").map(Number);
   const d = new Date(j, m - 1, t + schritt);
   kalAuswahl = isoVonDate(d);
@@ -1797,7 +1778,6 @@ function fokusMoeglich() {
 // das Raster, und ein Chip ueber den Gewohnheiten haette keinen Bezug.
 const RASTER_TEILE = [
   document.querySelector(".kal-kopf"),
-  kalUeberfaellig,
   kalFilter,
   kalWochentage,
   kalRaster,
@@ -2115,12 +2095,6 @@ document.getElementById("kalVor").addEventListener("click", () => monatVerschieb
 // nicht mehr: er sitzt im Kalender-Kopf, den es im Fokus-Modus gar nicht gibt.
 document.getElementById("kalHeute").addEventListener("click", springeZuHeute);
 document.getElementById("kalVollbild").addEventListener("click", () => setzeVollbild(!kalVollbild));
-kalUeberfaellig.addEventListener("click", () => {
-  // Ueberfaelliges steht in der Tagesliste - im Vollbild gibt es die nicht.
-  if (kalVollbild) setzeVollbild(false);
-  kalAuswahl = kalAuswahl === UEBERFAELLIG ? todayStr() : UEBERFAELLIG;
-  zeichneKalender();
-});
 kalRaster.addEventListener("click", e => {
   const zelle = e.target.closest(".kal-tag");
   if (zelle) waehleTag(zelle.dataset.tag);

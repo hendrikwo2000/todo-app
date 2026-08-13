@@ -915,15 +915,16 @@ man auf dem Board nicht wiederfindet. Wer das je wieder ändert, braucht
 zusätzlich eine Ausnahme in `renderColumn()` und `synchronisiereOhneBereich()`,
 sonst zeigt der Sprung aus dem Kalender ins Leere.
 
-**Überfällig-Chip.** Eigener Einstieg über dem Raster, weil Überfälliges quer
-über Vormonate liegt und im Raster des laufenden Monats gar nicht auftaucht.
-Auswahl `kalAuswahl` hält deshalb entweder ein ISO-Datum oder den
-Sonderwert `"ueberfaellig"`.
-
-**Am HEUTIGEN Tag steht Überfälliges zusätzlich mit in der Tagesliste** (seit
+**Am HEUTIGEN Tag steht Überfälliges mit in der Tagesliste** (seit
 13.08.2026), als eigener Abschnitt „Überfällig (n)" über den heutigen ToDos und
-mit Datum je Zeile. Vorher lag es allein hinter dem Chip — wer nur auf „heute"
-schaute, sah es also nie, obwohl es fällig ist, nur eben schon länger. An
+mit Datum je Zeile. Bis dahin lag es allein hinter einem **⚠-Chip** über dem
+Raster — wer nur auf „heute" schaute, sah es also nie, obwohl es fällig ist,
+nur eben schon länger.
+
+**Den Chip gibt es seit demselben Tag nicht mehr**, und mit ihm ist der
+Sonderwert `"ueberfaellig"` in `kalAuswahl` gefallen: derselbe Inhalt an zwei
+Stellen, und seine 41 px fehlten dem Tagesbereich. `kalAuswahl` hält jetzt
+immer ein ISO-Datum. An
 anderen Tagen bleibt es weg: dort ist es weder fällig noch entstanden.
 
 **Rot = da liegt was an.** `.kal-tag.faellig` färbt die Tageszahl, und zwar für
@@ -1136,11 +1137,41 @@ erklärenden Leerzeile. Für die ToDos gilt das **nicht**: deren Abschnitt bleib
 auch leer stehen („Nichts fällig."), weil das die eigentliche Frage des
 Streifens beantwortet.
 
+**Die Zeilen sind bewusst knapp bemessen** (seit 13.08.2026): `.kal-eintrag`
+hat 7 px Innenabstand statt 9, die Gruppenüberschrift 5 px Abstand nach oben
+statt 7, die Liste 5 px zwischen den Zeilen statt 6. Zusammen rund 30 px bei
+acht Zeilen. **Weiter runter geht es nicht** — eine einzeilige Zeile misst so
+noch 35 px, und darunter trifft man sie am Handy nicht mehr zuverlässig.
+
 **Zellen: Zahl oben, Rest darunter.** `justify-content: flex-start` statt
 `center` — sonst wandert die Tageszahl je nach Anzahl der Balken auf und ab und
-steht in einer Zeile nicht mehr auf gleicher Höhe. Mindesthöhe 58 px (vorher
-44), Radius 4 px (vorher 9): im Vergleich mit Googles Monatsansicht wirkte das
-Raster gestaucht und zu stark abgerundet.
+steht in einer Zeile nicht mehr auf gleicher Höhe. Radius 4 px (vorher 9): im
+Vergleich mit Googles Monatsansicht wirkte das Raster zu stark abgerundet.
+
+**Das Raster gibt nach, wenn der Tagesbereich Platz braucht** (seit
+13.08.2026). Die Zellen tragen deshalb KEINE `min-height` mehr — die
+Zeilenhöhe kommt aus dem Raster selbst:
+
+* `--kal-zeilen` setzt `zeichneRaster()` beim Zeichnen (4 bis 6 Wochen).
+* `height: calc(--kal-zeilen * 58px + …)` ist die **Wunschhöhe** — 58 px war
+  vorher das feste Maß, bei dem die Zellen neben Googles Monatsansicht
+  bestehen.
+* `min-height` mit 36 px je Zeile ist die **Untergrenze**: darunter passen
+  Tageszahl (20 px) und Punktreihe (bis 29 px) nicht mehr übereinander.
+* `grid-auto-rows: minmax(0, 1fr)` verteilt, was dabei herauskommt. Ohne das
+  blieben die Zeilen auf 58 px stehen und liefen unten aus dem Panel.
+
+**Der Auslöser sitzt aber woanders** — an `.kal-liste`: ohne deren
+`min-height` bekäme die Tagesliste nur den Rest, der nach dem Raster übrig
+bleibt, und das Raster hätte keinen Grund nachzugeben. Erst die Mindesthöhe
+macht den Platz knapp. Sie gilt ab 780 px Fensterhöhe (`min(360px, 44vh)`);
+darunter reichen beide Mindestmaße zusammen nicht mehr, und ein scrollender
+Tagesbereich ist besser als ein Raster, das aus dem Panel läuft.
+
+Gemessen am Handy (375×812), voller Monat mit 6 Wochen: Tagesliste 197 → 357 px,
+Raster 358 → 239 px (Zellen 38 px). Am Rechner (900 px) bleibt das Raster bei
+346 px und Zellen von 56 px — dort war ohnehin genug Platz. Ein Monat mit nur
+4 Rasterzeilen behält seine vollen 58 px.
 
 **Jeder Tag hat einen dezenten Rahmen**, der gewählte einen Ring
 (`box-shadow: inset`, damit die Rasterlinie stehen bleibt und nichts um einen
@@ -1224,7 +1255,7 @@ wenn im Zeitraum überhaupt ein Termin eine eigene Farbe trägt — sonst wäre 
 eine Google-Anfrage umsonst. Vor dem Einsetzen in einen `style`-Wert prüft
 `farbWert()` gegen `#rrggbb`; alles andere wäre fremder Text in unserem CSS.
 
-Google-Termine zählen **nicht** in den Überfällig-Chip und nicht in die
+Google-Termine zählen **nicht** in den Überfällig-Abschnitt und nicht in die
 App-Icon-Badge — das sind keine Aufgaben. Beschreibungen kommen teils als HTML
 und werden entschärft (Tags raus) und als reiner Text gesetzt.
 
@@ -1408,14 +1439,12 @@ darüber.
 
 **Die Höhen rechnet niemand aus:** Tagesliste und `#kalUnten` tragen beide
 `flex: 1; min-height: 0`, teilen sich also, was übrig bleibt. Im Fokus-Modus
-wird das etwa hälftig (gemessen bei 900 px Panelhöhe: 409 zu 395), im
-Kalender-Modus nimmt das Raster seine natürliche Höhe (~358 px) und die
-Tagesliste den Rest.
+wird das etwa hälftig (gemessen bei 900 px Panelhöhe: 409 zu 395).
 
-**Am Handy bleiben der Tagesliste im Kalender-Modus nur ~197 px** — das Raster
-braucht seine 358, und mehr ist bei 812 px Bildschirmhöhe nicht zu holen. Wer
-mehr Tag sehen will, tippt auf einen Fokus-Reiter oder klappt das Raster über
-das Vollbild weg.
+Im **Kalender-Modus** gilt die Sonderregel aus dem Kalender-Abschnitt: die
+Tagesliste hat eine Mindesthöhe, und das Raster gibt bis zu seiner eigenen
+Untergrenze nach. Am Handy heißt das 357 zu 239 px statt vorher 197 zu 358 —
+ein normaler Tag passt damit ohne Scrollen.
 
 **Wer umschaltet:** `kalUntenModus` in `kalender.js` (`"kalender"` / `"fokus"`),
 gesetzt über `setzeUnten()`. `zeichneUnten()` ist die **einzige** Stelle, an
@@ -1425,7 +1454,7 @@ der Sichtbarkeit entschieden wird — sonst stünde „genau eines" an zwei Orte
 ob es Fokus überhaupt gibt.
 
 **Was mit dem Raster kommt und geht**, steht als Liste `RASTER_TEILE` in
-`kalender.js`: Kalender-Kopf, Überfällig-Chip, Quellen-Filter, Wochentage,
+`kalender.js`: Kalender-Kopf, Quellen-Filter, Wochentage,
 Raster. Der Kopf muss mit — ein Monatsname mit Blätterpfeilen über den
 Gewohnheiten navigiert durch nichts.
 
@@ -1438,11 +1467,11 @@ weil ohne Pille auch deren Höhe wegfällt, setzt `html.breit` dort `min-height`
 und `padding-top` auf 0 — sonst gingen 18 px an eine leere Zeile, die dem
 Tagesbereich fehlen.
 
-**Falle dabei: Chip und Filter blenden sich auch selbst aus** (leer bzw. nur
-eine Quelle). Würde `zeichneUnten()` beim Zurückschalten stumpf alles wieder
-einblenden, stünde ein „⚠ Überfällig (0)" da. Sie merken ihre eigene
-Entscheidung deshalb in `data-leer`, und `zeichneUnten()` blendet nur ein, was
-dort nicht auf `"1"` steht.
+**Falle dabei: der Filter blendet sich auch selbst aus** (nur eine Quelle).
+Würde `zeichneUnten()` beim Zurückschalten stumpf alles wieder einblenden,
+stünde eine leere Pillenzeile da. Er merkt seine eigene Entscheidung deshalb
+in `data-leer`, und `zeichneUnten()` blendet nur ein, was dort nicht auf `"1"`
+steht. (Bis zum Wegfall des ⚠-Chips galt dasselbe für den.)
 
 **Und wieder die `[hidden]`-Falle** — diesmal gleich vierfach: `.kal-kopf`
 (flex), `.kal-wochentage`/`.kal-raster` (grid) und `.kal-unten` (flex) brauchen
@@ -1515,9 +1544,7 @@ musste es sein, solange Tagesliste und Fokus sich denselben Platz teilten.
 **Seit die Tagesliste immer dasteht, gibt es nichts wegzuschalten:** ein leerer
 Tagesbereich wäre kein Zustand, den jemand haben will.
 
-Aus demselben Grund springt der **Überfällig-Chip** beim zweiten Tipp auf
-`heute` zurück statt auf `null` — vorher blieb die Liste leer stehen. Auch
-„Heute" und der Chip müssen den Tag nicht mehr nach vorn holen: beide sitzen im
+Auch „Heute" muss den Tag nicht mehr nach vorn holen: der Knopf sitzt im
 Kalender-Kopf, den es im Fokus-Modus gar nicht gibt.
 
 ### Zwei Reiter: Gewohnheiten oder Timer

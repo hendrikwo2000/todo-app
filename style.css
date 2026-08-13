@@ -1840,23 +1840,10 @@ html:not(.breit) #kalZu { display: none; }
 .kal-schliessen { font-size: 15px; margin-left: 4px; }
 .kal-pfeil:hover, .kal-schliessen:hover { color: var(--accent); background: var(--hover); }
 
-/* Ueberfaellig-Chip: eigener Einstieg, weil Ueberfaelliges quer ueber
-   Vormonate liegt und im Raster des laufenden Monats gar nicht auftaucht. */
-.kal-chip {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: 1px solid var(--red);
-  border-radius: 9px;
-  background: var(--del-soft);
-  color: var(--red);
-  font: inherit; font-size: 13px; font-weight: 600;
-  padding: 6px 10px;
-  cursor: pointer;
-}
-.kal-chip.gewaehlt { background: var(--red); color: #fff; }
-/* display:block oben schlaegt sonst das eingebaute [hidden] des Browsers. */
-.kal-chip[hidden] { display: none; }
+/* Der Ueberfaellig-Chip stand hier bis zum 13.08.2026: ein eigener Einstieg
+   ueber dem Raster, weil Ueberfaelliges quer ueber Vormonate liegt. Seit es
+   als eigener Abschnitt oben in der Tagesliste steht, war er derselbe Inhalt
+   zweimal - und seine 41 px fehlten genau dort, wo man sie braucht. */
 
 /* Erste Spalte ist die Kalenderwoche (ISO 8601, selbst gerechnet - siehe
    kalenderwoche() in kalender.js), danach die sieben Wochentage. */
@@ -1869,6 +1856,25 @@ html:not(.breit) #kalZu { display: none; }
   gap: 2px;
 }
 .kal-wochentage { font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; }
+
+/* Das Raster gibt nach, wenn der Tagesbereich darueber Platz braucht.
+   --kal-zeilen setzt kalender.js beim Zeichnen (5 oder 6 Wochen).
+
+   height ist die WUNSCHhoehe (58 px je Zeile - das Mass, bei dem die Zellen
+   neben Googles Monatsansicht bestehen), min-height die Untergrenze (36 px:
+   darunter passen Tageszahl und Punktreihe nicht mehr uebereinander).
+   Dazwischen entscheidet flex-shrink. Die Zeilen teilen sich per
+   grid-auto-rows: minmax(0, 1fr) genau das, was dabei herauskommt - ohne das
+   blieben sie auf 58 px stehen und liefen unten aus dem Panel.
+
+   Am Handy greift das bei jedem Monat: 6 Zeilen a 58 px waren dort 358 px von
+   812, und der Tagesbereich musste ab drei Eintraegen scrollen. */
+.kal-raster {
+  flex: 0 1 auto;
+  height: calc(var(--kal-zeilen, 6) * 58px + (var(--kal-zeilen, 6) - 1) * 2px);
+  min-height: calc(var(--kal-zeilen, 6) * 36px + (var(--kal-zeilen, 6) - 1) * 2px);
+  grid-auto-rows: minmax(0, 1fr);
+}
 /* Ueber dem Raster gehoert JEDE Wischrichtung dem Kalender: waagerecht
    blaettert den Monat, senkrecht schaltet das Vollbild. Ohne touch-action:none
    faengt der Browser die senkrechte Bewegung als Scrollen ab, bevor unser
@@ -1905,7 +1911,9 @@ html:not(.breit) #kalZu { display: none; }
    Platz sammelt sich unten - dasselbe Bild wie in einem echten Kalenderblatt.
    Zentriert wanderte die Zahl je nach Anzahl der Balken auf und ab. */
 .kal-tag {
-  min-height: 58px;
+  /* KEIN min-height: die Zeilenhoehe kommt aus dem Raster (grid-auto-rows,
+     siehe oben). Stuende hier eine feste Zahl, zoege sie die Zeile wieder auf
+     und das Raster koennte nicht mehr nachgeben. */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1965,6 +1973,9 @@ html:not(.breit) #kalZu { display: none; }
 .kalender.vollbild .kal-liste { display: none; }
 .kalender.vollbild .kal-raster {
   flex: 1;
+  /* height/min-height der Grundregel zuruecknehmen: im Vollbild gibt es keine
+     Wunschhoehe, das Raster IST der Bildschirm. */
+  height: auto;
   min-height: 0;
   grid-auto-rows: minmax(0, 1fr);
   padding-bottom: max(10px, env(safe-area-inset-bottom));
@@ -2056,12 +2067,24 @@ html:not(.breit) #kalZu { display: none; }
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   padding-bottom: max(14px, env(safe-area-inset-bottom));
+}
+/* Das ist der Ausloeser fuers Schrumpfen des Rasters: ohne eine Mindesthoehe
+   hier bekaeme die Liste nur den Rest, der nach dem Raster uebrig bleibt (am
+   Handy 197 px), und das Raster haette keinen Grund nachzugeben. Mit ihr wird
+   der Platz knapp, und das Raster gibt bis zu seiner eigenen Untergrenze nach.
+
+   Erst ab 780 px Fensterhoehe (jedes aktuelle Handy im Hochformat liegt
+   darueber): darunter reichen die beiden Mindestmasse zusammen nicht mehr,
+   und dann ist ein scrollender Tagesbereich besser als ein Raster, das unten
+   aus dem Panel laeuft. */
+@media (min-height: 780px) {
+  .kal-liste { min-height: min(360px, 44vh); }
 }
 .kal-liste-kopf {
   display: flex; align-items: center; gap: 7px;
-  margin: 4px 0 2px;
+  margin: 0 0 2px;
   font-size: 13px; font-weight: 700; color: var(--muted);
 }
 .kal-heute-chip {
@@ -2071,13 +2094,17 @@ html:not(.breit) #kalZu { display: none; }
 }
 .kal-leer { margin: 2px 0; font-size: 13.5px; color: var(--muted); }
 
+/* padding 7 statt 9: eine Zeile ist damit rund 4 px flacher, bei acht Zeilen
+   sind das gut 30 px fuer den Tagesbereich. Weiter runter geht es nicht -
+   eine einzeilige Zeile misst so noch 35 px, und darunter trifft man sie am
+   Handy nicht mehr zuverlaessig. */
 .kal-eintrag {
   display: flex;
   align-items: flex-start;
   gap: 9px;
   width: 100%;
   text-align: left;
-  padding: 9px 11px;
+  padding: 7px 11px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--row);
@@ -2125,7 +2152,9 @@ html:not(.breit) #kalZu { display: none; }
   justify-content: center;
   flex: none;
   width: 38px;
-  padding-top: 9px;
+  /* Zieht mit dem Innenabstand des Eintrags mit (7 px), damit das Kaestchen
+     auf der Titelzeile sitzt und nicht darunter. */
+  padding-top: 7px;
   cursor: pointer;
 }
 .kal-eintrag-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -2259,7 +2288,10 @@ html:not(.breit) #kalZu { display: none; }
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin: 7px 0 1px;
+  /* 5 statt 7 oben: die Ueberschrift gehoert optisch zu dem, was unter ihr
+     steht - der Abstand nach oben darf deshalb der groessere von beiden sein,
+     nur eben nicht so gross wie vorher. */
+  margin: 5px 0 1px;
   font-size: 11px; font-weight: 700;
   letter-spacing: .06em; text-transform: uppercase;
   color: var(--muted);
