@@ -148,13 +148,31 @@
          title="Fokus-Tracker öffnen">↗</a>
     </div>
 
-    <!-- Gehoert zum Raster und geht mit ihm: ein Monatsname mit Blaetterpfeilen
-         ueber den Gewohnheiten navigiert durch nichts. Das ✕ ist deshalb oben
-         in der Ansicht-Zeile geblieben. -->
+    <!-- Der Kalender-Block. Ein eigener Container, damit er GENAU so hoch ist
+         wie der Fokus-Block darunter (beide flex:1) - sonst kamen Kopf und
+         Wochentage zur Rasterhoehe dazu, der Kalender war 50 px hoeher, und
+         die Tagesliste sprang beim Umschalten der Reiter. -->
+    <div id="kalOben" class="kal-oben">
+    <!-- Kopf und Raster gehoeren zusammen: ein Monatsname mit Blaetterpfeilen
+         ueber den Gewohnheiten navigiert durch nichts. Das ✕ sitzt deshalb
+         oben in der Ansicht-Zeile. -->
     <div class="kal-kopf">
       <button type="button" id="kalZurueck" class="kal-pfeil" aria-label="Vorheriger Monat">‹</button>
       <button type="button" id="kalMonatName" class="kal-monat" aria-haspopup="true"></button>
       <button type="button" id="kalVor" class="kal-pfeil" aria-label="Nächster Monat">›</button>
+      <!-- Klappt den Quellen-Umschalter darunter auf. Als Trichter und nicht
+           als Emoji, weil die Zeile sonst nur Textzeichen traegt (‹ › ⤢) - und
+           weil es fuer "Filter" kein Emoji gibt, das jeder gleich liest.
+           Faerbt sich, sobald eine Quelle abgewaehlt ist: sonst wuesste man
+           bei zugeklapptem Filter nicht, warum etwas fehlt. -->
+      <button type="button" id="kalFilterKnopf" class="kal-pfeil kal-filter-knopf" hidden
+              aria-expanded="false" aria-controls="kalFilter"
+              aria-label="Quellen wählen" title="Welche Listen und Kalender das Raster zeigt">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M1.5 2.5h13l-5 6v5l-3 1.5v-6.5z" fill="none"
+                stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        </svg>
+      </button>
       <button type="button" id="kalHeute" class="btn klein">Heute</button>
       <!-- Vollbild: am Handy geht es auch per Wisch ueber dem Raster (nach
            unten gross, nach oben klein), am Rechner gibt es nur den Knopf. -->
@@ -163,14 +181,17 @@
     </div>
 
     <!-- Quellen-Umschalter: je eine Pille pro ToDo-Liste und pro
-         Google-Kalender. Erscheint erst ab zwei Quellen. -->
+         Google-Kalender. Liegt seit dem 13.08.2026 hinter dem Trichter im Kopf
+         und steht nur aufgeklappt da - als eigene Dauerzeile kostete er 37 px,
+         die dem Tagesbereich fehlten. -->
     <div id="kalFilter" class="kal-filter" hidden></div>
     <div id="kalWochentage" class="kal-wochentage"></div>
     <div id="kalRaster" class="kal-raster"></div>
+    </div><!-- /#kalOben -->
 
-    <!-- Der Fokus-Teil. Steht an derselben Stelle wie das Raster und tritt an
-         dessen Platz, sobald ein Fokus-Reiter gewaehlt ist. Beide zusammen
-         bilden den UNTEREN Teil des Streifens. -->
+    <!-- Der Fokus-Teil. Steht an derselben Stelle wie der Kalender-Block und
+         tritt an dessen Platz, sobald ein Fokus-Reiter gewaehlt ist. Beide
+         zusammen bilden den UNTEREN Teil des Streifens. -->
     <div id="kalUnten" class="kal-unten" hidden>
       <!-- Timer-Reiter. Die Struktur steht fest im HTML, fokus.js setzt im
            Sekundentakt nur Text und Ring-Versatz - ein SVG pro Sekunde neu zu

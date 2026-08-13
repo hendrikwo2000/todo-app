@@ -1152,14 +1152,19 @@ Vergleich mit Googles Monatsansicht wirkte das Raster zu stark abgerundet.
 13.08.2026). Die Zellen tragen deshalb KEINE `min-height` mehr — die
 Zeilenhöhe kommt aus dem Raster selbst:
 
-* `--kal-zeilen` setzt `zeichneRaster()` beim Zeichnen (4 bis 6 Wochen).
-* `height: calc(--kal-zeilen * 58px + …)` ist die **Wunschhöhe** — 58 px war
-  vorher das feste Maß, bei dem die Zellen neben Googles Monatsansicht
-  bestehen.
-* `min-height` mit 36 px je Zeile ist die **Untergrenze**: darunter passen
-  Tageszahl (20 px) und Punktreihe (bis 29 px) nicht mehr übereinander.
-* `grid-auto-rows: minmax(0, 1fr)` verteilt, was dabei herauskommt. Ohne das
-  blieben die Zeilen auf 58 px stehen und liefen unten aus dem Panel.
+* `flex: 1 1 auto` — das Raster füllt seinen Block (`.kal-oben`), statt eine
+  eigene Wunschhöhe zu behaupten. Es hatte einmal `height: calc(--kal-zeilen *
+  58px + …)`; damit war der Kalender-Teil 50 px höher als der Fokus-Teil, weil
+  Kopf und Wochentage noch dazukamen. Die 58 px waren ohnehin als UNTERgrenze
+  für die Optik gedacht (neben Googles Monatsansicht wirkte weniger gestaucht),
+  nicht als Deckel — ein Monat mit vier Rasterzeilen bekommt jetzt höhere
+  Zellen statt einer Lücke darunter.
+* `--kal-zeilen` setzt `zeichneRaster()` beim Zeichnen (4 bis 6 Wochen) — nur
+  noch für die Untergrenze.
+* `min-height` mit 36 px je Zeile ist eben diese **Untergrenze**: darunter
+  passen Tageszahl (20 px) und Punktreihe (bis 29 px) nicht mehr übereinander.
+* `grid-auto-rows: minmax(0, 1fr)` verteilt die Blockhöhe auf die Zeilen. Ohne
+  das blieben sie auf ihrer Inhaltshöhe stehen.
 
 **Der Auslöser sitzt aber woanders** — an `.kal-liste`: ohne deren
 `min-height` bekäme die Tagesliste nur den Rest, der nach dem Raster übrig
@@ -1168,10 +1173,11 @@ macht den Platz knapp. Sie gilt ab 780 px Fensterhöhe (`min(360px, 44vh)`);
 darunter reichen beide Mindestmaße zusammen nicht mehr, und ein scrollender
 Tagesbereich ist besser als ein Raster, das aus dem Panel läuft.
 
-Gemessen am Handy (375×812), voller Monat mit 6 Wochen: Tagesliste 197 → 357 px,
-Raster 358 → 239 px (Zellen 38 px). Am Rechner (900 px) bleibt das Raster bei
-346 px und Zellen von 56 px — dort war ohnehin genug Platz. Ein Monat mit nur
-4 Rasterzeilen behält seine vollen 58 px.
+Gemessen am Handy (375×812), voller Monat mit 6 Wochen: Tagesliste 197 → 357 px
+(kein Scrollen mehr), Raster 358 → 275 px bei Zellen von 44 px. Am Rechner
+(900 px): Tagesliste 306 → 409, Raster 332 bei 54 px Zellen. Ein Februar mit
+nur 4 Rasterzeilen bekommt dort 82 px hohe Zellen — der Block bleibt gleich
+hoch, die Zellen wachsen mit.
 
 **Jeder Tag hat einen dezenten Rahmen**, der gewählte einen Ring
 (`box-shadow: inset`, damit die Rasterlinie stehen bleibt und nichts um einen
@@ -1270,11 +1276,17 @@ einem Tag.
 bei jeder Änderung neu auf; ein halb ausgefülltes Formular wäre sonst weg.
 Gleiche Überlegung wie bei `anlegenText`.
 
-**Anlegen aus dem Kalender.** Unter der Überschrift ein Feld plus Knopf:
-Das ToDo landet in der gerade AKTIVEN Liste und dort ohne Bereich — der
-Kalender kennt keinen Bereich, und „Ohne Bereich" ist genau der Auffang dafür.
-Das Panel bleibt offen und der Fokus im Feld, damit mehrere Tage hintereinander
-zu befüllen sind. Das ＋ neben „Termine" erscheint nur, wenn die Verknüpfung
+**Anlegen aus dem Kalender.** Unter der Überschrift ein Feld mit zwei Knöpfen
+(„Anlegen" und „Abbrechen"): Das ToDo landet in der gerade AKTIVEN Liste und
+dort ohne Bereich — der Kalender kennt keinen Bereich, und „Ohne Bereich" ist
+genau der Auffang dafür.
+
+**Die Zeile schließt sich nach dem Anlegen** (`schliesseAnlegeZeile()`). Sie
+blieb einmal offen, damit man mehrere hintereinander eintippen kann — nur gab
+es dann gar keinen Weg mehr heraus: Escape leerte nur das Feld, und einen
+Abbrechen-Knopf gab es nicht. Escape schließt jetzt und **stoppt dabei die
+Weitergabe** (`stopPropagation`), sonst fängt der Panel-Handler denselben
+Tastendruck ab und schließt gleich den ganzen Kalender. Das ＋ neben „Termine" erscheint nur, wenn die Verknüpfung
 wirklich schreiben darf (`schreiben` aus `/api/google/status`) — ein Knopf, der
 in einen 403 läuft, wäre schlechter als keiner. Aus demselben Grund öffnet ein
 Tipp auf einen Termin nur dann das Formular; ohne Schreibrecht klappt er wie
@@ -1306,7 +1318,7 @@ eine Pille **KW** für die Kalenderwochen-Spalte — die ist zwar keine
 Datenquelle, wird aber genauso an- und abgeschaltet und gemerkt (Schlüssel
 `kw` im selben `kalQuellenAus`). Abgeschaltet fällt die erste Rasterspalte weg
 (`.ohne-kw`), das Raster geht auf sieben gleich breite Spalten zurück. Ab zwei
-Quellen sichtbar. Zwei localStorage-Mengen: `kalQuellenAus` (abgewählt) und
+Quellen gibt es den Trichter im Kalender-Kopf, der die Pillen aufklappt. Zwei localStorage-Mengen: `kalQuellenAus` (abgewählt) und
 `kalQuellenBekannt` (je gesehen). Ein NEU auftauchender Kalender startet
 ausgeschaltet — außer dem Hauptkalender —, eine spätere eigene Entscheidung
 wird davon nie wieder überschrieben.
@@ -1453,10 +1465,17 @@ der Sichtbarkeit entschieden wird — sonst stünde „genau eines" an zwei Orte
 `window.fokusVerstecken()` gerufen; `window.fokusHatZugang()` sagt umgekehrt,
 ob es Fokus überhaupt gibt.
 
-**Was mit dem Raster kommt und geht**, steht als Liste `RASTER_TEILE` in
-`kalender.js`: Kalender-Kopf, Quellen-Filter, Wochentage,
-Raster. Der Kopf muss mit — ein Monatsname mit Blätterpfeilen über den
-Gewohnheiten navigiert durch nichts.
+**Was mit dem Raster kommt und geht, steht in EINEM Container**: `#kalOben`
+umfasst Kalender-Kopf, Quellen-Filter, Wochentage und Raster. Der Kopf muss
+mit — ein Monatsname mit Blätterpfeilen über den Gewohnheiten navigiert durch
+nichts.
+
+**Der Container ist nicht nur Ordnung, er ist die Höhengleichheit**: `.kal-oben`
+und `.kal-unten` tragen beide `flex: 1`, sind damit exakt gleich hoch, und die
+Tagesliste darüber springt beim Reiterwechsel nicht mehr. Vorher schaltete
+`zeichneUnten()` vier Einzelteile, und jedes musste seine eigene Sichtbarkeit
+gegen diese Schleife verteidigen (dafür gab es ein `data-leer`-Attribut, das
+mit dem Container weggefallen ist).
 
 **Das ✕ sitzt deshalb nicht mehr im Kalender-Kopf**, sondern in der
 Ansicht-Zeile ganz oben: mit dem Raster wanderte es sonst mitten ins Panel
@@ -1467,15 +1486,20 @@ weil ohne Pille auch deren Höhe wegfällt, setzt `html.breit` dort `min-height`
 und `padding-top` auf 0 — sonst gingen 18 px an eine leere Zeile, die dem
 Tagesbereich fehlen.
 
-**Falle dabei: der Filter blendet sich auch selbst aus** (nur eine Quelle).
-Würde `zeichneUnten()` beim Zurückschalten stumpf alles wieder einblenden,
-stünde eine leere Pillenzeile da. Er merkt seine eigene Entscheidung deshalb
-in `data-leer`, und `zeichneUnten()` blendet nur ein, was dort nicht auf `"1"`
-steht. (Bis zum Wegfall des ⚠-Chips galt dasselbe für den.)
+**Der Quellen-Filter liegt hinter einem Trichter** im Kalender-Kopf
+(`#kalFilterKnopf`, Inline-SVG statt Emoji: die Zeile trägt sonst nur
+Textzeichen, und für „Filter" gibt es kein Emoji, das jeder gleich liest).
+Als Dauerzeile kostete er 37 px, die dem Tagesbereich fehlten; vier Pillen
+neben den Monatsnamen zu setzen geht am Handy nicht.
 
-**Und wieder die `[hidden]`-Falle** — diesmal gleich vierfach: `.kal-kopf`
-(flex), `.kal-wochentage`/`.kal-raster` (grid) und `.kal-unten` (flex) brauchen
-alle ihre eigene `[hidden] { display: none }`-Zeile, sonst bleiben sie sichtbar,
+`filterOffen` in `kalender.js` wird **nicht gemerkt** — jedes Öffnen startet
+zu (`frischOeffnen()`). Damit man trotzdem sieht, dass etwas abgewählt ist,
+färbt sich der Trichter (`.aktiv`): sonst suchte man den Grund für fehlende
+Einträge im Raster.
+
+**Und wieder die `[hidden]`-Falle**: `.kal-oben` und `.kal-unten` (beide flex)
+brauchen ihre eigene `[hidden] { display: none }`-Zeile, sonst bleiben sie
+sichtbar,
 obwohl das Attribut gesetzt ist. Dieselbe Familie wie bei `.offline-banner`.
 
 **Die Reiterzeile (`#fokKopf`) gehört dem Streifen, nicht dem Fokus-Inhalt.**

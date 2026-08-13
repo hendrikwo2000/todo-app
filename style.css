@@ -1870,8 +1870,17 @@ html:not(.breit) #kalZu { display: none; }
    Am Handy greift das bei jedem Monat: 6 Zeilen a 58 px waren dort 358 px von
    812, und der Tagesbereich musste ab drei Eintraegen scrollen. */
 .kal-raster {
-  flex: 0 1 auto;
-  height: calc(var(--kal-zeilen, 6) * 58px + (var(--kal-zeilen, 6) - 1) * 2px);
+  /* Das Raster fuellt seinen Block (.kal-oben), statt eine eigene Wunschhoehe
+     zu behaupten. Frueher waren es feste 58 px je Zeile - damit war der
+     Kalender-Teil 50 px hoeher als der Fokus-Teil und die Tagesliste sprang
+     beim Umschalten der Reiter. Ein Monat mit nur vier Rasterzeilen bekommt
+     jetzt hoehere Zellen statt einer Luecke darunter; die 58 px waren ohnehin
+     als UNTERgrenze fuer die Optik gedacht, nicht als Deckel.
+
+     min-height bleibt: 36 px je Zeile ist das Mass, unter dem Tageszahl und
+     Punktreihe nicht mehr uebereinander passen. Das Raster gibt bis dahin
+     nach, wenn die Tagesliste darueber Platz braucht. */
+  flex: 1 1 auto;
   min-height: calc(var(--kal-zeilen, 6) * 36px + (var(--kal-zeilen, 6) - 1) * 2px);
   grid-auto-rows: minmax(0, 1fr);
 }
@@ -1973,9 +1982,9 @@ html:not(.breit) #kalZu { display: none; }
 .kalender.vollbild .kal-liste { display: none; }
 .kalender.vollbild .kal-raster {
   flex: 1;
-  /* height/min-height der Grundregel zuruecknehmen: im Vollbild gibt es keine
+  /* Die Deckel der Grundregel zuruecknehmen: im Vollbild gibt es keine
      Wunschhoehe, das Raster IST der Bildschirm. */
-  height: auto;
+  max-height: none;
   min-height: 0;
   grid-auto-rows: minmax(0, 1fr);
   padding-bottom: max(10px, env(safe-area-inset-bottom));
@@ -1992,6 +2001,17 @@ html:not(.breit) #kalZu { display: none; }
 .kalender.vollbild .kal-zahl { text-align: center; }
 .kalender.vollbild .kal-punkte { display: none; }
 .kalender.vollbild .kal-tag.viele .kal-punkte::after { content: none; }
+/* Trichter im Kalender-Kopf: klappt den Quellen-Umschalter darunter auf.
+   inline-flex zentriert das SVG - deshalb braucht er auch die [hidden]-Zeile
+   (bei nur einer Quelle gibt es nichts zu waehlen). */
+.kal-filter-knopf { display: inline-flex; align-items: center; padding: 5px 7px; }
+.kal-filter-knopf[hidden] { display: none; }
+/* Aufgeklappt wie der Monatsname, wenn dessen Rad offen steht. */
+.kal-filter-knopf.offen { color: var(--accent); background: var(--accent-soft); }
+/* Etwas ist abgewaehlt - das muss man auch bei zugeklapptem Filter sehen,
+   sonst sucht man den Grund fuer fehlende Eintraege im Raster. */
+.kal-filter-knopf.aktiv { color: var(--accent); }
+
 .kal-vollbild-knopf { font-size: 15px; }
 .kalender.vollbild .kal-vollbild-knopf { color: var(--accent); background: var(--accent-soft); }
 
@@ -2041,6 +2061,19 @@ html:not(.breit) #kalZu { display: none; }
    flex:1 gibt ihm denselben Anteil wie der Tagesliste - beide teilen sich, was
    unter dem Kopf uebrig bleibt. min-height:0, damit die Kinder blaettern
    duerfen statt den Streifen aufzublaehen. */
+/* Der Kalender-Block: Kopf, Filter, Wochentage, Raster. Traegt dieselbe
+   flex-Angabe wie .kal-unten darunter, damit beide GENAU gleich hoch sind -
+   sonst kaemen Kopf und Wochentage zur Rasterhoehe dazu und die Tagesliste
+   spraenge beim Umschalten der Reiter (gemessen: 50 px). */
+.kal-oben {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.kal-oben[hidden] { display: none; }
+
 .kal-unten {
   flex: 1;
   min-height: 0;

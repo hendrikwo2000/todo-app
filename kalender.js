@@ -42,6 +42,8 @@ const kalWochentage  = document.getElementById("kalWochentage");
 const kalRaster      = document.getElementById("kalRaster");
 const kalTagesliste  = document.getElementById("kalTagesliste");
 const kalFilter      = document.getElementById("kalFilter");
+const kalFilterKnopf = document.getElementById("kalFilterKnopf");
+const kalOben        = document.getElementById("kalOben");
 const kalLock        = document.getElementById("lock");
 
 // Die beiden Dialoge liegen ausserhalb des Panels (siehe index.html) - unter
@@ -143,6 +145,11 @@ let offeneTermine = new Set();
 // Aenderung neu; ohne diesen Zwischenspeicher waere der Text dann weg.
 let anlegenText = "";
 let todoEingabeOffen = false;
+// Steht der Quellen-Umschalter offen? Bewusst NICHT gemerkt: er ist eine
+// Einstellung, die man selten anfasst, und zugeklappt gehoeren seine 37 px
+// dem Tagesbereich. Dass etwas abgewaehlt ist, sieht man am gefaerbten
+// Trichter im Kopf.
+let filterOffen = false;
 
 // Termin-Formular (eigener Dialog): offen ja/nein, welcher Termin (null =
 // neuer), auf welchen Tag er sich bezieht, und die Feldwerte. Auch die liegen
@@ -550,13 +557,21 @@ function zeichneFilter() {
   // Datenquelle - und sie ist immer da, auch ohne Google.
   quellen.push({ schluessel: KW_QUELLE, name: "KW", art: "kw" });
 
-  // data-leer merkt die EIGENE Entscheidung dieses Elements: zeichneUnten()
-  // blendet im Fokus-Modus alles Raster-Zubehoer aus und darf beim Zurueck
-  // nur einblenden, was hier nicht selbst abgewaehlt ist.
-  kalFilter.dataset.leer = quellen.length < 2 ? "1" : "0";
-  kalFilter.hidden = quellen.length < 2;
+  // Bei nur einer Quelle gibt es nichts zu waehlen - dann faellt auch der
+  // Trichter im Kopf weg.
+  const gibtsWas = quellen.length >= 2;
+  // Ist irgendetwas abgewaehlt? Dann faerbt sich der Trichter, sonst wuesste
+  // man bei zugeklapptem Filter nicht, warum im Raster etwas fehlt.
+  const etwasAus = quellen.some(q => !quelleAn(q.schluessel));
+  kalFilterKnopf.hidden = !gibtsWas;
+  kalFilterKnopf.classList.toggle("aktiv", etwasAus);
+  kalFilterKnopf.classList.toggle("offen", filterOffen);
+  kalFilterKnopf.setAttribute("aria-expanded", String(filterOffen && gibtsWas));
+
+  const zeigen = gibtsWas && filterOffen;
+  kalFilter.hidden = !zeigen;
   kalFilter.innerHTML = "";
-  if (quellen.length < 2) return;
+  if (!zeigen) return;
 
   for (const q of quellen) {
     const pille = document.createElement("button");
@@ -1070,7 +1085,13 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     }
 
     kalTagesliste.appendChild(baueGruppenKopf("ToDos", aktiveListe
-      ? () => { todoEingabeOffen = true; zeichneKalender(); fokussiereAnlegeFeld(); } : null,
+      ? () => {
+          todoEingabeOffen = true;
+          zeichneKalender();
+          // Direkt ins Feld: am Handy geht damit die Tastatur gleich mit auf.
+          const feld = kalTagesliste.querySelector(".kal-anlegen-feld");
+          if (feld) feld.focus();
+        } : null,
       "ToDo", faelligHeute && todosDesTages.length > 0));
     if (todoEingabeOffen && aktiveListe) kalTagesliste.appendChild(baueAnlegeZeile(kalAuswahl));
     for (const t of todosDesTages) {
@@ -1398,8 +1419,11 @@ async function loescheTerminBeiGoogle(termin) {
  * Das ToDo landet in der gerade AKTIVEN Liste und dort ohne Bereich - der
  * Kalender kennt keinen Bereich, und "Ohne Bereich" ist genau der Auffang
  * dafuer; zuordnen laesst es sich danach auf dem Board wie jedes andere.
- * Das Panel bleibt offen, damit man mehrere Tage hintereinander befuellen
- * kann.
+ *
+ * Die Zeile schliesst sich nach dem Anlegen. Sie blieb einmal offen, damit man
+ * mehrere hintereinander eintippen kann - nur gab es dann gar keinen Weg mehr
+ * heraus: Escape leerte das Feld, schloss es aber nicht, und einen Abbrechen-
+ * Knopf gab es nicht. Wer mehrere anlegen will, tippt wieder auf das ＋.
  */
 function baueAnlegeZeile(tag) {
   const zeile = document.createElement("div");
@@ -1427,12 +1451,27 @@ function baueAnlegeZeile(tag) {
   alsToDo.addEventListener("click", () => legeToDoAn(tag, feld.value));
   knoepfe.appendChild(alsToDo);
 
+  const abbrechen = document.createElement("button");
+  abbrechen.type = "button";
+  abbrechen.className = "btn klein";
+  abbrechen.textContent = "Abbrechen";
+  abbrechen.addEventListener("click", schliesseAnlegeZeile);
+  knoepfe.appendChild(abbrechen);
+
   zeile.appendChild(knoepfe);
   feld.addEventListener("keydown", e => {
     if (e.key === "Enter") { e.preventDefault(); legeToDoAn(tag, feld.value); }
-    else if (e.key === "Escape") { anlegenText = ""; feld.value = ""; feld.blur(); }
+    else if (e.key === "Escape") { e.stopPropagation(); schliesseAnlegeZeile(); }
   });
   return zeile;
+}
+
+// Escape stoppt oben die Weitergabe: sonst faenge der Panel-Handler den
+// Tastendruck mit ab und schloesse gleich den ganzen Kalender.
+function schliesseAnlegeZeile() {
+  todoEingabeOffen = false;
+  anlegenText = "";
+  zeichneKalender();
 }
 
 function legeToDoAn(tag, text) {
@@ -1442,15 +1481,8 @@ function legeToDoAn(tag, text) {
     state.categories.unshift({ id: bereich, name: OHNE_NAME });
   }
   anlegenText = "";
+  todoEingabeOffen = false;
   addTodoTo(bereich, null, text, tag, null);   // rendert und speichert selbst
-  fokussiereAnlegeFeld();
-}
-
-// Nach dem Anlegen zurueck ins Feld, damit der naechste Eintrag ohne
-// Mausweg folgt. Auf dem Handy haelt das nebenbei die Tastatur offen.
-function fokussiereAnlegeFeld() {
-  const feld = kalTagesliste.querySelector(".kal-anlegen-feld");
-  if (feld) feld.focus();
 }
 
 function baueGruppenKopf(text, beimPlus, einzahl, faellig) {
@@ -1773,16 +1805,6 @@ function fokusMoeglich() {
   return !!window.fokusHatZugang?.() && window.fokusImStreifen?.() !== false;
 }
 
-// Alles, was zum Monatsraster gehoert und mit ihm kommt und geht. Der
-// Ueberfaellig-Chip und der Quellen-Filter sind dabei: beide beziehen sich auf
-// das Raster, und ein Chip ueber den Gewohnheiten haette keinen Bezug.
-const RASTER_TEILE = [
-  document.querySelector(".kal-kopf"),
-  kalFilter,
-  kalWochentage,
-  kalRaster,
-];
-
 function zeichneUnten() {
   const mitFokus = fokusMoeglich();
   if (kalUntenModus === "fokus" && !mitFokus) kalUntenModus = "kalender";
@@ -1790,16 +1812,11 @@ function zeichneUnten() {
   // Der Modus bleibt gemerkt und steht beim Verlassen wieder da.
   const fokus = kalUntenModus === "fokus" && !kalVollbild;
 
-  for (const teil of RASTER_TEILE) {
-    if (!teil) continue;
-    // Chip und Filter blenden sich zusaetzlich selbst aus, wenn es nichts zu
-    // zeigen gibt (leer bzw. nur eine Quelle) - deshalb hier nur zuschalten,
-    // was der Fokus-Modus verdeckt, und ihre eigene Entscheidung nicht
-    // ueberschreiben. Die merken sie sich in data-leer.
-    if (fokus) teil.hidden = true;
-    else if (teil.dataset.leer !== "1") teil.hidden = false;
-  }
-
+  // Zwei Bloecke, genau einer sichtbar. Was INNERHALB des Kalender-Blocks
+  // erscheint (Filter ja/nein), entscheidet zeichneFilter() selbst - vorher
+  // wurden hier vier Einzelteile geschaltet, und jedes musste seine eigene
+  // Entscheidung gegen diese hier verteidigen.
+  kalOben.hidden = fokus;
   kalUnten.hidden = !fokus;
   if (fokus) window.fokusZeigen?.();
   else window.fokusVerstecken?.();
@@ -1857,6 +1874,9 @@ function stelleAnsichtHer() {
 function frischOeffnen() {
   kalVollbild = false;
   vollbildPlaetze = 0;
+  // Auch der Quellen-Umschalter startet zu: seine Zeile gehoert im Normalfall
+  // dem Tagesbereich.
+  filterOffen = false;
   kalPanel.classList.remove("vollbild");
   springeZuHeute();
 }
@@ -2094,6 +2114,10 @@ document.getElementById("kalVor").addEventListener("click", () => monatVerschieb
 // "Heute" ist ein Tipp auf einen Tag wie jeder andere. Umschalten muss er
 // nicht mehr: er sitzt im Kalender-Kopf, den es im Fokus-Modus gar nicht gibt.
 document.getElementById("kalHeute").addEventListener("click", springeZuHeute);
+kalFilterKnopf.addEventListener("click", () => {
+  filterOffen = !filterOffen;
+  zeichneKalender();
+});
 document.getElementById("kalVollbild").addEventListener("click", () => setzeVollbild(!kalVollbild));
 kalRaster.addEventListener("click", e => {
   const zelle = e.target.closest(".kal-tag");
