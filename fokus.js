@@ -17,12 +17,13 @@
    nichts selbst, es zeichnet nur.
 
    WO ES STEHT
-   Kein eigenes Panel: Fokus fuellt den UNTEREN TEIL des Kalender-Streifens
-   (#kalUnten in index.html) - denselben Platz, den sonst die Tagesliste
-   einnimmt. Dort steht immer genau eines von dreien: der gewaehlte Tag, die
-   Gewohnheiten oder der Timer, und alle drei sind gleich hoch.
+   Kein eigenes Panel: Fokus fuellt #kalUnten und tritt damit an die Stelle des
+   MONATSRASTERS - oben wechseln sich Raster und Fokus ab, die Tagesliste
+   darunter bleibt stehen. Bis zum 13.08.2026 teilten sich alle drei den
+   unteren Platz; ein Blick auf die Gewohnheiten kostete damit den Blick auf
+   "was ist heute faellig", und genau dafuer ist der Streifen da.
 
-   Wer das umschaltet, entscheidet kalender.js (kalUntenModus). Diese Datei
+   Wer das umschaltet, entscheidet kalender.js (kalObenModus). Diese Datei
    liefert nur den Inhalt und wird ueber window.fokusZeigen() /
    window.fokusVerstecken() ein- und ausgeblendet; window.fokusHatZugang()
    sagt umgekehrt, ob es Fokus ueberhaupt gibt.

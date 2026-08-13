@@ -68,16 +68,19 @@ const UEBERFAELLIG = "ueberfaellig";
 // einzige Spalte, und dann ist Umschalten ehrlicher als Nebeneinander.
 // Gehoert zu --kal-breite und html.kal-split in style.css.
 const SPLIT_AB = 1000;
-// Gemerkte Ansicht: "liste" (Streifen zu), "tag" oder "fokus". EIN Schluessel
-// fuer beide Modi - wer den Streifen am Rechner zuklappt, will ihn beim
-// naechsten Laden auch nicht sehen, und am Handy gilt dasselbe.
-// Der alte Wert "kalender" wird beim Lesen als "tag" verstanden.
+// Gemerkte Ansicht: "liste" (Streifen zu), "kalender" oder "fokus". EIN
+// Schluessel fuer beide Modi - wer den Streifen am Rechner zuklappt, will ihn
+// beim naechsten Laden auch nicht sehen, und am Handy gilt dasselbe.
+// Alte Werte ("tag" aus der Dreiteilung) werden beim Lesen als "kalender"
+// verstanden - alles ausser "liste" und "fokus" heisst Kalender.
 const ANSICHT_KEY = "kalAnsicht";
 
-// Was steht im unteren Teil des Streifens: "tag" oder "fokus". Immer genau
-// eines von beiden, und beide bekommen denselben Platz - alles, was unter dem
-// Monatsraster uebrig bleibt.
-let kalUntenModus = "tag";
+// Was steht im OBEREN Teil des Streifens: "kalender" (Monatsraster) oder
+// "fokus" (Gewohnheiten bzw. Timer). Die Tagesliste darunter steht immer da
+// und gehoert keinem der beiden - sie ist der Grund, warum es den Streifen
+// gibt. Bis zum 13.08.2026 teilten sich alle drei den unteren Platz; ein Blick
+// auf die Gewohnheiten kostete damit den Blick auf "was ist heute faellig".
+let kalObenModus = "kalender";
 
 function istSplit() { return window.innerWidth >= SPLIT_AB; }
 
@@ -468,6 +471,10 @@ function zeichneKalender() {
   // ein vergangener Google-Termin ist nicht "ueberfaellig", den kann man nicht
   // nachholen.
   const ueberfaellige = todos.filter(t => t.due < heute);
+  // data-leer merkt sich die EIGENE Entscheidung dieses Elements. zeichneUnten()
+  // blendet im Fokus-Modus alles Raster-Zubehoer aus und muss beim Zurueck-
+  // schalten wissen, was davon ueberhaupt wieder auftauchen darf.
+  kalUeberfaellig.dataset.leer = ueberfaellige.length === 0 ? "1" : "0";
   kalUeberfaellig.hidden = ueberfaellige.length === 0;
   kalUeberfaellig.textContent = `⚠ Überfällig (${ueberfaellige.length})`;
   kalUeberfaellig.classList.toggle("gewaehlt", kalAuswahl === UEBERFAELLIG);
@@ -552,6 +559,9 @@ function zeichneFilter() {
   // Datenquelle - und sie ist immer da, auch ohne Google.
   quellen.push({ schluessel: KW_QUELLE, name: "KW", art: "kw" });
 
+  // data-leer: siehe kalUeberfaellig oben - zeichneUnten() darf beim Zurueck
+  // aus dem Fokus nur wieder einblenden, was hier nicht selbst abgewaehlt ist.
+  kalFilter.dataset.leer = quellen.length < 2 ? "1" : "0";
   kalFilter.hidden = quellen.length < 2;
   kalFilter.innerHTML = "";
   if (quellen.length < 2) return;
@@ -1051,33 +1061,57 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
   const echterTag = !!kalAuswahl && kalAuswahl !== UEBERFAELLIG;
 
   if (echterTag) {
+    // Faelliges ist ROT - Ueberschrift und Zeilenrand. Das ist die Regel aus
+    // dem Raster ("rot = da liegt was an"), hier zu Ende gefuehrt: wer den
+    // Streifen aufmacht, soll sehen, was drueckt, ohne erst zu lesen.
+    const faelligHeute = kalAuswahl === heute;
+
     // Liegengebliebenes gehoert an den Anfang des heutigen Tages: es ist
     // faellig, nur eben schon laenger. Frueher lag es allein hinter dem
     // ⚠-Chip - wer nur auf "heute" schaute, sah es also nie. An anderen Tagen
     // hat es nichts zu suchen, dort ist es weder faellig noch entstanden.
-    if (kalAuswahl === heute && ueberfaellige.length) {
-      kalTagesliste.appendChild(baueGruppenKopf(`Überfällig (${ueberfaellige.length})`, null));
-      for (const t of ueberfaellige) kalTagesliste.appendChild(baueEintrag(t, true));
+    if (faelligHeute && ueberfaellige.length) {
+      kalTagesliste.appendChild(baueGruppenKopf(
+        `Überfällig (${ueberfaellige.length})`, null, null, true));
+      for (const t of ueberfaellige) kalTagesliste.appendChild(baueEintrag(t, true, true));
     }
 
     kalTagesliste.appendChild(baueGruppenKopf("ToDos", aktiveListe
-      ? () => { todoEingabeOffen = true; zeichneKalender(); fokussiereAnlegeFeld(); } : null, "ToDo"));
+      ? () => { todoEingabeOffen = true; zeichneKalender(); fokussiereAnlegeFeld(); } : null,
+      "ToDo", faelligHeute && todosDesTages.length > 0));
     if (todoEingabeOffen && aktiveListe) kalTagesliste.appendChild(baueAnlegeZeile(kalAuswahl));
-    for (const t of todosDesTages) kalTagesliste.appendChild(baueEintrag(t, mitDatum));
+    for (const t of todosDesTages) {
+      kalTagesliste.appendChild(baueEintrag(t, mitDatum, faelligHeute));
+    }
     if (!todosDesTages.length) kalTagesliste.appendChild(baueLeerZeile("Nichts fällig."));
 
     // Termine stehen unter den ToDos: der Streifen beantwortet zuerst "was
     // muss ich heute tun", und die Termin-Ueberschrift samt Leerzeile schob
     // diese Antwort vorher jedes Mal nach unten aus dem Blick.
-    const terminePlus = googleZustand.verbunden && googleZustand.schreiben;
-    kalTagesliste.appendChild(baueGruppenKopf("Termine", terminePlus
-      ? () => oeffneTerminFormular(kalAuswahl, null) : null, "Termin"));
-    for (const eintrag of termineDesTages) {
-      kalTagesliste.appendChild(baueTerminZeile(eintrag.termin));
+    //
+    // Ganztaegige bekommen einen eigenen Abschnitt und stehen zuerst: sie
+    // rahmen den Tag, statt in ihm zu liegen, und zwischen den Uhrzeiten
+    // standen sie als zeitlose Zeilen ohne erkennbare Ordnung.
+    const terminePlus = googleZustand.verbunden && googleZustand.schreiben
+      ? () => oeffneTerminFormular(kalAuswahl, null) : null;
+    const ganztags = termineDesTages.filter(e => e.termin.ganztags);
+    const mitZeit  = termineDesTages.filter(e => !e.termin.ganztags);
+
+    if (ganztags.length) {
+      kalTagesliste.appendChild(baueGruppenKopf("Ganztägig", terminePlus, "Termin"));
+      for (const e of ganztags) kalTagesliste.appendChild(baueTerminZeile(e.termin));
     }
-    if (!termineDesTages.length) {
-      kalTagesliste.appendChild(baueLeerZeile(googleZustand.verbunden
-        ? "Keine Termine." : "Kein Google-Kalender verbunden."));
+    // Das ＋ haengt am ERSTEN sichtbaren Termin-Abschnitt, damit es genau
+    // einmal vorkommt und immer an derselben Stelle steht: oben bei den
+    // Terminen. Stehen keine ganztaegigen da, wandert es hierher.
+    if (mitZeit.length || !ganztags.length) {
+      kalTagesliste.appendChild(baueGruppenKopf("Termine",
+        ganztags.length ? null : terminePlus, "Termin"));
+      for (const e of mitZeit) kalTagesliste.appendChild(baueTerminZeile(e.termin));
+      if (!mitZeit.length) {
+        kalTagesliste.appendChild(baueLeerZeile(googleZustand.verbunden
+          ? "Keine Termine." : "Kein Google-Kalender verbunden."));
+      }
     }
   } else {
     // Ueberfaellig-Ausschnitt (oder gar keine Auswahl): nur ToDos, ohne
@@ -1437,9 +1471,9 @@ function fokussiereAnlegeFeld() {
   if (feld) feld.focus();
 }
 
-function baueGruppenKopf(text, beimPlus, einzahl) {
+function baueGruppenKopf(text, beimPlus, einzahl, faellig) {
   const kopf = document.createElement("p");
-  kopf.className = "kal-gruppe";
+  kopf.className = "kal-gruppe" + (faellig ? " faellig" : "");
   const beschriftung = document.createElement("span");
   beschriftung.textContent = text;
   kopf.appendChild(beschriftung);
@@ -1552,9 +1586,9 @@ function baueTerminZeile(t) {
 // der wie gehabt zum ToDo auf dem Board springt. Der Rahmen gehoert der Zeile,
 // nicht mehr dem Eintrag - sonst saehe der Haken aus, als stuende er neben der
 // Karte statt darin.
-function baueEintrag(t, mitDatum) {
+function baueEintrag(t, mitDatum, faellig) {
   const zeile = document.createElement("div");
-  zeile.className = "kal-todo-zeile";
+  zeile.className = "kal-todo-zeile" + (faellig ? " faellig" : "");
 
   // Der Kalender bearbeitet sonst nichts, aber Abhaken ist die eine Sache, die
   // man beim Blick auf "was ist heute faellig" tatsaechlich tun will. Laeuft
@@ -1642,20 +1676,12 @@ function waehleTag(iso) {
     setzeVollbild(false);
     return;
   }
-  // Steht unten gerade Fokus, holt der erste Tipp den Tag nach vorn, ohne die
-  // Auswahl zu verwerfen - sonst muesste man denselben Tag zweimal antippen.
-  if (kalUntenModus === "fokus") {
-    kalAuswahl = iso;
-    kalUntenModus = "tag";
-  } else if (kalAuswahl === iso) {
-    // Zweiter Tipp auf denselben Tag: zurueck zu Fokus, wenn es ihn gibt.
-    // Ohne Fokus (kein Zugang oder abgeschaltet) bleibt es beim blossen
-    // Abwaehlen wie bisher.
-    if (fokusMoeglich()) kalUntenModus = "fokus";
-    else kalAuswahl = null;
-  } else {
-    kalAuswahl = iso;
-  }
+  // Ein Tipp waehlt den Tag, ein zweiter auf denselben tut nichts. Frueher
+  // schaltete er hier zwischen Tag und Fokus hin und her bzw. wählte ab - das
+  // hatte seinen Grund, solange beide sich denselben Platz teilten. Seit die
+  // Tagesliste immer dasteht, gibt es nichts wegzuschalten: ein leerer
+  // Tagesbereich waere kein Zustand, den jemand haben will.
+  kalAuswahl = iso;
   schliesseEingaben();
   setzePanel(kalOffen, true);
   zeichneKalender();
@@ -1747,47 +1773,75 @@ function setzePanel(offen, sofort) {
     const gilt = offen ? seg.dataset.ansicht === "kalender" : seg.dataset.ansicht === "liste";
     seg.setAttribute("aria-pressed", String(gilt));
   }
-  try { localStorage.setItem(ANSICHT_KEY, offen ? kalUntenModus : "liste"); }
+  try { localStorage.setItem(ANSICHT_KEY, offen ? kalObenModus : "liste"); }
   catch (e) { /* voller Speicher - dann eben ungemerkt */ }
 }
 
 /**
- * Was steht unten: der Tag oder Fokus. Die Sichtbarkeit haengt an genau dieser
- * Stelle, damit "immer genau eines" nicht an zwei Orten entschieden wird.
+ * Was steht oben: das Monatsraster oder Fokus. Die Sichtbarkeit haengt an genau
+ * dieser Stelle, damit "immer genau eines" nicht an zwei Orten entschieden
+ * wird.
  *
  * Fokus gibt es nur mit Zugang UND eingeschaltetem Schalter in den
  * Einstellungen. Faellt eines der beiden weg, faellt ein gemerktes "fokus"
- * still auf den Tag zurueck - sonst stuende der Streifen leer da.
+ * still auf den Kalender zurueck - sonst stuende der Streifen leer da.
  */
 function fokusMoeglich() {
   return !!window.fokusHatZugang?.() && window.fokusImStreifen?.() !== false;
 }
 
+// Alles, was zum Monatsraster gehoert und mit ihm kommt und geht. Der
+// Ueberfaellig-Chip und der Quellen-Filter sind dabei: beide beziehen sich auf
+// das Raster, und ein Chip ueber den Gewohnheiten haette keinen Bezug.
+const RASTER_TEILE = [
+  document.querySelector(".kal-kopf"),
+  kalUeberfaellig,
+  kalFilter,
+  kalWochentage,
+  kalRaster,
+];
+
 function zeichneUnten() {
   const mitFokus = fokusMoeglich();
-  if (kalUntenModus === "fokus" && !mitFokus) kalUntenModus = "tag";
-  // Im Vollbild gibt es den unteren Teil gar nicht (das Raster nimmt die ganze
-  // Hoehe). Der Modus bleibt gemerkt und steht beim Verlassen wieder da.
-  const fokus = kalUntenModus === "fokus" && !kalVollbild;
-  kalTagesliste.hidden = fokus;
+  if (kalObenModus === "fokus" && !mitFokus) kalObenModus = "kalender";
+  // Im Vollbild nimmt das Raster die ganze Hoehe - Fokus hat dort keinen Platz.
+  // Der Modus bleibt gemerkt und steht beim Verlassen wieder da.
+  const fokus = kalObenModus === "fokus" && !kalVollbild;
+
+  for (const teil of RASTER_TEILE) {
+    if (!teil) continue;
+    // Chip und Filter blenden sich zusaetzlich selbst aus, wenn es nichts zu
+    // zeigen gibt (leer bzw. nur eine Quelle) - deshalb hier nur zuschalten,
+    // was der Fokus-Modus verdeckt, und ihre eigene Entscheidung nicht
+    // ueberschreiben. Die merken sie sich in data-leer.
+    if (fokus) teil.hidden = true;
+    else if (teil.dataset.leer !== "1") teil.hidden = false;
+  }
+
+  kalUnten.hidden = !fokus;
   if (fokus) window.fokusZeigen?.();
   else window.fokusVerstecken?.();
-  // Die Reiterzeile ueberlebt den Wechsel zum Tag - sie ist der Weg zurueck.
-  // Ohne Fokus (kein Zugang oder abgeschaltet) waere sie ein Reiter allein.
+
+  // Die Tagesliste bleibt - nur im Vollbild nicht, dort gibt es sie nicht.
+  kalTagesliste.hidden = kalVollbild;
+
+  // Die Reiterzeile ueberlebt den Wechsel zum Kalender - sie ist der Weg
+  // zurueck. Ohne Fokus (kein Zugang oder abgeschaltet) waere sie ein Reiter
+  // allein.
   window.fokusReiterzeile?.(mitFokus && !kalVollbild);
-  // Steht der Tag vorn, markiert ihn niemand sonst: setzeReiter() in fokus.js
-  // laeuft nur, wenn dort etwas gezeichnet wird.
+  // Steht der Kalender vorn, markiert ihn niemand sonst: setzeReiter() in
+  // fokus.js laeuft nur, wenn dort etwas gezeichnet wird.
   if (!fokus) {
     for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
-      seg.setAttribute("aria-selected", String(seg.dataset.fokReiter === "tag"));
+      seg.setAttribute("aria-selected", String(seg.dataset.fokReiter === "kalender"));
     }
   }
 }
 
-// Den unteren Teil umschalten, ohne den Streifen selbst anzufassen.
-function setzeUnten(modus) {
-  if (kalUntenModus === modus) return;
-  kalUntenModus = modus;
+// Den oberen Teil umschalten, ohne den Streifen selbst anzufassen.
+function setzeOben(modus) {
+  if (kalObenModus === modus) return;
+  kalObenModus = modus;
   zeichneUnten();
   setzePanel(kalOffen, true);
 }
@@ -1804,11 +1858,11 @@ function stelleAnsichtHer() {
   const gemerkt = localStorage.getItem(ANSICHT_KEY);
   // Ohne gemerkten Zustand entscheidet der Platz: am Rechner steht der
   // Streifen gleich daneben, am Handy naehme er der Liste den Bildschirm weg.
-  // "kalender" ist der alte Wert von vor der Dreiteilung und heisst "tag".
+  // Alte Werte ("tag") heissen "kalender" - alles ausser "liste"/"fokus".
   const auf = gemerkt ? gemerkt !== "liste" : istSplit();
   if (!auf) { setzePanel(false, true); return; }
   // Ein gemerktes "fokus" gilt nur mit Zugang - zeichneUnten() faengt das ab.
-  kalUntenModus = gemerkt === "fokus" ? "fokus" : "tag";
+  kalObenModus = gemerkt === "fokus" ? "fokus" : "kalender";
   frischOeffnen();
   kalOffen = true;
   setzePanel(true, true);
@@ -1826,7 +1880,7 @@ function frischOeffnen() {
 }
 
 function oeffneKalender(modus) {
-  if (modus) kalUntenModus = modus;
+  if (modus) kalObenModus = modus;
   if (!kalOffen) frischOeffnen();
   else zeichneKalender();
   kalOffen = true;
@@ -1837,7 +1891,7 @@ function oeffneKalender(modus) {
 // Fuer fokus.js: ob der Fokus-Teil gerade ueberhaupt zu sehen ist. Der
 // Sekundentakt des Timers zeichnet sonst ins Verborgene.
 window.kalenderIstOffen = () => kalOffen;
-window.kalenderZeigtFokus = () => kalOffen && kalUntenModus === "fokus" && !kalVollbild;
+window.kalenderZeigtFokus = () => kalOffen && kalObenModus === "fokus" && !kalVollbild;
 
 function schliesseKalender() {
   if (!kalOffen) return;
@@ -2032,21 +2086,21 @@ document.addEventListener("touchcancel", gesteBeenden);
 for (const seg of document.querySelectorAll(".ansicht-seg")) {
   seg.addEventListener("click", () => {
     if (seg.dataset.ansicht === "liste") { schliesseKalender(); return; }
-    if (kalOffen) { setzeUnten("tag"); return; }
-    oeffneKalender("tag");
+    if (kalOffen) { setzeOben("kalender"); return; }
+    oeffneKalender("kalender");
   });
 }
 
-// Die Reiter unten. Sie schalten seit dem Wegfall der Flamme BEIDES: ob unten
-// der Tag oder Fokus steht (das hier) und welcher Fokus-Reiter (fokus.js).
-// Reihenfolge zaehlt: setzeUnten("fokus") laesst fokusZeigen() beim ersten Mal
+// Die Reiter oben. Sie schalten BEIDES: ob oben das Raster oder Fokus steht
+// (das hier) und welcher Fokus-Reiter (fokus.js).
+// Reihenfolge zaehlt: setzeOben("fokus") laesst fokusZeigen() beim ersten Mal
 // auf den Gewohnheiten aufsetzen - die Wahl des Nutzers muss also DANACH
 // kommen, sonst wird ein Tipp auf "Timer" still ueberschrieben.
 for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
   seg.addEventListener("click", () => {
     const welcher = seg.dataset.fokReiter;
-    if (welcher === "tag") { setzeUnten("tag"); return; }
-    setzeUnten("fokus");
+    if (welcher === "kalender") { setzeOben("kalender"); return; }
+    setzeOben("fokus");
     window.fokusReiter?.(welcher, true);
   });
 }
@@ -2055,19 +2109,14 @@ kalHintergrund.addEventListener("click", schliesseKalender);
 kalMonatName.addEventListener("click", schalteWahl);
 document.getElementById("kalZurueck").addEventListener("click", () => monatVerschieben(-1));
 document.getElementById("kalVor").addEventListener("click", () => monatVerschieben(1));
-// "Heute" ist ein Tipp auf einen Tag wie jeder andere: er holt auch den Tag in
-// den unteren Teil, wenn dort gerade Fokus steht.
-document.getElementById("kalHeute").addEventListener("click", () => {
-  setzeUnten("tag");
-  springeZuHeute();
-});
+// "Heute" ist ein Tipp auf einen Tag wie jeder andere. Umschalten muss er
+// nicht mehr: er sitzt im Kalender-Kopf, den es im Fokus-Modus gar nicht gibt.
+document.getElementById("kalHeute").addEventListener("click", springeZuHeute);
 document.getElementById("kalVollbild").addEventListener("click", () => setzeVollbild(!kalVollbild));
 kalUeberfaellig.addEventListener("click", () => {
-  // Ueberfaelliges steht in der Tagesliste - im Vollbild gibt es die nicht,
-  // und wenn unten gerade Fokus steht, muss der Tag zuerst nach vorn.
+  // Ueberfaelliges steht in der Tagesliste - im Vollbild gibt es die nicht.
   if (kalVollbild) setzeVollbild(false);
-  setzeUnten("tag");
-  kalAuswahl = kalAuswahl === UEBERFAELLIG ? null : UEBERFAELLIG;
+  kalAuswahl = kalAuswahl === UEBERFAELLIG ? todayStr() : UEBERFAELLIG;
   zeichneKalender();
 });
 kalRaster.addEventListener("click", e => {

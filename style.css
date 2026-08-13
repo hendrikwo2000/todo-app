@@ -1674,6 +1674,12 @@ html:not(.breit) #kalZu { display: none; }
 }
 
 .kal-kopf { display: flex; align-items: center; gap: 4px; }
+/* Und wieder die [hidden]-Falle: display:flex oben schlaegt das eingebaute
+   [hidden] des Browsers. Im Fokus-Modus geht der ganze Kalender-Kopf mit dem
+   Raster weg - ein Monatsname mit Blaetterpfeilen ueber den Gewohnheiten
+   navigiert durch nichts. Geschlossen wird dort ueber die Pille, Escape oder
+   den Wisch nach rechts. */
+.kal-kopf[hidden] { display: none; }
 /* Der Monatsname ist ein Knopf: ein Tipp klappt die Monats- und Jahreswahl
    darunter auf. */
 .kal-monat {
@@ -1857,6 +1863,9 @@ html:not(.breit) #kalZu { display: none; }
    faengt der Browser die senkrechte Bewegung als Scrollen ab, bevor unser
    preventDefault greift - die Vollbild-Geste liefe dann ins Leere. */
 .kal-wochentage, .kal-raster { touch-action: none; }
+/* display:grid oben schlaegt das eingebaute [hidden] - beide weichen im
+   Fokus-Modus dem Gewohnheiten- bzw. Timer-Bereich. */
+.kal-wochentage[hidden], .kal-raster[hidden] { display: none; }
 
 /* Bewusst zurueckhaltend: die Wochenzahl ist Orientierung am Rand, keine
    Information, die mit den Tagen um Aufmerksamkeit konkurrieren soll. */
@@ -2001,9 +2010,14 @@ html:not(.breit) #kalZu { display: none; }
   text-align: left;
 }
 
-/* Der untere Teil des Streifens: Tag, Gewohnheiten oder Timer - immer genau
-   eines, und immer gleich hoch. Die Hoehe ist schlicht der Rest unter dem
-   Raster, deshalb flex:1 hier und min-height:0, damit die Kinder blaettern
+/* Der Fokus-Bereich: Gewohnheiten oder Timer. Er steht an der Stelle des
+   Monatsrasters und tritt an dessen Platz - die Tagesliste DARUNTER bleibt
+   dabei stehen. Bis zum 13.08.2026 wohnten hier alle drei Inhalte und
+   verdraengten sich gegenseitig; ein Blick auf die Gewohnheiten kostete damit
+   den Blick auf "was ist heute faellig".
+
+   flex:1 gibt ihm denselben Anteil wie der Tagesliste - beide teilen sich, was
+   unter dem Kopf uebrig bleibt. min-height:0, damit die Kinder blaettern
    duerfen statt den Streifen aufzublaehen. */
 .kal-unten {
   flex: 1;
@@ -2015,11 +2029,14 @@ html:not(.breit) #kalZu { display: none; }
   container-type: size;
   container-name: unten;
 }
-/* Im Vollbild nimmt das Raster die ganze Hoehe - dann gibt es unten nichts. */
+/* Im Vollbild nimmt das Raster die ganze Hoehe - dann gibt es weder Fokus
+   noch Tagesliste. */
 .kalender.vollbild .kal-unten { display: none; }
-/* display:flex unten schluege sonst das eingebaute [hidden] des Browsers.
-   Dieselbe Falle wie bei .offline-banner, und genau hier ist sie schon einmal
-   zugeschnappt: die Gewohnheiten blieben neben dem Timer stehen. */
+/* display:flex oben bzw. unten schluege sonst das eingebaute [hidden] des
+   Browsers. Dieselbe Falle wie bei .offline-banner, und genau hier ist sie
+   schon einmal zugeschnappt: die Gewohnheiten blieben neben dem Timer
+   stehen. */
+.kal-unten[hidden] { display: none; }
 .kal-liste[hidden] { display: none; }
 
 .kal-liste {
@@ -2072,6 +2089,16 @@ html:not(.breit) #kalZu { display: none; }
   background: var(--row);
 }
 .kal-todo-zeile:hover { border-color: var(--accent); }
+/* Faellig: derselbe 4-px-Balken links, den auch eine ToDo-Karte auf dem Board
+   traegt - nur eben rot. Ein voll eingefaerbter Hintergrund war die Alternative
+   und faellt aus: bei fuenf ueberfaelligen Zeilen untereinander wird daraus
+   eine rote Wand, in der man nichts mehr einzeln liest. Der Balken schiebt den
+   Inhalt nicht, weil er ein Rand ist und box-sizing global border-box gilt. */
+.kal-todo-zeile.faellig {
+  border-color: var(--del-soft);
+  border-left: 4px solid var(--red);
+}
+.kal-todo-zeile.faellig:hover { border-color: var(--red); }
 .kal-todo-zeile .kal-eintrag {
   border-color: transparent;
   background: none;
@@ -2226,6 +2253,11 @@ html:not(.breit) #kalZu { display: none; }
   letter-spacing: .06em; text-transform: uppercase;
   color: var(--muted);
 }
+/* Faelliges faellt auf: dieselbe Regel wie im Raster ("rot = da liegt was an"),
+   nur hier in Worten. Gilt fuer den Ueberfaellig-Abschnitt und fuer die ToDos
+   des heutigen Tages - an allen anderen Tagen ist nichts faellig, was gerade
+   draengt. */
+.kal-gruppe.faellig { color: var(--red); }
 /* Das ＋ sitzt in der Ueberschrift, nicht am Ende der Liste: dort sucht man
    es, wenn der Abschnitt leer ist. */
 .kal-gruppe-plus {
@@ -2413,11 +2445,12 @@ body.zieht, body.zieht .todo {
 }
 
 /* ====================================================================
-   Fokus im unteren Teil des Streifens
+   Fokus im Streifen
 
-   Kein eigenes Panel mehr (bis 13.08.2026 war es eines, mit gemessener Hoehe
-   unter dem Kalender): Gewohnheiten und Timer fuellen denselben Bereich wie
-   die Tagesliste - #kalUnten. Deshalb steht hier nur noch, wie ihr Inhalt
+   Kein eigenes Panel (bis 13.08.2026 war es eines, mit gemessener Hoehe unter
+   dem Kalender): Gewohnheiten und Timer fuellen #kalUnten und treten damit an
+   die Stelle des MONATSRASTERS. Die Tagesliste darunter bleibt stehen -
+   dazwischen wechselt nichts mehr. Deshalb steht hier nur noch, wie ihr Inhalt
    aussieht, nicht mehr wo er liegt.
    ==================================================================== */
 /* ---------- Kopfzeile des Fokus-Bereichs ---------- */

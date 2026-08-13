@@ -932,6 +932,18 @@ Umrandung von `.heute` bleibt daneben stehen und trennt weiterhin heute von
 gestern. Die Klasse hieß bis 13.08.2026 `ueberfaellig` — mit dem heutigen Tag
 darin wäre der Name gelogen.
 
+**Dieselbe Regel gilt in der Tagesliste**: `.kal-gruppe.faellig` färbt die
+Überschrift, `.kal-todo-zeile.faellig` setzt einen 4-px-Balken links — genau
+den, den eine ToDo-Karte auf dem Board trägt, nur rot. Betroffen sind der
+Überfällig-Abschnitt und die ToDos des **heutigen** Tages; an anderen Tagen
+drängt nichts. Beide Flags kommen als vierter Parameter in `baueGruppenKopf()`
+bzw. dritter in `baueEintrag()` herein.
+
+**Kein flächiger roter Hintergrund**, bewusst: bei fünf überfälligen Zeilen
+untereinander wird daraus eine rote Wand, in der man nichts mehr einzeln liest.
+Der Balken schiebt den Inhalt übrigens nicht, weil er ein Rand ist und
+`box-sizing: border-box` global gilt.
+
 **Die Tagesliste kann abhaken** (seit 13.08.2026, `.kal-haken` mit `.check`).
 Sonst bleibt der Kalender rein lesend — aber Erledigen ist die eine Sache, die
 man beim Blick auf „was ist heute fällig" tatsächlich tun will, und der Umweg
@@ -1109,8 +1121,20 @@ anbietet statt endlos in denselben Fehler zu laufen.
 die Termine darunter. Der Streifen beantwortet zuerst „was muss ich heute
 tun" — und die Termin-Überschrift samt ihrer Leerzeile („Kein Google-Kalender
 verbunden.") schob diese Antwort vorher bei jedem Öffnen nach unten aus dem
-Blick. Innerhalb der Termine bleibt es wie gehabt: ganztägige oben, dann die
-mit Uhrzeit chronologisch.
+Blick.
+
+**Ganztägige Termine haben einen eigenen Abschnitt** und stehen vor den
+zeitgebundenen: sie rahmen den Tag, statt in ihm zu liegen, und zwischen den
+Uhrzeiten standen sie als zeitlose Zeilen ohne erkennbare Ordnung. Innerhalb
+der zeitgebundenen bleibt es chronologisch.
+
+**Leere Abschnitte fallen weg, und das ＋ hängt am ersten sichtbaren** — so
+kommt es genau einmal vor und sitzt immer oben bei den Terminen. Die drei
+Fälle: nur ganztägige → „Ganztägig" mit ＋ (kein leerer „Termine"-Block); nur
+zeitgebundene → „Termine" mit ＋; gar keine → „Termine" mit ＋ und der
+erklärenden Leerzeile. Für die ToDos gilt das **nicht**: deren Abschnitt bleibt
+auch leer stehen („Nichts fällig."), weil das die eigentliche Frage des
+Streifens beantwortet.
 
 **Zellen: Zahl oben, Rest darunter.** `justify-content: flex-start` statt
 `center` — sonst wandert die Tageszahl je nach Anzahl der Balken auf und ab und
@@ -1306,7 +1330,7 @@ Markup in `index.html`, Verhalten in `fokus.js`, CSS-Block „Fokus-Panel".
 `/api/todos` und wird über `window.hatFokusZugang()` gelesen — vorher weiß
 niemand, ob dieses Konto den Tracker überhaupt benutzen darf. Ohne Zugang gibt
 es die Fokus-Reiter nicht, und ein gemerktes `"fokus"` fällt in `zeichneUnten()`
-still auf den Tag zurück (etwa wenn jemand den Zugang wieder aufgibt). Holt man
+still auf den Kalender zurück (etwa wenn jemand den Zugang wieder aufgibt). Holt man
 ihn sich in den Einstellungen, sind sie sofort da (`window.fokusNeuZeichnen()`
 am Ende des Klick-Handlers, sonst erst beim nächsten `render()`).
 
@@ -1316,7 +1340,7 @@ Zugang — ohne den gäbe es nichts zu schalten. Gemerkt wird er pro Gerät in
 `localStorage.fokusPanel` (`"an"` / `"aus"`, Standard an) und **nicht** in der
 Datenbank: wer am Rechner die Gewohnheiten mitlaufen lässt, will sie am Handy
 nicht zwangsläufig auch. Ausgeschaltet verschwindet die ganze Reiterzeile und
-der Streifen zeigt still nur den Tag. Gelesen wird er über
+der Streifen zeigt still nur den Kalender. Gelesen wird er über
 `window.fokusImStreifen()` in `fokusMoeglich()` (kalender.js).
 
 ### Warum die Daten über einen Durchreicher kommen
@@ -1354,44 +1378,64 @@ live gilt der Standardwert `https://fokus.it-wolf.org`. Zum Testen müssen
 **beide** Dev-Server laufen und in **beiden** lokalen D1-Dateien dieselbe
 Sitzungszeile stehen — die Datenbanken sind lokal getrennt, anders als live.
 
-### Ein Streifen, drei Inhalte
+### Oben wechselt, unten bleibt
 
-Der rechte Streifen ist **ein** Panel (der Kalender). Oben das Monatsraster,
-darunter `#kalUnten` — ein Bereich, in dem immer genau **eines** von dreien
-steht:
+Der rechte Streifen ist **ein** Panel (der Kalender), und er hat zwei Etagen:
 
-| Inhalt | wer zeichnet | wann |
-| --- | --- | --- |
-| Tagesliste (`#kalTagesliste`) | `kalender.js` | Standard, Reiter „Tag" |
-| Gewohnheiten (`#fokInhalt`) | `fokus.js` | Reiter „Gewohnheiten" |
-| Timer (`#fokTimer`) | `fokus.js` | Reiter „Timer" |
+| Etage | Inhalt | wer zeichnet | wann |
+| --- | --- | --- | --- |
+| oben | Monatsraster (`#kalRaster` & Co.) | `kalender.js` | Reiter „Kalender" |
+| oben | Gewohnheiten (`#fokInhalt`) | `fokus.js` | Reiter „Gewohnheiten" |
+| oben | Timer (`#fokTimer`) | `fokus.js` | Reiter „Timer" |
+| unten | Tagesliste (`#kalTagesliste`) | `kalender.js` | **immer** |
 
-**Alle drei sind gleich hoch**, weil die Höhe schlicht der Rest unter dem
-Raster ist (`.kal-unten { flex: 1; min-height: 0 }`). Es gibt nichts zu messen
-und nichts zu rechnen.
+**Die Tagesliste gehört keiner Ansicht** — sie ist der Grund, warum es den
+Streifen gibt („was ist heute fällig"). Bis zum 13.08.2026 stand sie mit den
+Fokus-Inhalten im selben Bereich und wurde von ihnen verdrängt; ein Blick auf
+die Gewohnheiten kostete damit genau die Antwort, für die man aufgemacht
+hatte. Seitdem weicht stattdessen das **Raster**.
 
-Bis zum 13.08.2026 war Fokus ein **zweites Panel** unter dem Kalender, mit
-eigener Höhenmessung (`--fok-hoehe`), eigenem Hintergrund und eigenem
-Öffnen/Schließen. Beide Teile stritten sich um denselben Platz: die Tagesliste
-musste weichen, wenn Fokus aufging, und ihre Rückgabe brauchte eine
-Extra-Regel. Der Umbau hat daraus einen Bereich mit drei Inhalten gemacht —
-und dabei rund 120 Zeilen CSS und JS gestrichen.
+Davor war Fokus sogar ein **zweites Panel** unter dem Kalender, mit eigener
+Höhenmessung (`--fok-hoehe`), eigenem Hintergrund und eigenem Öffnen/Schließen.
+Der erste Umbau machte daraus einen Bereich mit drei Inhalten (~120 Zeilen CSS
+und JS weniger), der zweite verschob die Grenze eine Etage nach oben.
 
-**Wer umschaltet:** `kalUntenModus` in `kalender.js` (`"tag"` / `"fokus"`),
-gesetzt über `setzeUnten()`. `zeichneUnten()` ist die **einzige** Stelle, an
+**Die Höhen rechnet niemand aus:** oben und unten tragen beide `flex: 1;
+min-height: 0`, teilen sich also, was unter dem Kopf übrig bleibt (gemessen bei
+900 px Panelhöhe: 411 zu 425). Das Raster nimmt seine natürliche Höhe, weil es
+kein `flex` trägt.
+
+**Wer umschaltet:** `kalObenModus` in `kalender.js` (`"kalender"` / `"fokus"`),
+gesetzt über `setzeOben()`. `zeichneUnten()` ist die **einzige** Stelle, an
 der Sichtbarkeit entschieden wird — sonst stünde „genau eines" an zwei Orten.
 `fokus.js` liefert nur den Inhalt und wird über `window.fokusZeigen()` /
 `window.fokusVerstecken()` gerufen; `window.fokusHatZugang()` sagt umgekehrt,
 ob es Fokus überhaupt gibt.
 
+**Was mit dem Raster kommt und geht**, steht als Liste `RASTER_TEILE` in
+`kalender.js`: Kalender-Kopf, Überfällig-Chip, Quellen-Filter, Wochentage,
+Raster. Der Kopf muss mit — ein Monatsname mit Blätterpfeilen über den
+Gewohnheiten navigiert durch nichts.
+
+**Falle dabei: Chip und Filter blenden sich auch selbst aus** (leer bzw. nur
+eine Quelle). Würde `zeichneUnten()` beim Zurückschalten stumpf alles wieder
+einblenden, stünde ein „⚠ Überfällig (0)" da. Sie merken ihre eigene
+Entscheidung deshalb in `data-leer`, und `zeichneUnten()` blendet nur ein, was
+dort nicht auf `"1"` steht.
+
+**Und wieder die `[hidden]`-Falle** — diesmal gleich vierfach: `.kal-kopf`
+(flex), `.kal-wochentage`/`.kal-raster` (grid) und `.kal-unten` (flex) brauchen
+alle ihre eigene `[hidden] { display: none }`-Zeile, sonst bleiben sie sichtbar,
+obwohl das Attribut gesetzt ist. Dieselbe Familie wie bei `.offline-banner`.
+
 **Die Reiterzeile (`#fokKopf`) gehört dem Streifen, nicht dem Fokus-Inhalt.**
-Sie trägt seit dem 13.08.2026 drei Reiter — **Tag | Gewohnheiten | Timer** —
-und steht auch dann da, wenn gerade der Tag vorn ist: sie ist der Weg zwischen
-allen dreien. Ihre Klick-Handler liegen deshalb geschlossen in `kalender.js`
-und rufen von dort `window.fokusReiter()`; ihre Sichtbarkeit steuert
+Sie trägt drei Reiter — **Kalender | Gewohnheiten | Timer** — und steht auch
+dann da, wenn gerade das Raster vorn ist: sie ist der Weg zwischen allen
+dreien. Ihre Klick-Handler liegen deshalb geschlossen in `kalender.js` und
+rufen von dort `window.fokusReiter()`; ihre Sichtbarkeit steuert
 `zeichneUnten()` über `window.fokusReiterzeile()`.
 
-**Reihenfolge im Klick-Handler ist keine Kosmetik:** erst `setzeUnten("fokus")`,
+**Reihenfolge im Klick-Handler ist keine Kosmetik:** erst `setzeOben("fokus")`,
 dann `window.fokusReiter(welcher, true)`. `fokusZeigen()` setzt beim ersten
 Öffnen auf „Gewohnheiten" zurück — käme die Wahl des Nutzers davor, würde ein
 Tipp auf „Timer" still überschrieben.
@@ -1434,30 +1478,30 @@ sonst stünde nach dem Update der Streifen zu. `fokAnsicht` gibt es nicht mehr.
 **Ein gemerktes `"fokus"` überlebt den Reload nicht** (unverändert seit dem
 Streifen-Umbau, kein Fehler des Reiter-Umbaus): beim ersten Zeichnen steht
 `fokZugang` noch nicht fest — der kommt erst mit dem Bootstrap aus
-`/api/todos` —, `zeichneUnten()` fällt deshalb auf den Tag zurück und
-`setzePanel()` schreibt „tag" gleich in den Speicher. Der Kalender startet
-also immer beim heutigen Tag. Das passt zu dem, wofür der Streifen da ist,
-wäre aber zu beheben, indem `stelleAnsichtHer()` erst nach dem Bootstrap läuft.
+`/api/todos` —, `zeichneUnten()` fällt deshalb auf den Kalender zurück und
+`setzePanel()` schreibt „kalender" gleich in den Speicher. Der Streifen startet
+also immer mit dem Monatsraster. Zu beheben wäre es, indem
+`stelleAnsichtHer()` erst nach dem Bootstrap läuft.
 
 Gesetzt wird `aria-pressed` **nur** in `setzePanel()` (kalender.js).
 
-### Ein Tipp auf den Tag schaltet um
+### Ein Tipp auf den Tag wählt ihn — mehr nicht
 
-Das ist der zweite Weg zwischen Tag und Fokus, und er kennt drei Fälle
-(`waehleTag()`):
+`waehleTag()` setzt `kalAuswahl` und fertig; ein zweiter Tipp auf denselben Tag
+tut nichts. Das war einmal komplizierter (drei Fälle: Fokus nach hinten,
+Datumswechsel, zweiter Tipp schaltet zurück zu Fokus bzw. wählt ab) — und
+musste es sein, solange Tagesliste und Fokus sich denselben Platz teilten.
+**Seit die Tagesliste immer dasteht, gibt es nichts wegzuschalten:** ein leerer
+Tagesbereich wäre kein Zustand, den jemand haben will.
 
-1. Unten steht **Fokus** → der Tag kommt nach vorn, mit dem angetippten Datum.
-2. Unten steht der **Tag**, ein **anderes** Datum wird angetippt → Wechsel des
-   Datums, sonst nichts.
-3. Unten steht der **Tag**, dasselbe Datum nochmal → zurück zu Fokus. Ohne
-   Fokus-Zugang wird stattdessen abgewählt, wie vor der Integration.
-
-„Heute" und der Überfällig-Chip holen den Tag ebenfalls nach vorn — beide
-zeigen ihr Ergebnis in der Tagesliste, sonst tippte man ins Leere.
+Aus demselben Grund springt der **Überfällig-Chip** beim zweiten Tipp auf
+`heute` zurück statt auf `null` — vorher blieb die Liste leer stehen. Auch
+„Heute" und der Chip müssen den Tag nicht mehr nach vorn holen: beide sitzen im
+Kalender-Kopf, den es im Fokus-Modus gar nicht gibt.
 
 ### Zwei Reiter: Gewohnheiten oder Timer
 
-Beide teilen sich den unteren Bereich, statt übereinander zu stehen (seit
+Beide teilen sich den Fokus-Bereich, statt übereinander zu stehen (seit
 13.08.2026). Nebeneinander blieb für den Timer nur eine Zeile, und eine Zeile
 liest sich nicht vom Schreibtisch aus. Jetzt füllt er den ganzen Bereich: ein
 Fortschrittsring, die Restzeit in der Mitte, die Knöpfe daneben oder darunter.

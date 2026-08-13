@@ -129,40 +129,40 @@
       <button type="button" id="kalZu" class="kal-schliessen" aria-label="Kalender schließen">✕</button>
     </div>
 
+    <!-- Die Reiterzeile schaltet den OBEREN Teil um: Monatsraster,
+         Gewohnheiten oder Timer. Die Tagesliste ganz unten bleibt dabei
+         stehen - sie ist das, wofuer der Streifen ueberhaupt da ist ("was ist
+         heute faellig"), und ein Blick auf die Gewohnheiten soll sie nicht
+         verdraengen.
+         Steht nur da, wenn es beim Fokus etwas umzuschalten gibt: mit
+         Fokus-Zugang UND eingeschaltetem Schalter in den Einstellungen. Ohne
+         das zeigt der Streifen still nur den Kalender - eine Reiterleiste mit
+         genau einem Reiter waere Zierrat.
+         Sichtbarkeit steuert zeichneUnten() in kalender.js. -->
+    <div id="fokKopf" class="fok-kopf" hidden>
+      <div class="fok-reiter" role="tablist" aria-label="Ansicht oben">
+        <button type="button" class="fok-reiter-seg" data-fok-reiter="kalender"
+                role="tab" aria-selected="true">Kalender</button>
+        <button type="button" class="fok-reiter-seg" data-fok-reiter="gewohnheiten"
+                role="tab" aria-selected="false">Gewohnheiten</button>
+        <button type="button" class="fok-reiter-seg" data-fok-reiter="timer"
+                role="tab" aria-selected="false">Timer</button>
+      </div>
+      <span id="fokBilanz" class="fok-bilanz"></span>
+      <a class="fok-mehr" href="https://fokus.it-wolf.org" target="_blank" rel="noopener"
+         title="Fokus-Tracker öffnen">↗</a>
+    </div>
+
     <button type="button" id="kalUeberfaellig" class="kal-chip" hidden></button>
     <!-- Quellen-Umschalter: je eine Pille pro ToDo-Liste und pro
          Google-Kalender. Erscheint erst ab zwei Quellen. -->
     <div id="kalFilter" class="kal-filter" hidden></div>
     <div id="kalWochentage" class="kal-wochentage"></div>
     <div id="kalRaster" class="kal-raster"></div>
-    <!-- Der untere Teil des Streifens. Er zeigt IMMER genau eines von dreien -
-         den gewaehlten Tag, die Gewohnheiten oder den Timer - und ist dabei
-         immer gleich hoch: alles, was unter dem Raster uebrig bleibt.
-         Umgeschaltet wird ueber die Reiter hier drin und ueber einen Tipp auf
-         einen Tag im Raster. Inhalt: kalender.js fuer den Tag, fokus.js fuer
-         die beiden anderen. -->
-    <div id="kalUnten" class="kal-unten">
-      <!-- Die Reiterzeile. Sie steht nur da, wenn es beim Fokus ueberhaupt
-           etwas umzuschalten gibt: mit Fokus-Zugang UND eingeschaltetem
-           Schalter in den Einstellungen. Ohne das zeigt der Streifen still nur
-           den Tag - eine Reiterleiste mit genau einem Reiter waere Zierrat.
-           Sichtbarkeit steuert zeichneUnten() in kalender.js. -->
-      <div id="fokKopf" class="fok-kopf" hidden>
-        <div class="fok-reiter" role="tablist" aria-label="Ansicht unten">
-          <button type="button" class="fok-reiter-seg" data-fok-reiter="tag"
-                  role="tab" aria-selected="true">Tag</button>
-          <button type="button" class="fok-reiter-seg" data-fok-reiter="gewohnheiten"
-                  role="tab" aria-selected="false">Gewohnheiten</button>
-          <button type="button" class="fok-reiter-seg" data-fok-reiter="timer"
-                  role="tab" aria-selected="false">Timer</button>
-        </div>
-        <span id="fokBilanz" class="fok-bilanz"></span>
-        <a class="fok-mehr" href="https://fokus.it-wolf.org" target="_blank" rel="noopener"
-           title="Fokus-Tracker öffnen">↗</a>
-      </div>
 
-      <div id="kalTagesliste" class="kal-liste"></div>
-
+    <!-- Der Fokus-Teil. Steht an derselben Stelle wie das Raster und tritt an
+         dessen Platz, sobald ein Fokus-Reiter gewaehlt ist. -->
+    <div id="kalUnten" class="kal-unten" hidden>
       <!-- Timer-Reiter. Die Struktur steht fest im HTML, fokus.js setzt im
            Sekundentakt nur Text und Ring-Versatz - ein SVG pro Sekunde neu zu
            bauen waere Verschwendung. Die Knopfreihe wechselt dagegen ihren
@@ -184,6 +184,9 @@
       <!-- Gewohnheiten-Reiter, gefuellt aus fokus.js. -->
       <div id="fokInhalt" class="fok-inhalt" hidden></div>
     </div>
+
+    <!-- Der gewaehlte Tag. Steht IMMER da, egal was oben gerade laeuft. -->
+    <div id="kalTagesliste" class="kal-liste"></div>
   </aside>
 
 
