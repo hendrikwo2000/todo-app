@@ -18,18 +18,19 @@
 
    WO ES STEHT
    Kein eigenes Panel: Fokus fuellt #kalUnten und tritt damit an die Stelle des
-   MONATSRASTERS - oben wechseln sich Raster und Fokus ab, die Tagesliste
-   darunter bleibt stehen. Bis zum 13.08.2026 teilten sich alle drei den
-   unteren Platz; ein Blick auf die Gewohnheiten kostete damit den Blick auf
-   "was ist heute faellig", und genau dafuer ist der Streifen da.
+   MONATSRASTERS - unten wechseln sich Raster und Fokus ab. Ganz oben steht
+   dabei unveraendert die Tagesliste; sie gehoert keiner der beiden Ansichten,
+   denn sie ist die Antwort, fuer die man den Streifen aufmacht ("was ist heute
+   faellig"). Bis zum 13.08.2026 teilten sich alle drei denselben Platz - ein
+   Blick auf die Gewohnheiten kostete damit genau diese Antwort.
 
-   Wer das umschaltet, entscheidet kalender.js (kalObenModus). Diese Datei
-   liefert nur den Inhalt und wird ueber window.fokusZeigen() /
-   window.fokusVerstecken() ein- und ausgeblendet; window.fokusHatZugang()
-   sagt umgekehrt, ob es Fokus ueberhaupt gibt.
+   Wer das umschaltet, entscheidet kalender.js (kalUntenModus, Werte
+   "kalender"/"fokus"). Diese Datei liefert nur den Inhalt und wird ueber
+   window.fokusZeigen() / window.fokusVerstecken() ein- und ausgeblendet;
+   window.fokusHatZugang() sagt umgekehrt, ob es Fokus ueberhaupt gibt.
 
-   Die REITERZEILE (Tag | Gewohnheiten | Timer) steht zwar hier im Markup,
-   gehoert aber dem Streifen: sie schaltet auch den Tag ein und aus. Ihre
+   Die REITERZEILE (Kalender | Gewohnheiten | Timer) steht zwar hier im Markup,
+   gehoert aber dem Streifen: sie schaltet auch das Raster ein und aus. Ihre
    Klick-Handler liegen deshalb geschlossen in kalender.js und rufen von dort
    window.fokusReiter(); ihre Sichtbarkeit steuert window.fokusReiterzeile().
    Seit dem 13.08.2026 gibt es dafuer kein 🔥 mehr in der Kopfzeile - drei
@@ -39,8 +40,8 @@
 
    Frueher war das ein zweites Panel unter dem Kalender, mit eigener
    Hoehenmessung und eigenem Umschalter. Beide Teile stritten sich um denselben
-   Platz - der Umbau am 13.08.2026 hat daraus einen Bereich mit drei Inhalten
-   gemacht.
+   Platz - drei Umbauten am 13.08.2026 haben daraus erst einen Bereich mit drei
+   Inhalten und dann die heutige Zweiteilung gemacht.
    ==================================================================== */
 
 const fokKopf        = document.getElementById("fokKopf");

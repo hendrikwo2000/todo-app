@@ -101,12 +101,15 @@
        kalender.js. -->
   <div id="kalenderHintergrund" class="kal-hintergrund"></div>
   <aside id="kalenderPanel" class="kalender" aria-label="Kalender" aria-hidden="true">
-    <!-- Dieselbe Ecke wie in der Kopfzeile der App, in derselben Reihenfolge:
-         Zahnrad, dann Umschalter. Nur im Umschalt-Modus sichtbar - im Split
-         liegt der Kalender neben der App, dort ist die Kopfzeile selbst da.
-         Das Zahnrad muss mit: am Handy verdeckt der Kalender die Kopfzeile,
-         und ohne dieses hier kaeme man aus der Kalenderansicht gar nicht in
-         die Einstellungen. -->
+    <!-- Die oberste Zeile des Panels. Sie traegt zweierlei, je nach Lage:
+         im Umschalt-Modus dieselbe Ecke wie die App-Kopfzeile (Zahnrad, dann
+         Umschalter) - im Split, wo die App-Kopfzeile daneben steht, nur noch
+         das Schliesskreuz. Das Zahnrad muss mit: am Handy verdeckt der
+         Kalender die Kopfzeile, und ohne dieses hier kaeme man aus der
+         Kalenderansicht gar nicht in die Einstellungen.
+         Das ✕ steht hier und nicht mehr bei den Monatspfeilen: seit das Raster
+         unten sitzt, saesse es sonst mitten im Panel statt in der Ecke, in der
+         man ein Schliesskreuz sucht. -->
     <div class="kal-ansicht-zeile">
       <button type="button" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
       <div class="ansicht-schalter" role="group" aria-label="Ansicht">
@@ -115,25 +118,17 @@
         <button type="button" class="ansicht-seg" data-ansicht="kalender"
                 aria-pressed="true" aria-label="Kalender" title="Kalender">📅</button>
       </div>
-    </div>
-
-    <div class="kal-kopf">
-      <button type="button" id="kalZurueck" class="kal-pfeil" aria-label="Vorheriger Monat">‹</button>
-      <button type="button" id="kalMonatName" class="kal-monat" aria-haspopup="true"></button>
-      <button type="button" id="kalVor" class="kal-pfeil" aria-label="Nächster Monat">›</button>
-      <button type="button" id="kalHeute" class="btn klein">Heute</button>
-      <!-- Vollbild: am Handy geht es auch per Wisch ueber dem Raster (nach
-           unten gross, nach oben klein), am Rechner gibt es nur den Knopf. -->
-      <button type="button" id="kalVollbild" class="kal-pfeil kal-vollbild-knopf"
-              aria-label="Kalender groß" title="Kalender groß – am Handy: über dem Raster nach unten wischen">⤢</button>
       <button type="button" id="kalZu" class="kal-schliessen" aria-label="Kalender schließen">✕</button>
     </div>
 
-    <!-- Die Reiterzeile schaltet den OBEREN Teil um: Monatsraster,
-         Gewohnheiten oder Timer. Die Tagesliste ganz unten bleibt dabei
-         stehen - sie ist das, wofuer der Streifen ueberhaupt da ist ("was ist
-         heute faellig"), und ein Blick auf die Gewohnheiten soll sie nicht
-         verdraengen.
+    <!-- Der gewaehlte Tag. Steht IMMER da, egal was unten gerade laeuft, und
+         seit dem 13.08.2026 ganz oben: er ist die Antwort, fuer die man den
+         Streifen aufmacht ("was ist heute faellig"), und die gehoert nicht ans
+         Ende. -->
+    <div id="kalTagesliste" class="kal-liste"></div>
+
+    <!-- Die Reiterzeile schaltet den UNTEREN Teil um: Monatsraster,
+         Gewohnheiten oder Timer. Die Tagesliste darueber bleibt dabei stehen.
          Steht nur da, wenn es beim Fokus etwas umzuschalten gibt: mit
          Fokus-Zugang UND eingeschaltetem Schalter in den Einstellungen. Ohne
          das zeigt der Streifen still nur den Kalender - eine Reiterleiste mit
@@ -153,6 +148,20 @@
          title="Fokus-Tracker öffnen">↗</a>
     </div>
 
+    <!-- Gehoert zum Raster und geht mit ihm: ein Monatsname mit Blaetterpfeilen
+         ueber den Gewohnheiten navigiert durch nichts. Das ✕ ist deshalb oben
+         in der Ansicht-Zeile geblieben. -->
+    <div class="kal-kopf">
+      <button type="button" id="kalZurueck" class="kal-pfeil" aria-label="Vorheriger Monat">‹</button>
+      <button type="button" id="kalMonatName" class="kal-monat" aria-haspopup="true"></button>
+      <button type="button" id="kalVor" class="kal-pfeil" aria-label="Nächster Monat">›</button>
+      <button type="button" id="kalHeute" class="btn klein">Heute</button>
+      <!-- Vollbild: am Handy geht es auch per Wisch ueber dem Raster (nach
+           unten gross, nach oben klein), am Rechner gibt es nur den Knopf. -->
+      <button type="button" id="kalVollbild" class="kal-pfeil kal-vollbild-knopf"
+              aria-label="Kalender groß" title="Kalender groß – am Handy: über dem Raster nach unten wischen">⤢</button>
+    </div>
+
     <button type="button" id="kalUeberfaellig" class="kal-chip" hidden></button>
     <!-- Quellen-Umschalter: je eine Pille pro ToDo-Liste und pro
          Google-Kalender. Erscheint erst ab zwei Quellen. -->
@@ -161,7 +170,8 @@
     <div id="kalRaster" class="kal-raster"></div>
 
     <!-- Der Fokus-Teil. Steht an derselben Stelle wie das Raster und tritt an
-         dessen Platz, sobald ein Fokus-Reiter gewaehlt ist. -->
+         dessen Platz, sobald ein Fokus-Reiter gewaehlt ist. Beide zusammen
+         bilden den UNTEREN Teil des Streifens. -->
     <div id="kalUnten" class="kal-unten" hidden>
       <!-- Timer-Reiter. Die Struktur steht fest im HTML, fokus.js setzt im
            Sekundentakt nur Text und Ring-Versatz - ein SVG pro Sekunde neu zu
@@ -184,9 +194,6 @@
       <!-- Gewohnheiten-Reiter, gefuellt aus fokus.js. -->
       <div id="fokInhalt" class="fok-inhalt" hidden></div>
     </div>
-
-    <!-- Der gewaehlte Tag. Steht IMMER da, egal was oben gerade laeuft. -->
-    <div id="kalTagesliste" class="kal-liste"></div>
   </aside>
 
 

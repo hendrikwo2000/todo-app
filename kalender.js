@@ -75,12 +75,13 @@ const SPLIT_AB = 1000;
 // verstanden - alles ausser "liste" und "fokus" heisst Kalender.
 const ANSICHT_KEY = "kalAnsicht";
 
-// Was steht im OBEREN Teil des Streifens: "kalender" (Monatsraster) oder
-// "fokus" (Gewohnheiten bzw. Timer). Die Tagesliste darunter steht immer da
+// Was steht im UNTEREN Teil des Streifens: "kalender" (Monatsraster) oder
+// "fokus" (Gewohnheiten bzw. Timer). Die Tagesliste DARUEBER steht immer da
 // und gehoert keinem der beiden - sie ist der Grund, warum es den Streifen
-// gibt. Bis zum 13.08.2026 teilten sich alle drei den unteren Platz; ein Blick
-// auf die Gewohnheiten kostete damit den Blick auf "was ist heute faellig".
-let kalObenModus = "kalender";
+// gibt. Bis zum 13.08.2026 teilten sich alle drei denselben Platz; ein Blick
+// auf die Gewohnheiten kostete damit genau die Antwort auf "was ist heute
+// faellig", fuer die man aufgemacht hatte.
+let kalUntenModus = "kalender";
 
 function istSplit() { return window.innerWidth >= SPLIT_AB; }
 
@@ -1773,14 +1774,15 @@ function setzePanel(offen, sofort) {
     const gilt = offen ? seg.dataset.ansicht === "kalender" : seg.dataset.ansicht === "liste";
     seg.setAttribute("aria-pressed", String(gilt));
   }
-  try { localStorage.setItem(ANSICHT_KEY, offen ? kalObenModus : "liste"); }
+  try { localStorage.setItem(ANSICHT_KEY, offen ? kalUntenModus : "liste"); }
   catch (e) { /* voller Speicher - dann eben ungemerkt */ }
 }
 
 /**
- * Was steht oben: das Monatsraster oder Fokus. Die Sichtbarkeit haengt an genau
- * dieser Stelle, damit "immer genau eines" nicht an zwei Orten entschieden
- * wird.
+ * Was steht unten: das Monatsraster oder Fokus. Die Sichtbarkeit haengt an
+ * genau dieser Stelle, damit "immer genau eines" nicht an zwei Orten
+ * entschieden wird. Die Tagesliste oben bleibt davon unberuehrt - nur das
+ * Vollbild raeumt sie weg.
  *
  * Fokus gibt es nur mit Zugang UND eingeschaltetem Schalter in den
  * Einstellungen. Faellt eines der beiden weg, faellt ein gemerktes "fokus"
@@ -1803,10 +1805,10 @@ const RASTER_TEILE = [
 
 function zeichneUnten() {
   const mitFokus = fokusMoeglich();
-  if (kalObenModus === "fokus" && !mitFokus) kalObenModus = "kalender";
+  if (kalUntenModus === "fokus" && !mitFokus) kalUntenModus = "kalender";
   // Im Vollbild nimmt das Raster die ganze Hoehe - Fokus hat dort keinen Platz.
   // Der Modus bleibt gemerkt und steht beim Verlassen wieder da.
-  const fokus = kalObenModus === "fokus" && !kalVollbild;
+  const fokus = kalUntenModus === "fokus" && !kalVollbild;
 
   for (const teil of RASTER_TEILE) {
     if (!teil) continue;
@@ -1839,9 +1841,9 @@ function zeichneUnten() {
 }
 
 // Den oberen Teil umschalten, ohne den Streifen selbst anzufassen.
-function setzeOben(modus) {
-  if (kalObenModus === modus) return;
-  kalObenModus = modus;
+function setzeUnten(modus) {
+  if (kalUntenModus === modus) return;
+  kalUntenModus = modus;
   zeichneUnten();
   setzePanel(kalOffen, true);
 }
@@ -1862,7 +1864,7 @@ function stelleAnsichtHer() {
   const auf = gemerkt ? gemerkt !== "liste" : istSplit();
   if (!auf) { setzePanel(false, true); return; }
   // Ein gemerktes "fokus" gilt nur mit Zugang - zeichneUnten() faengt das ab.
-  kalObenModus = gemerkt === "fokus" ? "fokus" : "kalender";
+  kalUntenModus = gemerkt === "fokus" ? "fokus" : "kalender";
   frischOeffnen();
   kalOffen = true;
   setzePanel(true, true);
@@ -1880,7 +1882,7 @@ function frischOeffnen() {
 }
 
 function oeffneKalender(modus) {
-  if (modus) kalObenModus = modus;
+  if (modus) kalUntenModus = modus;
   if (!kalOffen) frischOeffnen();
   else zeichneKalender();
   kalOffen = true;
@@ -1891,7 +1893,7 @@ function oeffneKalender(modus) {
 // Fuer fokus.js: ob der Fokus-Teil gerade ueberhaupt zu sehen ist. Der
 // Sekundentakt des Timers zeichnet sonst ins Verborgene.
 window.kalenderIstOffen = () => kalOffen;
-window.kalenderZeigtFokus = () => kalOffen && kalObenModus === "fokus" && !kalVollbild;
+window.kalenderZeigtFokus = () => kalOffen && kalUntenModus === "fokus" && !kalVollbild;
 
 function schliesseKalender() {
   if (!kalOffen) return;
@@ -2086,21 +2088,21 @@ document.addEventListener("touchcancel", gesteBeenden);
 for (const seg of document.querySelectorAll(".ansicht-seg")) {
   seg.addEventListener("click", () => {
     if (seg.dataset.ansicht === "liste") { schliesseKalender(); return; }
-    if (kalOffen) { setzeOben("kalender"); return; }
+    if (kalOffen) { setzeUnten("kalender"); return; }
     oeffneKalender("kalender");
   });
 }
 
 // Die Reiter oben. Sie schalten BEIDES: ob oben das Raster oder Fokus steht
 // (das hier) und welcher Fokus-Reiter (fokus.js).
-// Reihenfolge zaehlt: setzeOben("fokus") laesst fokusZeigen() beim ersten Mal
+// Reihenfolge zaehlt: setzeUnten("fokus") laesst fokusZeigen() beim ersten Mal
 // auf den Gewohnheiten aufsetzen - die Wahl des Nutzers muss also DANACH
 // kommen, sonst wird ein Tipp auf "Timer" still ueberschrieben.
 for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
   seg.addEventListener("click", () => {
     const welcher = seg.dataset.fokReiter;
-    if (welcher === "kalender") { setzeOben("kalender"); return; }
-    setzeOben("fokus");
+    if (welcher === "kalender") { setzeUnten("kalender"); return; }
+    setzeUnten("fokus");
     window.fokusReiter?.(welcher, true);
   });
 }

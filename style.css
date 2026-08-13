@@ -1596,12 +1596,23 @@ html.kal-split .kal-hintergrund { display: none; }
    also zentriert sie sich auch darueber. */
 html.kal-split .snackbar { left: calc(50% - var(--kal-breite) / 2); }
 /* Der Umschalter steht im breiten Fenster in der Kopfzeile der App, die dort
-   sichtbar bleibt. Ein zweiter im Streifen waere nur doppelt. */
-html.breit .kal-ansicht-zeile { display: none; }
-/* Umgekehrt im schmalen Fenster: dort sitzt die Pille direkt ueber dem Kopf
-   und fuehrt zurueck zur Liste - ein ✕ daneben waere derselbe Weg zweimal.
+   sichtbar bleibt. Ein zweiter im Streifen waere nur doppelt - die ZEILE
+   bleibt aber stehen, weil das ✕ darin sitzt (frueher lag es bei den
+   Monatspfeilen; seit das Raster unten steht, waere es dort mitten im Panel
+   statt in der Ecke). */
+html.breit .kal-ansicht-zeile > .ein-knopf,
+html.breit .kal-ansicht-zeile > .ansicht-schalter { display: none; }
+/* Ohne Pille braucht die Zeile auch deren Hoehe nicht: min-height und
+   padding-top sind dazu da, den Umschalter auf die Mittellinie der
+   App-Titelzeile zu heben. Fuer ein ✕ allein waeren das 18 px, die dem
+   Tagesbereich darunter fehlen. */
+html.breit .kal-ansicht-zeile { min-height: 0; padding-top: 0; }
+/* Umgekehrt im schmalen Fenster: dort sitzt die Pille in dieser Zeile und
+   fuehrt zurueck zur Liste - ein ✕ daneben waere derselbe Weg zweimal.
    Escape und der Wisch nach rechts schliessen weiterhin. */
 html:not(.breit) #kalZu { display: none; }
+/* Das ✕ aussen rechts, unabhaengig davon, was links davon steht. */
+.kal-ansicht-zeile #kalZu { margin-left: auto; }
 
 .kal-hintergrund {
   position: fixed;

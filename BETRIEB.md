@@ -1378,35 +1378,47 @@ live gilt der Standardwert `https://fokus.it-wolf.org`. Zum Testen müssen
 **beide** Dev-Server laufen und in **beiden** lokalen D1-Dateien dieselbe
 Sitzungszeile stehen — die Datenbanken sind lokal getrennt, anders als live.
 
-### Oben wechselt, unten bleibt
+### Oben bleibt, unten wechselt
 
 Der rechte Streifen ist **ein** Panel (der Kalender), und er hat zwei Etagen:
 
 | Etage | Inhalt | wer zeichnet | wann |
 | --- | --- | --- | --- |
-| oben | Monatsraster (`#kalRaster` & Co.) | `kalender.js` | Reiter „Kalender" |
-| oben | Gewohnheiten (`#fokInhalt`) | `fokus.js` | Reiter „Gewohnheiten" |
-| oben | Timer (`#fokTimer`) | `fokus.js` | Reiter „Timer" |
-| unten | Tagesliste (`#kalTagesliste`) | `kalender.js` | **immer** |
+| oben | Tagesliste (`#kalTagesliste`) | `kalender.js` | **immer** |
+| unten | Monatsraster (`#kalRaster` & Co.) | `kalender.js` | Reiter „Kalender" |
+| unten | Gewohnheiten (`#fokInhalt`) | `fokus.js` | Reiter „Gewohnheiten" |
+| unten | Timer (`#fokTimer`) | `fokus.js` | Reiter „Timer" |
+
+Von oben nach unten im Markup: Ansicht-Zeile (Zahnrad, Pille, ✕) → Tagesliste
+→ Reiterzeile → Kalender-Kopf → Chip → Filter → Wochentage → Raster →
+`#kalUnten` (Fokus).
 
 **Die Tagesliste gehört keiner Ansicht** — sie ist der Grund, warum es den
-Streifen gibt („was ist heute fällig"). Bis zum 13.08.2026 stand sie mit den
-Fokus-Inhalten im selben Bereich und wurde von ihnen verdrängt; ein Blick auf
-die Gewohnheiten kostete damit genau die Antwort, für die man aufgemacht
-hatte. Seitdem weicht stattdessen das **Raster**.
+Streifen gibt („was ist heute fällig"), und steht deshalb ganz oben. Bis zum
+13.08.2026 stand sie mit den Fokus-Inhalten im selben Bereich und wurde von
+ihnen verdrängt; ein Blick auf die Gewohnheiten kostete damit genau die
+Antwort, für die man aufgemacht hatte.
 
-Davor war Fokus sogar ein **zweites Panel** unter dem Kalender, mit eigener
-Höhenmessung (`--fok-hoehe`), eigenem Hintergrund und eigenem Öffnen/Schließen.
-Der erste Umbau machte daraus einen Bereich mit drei Inhalten (~120 Zeilen CSS
-und JS weniger), der zweite verschob die Grenze eine Etage nach oben.
+Der Weg dahin ging über drei Umbauten an einem Tag: Fokus war erst ein
+**zweites Panel** unter dem Kalender (eigene Höhenmessung `--fok-hoehe`,
+eigener Hintergrund, eigenes Öffnen/Schließen), wurde dann zu einem von drei
+Inhalten in einem gemeinsamen unteren Bereich (~120 Zeilen CSS und JS weniger),
+und schließlich zum Partner des Rasters — mit der Tagesliste als festem Kopf
+darüber.
 
-**Die Höhen rechnet niemand aus:** oben und unten tragen beide `flex: 1;
-min-height: 0`, teilen sich also, was unter dem Kopf übrig bleibt (gemessen bei
-900 px Panelhöhe: 411 zu 425). Das Raster nimmt seine natürliche Höhe, weil es
-kein `flex` trägt.
+**Die Höhen rechnet niemand aus:** Tagesliste und `#kalUnten` tragen beide
+`flex: 1; min-height: 0`, teilen sich also, was übrig bleibt. Im Fokus-Modus
+wird das etwa hälftig (gemessen bei 900 px Panelhöhe: 409 zu 395), im
+Kalender-Modus nimmt das Raster seine natürliche Höhe (~358 px) und die
+Tagesliste den Rest.
 
-**Wer umschaltet:** `kalObenModus` in `kalender.js` (`"kalender"` / `"fokus"`),
-gesetzt über `setzeOben()`. `zeichneUnten()` ist die **einzige** Stelle, an
+**Am Handy bleiben der Tagesliste im Kalender-Modus nur ~197 px** — das Raster
+braucht seine 358, und mehr ist bei 812 px Bildschirmhöhe nicht zu holen. Wer
+mehr Tag sehen will, tippt auf einen Fokus-Reiter oder klappt das Raster über
+das Vollbild weg.
+
+**Wer umschaltet:** `kalUntenModus` in `kalender.js` (`"kalender"` / `"fokus"`),
+gesetzt über `setzeUnten()`. `zeichneUnten()` ist die **einzige** Stelle, an
 der Sichtbarkeit entschieden wird — sonst stünde „genau eines" an zwei Orten.
 `fokus.js` liefert nur den Inhalt und wird über `window.fokusZeigen()` /
 `window.fokusVerstecken()` gerufen; `window.fokusHatZugang()` sagt umgekehrt,
@@ -1416,6 +1428,15 @@ ob es Fokus überhaupt gibt.
 `kalender.js`: Kalender-Kopf, Überfällig-Chip, Quellen-Filter, Wochentage,
 Raster. Der Kopf muss mit — ein Monatsname mit Blätterpfeilen über den
 Gewohnheiten navigiert durch nichts.
+
+**Das ✕ sitzt deshalb nicht mehr im Kalender-Kopf**, sondern in der
+Ansicht-Zeile ganz oben: mit dem Raster wanderte es sonst mitten ins Panel
+statt in die Ecke, in der man ein Schließkreuz sucht. Folge davon — die
+Ansicht-Zeile ist im Split nicht mehr `display: none`, stattdessen verstecken
+sich dort nur Zahnrad und Pille (die stehen in der App-Kopfzeile daneben). Und
+weil ohne Pille auch deren Höhe wegfällt, setzt `html.breit` dort `min-height`
+und `padding-top` auf 0 — sonst gingen 18 px an eine leere Zeile, die dem
+Tagesbereich fehlen.
 
 **Falle dabei: Chip und Filter blenden sich auch selbst aus** (leer bzw. nur
 eine Quelle). Würde `zeichneUnten()` beim Zurückschalten stumpf alles wieder
@@ -1429,13 +1450,13 @@ alle ihre eigene `[hidden] { display: none }`-Zeile, sonst bleiben sie sichtbar,
 obwohl das Attribut gesetzt ist. Dieselbe Familie wie bei `.offline-banner`.
 
 **Die Reiterzeile (`#fokKopf`) gehört dem Streifen, nicht dem Fokus-Inhalt.**
-Sie trägt drei Reiter — **Kalender | Gewohnheiten | Timer** — und steht auch
-dann da, wenn gerade das Raster vorn ist: sie ist der Weg zwischen allen
-dreien. Ihre Klick-Handler liegen deshalb geschlossen in `kalender.js` und
+Sie trägt drei Reiter — **Kalender | Gewohnheiten | Timer** —, sitzt zwischen
+Tagesliste und Umschaltbereich und steht auch dann da, wenn gerade das Raster
+vorn ist: sie ist der Weg zwischen allen dreien. Ihre Klick-Handler liegen deshalb geschlossen in `kalender.js` und
 rufen von dort `window.fokusReiter()`; ihre Sichtbarkeit steuert
 `zeichneUnten()` über `window.fokusReiterzeile()`.
 
-**Reihenfolge im Klick-Handler ist keine Kosmetik:** erst `setzeOben("fokus")`,
+**Reihenfolge im Klick-Handler ist keine Kosmetik:** erst `setzeUnten("fokus")`,
 dann `window.fokusReiter(welcher, true)`. `fokusZeigen()` setzt beim ersten
 Öffnen auf „Gewohnheiten" zurück — käme die Wahl des Nutzers davor, würde ein
 Tipp auf „Timer" still überschrieben.
