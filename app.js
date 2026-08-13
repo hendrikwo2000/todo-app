@@ -82,6 +82,9 @@ const pushSwitch       = document.getElementById("pushSwitch");
 const pushSwitchLabel  = document.getElementById("pushSwitchLabel");
 const pushSwitchWrap   = document.getElementById("pushSwitchWrap");
 const pushHinweis      = document.getElementById("pushHinweis");
+const fokusPanelZeile       = document.getElementById("fokusPanelZeile");
+const fokusPanelSwitch      = document.getElementById("fokusPanelSwitch");
+const fokusPanelSwitchLabel = document.getElementById("fokusPanelSwitchLabel");
 // Das Zahnrad steckt DREIMAL im Dokument: in der Kopfzeile der App und in den
 // beiden Panels (Kalender, Fokus), die die Kopfzeile am Handy verdecken. Alle
 // tragen .ein-knopf, alle starten versteckt und erscheinen mit der Anmeldung.
@@ -734,6 +737,24 @@ async function aktualisiereGoogleAbschnitt() {
 function aktualisiereFokusLink() {
   document.getElementById("subFokus").textContent = fokusZugang ? "aktiv" : "nicht aktiv";
   document.getElementById("fokusLink").classList.toggle("aktiv", fokusZugang);
+  // Der Schalter darunter ergibt nur mit Zugang Sinn - ohne ihn gaebe es
+  // nichts einzublenden.
+  fokusPanelZeile.hidden = !fokusZugang;
+}
+
+// ---------- Fokus im Kalender-Streifen ----------
+// Reine Anzeige-Entscheidung, deshalb pro Geraet in localStorage und nicht in
+// der Datenbank: wer am Rechner die Gewohnheiten mitlaufen laesst, will sie am
+// Handy nicht zwangslaeufig auch. Standard ist AN - wer den Zugang geholt hat,
+// will die Reiter in aller Regel sehen.
+const FOKUS_PANEL_KEY = "fokusPanel";
+let fokusPanelAn = localStorage.getItem(FOKUS_PANEL_KEY) !== "aus";
+// kalender.js fragt hier nach, ob es die Reiterzeile ueberhaupt zeichnen soll.
+window.fokusImStreifen = () => fokusPanelAn;
+
+function zeigeFokusPanelSchalter() {
+  fokusPanelSwitch.checked = fokusPanelAn;
+  fokusPanelSwitchLabel.textContent = fokusPanelAn ? "An" : "Aus";
 }
 
 // Kurztext in jeder Kopfzeile, auch zugeklappt sichtbar - Antwort auf "ich
@@ -1806,12 +1827,16 @@ function setStatus(text, cls) {
 }
 
 // ---------- Aktionen: ToDos ----------
-function findTodo(id) { return state.todos.find(t => t.id === id); }
+// Der Inhalt-Parameter ist fuer den Kalender da: der zeigt ToDos aus ALLEN
+// Listen und muss sie auch abhaken koennen, ohne die aktive Liste zu wechseln.
+// Ohne Angabe gilt wie bisher die aktive Liste (state zeigt auf
+// daten[aktiveListe], siehe render()).
+function findTodo(id, inhalt = state) { return (inhalt.todos || []).find(t => t.id === id); }
 
 // Alle Unterpunkte eines ToDos, in gespeicherter Reihenfolge (das GET liefert
 // sie schon sortiert, die Reihenfolge bleibt beim Filtern erhalten).
-function unterpunkteVon(todoId) {
-  return state.unterpunkte.filter(u => u.todoId === todoId);
+function unterpunkteVon(todoId, inhalt = state) {
+  return (inhalt.unterpunkte || []).filter(u => u.todoId === todoId);
 }
 
 function addUnterpunkt(todoId, text) {
@@ -1859,9 +1884,9 @@ function toggleUnterpunkt(id) {
 // Naechste freie Sortiernummer fuer termin-lose, offene ToDos einer Gruppe.
 // Gruppe = Bereich + Ueber-Thema (null = frei), denn jede Gruppe wird fuer
 // sich sortiert; so landet ein neues ToDo hinten in genau seiner Gruppe.
-function nextOrder(catId, themaId) {
+function nextOrder(catId, themaId, inhalt = state) {
   const tid = themaId || null;
-  const orders = state.todos
+  const orders = (inhalt.todos || [])
     .filter(t => t.categoryId === catId && (t.themaId || null) === tid
                  && !t.done && !t.due && typeof t.order === "number")
     .map(t => t.order);
@@ -1903,19 +1928,24 @@ function addTodoOhneBereich() {
   openAdd(id, null);
 }
 
-function toggleDone(id) {
-  const t = findTodo(id);
+// boardId ist der Weg des Kalenders: er zeigt ToDos aus allen Listen und hakt
+// sie dort ab, wo sie liegen - ohne die aktive Liste umzuschalten. Ohne Angabe
+// bleibt alles wie bisher.
+function toggleDone(id, boardId = aktiveListe) {
+  const inhalt = daten[boardId];
+  if (!inhalt) return;
+  const t = findTodo(id, inhalt);
   if (!t) return;
   t.done = !t.done;
   t.completedAt = t.done ? new Date().toISOString() : null;
   // Wieder geoeffnete termin-lose ToDos ans Ende ihrer offenen Gruppe setzen.
-  if (!t.done && !t.due && typeof t.order !== "number") t.order = nextOrder(t.categoryId, t.themaId);
+  if (!t.done && !t.due && typeof t.order !== "number") t.order = nextOrder(t.categoryId, t.themaId, inhalt);
   // Haupt-Haekchen manuell gesetzt (oder durch den letzten Unterpunkt ausgeloest,
   // siehe toggleUnterpunkt): alle Unterpunkte ziehen nach. Beim OEFFNEN dagegen
   // KEINE Kaskade - man will das ToDo zurueckholen, nicht den Haken-Fortschritt
   // verlieren (siehe Kommentar in toggleUnterpunkt).
   if (t.done) {
-    state.unterpunkte.forEach(u => { if (u.todoId === t.id) u.done = true; });
+    (inhalt.unterpunkte || []).forEach(u => { if (u.todoId === t.id) u.done = true; });
   }
   // Wiederkehrendes ToDo abgehakt: sofort die naechste Ausgabe anlegen. Baut
   // das neue ToDo direkt (nicht ueber addTodoTo()) - die Funktion raeumt
@@ -1935,15 +1965,16 @@ function toggleDone(id) {
       createdAt: new Date().toISOString(),
       completedAt: null,
     };
-    state.todos.push(neuesTodo);
+    inhalt.todos.push(neuesTodo);
     // Checkliste mitnehmen, aber frisch unangehakt - sonst muesste man sie bei
     // jeder Wiederholung neu eintippen (z. B. eine wiederkehrende Einkaufsliste).
-    unterpunkteVon(t.id).forEach(u => {
-      state.unterpunkte.push({ id: uid(), todoId: neuesTodo.id, text: u.text, done: false });
+    const unterpunkte = inhalt.unterpunkte || (inhalt.unterpunkte = []);
+    unterpunkteVon(t.id, inhalt).forEach(u => {
+      unterpunkte.push({ id: uid(), todoId: neuesTodo.id, text: u.text, done: false });
     });
   }
   render();
-  save();
+  save(boardId);
 }
 
 function deleteTodo(id) {
@@ -2859,13 +2890,17 @@ function baueAddWidget(cat, themaId) {
       <button type="button" class="add-icon date-clear" title="Termin entfernen" hidden>✕</button>
     </div>
     ${istErstesTodo ? `<p class="add-hint">📅 antippen, um ein Datum zu setzen — optional.</p>` : ""}
-    <textarea class="add-note" placeholder="Notiz (optional) …" rows="2"></textarea>`;
+    <textarea class="add-note" placeholder="Notiz (optional) …" rows="2"></textarea>
+    <div class="add-knoepfe">
+      <button type="button" class="btn klein primary add-ok">Anlegen</button>
+    </div>`;
 
   const textInput = add.querySelector(".add-text");
   const dateInput = add.querySelector(".add-date");
   const noteInput = add.querySelector(".add-note");
   const calBtn    = add.querySelector(".add-cal");
   const clearBtn  = add.querySelector(".date-clear");
+  const okBtn     = add.querySelector(".add-ok");
   verdrahteNotizHoehe(noteInput);
 
   const syncDateUi = () => updateDateButton(calBtn, clearBtn, dateInput.value);
@@ -2885,6 +2920,11 @@ function baueAddWidget(cat, themaId) {
   calBtn.addEventListener("click", () => openDatePicker(dateInput));
   clearBtn.addEventListener("click", () => { dateInput.value = ""; syncDateUi(); textInput.focus(); });
   dateInput.addEventListener("change", syncDateUi);
+  // Enter tut dasselbe und bleibt der schnellere Weg. Der Knopf ist fuer alle
+  // da, die nicht raten sollen, wie man die Eingabe abschliesst - besonders am
+  // Handy, wo die Tastatur die Zeile ohnehin verdeckt.
+  okBtn.addEventListener("click", () =>
+    addTodoTo(cat.id, themaId, textInput.value, dateInput.value, noteInput.value));
 
   return add;
 }
@@ -3319,6 +3359,16 @@ themeSwitch.addEventListener("change", () => {
   const next = themeSwitch.checked ? "dark" : "light";
   localStorage.setItem("theme", next);
   applyTheme(next);
+});
+
+zeigeFokusPanelSchalter();
+fokusPanelSwitch.addEventListener("change", () => {
+  fokusPanelAn = fokusPanelSwitch.checked;
+  localStorage.setItem(FOKUS_PANEL_KEY, fokusPanelAn ? "an" : "aus");
+  zeigeFokusPanelSchalter();
+  // Der Streifen raeumt selbst um: ausgeschaltet faellt ein offener
+  // Fokus-Reiter auf den Tag zurueck (zeichneUnten in kalender.js).
+  window.kalenderNeuZeichnen?.();
 });
 
 // Titel ist Umschalter und Umbenenn-Griff in einem: kurzer Klick oeffnet ab

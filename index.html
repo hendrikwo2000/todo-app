@@ -46,23 +46,20 @@
       <button id="addCatBtn" class="btn add-cat">＋ Bereich</button>
       <span id="saveStatus" class="save-status"></span>
       <button id="einstellungenBtn" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
-      <!-- Umschalter Liste/Kalender/Fokus, aussen rechts. Die Ecke gehoert ihm
-           und nicht dem Zahnrad, weil er im Umschalt-Modus im Kalender noch
-           einmal auftaucht - und zwar an genau derselben Bildschirmstelle.
-           Stuende dort das Zahnrad daneben, spraenge die Pille beim Umschalten.
+      <!-- Umschalter Liste/Kalender, aussen rechts. Die Ecke gehoert ihm und
+           nicht dem Zahnrad, weil er im Umschalt-Modus im Kalender noch einmal
+           auftaucht - und zwar an genau derselben Bildschirmstelle. Stuende
+           dort das Zahnrad daneben, spraenge die Pille beim Umschalten.
 
-           Eine echte Auswahl, in jeder Fenstergroesse: 📋 = Streifen zu,
-           📅 = Streifen auf mit dem Tag unten, 🔥 = mit Fokus unten. Beide
-           Panels sind derselbe Streifen, es gibt also nichts, was unabhaengig
-           auf und zu gehen koennte.
-           🔥 erscheint nur mit Fokus-Zugang (fokus.js). -->
+           Zwei Segmente: 📋 = Streifen zu, 📅 = Streifen auf. WAS unten im
+           Streifen steht (Tag, Gewohnheiten, Timer), entscheiden die Reiter
+           dort - hier oben waere ein drittes Symbol nur eine zweite Stelle
+           fuer dieselbe Frage. -->
       <div id="ansichtSchalter" class="ansicht-schalter" role="group" aria-label="Ansicht">
         <button type="button" class="ansicht-seg" data-ansicht="liste"
                 aria-pressed="true" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
         <button type="button" class="ansicht-seg" data-ansicht="kalender"
-                aria-pressed="false" aria-label="Kalender" title="Tag">📅</button>
-        <button type="button" class="ansicht-seg fok-seg" data-ansicht="fokus" hidden
-                aria-pressed="false" aria-label="Fokus" title="Fokus"><span class="fok-flamme">🔥</span><span class="fok-rest" hidden></span></button>
+                aria-pressed="false" aria-label="Kalender" title="Kalender">📅</button>
       </div>
 
       <!-- Umschalter zwischen den Listen. Inhalt kommt per JS, erscheint nur
@@ -117,8 +114,6 @@
                 aria-pressed="false" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
         <button type="button" class="ansicht-seg" data-ansicht="kalender"
                 aria-pressed="true" aria-label="Kalender" title="Kalender">📅</button>
-        <button type="button" class="ansicht-seg fok-seg" data-ansicht="fokus" hidden
-                aria-pressed="false" aria-label="Fokus" title="Fokus"><span class="fok-flamme">🔥</span><span class="fok-rest" hidden></span></button>
       </div>
     </div>
 
@@ -143,15 +138,21 @@
     <!-- Der untere Teil des Streifens. Er zeigt IMMER genau eines von dreien -
          den gewaehlten Tag, die Gewohnheiten oder den Timer - und ist dabei
          immer gleich hoch: alles, was unter dem Raster uebrig bleibt.
-         Umgeschaltet wird ueber die Pille oben (📅/🔥), ueber einen Tipp auf
-         einen Tag im Raster und ueber die Reiter hier drin. Inhalt: kalender.js
-         fuer den Tag, fokus.js fuer die beiden anderen. -->
+         Umgeschaltet wird ueber die Reiter hier drin und ueber einen Tipp auf
+         einen Tag im Raster. Inhalt: kalender.js fuer den Tag, fokus.js fuer
+         die beiden anderen. -->
     <div id="kalUnten" class="kal-unten">
-      <!-- Nur im Fokus-Modus sichtbar. -->
+      <!-- Die Reiterzeile. Sie steht nur da, wenn es beim Fokus ueberhaupt
+           etwas umzuschalten gibt: mit Fokus-Zugang UND eingeschaltetem
+           Schalter in den Einstellungen. Ohne das zeigt der Streifen still nur
+           den Tag - eine Reiterleiste mit genau einem Reiter waere Zierrat.
+           Sichtbarkeit steuert zeichneUnten() in kalender.js. -->
       <div id="fokKopf" class="fok-kopf" hidden>
-        <div class="fok-reiter" role="tablist" aria-label="Fokus-Ansicht">
+        <div class="fok-reiter" role="tablist" aria-label="Ansicht unten">
+          <button type="button" class="fok-reiter-seg" data-fok-reiter="tag"
+                  role="tab" aria-selected="true">Tag</button>
           <button type="button" class="fok-reiter-seg" data-fok-reiter="gewohnheiten"
-                  role="tab" aria-selected="true">Gewohnheiten</button>
+                  role="tab" aria-selected="false">Gewohnheiten</button>
           <button type="button" class="fok-reiter-seg" data-fok-reiter="timer"
                   role="tab" aria-selected="false">Timer</button>
         </div>
@@ -318,6 +319,23 @@
           <span class="ein-kopf-text">Fokus-Tracker</span>
           <span class="ein-kopf-sub" id="subFokus">nicht aktiv</span>
         </a>
+
+        <!-- Ob Gewohnheiten und Timer im Kalender-Streifen auftauchen. Frueher
+             sass diese Entscheidung als drittes Symbol (🔥) in der Kopfzeile -
+             drei Knoepfe dort waren einer zu viel, und die Frage "will ich das
+             ueberhaupt sehen" gehoert ohnehin hierher und nicht in eine Ecke,
+             an der man taeglich vorbeitippt.
+             Erscheint nur mit Fokus-Zugang: ohne ihn gibt es nichts zu
+             schalten. Gilt pro Geraet (localStorage), wie die Darstellung. -->
+        <div class="ein-abschnitt ein-zeile" id="fokusPanelZeile" data-abschnitt="fokuspanel" hidden>
+          <span class="ein-kopf-icon">🔥</span>
+          <span class="ein-kopf-text">Fokus im Kalender</span>
+          <label class="switch" id="fokusPanelSwitchWrap">
+            <input type="checkbox" id="fokusPanelSwitch">
+            <span class="switch-label" id="fokusPanelSwitchLabel">Aus</span>
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
 
         <details class="ein-abschnitt" data-abschnitt="konto">
           <summary class="ein-kopf">

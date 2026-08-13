@@ -617,6 +617,13 @@ function kalenderwoche(datum) {
 const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni",
                 "Juli", "August", "September", "Oktober", "November", "Dezember"];
 let wahlOffen = false;
+// Entwurfsstand des Rades. Gedreht wird zunaechst nur hier - erst "Übernehmen"
+// traegt es in den Kalender. Vorher sprang der Kalender bei jedem
+// Vorbeidrehen mit, und wer sich verdrehte, kam nur durch erneutes Drehen
+// wieder zurueck: Schliessen war dann keine Rueckname mehr, sondern nur noch
+// das Ende einer schon vollzogenen Aenderung.
+let wahlJahr = null;
+let wahlMonat = null;
 // Steht das Rad schon im DOM? Ein Einrasten laesst den Kalender neu zeichnen,
 // und der ruft zeichneWahl() mit - ohne dieses Flag baute sich das Rad dabei
 // selbst neu auf, verloere seine Scrollposition und loeste damit das naechste
@@ -632,6 +639,8 @@ const JAHR_VOR = 10;
 
 function schalteWahl() {
   wahlOffen = !wahlOffen;
+  // Beim Aufklappen faengt der Entwurf da an, wo der Kalender gerade steht.
+  if (wahlOffen) { wahlJahr = kalJahr; wahlMonat = kalMonatNr; }
   zeichneWahl();
 }
 
@@ -733,10 +742,17 @@ function zeichneWahl() {
   const kopf = document.createElement("p");
   kopf.className = "kal-popup-kopf";
   kopf.appendChild(document.createTextNode("Monat wählen"));
+  // Was gerade gewaehlt IST, in Worten. Die Markierung im Rad allein reichte
+  // nicht: sie zeigt zwei Walzen getrennt, und welche Kombination daraus
+  // gilt, musste man sich zusammenreimen.
+  const stand = document.createElement("span");
+  stand.className = "kal-wahl-stand";
+  kopf.appendChild(stand);
   const zu = document.createElement("button");
   zu.type = "button";
   zu.className = "kal-schliessen";
-  zu.setAttribute("aria-label", "Schließen");
+  zu.setAttribute("aria-label", "Abbrechen");
+  zu.title = "Abbrechen";
   zu.textContent = "✕";
   zu.addEventListener("click", schliesseWahl);
   kopf.appendChild(zu);
@@ -753,16 +769,35 @@ function zeichneWahl() {
 
   rad.appendChild(baueWalze(
     MONATE.map((name, i) => ({ text: name, wert: i })),
-    kalMonatNr,
-    monat => zeigeMonat(kalJahr, monat)));
+    wahlMonat,
+    monat => { wahlMonat = monat; zeigeWahlStand(); }));
 
   const jahre = jahrBereich();
   rad.appendChild(baueWalze(
     jahre.map(j => ({ text: String(j), wert: j })),
-    jahre.indexOf(kalJahr),
-    jahr => zeigeMonat(jahr, kalMonatNr)));
+    jahre.indexOf(wahlJahr),
+    jahr => { wahlJahr = jahr; zeigeWahlStand(); }));
 
   kalWahlBox.appendChild(rad);
+
+  const fuss = document.createElement("div");
+  fuss.className = "kal-wahl-fuss";
+  const ok = document.createElement("button");
+  ok.type = "button";
+  ok.className = "btn primary";
+  ok.textContent = "Übernehmen";
+  ok.addEventListener("click", () => {
+    // Werte sichern: schliesseWahl() zeichnet neu, und zeigeMonat() setzt
+    // kalJahr/kalMonatNr - der Entwurf soll dabei nicht unter der Hand
+    // ueberschrieben werden.
+    const j = wahlJahr, m = wahlMonat;
+    schliesseWahl();
+    zeigeMonat(j, m);
+  });
+  fuss.appendChild(ok);
+  kalWahlBox.appendChild(fuss);
+
+  zeigeWahlStand();
 
   // Jetzt steht das Rad im Dokument und hat Hoehe - erst hier laesst sich der
   // gewaehlte Wert in die Mitte schieben. Ohne Animation: das Rad soll beim
@@ -770,6 +805,13 @@ function zeichneWahl() {
   for (const spalte of rad.querySelectorAll(".kal-rad-spalte")) {
     spalte.scrollTop = Number(spalte.dataset.radStart) * RAD_ZEILE;
   }
+}
+
+// Nur diese eine Zeile nachziehen, nicht das ganze Rad: das steht mitten im
+// Scrollen und darf sich nicht unter dem Finger neu aufbauen.
+function zeigeWahlStand() {
+  const el = kalWahlBox.querySelector(".kal-wahl-stand");
+  if (el) el.textContent = `${MONATE[wahlMonat]} ${wahlJahr}`;
 }
 
 function zeichneRaster(tage, spuren, heute) {
@@ -851,8 +893,10 @@ function baueTagesZelle(tag, spalte, ctx) {
   zelle.dataset.tag = iso;
   if (iso === heute) zelle.classList.add("heute");
   if (iso === kalAuswahl) zelle.classList.add("gewaehlt");
-  // Rot faerbt nur ueberfaelliges ToDo-Datum, nie ein vergangener Termin.
-  if (todosDesTages.length && iso < heute) zelle.classList.add("ueberfaellig");
+  // Rot faerbt nur faelliges ToDo-Datum, nie ein vergangener Termin. HEUTE
+  // zaehlt mit: was heute drankommt, ist genauso dringend wie Liegengebliebenes
+  // - die Regel im Raster ist damit schlicht "rot = da liegt was an".
+  if (todosDesTages.length && iso <= heute) zelle.classList.add("faellig");
   if (versteckt > 0) zelle.classList.add("viele");
 
   const zahl = document.createElement("span");
@@ -1007,6 +1051,24 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
   const echterTag = !!kalAuswahl && kalAuswahl !== UEBERFAELLIG;
 
   if (echterTag) {
+    // Liegengebliebenes gehoert an den Anfang des heutigen Tages: es ist
+    // faellig, nur eben schon laenger. Frueher lag es allein hinter dem
+    // ⚠-Chip - wer nur auf "heute" schaute, sah es also nie. An anderen Tagen
+    // hat es nichts zu suchen, dort ist es weder faellig noch entstanden.
+    if (kalAuswahl === heute && ueberfaellige.length) {
+      kalTagesliste.appendChild(baueGruppenKopf(`Überfällig (${ueberfaellige.length})`, null));
+      for (const t of ueberfaellige) kalTagesliste.appendChild(baueEintrag(t, true));
+    }
+
+    kalTagesliste.appendChild(baueGruppenKopf("ToDos", aktiveListe
+      ? () => { todoEingabeOffen = true; zeichneKalender(); fokussiereAnlegeFeld(); } : null, "ToDo"));
+    if (todoEingabeOffen && aktiveListe) kalTagesliste.appendChild(baueAnlegeZeile(kalAuswahl));
+    for (const t of todosDesTages) kalTagesliste.appendChild(baueEintrag(t, mitDatum));
+    if (!todosDesTages.length) kalTagesliste.appendChild(baueLeerZeile("Nichts fällig."));
+
+    // Termine stehen unter den ToDos: der Streifen beantwortet zuerst "was
+    // muss ich heute tun", und die Termin-Ueberschrift samt Leerzeile schob
+    // diese Antwort vorher jedes Mal nach unten aus dem Blick.
     const terminePlus = googleZustand.verbunden && googleZustand.schreiben;
     kalTagesliste.appendChild(baueGruppenKopf("Termine", terminePlus
       ? () => oeffneTerminFormular(kalAuswahl, null) : null, "Termin"));
@@ -1017,12 +1079,6 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
       kalTagesliste.appendChild(baueLeerZeile(googleZustand.verbunden
         ? "Keine Termine." : "Kein Google-Kalender verbunden."));
     }
-
-    kalTagesliste.appendChild(baueGruppenKopf("ToDos", aktiveListe
-      ? () => { todoEingabeOffen = true; zeichneKalender(); fokussiereAnlegeFeld(); } : null, "ToDo"));
-    if (todoEingabeOffen && aktiveListe) kalTagesliste.appendChild(baueAnlegeZeile(kalAuswahl));
-    for (const t of todosDesTages) kalTagesliste.appendChild(baueEintrag(t, mitDatum));
-    if (!todosDesTages.length) kalTagesliste.appendChild(baueLeerZeile("Nichts fällig."));
   } else {
     // Ueberfaellig-Ausschnitt (oder gar keine Auswahl): nur ToDos, ohne
     // Ueberschriften - dort gibt es keinen Tag, auf den sich ein ＋ beziehen
@@ -1492,7 +1548,29 @@ function baueTerminZeile(t) {
   return box;
 }
 
+// Eine ToDo-Zeile der Tagesliste: Haken zum Erledigen + der Eintrag selbst,
+// der wie gehabt zum ToDo auf dem Board springt. Der Rahmen gehoert der Zeile,
+// nicht mehr dem Eintrag - sonst saehe der Haken aus, als stuende er neben der
+// Karte statt darin.
 function baueEintrag(t, mitDatum) {
+  const zeile = document.createElement("div");
+  zeile.className = "kal-todo-zeile";
+
+  // Der Kalender bearbeitet sonst nichts, aber Abhaken ist die eine Sache, die
+  // man beim Blick auf "was ist heute faellig" tatsaechlich tun will. Laeuft
+  // ueber toggleDone in app.js - mit boardId, denn die Tagesliste zeigt ToDos
+  // aus allen Listen, nicht nur aus der gerade aktiven.
+  const haken = document.createElement("label");
+  haken.className = "kal-haken";
+  haken.title = "Als erledigt abhaken";
+  const kasten = document.createElement("input");
+  kasten.type = "checkbox";
+  kasten.className = "check";
+  kasten.checked = !!t.done;
+  kasten.addEventListener("change", () => toggleDone(t.id, t.boardId));
+  haken.appendChild(kasten);
+  zeile.appendChild(haken);
+
   const knopf = document.createElement("button");
   knopf.type = "button";
   knopf.className = "kal-eintrag";
@@ -1530,7 +1608,8 @@ function baueEintrag(t, mitDatum) {
   }
 
   knopf.appendChild(text);
-  return knopf;
+  zeile.appendChild(knopf);
+  return zeile;
 }
 
 // ---------- Springen ----------
@@ -1570,8 +1649,9 @@ function waehleTag(iso) {
     kalUntenModus = "tag";
   } else if (kalAuswahl === iso) {
     // Zweiter Tipp auf denselben Tag: zurueck zu Fokus, wenn es ihn gibt.
-    // Ohne Fokus-Zugang bleibt es beim blossen Abwaehlen wie bisher.
-    if (window.fokusHatZugang?.()) kalUntenModus = "fokus";
+    // Ohne Fokus (kein Zugang oder abgeschaltet) bleibt es beim blossen
+    // Abwaehlen wie bisher.
+    if (fokusMoeglich()) kalUntenModus = "fokus";
     else kalAuswahl = null;
   } else {
     kalAuswahl = iso;
@@ -1660,14 +1740,11 @@ function setzePanel(offen, sofort) {
   kalHintergrund.classList.toggle("sichtbar", offen && !split);
   kalPanel.setAttribute("aria-hidden", offen ? "false" : "true");
   document.documentElement.classList.toggle("kal-offen", offen);
-  // Genau eines der drei Segmente gilt: 📋 wenn der Streifen zu ist, sonst das
-  // zum unteren Teil passende. Eine echte Auswahl, in jeder Fenstergroesse -
-  // es gibt nichts mehr, was unabhaengig voneinander auf und zu gehen koennte.
+  // Genau eines der beiden Segmente gilt: 📋 wenn der Streifen zu ist, sonst
+  // 📅. WAS unten steht, sagen die Reiter dort - die Pille beantwortet nur
+  // noch "Streifen auf oder zu".
   for (const seg of document.querySelectorAll(".ansicht-seg")) {
-    const art = seg.dataset.ansicht;
-    const gilt = offen
-      ? (art === "fokus" ? kalUntenModus === "fokus" : art === "kalender" && kalUntenModus === "tag")
-      : art === "liste";
+    const gilt = offen ? seg.dataset.ansicht === "kalender" : seg.dataset.ansicht === "liste";
     seg.setAttribute("aria-pressed", String(gilt));
   }
   try { localStorage.setItem(ANSICHT_KEY, offen ? kalUntenModus : "liste"); }
@@ -1678,17 +1755,33 @@ function setzePanel(offen, sofort) {
  * Was steht unten: der Tag oder Fokus. Die Sichtbarkeit haengt an genau dieser
  * Stelle, damit "immer genau eines" nicht an zwei Orten entschieden wird.
  *
- * Ohne Fokus-Zugang gibt es nur den Tag - ein gemerktes "fokus" faellt dann
- * still auf ihn zurueck (etwa wenn jemand den Zugang wieder aufgibt).
+ * Fokus gibt es nur mit Zugang UND eingeschaltetem Schalter in den
+ * Einstellungen. Faellt eines der beiden weg, faellt ein gemerktes "fokus"
+ * still auf den Tag zurueck - sonst stuende der Streifen leer da.
  */
+function fokusMoeglich() {
+  return !!window.fokusHatZugang?.() && window.fokusImStreifen?.() !== false;
+}
+
 function zeichneUnten() {
-  if (kalUntenModus === "fokus" && !window.fokusHatZugang?.()) kalUntenModus = "tag";
+  const mitFokus = fokusMoeglich();
+  if (kalUntenModus === "fokus" && !mitFokus) kalUntenModus = "tag";
   // Im Vollbild gibt es den unteren Teil gar nicht (das Raster nimmt die ganze
   // Hoehe). Der Modus bleibt gemerkt und steht beim Verlassen wieder da.
   const fokus = kalUntenModus === "fokus" && !kalVollbild;
   kalTagesliste.hidden = fokus;
   if (fokus) window.fokusZeigen?.();
   else window.fokusVerstecken?.();
+  // Die Reiterzeile ueberlebt den Wechsel zum Tag - sie ist der Weg zurueck.
+  // Ohne Fokus (kein Zugang oder abgeschaltet) waere sie ein Reiter allein.
+  window.fokusReiterzeile?.(mitFokus && !kalVollbild);
+  // Steht der Tag vorn, markiert ihn niemand sonst: setzeReiter() in fokus.js
+  // laeuft nur, wenn dort etwas gezeichnet wird.
+  if (!fokus) {
+    for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
+      seg.setAttribute("aria-selected", String(seg.dataset.fokReiter === "tag"));
+    }
+  }
 }
 
 // Den unteren Teil umschalten, ohne den Streifen selbst anzufassen.
@@ -1934,16 +2027,27 @@ document.addEventListener("touchcancel", gesteBeenden);
 // Der Umschalter steckt zweimal im Dokument: in der Kopfzeile der App und im
 // Kalender selbst (der die Kopfzeile im Umschalt-Modus verdeckt). Sichtbar ist
 // immer nur einer, verdrahtet sind beide gleich.
-// Eine echte Auswahl: 📋 raeumt den Streifen weg, 📅 und 🔥 oeffnen ihn mit
-// dem jeweiligen Inhalt unten. Ein Tipp auf die schon gewaehlte Ansicht tut
-// nichts, wie bei jeder Pille.
+// Zwei Segmente: 📋 raeumt den Streifen weg, 📅 oeffnet ihn. Ein Tipp auf die
+// schon gewaehlte Ansicht tut nichts, wie bei jeder Pille.
 for (const seg of document.querySelectorAll(".ansicht-seg")) {
   seg.addEventListener("click", () => {
-    const art = seg.dataset.ansicht;
-    if (art === "liste") { schliesseKalender(); return; }
-    const modus = art === "fokus" ? "fokus" : "tag";
-    if (kalOffen) { setzeUnten(modus); return; }
-    oeffneKalender(modus);
+    if (seg.dataset.ansicht === "liste") { schliesseKalender(); return; }
+    if (kalOffen) { setzeUnten("tag"); return; }
+    oeffneKalender("tag");
+  });
+}
+
+// Die Reiter unten. Sie schalten seit dem Wegfall der Flamme BEIDES: ob unten
+// der Tag oder Fokus steht (das hier) und welcher Fokus-Reiter (fokus.js).
+// Reihenfolge zaehlt: setzeUnten("fokus") laesst fokusZeigen() beim ersten Mal
+// auf den Gewohnheiten aufsetzen - die Wahl des Nutzers muss also DANACH
+// kommen, sonst wird ein Tipp auf "Timer" still ueberschrieben.
+for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
+  seg.addEventListener("click", () => {
+    const welcher = seg.dataset.fokReiter;
+    if (welcher === "tag") { setzeUnten("tag"); return; }
+    setzeUnten("fokus");
+    window.fokusReiter?.(welcher, true);
   });
 }
 document.getElementById("kalZu").addEventListener("click", schliesseKalender);

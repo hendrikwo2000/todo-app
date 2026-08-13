@@ -25,7 +25,16 @@
    Wer das umschaltet, entscheidet kalender.js (kalUntenModus). Diese Datei
    liefert nur den Inhalt und wird ueber window.fokusZeigen() /
    window.fokusVerstecken() ein- und ausgeblendet; window.fokusHatZugang()
-   sagt umgekehrt, ob es 🔥 ueberhaupt gibt.
+   sagt umgekehrt, ob es Fokus ueberhaupt gibt.
+
+   Die REITERZEILE (Tag | Gewohnheiten | Timer) steht zwar hier im Markup,
+   gehoert aber dem Streifen: sie schaltet auch den Tag ein und aus. Ihre
+   Klick-Handler liegen deshalb geschlossen in kalender.js und rufen von dort
+   window.fokusReiter(); ihre Sichtbarkeit steuert window.fokusReiterzeile().
+   Seit dem 13.08.2026 gibt es dafuer kein 🔥 mehr in der Kopfzeile - drei
+   Knoepfe waren dort einer zu viel, und ob es den Fokus im Streifen ueberhaupt
+   gibt, steht jetzt als Schalter in den Einstellungen (window.fokusImStreifen
+   in app.js).
 
    Frueher war das ein zweites Panel unter dem Kalender, mit eigener
    Hoehenmessung und eigenem Umschalter. Beide Teile stritten sich um denselben
@@ -515,7 +524,6 @@ function meldeFertig(minuten) {
  * Sitzung den Timer nach vorn holt, entscheidet ladeFokus() gleich danach.
  */
 window.fokusZeigen = function () {
-  fokKopf.hidden = false;
   if (fokSichtbar) { zeichneFokus(); return; }
   fokSichtbar = true;
   fokReiterGewaehlt = false;
@@ -526,34 +534,38 @@ window.fokusZeigen = function () {
 
 window.fokusVerstecken = function () {
   fokSichtbar = false;
-  fokKopf.hidden = true;
   fokTimerBox.hidden = true;
   fokInhalt.hidden = true;
 };
 
-// Fuer kalender.js: ohne Zugang gibt es weder das 🔥-Segment noch den Modus.
+/**
+ * Die Reiterzeile steht auch dann da, wenn unten gerade der TAG vorn ist -
+ * sie ist der Weg zwischen allen dreien. Ueber ihre Sichtbarkeit entscheidet
+ * deshalb der Streifen (zeichneUnten in kalender.js) und nicht das
+ * Zeigen/Verstecken des Fokus-Inhalts.
+ */
+window.fokusReiterzeile = function (sichtbar) {
+  fokKopf.hidden = !sichtbar;
+};
+
+// Fuer kalender.js: ohne Zugang gibt es die Fokus-Reiter gar nicht.
 window.fokusHatZugang = () => fokZugang;
 
+// Die Reiter-Klicks liegen in kalender.js, weil "Tag" dort hingehoert und ein
+// halb geteilter Umschalter zwei Wahrheiten haette. Von dort kommt der Aufruf.
+window.fokusReiter = setzeReiter;
+
 /**
- * Der Zustand der drei Segmente - in allen drei Ecken, in denen der Umschalter
- * steckt (Kopfzeile, Kalender, Fokus-Panel).
- *
- * 🔥 traegt im Split zusaetzlich die Restzeit einer laufenden Sitzung, damit
- * man das Panel zumachen kann und trotzdem sieht, wie lange noch. Am Handy ist
- * dafuer kein Platz - dort wird daraus ein Punkt (style.css).
+ * Restzeit einer laufenden Sitzung am Timer-Reiter. Frueher stand sie am 🔥 in
+ * der Kopfzeile; die gibt es nicht mehr, und ein zugeklappter Streifen zeigt
+ * jetzt gar keine Restzeit - dafuer laeuft die Meldung am Sitzungsende und der
+ * Tab-Titel weiter.
  */
 function aktualisiereSegmente() {
-  // Nur Sichtbarkeit und Restzeit - welches Segment gedrueckt ist, entscheidet
-  // setzePanel() in kalender.js. Zwei Stellen dafuer waeren eine zu viel.
-  for (const seg of document.querySelectorAll('.ansicht-seg[data-ansicht="fokus"]')) {
-    seg.hidden = !fokZugang;
-    const rest = seg.querySelector(".fok-rest");
-    if (rest) {
-      rest.hidden = !fokSitzung;
-      if (fokSitzung) rest.textContent = fokZeit(restSek());
-    }
-    seg.classList.toggle("laeuft", !!fokSitzung);
-  }
+  const reiter = document.querySelector('.fok-reiter-seg[data-fok-reiter="timer"]');
+  if (!reiter) return;
+  reiter.classList.toggle("laeuft", !!fokSitzung);
+  reiter.textContent = fokSitzung ? `Timer ${fokZeit(restSek())}` : "Timer";
 }
 
 // ---------- Takt ----------
@@ -580,11 +592,10 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // ---------- Verdrahtung ----------
-// Nur die beiden Reiter. Die Pille oben (📋/📅/🔥), Escape und die Wischgeste
-// gehoeren dem Kalender-Streifen als Ganzem und stehen in kalender.js.
-for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
-  seg.addEventListener("click", () => setzeReiter(seg.dataset.fokReiter, true));
-}
+// Hier gar keine mehr: die Reiter schalten seit dem Wegfall der Flamme auch
+// den Tag ein und aus, und diese Entscheidung gehoert dem Streifen. Die
+// Klick-Handler stehen deshalb geschlossen in kalender.js und rufen von dort
+// window.fokusReiter() - genauso wie Escape und die Wischgeste schon immer.
 
 /**
  * Aus render() in app.js, wie window.kalenderNeuZeichnen.
@@ -598,7 +609,11 @@ window.fokusNeuZeichnen = function () {
   fokZugang = window.hatFokusZugang?.() === true;
   if (fokZugang === vorher) return;
   aktualisiereSegmente();
-  // Zugang gerade aufgegeben, waehrend Fokus unten stand: der Kalender raeumt
-  // beim naechsten Zeichnen auf sich selbst um (zeichneUnten prueft mit).
-  if (!fokZugang && fokSichtbar) window.kalenderNeuZeichnen?.();
+  // Am Zugang haengt jetzt die ganze Reiterzeile, nicht mehr nur ein Segment:
+  // frisch geholt muss sie erscheinen, aufgegeben verschwinden - und im
+  // zweiten Fall faellt ein offener Fokus-Reiter auf den Tag zurueck. Beides
+  // entscheidet zeichneUnten() in kalender.js. Der Aufruf laeuft nicht in eine
+  // Schleife: beim naechsten Mal ist fokZugang unveraendert und die Funktion
+  // steigt oben aus.
+  window.kalenderNeuZeichnen?.();
 };

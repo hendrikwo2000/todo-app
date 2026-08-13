@@ -255,41 +255,11 @@ body { transition: background .2s, color .2s, padding-right .26s cubic-bezier(.3
    Fokus-Segment wird per Attribut versteckt, solange kein Zugang besteht. */
 .ansicht-seg[hidden] { display: none; }
 
-/* Die Pille ist in JEDER Fenstergroesse dieselbe echte Auswahl: 📋 = Streifen
-   zu, 📅 = Streifen auf mit dem Tag unten, 🔥 = mit Fokus unten. Es gab hier
-   einmal eine zweite Bedienform fuers breite Fenster (📋 weg, 📅/🔥 als
-   unabhaengige Ein/Aus-Knoepfe) - die brauchte es, solange Kalender und Fokus
-   zwei getrennte Panels waren. Seit beide sich denselben unteren Teil teilen,
-   gibt es nichts Unabhaengiges mehr zu schalten.
-
-/* Restzeit einer laufenden Sitzung am 🔥-Knopf. Im breiten Fenster als Zahl
-   neben der Flamme; am Handy passt sie nicht in die Pille (die Kopfzeile
-   traegt dort schon Titel und Zahnrad), dort bleibt ein Glutpunkt - die Zeit
-   selbst steht dann im Tab-Titel. */
-.fok-seg { display: inline-flex; align-items: center; gap: 5px; }
-.fok-rest {
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent);
-  font-weight: 600;
-}
-/* Eine laufende Sitzung soll bei zugeklapptem Panel nicht verblassen. Die
-   opacity des Knopfes auf einem Kind zurueckzunehmen geht nicht - eine Gruppe
-   wird als Ganzes komponiert, Werte ueber 1 sind wirkungslos. Also andersherum:
-   der Knopf bleibt voll deckend, und die Flamme allein wird gedimmt, damit sie
-   sich weiter wie ein ausgeschaltetes Segment liest. */
-.ansicht-seg.laeuft { opacity: 1; }
-.ansicht-seg.laeuft:not([aria-pressed="true"]) .fok-flamme { opacity: .45; }
-.fok-rest[hidden] { display: none; }
-html:not(.breit) .fok-rest {
-  width: 6px;
-  height: 6px;
-  padding: 0;
-  border-radius: 50%;
-  background: var(--accent);
-  font-size: 0;
-  overflow: hidden;
-}
+/* Die Pille beantwortet nur noch "Streifen auf oder zu": 📋 = zu, 📅 = auf.
+   Sie hatte einmal ein drittes Segment (🔥 fuer den Fokus) - drei Knoepfe in
+   der Kopfzeile waren einer zu viel, und der Streifen sagt mit seinen eigenen
+   Reitern ohnehin selbst, was unten steht. Wer den Fokus gar nicht sehen will,
+   schaltet ihn in den Einstellungen ab. */
 /* Gleiche Falle wie oben: display:flex auf .btn schlaegt [hidden]. */
 #todoZugangAufgebenStart[hidden] { display: none; }
 /* Schmale Screens: der Titel teilt sich die erste Zeile mit Zahnrad und
@@ -525,6 +495,9 @@ input[type="date"]:focus {
 .add-line { display: flex; gap: 5px; }
 .add-line .add-text { flex: 1; min-width: 0; }
 .add-hint { margin: -2px 0 0; font-size: 11.5px; color: var(--muted); }
+/* Enter legt weiterhin an - der Knopf sagt es nur laut. Rechtsbuendig, damit
+   er nicht wie eine zweite Eingabezeile aussieht. */
+.add-knoepfe { display: flex; justify-content: flex-end; }
 .add-icon {
   border: 1px solid var(--line);
   background: var(--row);
@@ -590,6 +563,30 @@ input[type="date"]:focus {
     appearance: none;
   }
   .date-field .add-cal { pointer-events: none; }
+
+  /* Alle Schliessen-Kreuze auf Fingergroesse. Ein ✕ von rund 23 px Hoehe
+     trifft man am Handy nicht zuverlaessig, und danebengetippt heisst hier
+     jedes Mal: das Fenster bleibt offen, oder man erwischt etwas dahinter.
+
+     Die Flaeche kommt als unsichtbares Feld OBEN DRAUF, statt den Knopf
+     selbst auf 44 px zu setzen: der sitzt in Zeilen mit anderen Knoepfen
+     (Kalenderkopf: ‹ › Heute ⤢ ✕), und ein 44 px hoher Knopf zoege die ganze
+     Zeile mit - im Kalender ginge das direkt vom Raster ab. So aendert sich
+     am Layout und am Aussehen nichts, nur der Finger trifft.
+
+     Rechtsbuendig ausgerichtet, weil rechts vom ✕ immer der Kastenrand liegt:
+     dorthin darf die Flaeche wachsen, ohne dem linken Nachbarn ins Gehege zu
+     kommen. */
+  .kal-schliessen, .ein-schliessen { position: relative; }
+  .kal-schliessen::after, .ein-schliessen::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: -6px;
+    width: 44px;
+    height: 44px;
+    transform: translateY(-50%);
+  }
 }
 /* resize:none, weil die Hoehe aus dem Inhalt kommt (passeNotizHoeheAn in
    app.js) - ein von Hand gezogenes Feld wuerde beim naechsten Tastendruck
@@ -1745,6 +1742,10 @@ html:not(.breit) #kalZu { display: none; }
   font-size: 16px; font-weight: 700;
 }
 .kal-popup-kopf .kal-schliessen { margin-left: auto; }
+/* Der gedrehte Stand in Worten, neben der Ueberschrift. Bewusst in der
+   Akzentfarbe: er ist die Antwort auf "was habe ich hier gerade gewaehlt". */
+.kal-wahl-stand { color: var(--accent); font-weight: 700; }
+.kal-wahl-fuss { display: flex; justify-content: flex-end; }
 
 /* Monat/Jahr als Drehrad: zwei Walzen, in denen ein Wert in der Mitte
    einrastet. Davor lag hier ein Kachelraster - das zeigte alles auf einen
@@ -1764,6 +1765,11 @@ html:not(.breit) #kalZu { display: none; }
   height: calc(var(--rad-zeile) * 5);
 }
 .kal-rad-spalte {
+  /* Muss ueber dem Markierungsfenster liegen. Das ist absolut positioniert und
+     hat einen deckenden Hintergrund - ohne dieses z-index deckte es genau den
+     Wert zu, den es markieren soll, und die Mitte des Rades blieb leer. */
+  position: relative;
+  z-index: 1;
   flex: 1 1 0;
   overflow-y: auto;
   scroll-snap-type: y mandatory;
@@ -1907,7 +1913,10 @@ html:not(.breit) #kalZu { display: none; }
   box-shadow: inset 0 0 0 1px var(--accent);
   background: var(--accent-soft);
 }
-.kal-tag.ueberfaellig .kal-zahl { color: var(--red); font-weight: 700; }
+/* Gilt fuer ueberfaellige UND heute faellige Tage - beides ist "da liegt was
+   an". Die blaue Umrandung von .heute bleibt daneben stehen und trennt
+   weiterhin heute von gestern. */
+.kal-tag.faellig .kal-zahl { color: var(--red); font-weight: 700; }
 .kal-zahl { line-height: 1; }
 
 .kal-punkte { display: flex; align-items: center; gap: 3px; height: 6px; }
@@ -2050,6 +2059,37 @@ html:not(.breit) #kalZu { display: none; }
 }
 .kal-eintrag:hover { border-color: var(--accent); }
 .kal-eintrag .kal-punkt { margin-top: 6px; }
+
+/* ToDo-Zeile der Tagesliste: Haken + Eintrag in EINER Karte. Der Rahmen sitzt
+   deshalb an der Zeile; der Eintrag darin behaelt seinen Rahmen nur
+   durchsichtig, damit sein Innenabstand und die Zeilenhoehe bleiben, wie sie
+   beim Termin daneben sind. */
+.kal-todo-zeile {
+  display: flex;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--row);
+}
+.kal-todo-zeile:hover { border-color: var(--accent); }
+.kal-todo-zeile .kal-eintrag {
+  border-color: transparent;
+  background: none;
+  padding-left: 0;
+  min-width: 0;
+}
+/* 38 px breit fuer den Finger, das Kaestchen darin bleibt 18 px. padding-top
+   richtet es an der TITELZEILE aus, nicht an der Mitte der ganzen Karte -
+   sonst rutschte es bei zweizeiligen Eintraegen (Titel + Bereich) nach unten. */
+.kal-haken {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex: none;
+  width: 38px;
+  padding-top: 9px;
+  cursor: pointer;
+}
 .kal-eintrag-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 /* overflow-wrap: ein Termintitel ohne Leerzeichen (etwa eine lange URL aus
    dem Google-Kalender) wuerde sonst aus der Zeile laufen. */
@@ -2426,6 +2466,15 @@ body.zieht, body.zieht .todo {
   color: var(--text);
   font-weight: 600;
   cursor: default;
+}
+/* Laufende Sitzung: der Timer-Reiter traegt die Restzeit und faerbt sich, auch
+   wenn gerade ein anderer Reiter vorn ist. Frueher stand die Zeit am 🔥 in der
+   Kopfzeile - die gibt es nicht mehr, und hier steht sie naeher an der Sache.
+   Sichtbar ist sie damit nur bei offenem Streifen; ist er zu, meldet sich das
+   Sitzungsende weiterhin ueber den Tab-Titel und den Ton. */
+.fok-reiter-seg.laeuft {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
 }
 .fok-bilanz[hidden] { display: none; }
 

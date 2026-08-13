@@ -641,6 +641,35 @@ wenn der Zug wirklich läuft.
 Maus-Drop und Finger-Drop teilen sich `verschiebeToDo()`; vorher steckte diese
 Logik nur im `dragover`/`drop`-Paar und war für Touch nicht erreichbar.
 
+## Anlegen: der Knopf sagt nur laut, was Enter schon tut
+
+Das Anlege-Feld der Spalte (`baueAddWidget()`) hat seit 13.08.2026 einen
+sichtbaren **„Anlegen"**-Knopf (`.add-ok`). Gebraucht wird er nicht — Enter im
+Textfeld und ein Klick aus dem Feld heraus (`commitAddFromDOM()`) legen weiter
+an. Aber ohne ihn stand da ein Formular ohne erkennbaren Abschluss, und man
+musste raten; besonders am Handy, wo die Tastatur die Zeile ohnehin verdeckt.
+Die Anlegezeile im Kalender (`baueAnlegeZeile()`) hatte ihren Knopf schon.
+
+Der Knopf liegt INNERHALB von `.col-add.open` — sonst zählte sein eigener Klick
+als „Klick daneben" (`widget.contains(e.target)` in der Verdrahtung ganz unten
+in `app.js`) und das Feld schlösse sich, bevor der Handler feuert.
+
+## Tippflächen am Handy
+
+Alle Schließen-Kreuze (`.kal-schliessen`, `.ein-schliessen`) bekommen unter
+`@media (pointer: coarse)` eine **44-px-Tippfläche als `::after`**, nicht als
+eigene Knopfgröße. Grund: sie sitzen in Zeilen mit anderen Knöpfen
+(Kalenderkopf: ‹ › Heute ⤢ ✕), und ein 44 px hoher Knopf zöge die ganze Zeile
+mit — im Kalender ginge das direkt vom Raster ab. So ändert sich am Layout und
+am Aussehen nichts, nur der Finger trifft. Die Fläche ist **rechtsbündig**
+ausgerichtet (`right: -6px`), weil rechts vom ✕ immer der Kastenrand liegt —
+dorthin darf sie wachsen, ohne dem linken Nachbarn ins Gehege zu kommen.
+
+Gegenprobe beim Testen: `document.elementFromPoint()` zehn Pixel über und unter
+der Knopfmitte muss `.kal-schliessen` treffen, obwohl der Knopf nur 28×23 px
+groß ist. (`#kalZu` ist am Handy ohnehin `display: none` — dort schaltet die
+Pille. Die Regel greift für ihn nur am Rechner mit Touchscreen.)
+
 ## Notizfeld
 
 Wächst mit dem Inhalt nach unten statt zu scrollen — im Anlege-Feld wie im
@@ -803,7 +832,7 @@ Die 1000 px kommen aus dem Platz: 440 px Kalender lassen darunter noch zwei
 Board-Spalten (min. 250 px) übrig. Bei weniger bliebe eine einzige Spalte, und
 dann ist Umschalten ehrlicher als Nebeneinander.
 
-**Umschalter 📋 | 📅 | 🔥.** Steckt ZWEIMAL im Dokument: in der Kopfzeile
+**Umschalter 📋 | 📅.** Steckt ZWEIMAL im Dokument: in der Kopfzeile
 der App (`#ansichtSchalter`) und noch einmal im Kalender selbst
 (`.kal-ansicht-zeile`), weil der im Umschalt-Modus die Kopfzeile verdeckt.
 Dasselbe gilt fürs Zahnrad, das in derselben Zeile links davon steht — siehe
@@ -865,11 +894,13 @@ ein offenes Panel bei Änderungen am Board mitzieht. Grund für die Trennung
 ist schlicht die Größe von `app.js` (>3300 Zeilen), nicht eine technische
 Notwendigkeit.
 
-**Rein lesend.** Ein Tipp auf einen Eintrag wechselt bei Bedarf die Liste
+**Fast rein lesend.** Ein Tipp auf einen Eintrag wechselt bei Bedarf die Liste
 (`wechsleListe()`) und öffnet das ToDo im gewohnten Bearbeiten-Modus
 (`startEdit()`), die Karte blinkt kurz auf (`.todo.kal-treffer`). Kein
-Abhaken, kein Termin-Ziehen im Kalender — sonst läge dieselbe Logik
-(Wiederholung, Unterpunkt-Automatik, Speichern) an zwei Stellen.
+Termin-Ziehen im Kalender — sonst läge dieselbe Logik (Wiederholung,
+Unterpunkt-Automatik, Speichern) an zwei Stellen. Die einzige Ausnahme ist das
+Abhaken in der Tagesliste, und auch das ruft nur `toggleDone()` in `app.js`
+auf, statt etwas nachzubauen (siehe unten).
 Im Umschalt-Modus schließt sich das Panel dabei, sonst läge die Bearbeitung
 unsichtbar dahinter; **im Split bleibt es offen** — das Board steht ja schon
 daneben, und Zuklappen wäre ein ungefragter Rückbau der eingestellten
@@ -889,27 +920,66 @@ sonst zeigt der Sprung aus dem Kalender ins Leere.
 Auswahl `kalAuswahl` hält deshalb entweder ein ISO-Datum oder den
 Sonderwert `"ueberfaellig"`.
 
-**Monat/Jahr ist ein Drehrad** (seit 13.08.2026): zwei Walzen nebeneinander,
-Monat links, Jahr rechts. Was in der Mitte einrastet, gilt **sofort** — der
-Kalender dahinter zieht mit, geschlossen wird über ✕ oder einen Tipp daneben.
-Davor lag hier ein Kachelraster mit Jahres-Pfeilen; das zeigte alles auf einen
-Blick, brauchte für „März 2027" aber zwei Schritte und kürzte die Monatsnamen
-auf drei Buchstaben.
+**Am HEUTIGEN Tag steht Überfälliges zusätzlich mit in der Tagesliste** (seit
+13.08.2026), als eigener Abschnitt „Überfällig (n)" über den heutigen ToDos und
+mit Datum je Zeile. Vorher lag es allein hinter dem Chip — wer nur auf „heute"
+schaute, sah es also nie, obwohl es fällig ist, nur eben schon länger. An
+anderen Tagen bleibt es weg: dort ist es weder fällig noch entstanden.
 
-Zwei Dinge, die beim Bauen Ärger gemacht haben und es wieder tun würden:
+**Rot = da liegt was an.** `.kal-tag.faellig` färbt die Tageszahl, und zwar für
+überfällige UND heute fällige Tage (`iso <= heute`, vorher nur `<`). Die blaue
+Umrandung von `.heute` bleibt daneben stehen und trennt weiterhin heute von
+gestern. Die Klasse hieß bis 13.08.2026 `ueberfaellig` — mit dem heutigen Tag
+darin wäre der Name gelogen.
+
+**Die Tagesliste kann abhaken** (seit 13.08.2026, `.kal-haken` mit `.check`).
+Sonst bleibt der Kalender rein lesend — aber Erledigen ist die eine Sache, die
+man beim Blick auf „was ist heute fällig" tatsächlich tun will, und der Umweg
+übers Board dafür war einer zu viel. Läuft über `toggleDone(id, boardId)` in
+`app.js`, damit die Wiederholungs- und Unterpunkt-Logik an genau einer Stelle
+bleibt. **Der `boardId`-Parameter ist Pflicht, nicht Kosmetik:** die Tagesliste
+zeigt ToDos aus ALLEN Listen, und ohne ihn liefe `findTodo()` gegen `state`
+(die aktive Liste) ins Leere. `findTodo()`, `unterpunkteVon()` und `nextOrder()`
+nehmen dafür einen optionalen `inhalt`-Parameter; gespeichert wird mit
+`save(boardId)`. Ein Klick auf den TEXT springt weiterhin aufs Board.
+
+**Monat/Jahr ist ein Drehrad** (seit 13.08.2026): zwei Walzen nebeneinander,
+Monat links, Jahr rechts. Davor lag hier ein Kachelraster mit Jahres-Pfeilen;
+das zeigte alles auf einen Blick, brauchte für „März 2027" aber zwei Schritte
+und kürzte die Monatsnamen auf drei Buchstaben.
+
+**Gedreht wird zuerst nur in einem Entwurf** (`wahlJahr` / `wahlMonat`), erst
+„Übernehmen" trägt ihn in den Kalender; ✕, Escape und ein Tipp daneben
+verwerfen. Einen Tag lang galt das Einrasten **sofort** — dann sprang der
+Kalender bei jedem Vorbeidrehen mit, und wer sich verdrehte, kam nur durch
+erneutes Drehen zurück: Schließen war da keine Rücknahme mehr, sondern nur das
+Ende einer schon vollzogenen Änderung.
+
+**Was gerade gewählt ist, steht in Worten im Kopf** („März 2027",
+`.kal-wahl-stand`, gesetzt von `zeigeWahlStand()`). Die Markierung im Rad
+allein reichte nicht: sie zeigt zwei Walzen getrennt, und welche Kombination
+daraus gilt, musste man sich zusammenreimen.
+
+Drei Dinge, die beim Bauen Ärger gemacht haben und es wieder tun würden:
 
 * **`RAD_ZEILE` in `kalender.js` und `--rad-zeile` in `style.css` gehören
   zusammen.** Aus `scrollTop` und dieser Höhe fällt die Entscheidung, welcher
   Wert in der Mitte steht — laufen die Zahlen auseinander, wählt das Rad den
   falschen Monat.
-* **`zeichneWahl()` baut das Rad nur EINMAL** (Flag `radGebaut`). Das Einrasten
-  ruft `zeigeMonat()`, das lässt den Kalender neu zeichnen, und der ruft
-  `zeichneWahl()` mit. Ohne das Flag baute sich das Rad dabei selbst neu auf,
-  verlöre seine Scrollposition und löste damit das nächste Scroll-Ereignis aus.
+* **`zeichneWahl()` baut das Rad nur EINMAL** (Flag `radGebaut`), sonst baute
+  es sich beim Zeichnen unter dem Finger neu auf, verlöre seine Scrollposition
+  und löste damit das nächste Scroll-Ereignis aus. Deshalb zieht
+  `zeigeWahlStand()` auch nur die eine Textzeile nach, nicht das Rad.
+* **`.kal-rad-spalte` braucht `position: relative; z-index: 1`.** Das
+  Markierungsfenster (`.kal-rad-fenster`) ist absolut positioniert und deckend;
+  ohne das z-index liegt es ÜBER den Walzen und verdeckt ausgerechnet den Wert,
+  den es markieren soll — die Mitte des Rades sah dann leer aus. Gegenprobe:
+  `document.elementFromPoint()` mitten im Fenster muss einen `.kal-rad-wert`
+  treffen, nicht das Fenster.
 
-Ein **Tipp auf einen Wert übernimmt sofort** und scrollt zusätzlich hin. Nur zu
-scrollen und aufs Einrasten zu warten wäre die elegantere Theorie: tippt jemand
-den Wert an, der schon in der Mitte steht, bewegt sich nichts — und ohne
+Ein **Tipp auf einen Wert** setzt den Entwurf und scrollt zusätzlich hin. Nur
+zu scrollen und aufs Einrasten zu warten wäre die elegantere Theorie: tippt
+jemand den Wert an, der schon in der Mitte steht, bewegt sich nichts — und ohne
 Scroll-Ereignis passierte dann auch nichts.
 
 **Der Ort eines Termins lässt sich bearbeiten** (seit 13.08.2026). Vorher stand
@@ -1035,11 +1105,12 @@ sichtbar. Nur bei `invalid_grant` (Zugriff bei Google widerrufen) löscht der
 Endpunkt die Zeile und meldet `getrennt`, damit die App wieder „verbinden"
 anbietet statt endlos in denselben Fehler zu laufen.
 
-**Anzeige.** Pro Tag stehen ganztägige Termine oben, dann die mit Uhrzeit
-chronologisch, dann die ToDos — die haben keine Uhrzeit und gehören nicht in
-die Zeitachse. Enthält ein Tag **beides**, trennen die Zwischenüberschriften
-„Termine" und „ToDos"; bei nur einer Sorte bleiben sie weg, sonst wäre es eine
-Beschriftung ohne Gegenstück.
+**Anzeige.** Seit 13.08.2026 stehen im Tagesbereich die **ToDos zuerst** und
+die Termine darunter. Der Streifen beantwortet zuerst „was muss ich heute
+tun" — und die Termin-Überschrift samt ihrer Leerzeile („Kein Google-Kalender
+verbunden.") schob diese Antwort vorher bei jedem Öffnen nach unten aus dem
+Blick. Innerhalb der Termine bleibt es wie gehabt: ganztägige oben, dann die
+mit Uhrzeit chronologisch.
 
 **Zellen: Zahl oben, Rest darunter.** `justify-content: flex-start` statt
 `center` — sonst wandert die Tageszahl je nach Anzahl der Balken auf und ab und
@@ -1234,10 +1305,19 @@ Markup in `index.html`, Verhalten in `fokus.js`, CSS-Block „Fokus-Panel".
 **Sichtbar nur mit Fokus-Zugang.** `fokusZugang` steht im Bootstrap von
 `/api/todos` und wird über `window.hatFokusZugang()` gelesen — vorher weiß
 niemand, ob dieses Konto den Tracker überhaupt benutzen darf. Ohne Zugang gibt
-es das 🔥-Segment nicht, und ein gemerktes `"fokus"` fällt in `zeichneUnten()`
+es die Fokus-Reiter nicht, und ein gemerktes `"fokus"` fällt in `zeichneUnten()`
 still auf den Tag zurück (etwa wenn jemand den Zugang wieder aufgibt). Holt man
-ihn sich in den Einstellungen, ist 🔥 sofort da (`window.fokusNeuZeichnen()` am
-Ende des Klick-Handlers, sonst erst beim nächsten `render()`).
+ihn sich in den Einstellungen, sind sie sofort da (`window.fokusNeuZeichnen()`
+am Ende des Klick-Handlers, sonst erst beim nächsten `render()`).
+
+**Und mit dem Schalter „Fokus im Kalender"** (Einstellungen, `#fokusPanelSwitch`,
+seit 13.08.2026). Er sitzt unter dem Fokus-Tracker-Link und erscheint nur mit
+Zugang — ohne den gäbe es nichts zu schalten. Gemerkt wird er pro Gerät in
+`localStorage.fokusPanel` (`"an"` / `"aus"`, Standard an) und **nicht** in der
+Datenbank: wer am Rechner die Gewohnheiten mitlaufen lässt, will sie am Handy
+nicht zwangsläufig auch. Ausgeschaltet verschwindet die ganze Reiterzeile und
+der Streifen zeigt still nur den Tag. Gelesen wird er über
+`window.fokusImStreifen()` in `fokusMoeglich()` (kalender.js).
 
 ### Warum die Daten über einen Durchreicher kommen
 
@@ -1282,9 +1362,9 @@ steht:
 
 | Inhalt | wer zeichnet | wann |
 | --- | --- | --- |
-| Tagesliste (`#kalTagesliste`) | `kalender.js` | Standard |
-| Gewohnheiten (`#fokInhalt`) | `fokus.js` | 🔥, Reiter „Gewohnheiten" |
-| Timer (`#fokTimer`) | `fokus.js` | 🔥, Reiter „Timer" |
+| Tagesliste (`#kalTagesliste`) | `kalender.js` | Standard, Reiter „Tag" |
+| Gewohnheiten (`#fokInhalt`) | `fokus.js` | Reiter „Gewohnheiten" |
+| Timer (`#fokTimer`) | `fokus.js` | Reiter „Timer" |
 
 **Alle drei sind gleich hoch**, weil die Höhe schlicht der Rest unter dem
 Raster ist (`.kal-unten { flex: 1; min-height: 0 }`). Es gibt nichts zu messen
@@ -1302,7 +1382,25 @@ gesetzt über `setzeUnten()`. `zeichneUnten()` ist die **einzige** Stelle, an
 der Sichtbarkeit entschieden wird — sonst stünde „genau eines" an zwei Orten.
 `fokus.js` liefert nur den Inhalt und wird über `window.fokusZeigen()` /
 `window.fokusVerstecken()` gerufen; `window.fokusHatZugang()` sagt umgekehrt,
-ob es 🔥 überhaupt gibt.
+ob es Fokus überhaupt gibt.
+
+**Die Reiterzeile (`#fokKopf`) gehört dem Streifen, nicht dem Fokus-Inhalt.**
+Sie trägt seit dem 13.08.2026 drei Reiter — **Tag | Gewohnheiten | Timer** —
+und steht auch dann da, wenn gerade der Tag vorn ist: sie ist der Weg zwischen
+allen dreien. Ihre Klick-Handler liegen deshalb geschlossen in `kalender.js`
+und rufen von dort `window.fokusReiter()`; ihre Sichtbarkeit steuert
+`zeichneUnten()` über `window.fokusReiterzeile()`.
+
+**Reihenfolge im Klick-Handler ist keine Kosmetik:** erst `setzeUnten("fokus")`,
+dann `window.fokusReiter(welcher, true)`. `fokusZeigen()` setzt beim ersten
+Öffnen auf „Gewohnheiten" zurück — käme die Wahl des Nutzers davor, würde ein
+Tipp auf „Timer" still überschrieben.
+
+**Ob es die Reiter gibt**, entscheidet `fokusMoeglich()` aus zwei Teilen:
+Fokus-Zugang (`window.fokusHatZugang()`) UND dem Schalter „Fokus im Kalender"
+in den Einstellungen (`window.fokusImStreifen()`, `localStorage.fokusPanel`,
+Standard an). Fällt eines weg, fällt ein gemerktes `"fokus"` still auf den Tag
+zurück — eine Reiterleiste mit genau einem Reiter wäre Zierrat.
 
 **Falle, hier zweimal zugeschnappt:** `.kal-liste` und `.fok-inhalt` haben
 `display: flex`, das schlägt das eingebaute `[hidden]` des Browsers. Ohne
@@ -1313,27 +1411,35 @@ eine Zeit lang neben dem Timer. Dieselbe Familie wie bei `.offline-banner`.
 **Im Vollbild** (⤢) gibt es den unteren Teil nicht; `zeichneUnten()` prüft
 `kalVollbild` mit. Der Modus bleibt gemerkt und steht beim Verlassen wieder da.
 
-### Der Umschalter: eine Auswahl, überall gleich
+### Der Umschalter: nur noch auf oder zu
 
-📋 | 📅 | 🔥, und genau eines gilt:
+📋 | 📅, und genau eines gilt:
 
 * **📋** — Streifen zu
-* **📅** — Streifen auf, unten der Tag
-* **🔥** — Streifen auf, unten Fokus (nur mit Zugang, sonst ist das Segment
-  per `[hidden]` weg)
+* **📅** — Streifen auf
 
-Dazwischen gab es eine zweite Bedienform fürs breite Fenster: 📋 verschwand,
-📅 und 🔥 wurden zu unabhängigen Ein/Aus-Knöpfen ohne Pillen-Optik. Das war
-richtig, solange es zwei Panels gab, die beide gleichzeitig offen sein konnten.
-Seit sie sich denselben Bereich teilen, gibt es nichts Unabhängiges mehr — die
-Sonderregeln (`html.breit .ansicht-seg…`) sind wieder raus.
+**WAS unten steht, sagt die Pille nicht mehr** — das entscheiden die Reiter im
+Streifen selbst. Bis zum 13.08.2026 gab es hier ein drittes Segment (🔥) für
+den Fokus; drei Knöpfe in der Kopfzeile waren einer zu viel, und die Frage
+„Tag oder Fokus" an zwei Stellen zu stellen ist eine zu viel. Davor gab es
+zwischenzeitlich sogar eine zweite Bedienform fürs breite Fenster (📋 weg, 📅
+und 🔥 als unabhängige Ein/Aus-Knöpfe) — die war richtig, solange Kalender und
+Fokus zwei getrennte Panels waren, und ist mit dem gemeinsamen Streifen
+gefallen. **Beides nicht erneut vorschlagen.**
 
 Gemerkt wird in **einem** Schlüssel, `kalAnsicht`: `"liste"`, `"tag"` oder
 `"fokus"`. Der alte Wert `"kalender"` wird beim Lesen als `"tag"` verstanden,
 sonst stünde nach dem Update der Streifen zu. `fokAnsicht` gibt es nicht mehr.
 
+**Ein gemerktes `"fokus"` überlebt den Reload nicht** (unverändert seit dem
+Streifen-Umbau, kein Fehler des Reiter-Umbaus): beim ersten Zeichnen steht
+`fokZugang` noch nicht fest — der kommt erst mit dem Bootstrap aus
+`/api/todos` —, `zeichneUnten()` fällt deshalb auf den Tag zurück und
+`setzePanel()` schreibt „tag" gleich in den Speicher. Der Kalender startet
+also immer beim heutigen Tag. Das passt zu dem, wofür der Streifen da ist,
+wäre aber zu beheben, indem `stelleAnsichtHer()` erst nach dem Bootstrap läuft.
+
 Gesetzt wird `aria-pressed` **nur** in `setzePanel()` (kalender.js).
-`fokus.js` fasst am Segment ausschließlich Sichtbarkeit und Restzeit an.
 
 ### Ein Tipp auf den Tag schaltet um
 
@@ -1404,19 +1510,17 @@ Server (siehe `BETRIEB.md` der Fokus-App). Die Dauer kommt aus der dortigen
 Standardeinstellung und lässt sich hier nicht ändern. Beenden fragt ab einer
 Minute nach — eine geloggte Sitzung ist nachträglich nicht mehr änderbar.
 
-**Bei laufender Sitzung trägt der 🔥-Knopf die Restzeit**, in allen drei Ecken,
-in denen der Umschalter steckt. Am Handy passt die Zahl nicht in die Pille
-(dort stehen schon Titel und Zahnrad in derselben Zeile); aus ihr wird per CSS
-ein 6-px-Glutpunkt (`font-size: 0`), und die Zeit steht stattdessen im
-Tab-Titel.
+**Bei laufender Sitzung trägt der Timer-REITER die Restzeit** („Timer 44:52",
+`.fok-reiter-seg.laeuft` in der Akzentfarbe), auch wenn gerade ein anderer
+Reiter vorn ist. Gesetzt in `aktualisiereSegmente()`, im Sekundentakt.
 
-Bei zugeklapptem Panel trägt das Segment sonst `opacity: .45` wie jedes nicht
-gewählte. Die Zeit soll darin aber nicht verblassen — und die Deckkraft eines
-Elternteils lässt sich auf einem Kind nicht zurücknehmen, eine Gruppe wird als
-Ganzes komponiert. Also andersherum: `.ansicht-seg.laeuft` bleibt voll deckend,
-und die **Flamme allein** wird gedimmt, damit sie sich weiter wie ein
-ausgeschaltetes Segment liest. Nachgemessen: mit Punkt ist die Pille 127 px breit, die Kopfzeile
-bleibt auch bei 360 px zweizeilig.
+Bis zum 13.08.2026 stand die Zeit am 🔥-Knopf der Kopfzeile — mitsamt einer
+CSS-Konstruktion, die sie am Handy zu einem 6-px-Glutpunkt schrumpfte
+(`font-size: 0`) und die Flamme allein dimmte, weil sich die Deckkraft eines
+Elternteils auf einem Kind nicht zurücknehmen lässt. Mit der Flamme ist das
+alles weg. **Der Preis, bewusst:** bei zugeklapptem Streifen sieht man die
+Restzeit nirgends mehr. Das Sitzungsende meldet sich weiterhin über den
+Tab-Titel und den Ton, nur der laufende Countdown ist dann unsichtbar.
 
 Am Sitzungsende gibt es **Ton und Tab-Titel**, aber bewusst **keine
 Browser-Benachrichtigung**: die schickt die Fokus-App schon, und bei zwei
