@@ -1399,11 +1399,17 @@ Die Fokus-App liefert die Tagesliste deshalb **fertig gerechnet**
 nichts selbst — welche Gewohnheit heute erscheint, ob sie ruht, wie hoch die
 Flamme steht, kommt alles in der Antwort.
 
-Die Flamme ist seit dem 14.08.2026 ein **Gesamtzähler** („🔥 3 Mal" = an drei
-Tagen erledigt), keine Strähne mehr. `flammenText()` in `fokus.js` hält die
-alten Einheiten `Tage`/`Wochen` nur noch als Rückfall — die beiden Apps
-deployen getrennt, und zwischen den zwei Pushes antwortet der Fokus-Worker
-kurz noch mit der alten Einheit.
+**Was die Flamme zählt, entscheidet ein Schalter in den Einstellungen der
+Fokus-App** — seit dem 15.08.2026, kontoweit gespeichert: entweder alle
+erledigten Tage zusammen (Standard) oder Tage am Stück. Dieses Panel merkt
+davon nichts und braucht auch nichts zu merken: `heute.js` drüben liefert Zahl
+und Einheit fertig, bei jedem Laden neu. **Umstellen lässt sich der Modus hier
+bewusst nicht** — der Durchreicher lässt `/api/fokus/einstellungen` nicht durch,
+der Schalter gehört in die Fokus-App.
+
+`flammenText()` in `fokus.js` beugt `Tage`/`Wochen` und hat einen generischen
+Rückfall für alles andere: Die beiden Apps deployen getrennt, und zwischen zwei
+Pushes kann drüben kurz eine Einheit herkommen, die es hier noch nicht gibt.
 
 **Nicht direkt aus dem Browser**, obwohl beide Apps auf `it-wolf.org` liegen:
 das Sitzungscookie ist `SameSite=Lax`. Ein `fetch` von `todo.it-wolf.org` nach
