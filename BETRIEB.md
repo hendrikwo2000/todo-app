@@ -1396,8 +1396,14 @@ das wäre der Fehler: Flammen, Rhythmus und Obergrenzen-Regeln sind dort rund
 
 Die Fokus-App liefert die Tagesliste deshalb **fertig gerechnet**
 (`GET /api/gewohnheiten/heute`, dort neu gebaut). Dieses Panel entscheidet
-nichts selbst — welche Gewohnheit heute erscheint, ob sie ruht, wie lang die
-Flamme ist, steht alles in der Antwort.
+nichts selbst — welche Gewohnheit heute erscheint, ob sie ruht, wie hoch die
+Flamme steht, kommt alles in der Antwort.
+
+Die Flamme ist seit dem 14.08.2026 ein **Gesamtzähler** („🔥 3 Mal" = an drei
+Tagen erledigt), keine Strähne mehr. `flammenText()` in `fokus.js` hält die
+alten Einheiten `Tage`/`Wochen` nur noch als Rückfall — die beiden Apps
+deployen getrennt, und zwischen den zwei Pushes antwortet der Fokus-Worker
+kurz noch mit der alten Einheit.
 
 **Nicht direkt aus dem Browser**, obwohl beide Apps auf `it-wolf.org` liegen:
 das Sitzungscookie ist `SameSite=Lax`. Ein `fetch` von `todo.it-wolf.org` nach

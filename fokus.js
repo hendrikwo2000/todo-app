@@ -230,20 +230,27 @@ function setzeReiter(welcher, vomNutzer) {
   if (timerVorn && fokSichtbar) zeichneTimer();
 }
 
-/**
- * "3 Tage" bzw. "1 Woche" hinter der Flamme.
- *
- * Bei "X Mal die Woche" zaehlt die Straehne ganze WOCHEN, nicht Tage (siehe
- * straehneXProWoche in Fokus' _lib/tag.js) - der Server schickt die passende
- * Einheit deshalb mit, statt dass hier geraten wird.
- */
 function minutenText(n) {
   return `${n} ${n === 1 ? "Minute" : "Minuten"}`;
 }
 
+/**
+ * "3 Mal" hinter der Flamme.
+ *
+ * Die Einheit kommt vom Server (`straehneEinheit`), statt dass hier geraten
+ * wird. Seit dem 14.08.2026 ist sie immer "Mal": die Flamme zaehlt alle
+ * erledigten Tage zusammen, nicht die am Stueck (flammenZahl in Fokus'
+ * _lib/tag.js).
+ *
+ * Die beiden alten Werte bleiben als Rueckfall stehen, weil die zwei Apps
+ * GETRENNT deployen - zwischen den beiden Pushes antwortet der Fokus-Worker
+ * kurz noch mit "Tage"/"Wochen", und "1 Wochen" waere ein haesslicher
+ * Uebergang fuer ein paar Minuten.
+ */
 function flammenText(n, einheit) {
   if (einheit === "Wochen") return `${n} ${n === 1 ? "Woche" : "Wochen"}`;
-  return `${n} ${n === 1 ? "Tag" : "Tage"}`;
+  if (einheit === "Tage") return `${n} ${n === 1 ? "Tag" : "Tage"}`;
+  return `${n} ${einheit || "Mal"}`;
 }
 
 function mengeText(g) {
