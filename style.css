@@ -1614,6 +1614,31 @@ html.kal-split .kal-griff-breite {
 .kal-griff-breite.zieht,
 .kal-griff-breite:hover { background: var(--accent-soft); }
 
+/* Der waagerechte Griff wird auch mit dem Finger bedient: 24 px Trefferhoehe,
+   optisch bleiben davon 8 (negativer Aussenabstand). Der sichtbare Strich ist
+   ein ::before in der Mitte - so kostet die groessere Flaeche keinen Platz. */
+.kal-griff-teilung {
+  flex: none;
+  height: 24px;
+  margin: -8px 0;
+  cursor: row-resize;
+  position: relative;
+}
+.kal-griff-teilung::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px; height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.kal-griff-teilung.zieht::before,
+.kal-griff-teilung:hover::before { background: var(--accent); }
+/* Im Vollbild gibt es keine Tagesliste - ein Griff ohne etwas zu greifen
+   waere eine tote Flaeche. */
+.kalender.vollbild .kal-griff-teilung { display: none; }
+
 html.kal-split body { padding-right: var(--kal-breite); }
 html.kal-split .kalender {
   width: var(--kal-breite);
@@ -2141,7 +2166,17 @@ html:not(.breit) #kalZu { display: none; }
    und dann ist ein scrollender Tagesbereich besser als ein Raster, das unten
    aus dem Panel laeuft. */
 @media (min-height: 780px) {
+  /* Ohne gezogenen Wert bleibt es bei dieser Reservierung samt der Grenze bei
+     780 px - wer nie zieht, merkt nichts. Mit gezogenem Wert entscheidet der
+     Griff (siehe html.kal-eigene-teilung unten). */
   .kal-liste { min-height: min(360px, 44vh); }
+}
+/* flex: none ist Pflicht: mit dem geerbten flex:1 dehnte sich die Liste ueber
+   die eingestellte Hoehe hinaus und der Griff haette keine Wirkung. */
+html.kal-eigene-teilung .kal-liste {
+  flex: none;
+  height: var(--kal-teilung);
+  min-height: 0;
 }
 .kal-liste-kopf {
   display: flex; align-items: center; gap: 7px;

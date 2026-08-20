@@ -520,6 +520,9 @@ function zeichneKalender() {
   zeichneRaster(tage, baueSpurenplan(), heute);
   zeichneTagesliste(tage, tageTermine, ueberfaellige, heute);
   zeichneUnten();
+  // Ein anderer Monat kann eine Rasterzeile mehr oder weniger haben - damit
+  // aendert sich, wie weit die Aufteilung geklemmt werden muss.
+  wendeTeilungAn();
 
   // Im Vollbild haengt der Zelleninhalt an der Zellenhoehe. Direkt hier
   // nachmessen, nicht per requestAnimationFrame: clientHeight erzwingt den
@@ -2059,6 +2062,10 @@ function gestenZone(ziel) {
   if (!ziel || !ziel.closest) return "zu";
   // In einem Eingabefeld zieht man Text, nicht den Kalender.
   if (ziel.closest("input, textarea, select")) return null;
+  // Auf einem Ziehgriff gehoert die Bewegung dem Griff. Ohne das koennte ein
+  // leicht schraeger Zug am Handy als Wisch durchgehen und das Panel zumachen,
+  // waehrend man die Aufteilung einstellt.
+  if (ziel.closest(".kal-griff")) return null;
   if (ziel.closest("#kalRaster, #kalWochentage")) return "monat";
   if (ziel.closest("#kalTagesliste")) return "tag";
   // Blaettern bleibt auch im Split (ein Tablet quer hat Platz UND Finger),
@@ -2291,6 +2298,65 @@ if (gemerkteBreite()) {
   document.documentElement.style.setProperty("--kal-breite", gemerkteBreite() + "px");
 }
 
+const TEILUNG_MIN = 120;
+const TEILUNG_KEY = "kalTeilung";
+
+// Was das Raster mindestens braucht: 36 px je Zeile (dieselbe Untergrenze wie
+// im CSS) plus Monatskopf und Wochentage. Als Funktion, weil die Zeilenzahl
+// mit dem Monat wechselt.
+function rasterMindest() {
+  const zeilen = Number(getComputedStyle(kalRaster).getPropertyValue("--kal-zeilen")) || 6;
+  return zeilen * 36 + 84;
+}
+
+// Wie hoch die Tagesliste hoechstens werden darf. Gerechnet wird ab ihrer
+// OBERKANTE bis zum Panelboden, nicht ab der Panelhoehe: ueber der Liste
+// stehen noch Kopfzeile und Umschalter, und wer die mitzaehlt, drueckt das
+// Raster unter seine Mindesthoehe.
+function teilungMax() {
+  const panel = kalPanel.getBoundingClientRect();
+  const oben = kalTagesliste.getBoundingClientRect().top - panel.top;
+  return Math.max(TEILUNG_MIN, panel.height - oben - rasterMindest());
+}
+
+function setzeTeilung(px) {
+  document.documentElement.classList.add("kal-eigene-teilung");
+  document.documentElement.style.setProperty("--kal-teilung", Math.round(px) + "px");
+  try { localStorage.setItem(TEILUNG_KEY, String(Math.round(px))); }
+  catch (e) { /* voller Speicher - dann eben ungemerkt */ }
+}
+
+// Anwenden, OHNE den gemerkten Wert zu ueberschreiben. Auf einem niedrigen
+// Fenster greifen die Grenzen - wuerde das Ergebnis zurueckgeschrieben, waere
+// die am grossen Bildschirm eingestellte Aufteilung nach einmaligem Oeffnen am
+// Handy dauerhaft verloren.
+function wendeTeilungAn() {
+  const roh = Number(localStorage.getItem(TEILUNG_KEY));
+  if (!roh) {
+    document.documentElement.classList.remove("kal-eigene-teilung");
+    document.documentElement.style.removeProperty("--kal-teilung");
+    return;
+  }
+  document.documentElement.classList.add("kal-eigene-teilung");
+  document.documentElement.style.setProperty(
+    "--kal-teilung", Math.round(klemme(roh, TEILUNG_MIN, teilungMax())) + "px");
+}
+
+zieheGriff(document.getElementById("kalGriffTeilung"), {
+  achse: "hoehe",
+  start: () => kalTagesliste.getBoundingClientRect().height,
+  setze: setzeTeilung,
+  zurueck: () => {
+    localStorage.removeItem(TEILUNG_KEY);
+    document.documentElement.classList.remove("kal-eigene-teilung");
+    document.documentElement.style.removeProperty("--kal-teilung");
+  },
+  min: TEILUNG_MIN,
+  max: teilungMax,
+});
+
+wendeTeilungAn();
+
 zieheGriff(document.getElementById("kalGriffBreite"), {
   achse: "breite",
   start: () => kalPanel.getBoundingClientRect().width,
@@ -2351,6 +2417,8 @@ function pflegeSplit() {
   // Vor dem Ausstieg: die Klasse gilt auch bei zugeklapptem Kalender, das
   // Fokus-Panel haengt ebenfalls daran.
   pflegeBreit();
+  // Die Fensterhoehe entscheidet mit, wie weit die Aufteilung geklemmt wird.
+  wendeTeilungAn();
   if (!kalOffen) return;
   if (istSplit() !== document.documentElement.classList.contains("kal-split")) {
     setzePanel(true, true);

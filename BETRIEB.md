@@ -1297,6 +1297,48 @@ macht den Platz knapp. Sie gilt ab 780 px Fensterhöhe (`min(360px, 44vh)`);
 darunter reichen beide Mindestmaße zusammen nicht mehr, und ein scrollender
 Tagesbereich ist besser als ein Raster, das aus dem Panel läuft.
 
+**Die Aufteilung lässt sich ziehen** (seit 20.08.2026): ein waagerechter Griff
+zwischen Tagesliste und unterem Teil (`#kalGriffTeilung`), gemerkt unter
+`kalTeilung` als Höhe der Tagesliste in Pixeln. Ohne gezogenen Wert bleibt
+alles beim oben Beschriebenen samt der Grenze bei 780 px; mit gezogenem Wert
+greift `html.kal-eigene-teilung`, und die Liste bekommt eine feste Höhe. Was
+nicht hineinpasst, scrollt in seinem Bereich.
+
+`flex: none` ist dabei Pflicht: mit dem sonst geltenden `flex: 1` dehnte sich
+die Liste über die eingestellte Höhe hinaus, und der Griff hätte gar keine
+Wirkung.
+
+**Der Griff statt „Liste schrumpft auf ihren Inhalt".** Die naheliegende
+Alternative wäre gewesen, die Tagesliste nur so hoch zu machen, wie sie
+Inhalt hat — dann gäbe es den Leerraum gar nicht. Sie ist verworfen, weil das
+Raster damit bei jedem Tageswechsel auf und ab würde: ein leerer Tag höbe es
+an, ein voller drückte es herunter. Genau dieses Wandern war einer der
+Gründe, den Streifen überhaupt anzufassen.
+
+**`teilungMax()` rechnet ab der OBERKANTE der Liste**, nicht ab der Panelhöhe.
+Über der Liste stehen noch Kopfzeile und Umschalter; wer die mitzählt, lässt
+den Griff das Raster unter seine Mindesthöhe drücken (gemessen: 226 px statt
+300 px für `#kalOben`). `rasterMindest()` ist dabei die Höhe des ganzen oberen
+Blocks — 36 px je Rasterzeile plus 84 px für Monatskopf und Wochentage.
+
+**Falle: der gemerkte Wert darf beim Klemmen nicht zurückgeschrieben werden.**
+`wendeTeilungAn()` klemmt nur für die Anzeige und fasst `localStorage` nicht
+an. Sonst wäre eine am großen Bildschirm eingestellte Aufteilung nach
+einmaligem Öffnen auf einem niedrigen Fenster dauerhaft verloren. Aufgerufen
+wird die Funktion an drei Stellen: beim Laden, in `pflegeSplit()` (die
+Fensterhöhe ändert die Grenze) und am Ende von `zeichneKalender()` (ein
+anderer Monat kann eine Rasterzeile mehr haben).
+
+**Im Vollbild gibt es den Griff nicht** — `.kalender.vollbild` blendet die
+Tagesliste ohnehin aus, und ein Griff ohne etwas zu greifen wäre eine tote
+Fläche.
+
+**`gestenZone()` gibt auf einem Griff `null` zurück.** Ohne das könnte ein
+leicht schräger Zug am Handy als Wisch durchgehen und das Panel zumachen,
+während man die Aufteilung einstellt. `touch-action: none` am Griff allein
+reicht nicht: die Wischgeste hängt an `touchstart` am Dokument und sieht die
+Berührung trotzdem.
+
 Gemessen am Handy (375×812), voller Monat mit 6 Wochen: Tagesliste 197 → 357 px
 (kein Scrollen mehr), Raster 358 → 275 px bei Zellen von 44 px. Am Rechner
 (900 px): Tagesliste 306 → 409, Raster 332 bei 54 px Zellen. Ein Februar mit
