@@ -1242,6 +1242,41 @@ sichtbar. Nur bei `invalid_grant` (Zugriff bei Google widerrufen) löscht der
 Endpunkt die Zeile und meldet `getrennt`, damit die App wieder „verbinden"
 anbietet statt endlos in denselben Fehler zu laufen.
 
+**Der letzte Terminstand liegt im Browser** (seit 20.08.2026,
+`kalTermineSpeicher`). Beim Öffnen zeichnete der Kalender früher erst nur die
+ToDos; trafen die Termine ein, bekamen die Wochen ihre Balkenspuren und der
+ganze Streifen sprang. Jetzt wird der gemerkte Stand **sofort** gezeichnet und
+die Anfrage an Google ersetzt ihn still. Der Preis, bewusst in Kauf genommen:
+einen Sekundenbruchteil lang steht ein minimal veralteter Stand da.
+
+**Der Schlüssel trägt die Kontoadresse**, den Monatsanfang und die abgefragten
+Kalender-IDs. Die Adresse ist die zweite Absicherung neben dem Löschen:
+meldet sich am selben Browser jemand anderes an, greift dessen Schlüssel gar
+nicht erst auf fremde Termine zu. app.js verschachtelt seinen eigenen
+Zwischenspeicher aus demselben Grund pro Konto.
+
+**Sechs Einträge, nicht drei.** Der erste Abruf eines Monats geht OHNE
+`kalender`-Parameter raus — die Kalenderliste kennt die App zu dem Zeitpunkt
+noch nicht —, der zweite mit. Pro Monat entstehen also zwei Einträge, und ein
+Deckel von drei hätte kaum anderthalb Monate behalten. Beide sind nützlich: aus
+dem ersten holt der Speicherzweig die Kalenderliste, damit der nächste Abruf
+gezielt fragt.
+
+**Geleert wird an drei Stellen**, sonst zeigt der Kalender Termine, die dort
+nicht mehr hingehören: beim Abmelden (`logout()` in `app.js` — der Neustart
+wirft nur den Arbeitsspeicher weg, nicht den `localStorage`), beim Trennen
+(`kalenderGoogleVergessen`) und wenn die Antwort `verbunden:false` meldet.
+
+**`moeglich` und `schreiben` kommen NICHT aus dem Speicher.** Ob geschrieben
+werden darf, entscheidet der Server; ein gemerktes `schreiben:true` böte ein
+＋ an, das in einen 403 liefe.
+
+**Bei `fehler:true` bleiben die vorhandenen Termine stehen** und es wird nichts
+geschrieben. Beides gehört zusammen: Ohne das Stehenlassen holte der
+Zwischenspeicher den Stand herauf und die Fehlerantwort räumte ihn im selben
+Atemzug wieder weg — genau das Springen, gegen das er gebaut ist. Und eine
+Fehlermeldung ist kein Terminstand, taugt also auch nicht zum Merken.
+
 **Anzeige.** Seit 13.08.2026 stehen im Tagesbereich die **ToDos zuerst** und
 die Termine darunter. Der Streifen beantwortet zuerst „was muss ich heute
 tun" — und die Termin-Überschrift samt ihrer Leerzeile („Kein Google-Kalender

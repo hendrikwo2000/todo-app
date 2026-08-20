@@ -305,6 +305,57 @@ function merkeNeueKalender(kalender) {
   }
 }
 
+// ---------- Zwischenspeicher fuer Google-Termine ----------
+// Beim Oeffnen zeichnete der Kalender erst nur die ToDos; trafen die Termine
+// ein, bekamen die Wochen ihre Balkenspuren und der ganze Streifen sprang.
+// Der letzte Stand liegt deshalb im Browser und wird sofort gezeichnet, die
+// Anfrage an Google laeuft parallel und ersetzt ihn still.
+const SPEICHER_KEY = "kalTermineSpeicher";
+const SPEICHER_EINTRAEGE = 6;   // sechs, nicht drei: der erste Abruf eines
+// Monats geht OHNE Kalender-IDs raus (die Liste kennt die App da noch
+// nicht), der zweite mit - pro Monat entstehen also zwei Eintraege.
+
+// Die Kontoadresse gehoert in den Schluessel: meldet sich am selben Browser
+// jemand anderes an, greift dessen Schluessel gar nicht erst auf fremde
+// Termine zu. app.js verschachtelt seinen Zwischenspeicher aus demselben
+// Grund pro Konto.
+function speicherSchluessel(von, ids) {
+  return (eigeneEmail || "?") + "|" + von + "|" + ids.join(",");
+}
+
+function speicherAlles() {
+  try { return JSON.parse(localStorage.getItem(SPEICHER_KEY) || "{}"); }
+  catch (e) { return {}; }
+}
+
+function speicherLesen(schluessel) {
+  return speicherAlles()[schluessel] || null;
+}
+
+function speicherSchreiben(schluessel, daten) {
+  try {
+    const alles = speicherAlles();
+    // Neu einsortieren, damit der zuletzt geholte Monat am Ende steht - die
+    // Reihenfolge der Schluessel entscheidet, wer beim Aufraeumen faellt.
+    delete alles[schluessel];
+    alles[schluessel] = daten;
+    const namen = Object.keys(alles);
+    // Ein voller Monat sind wenige Kilobyte; der Deckel ist Vorsorge gegen
+    // unbegrenztes Wachstum, nicht gegen ein akutes Problem.
+    for (const k of namen.slice(0, Math.max(0, namen.length - SPEICHER_EINTRAEGE))) {
+      delete alles[k];
+    }
+    localStorage.setItem(SPEICHER_KEY, JSON.stringify(alles));
+  } catch (e) { /* voller Speicher - dann eben ohne Zwischenspeicher */ }
+}
+
+// Von app.js beim Abmelden gerufen, hier beim Trennen und wenn Google den
+// Zugriff nicht mehr kennt. Termine eines Kontos, das nicht mehr haengt,
+// duerfen nicht liegen bleiben.
+window.kalenderSpeicherLeeren = function () {
+  try { localStorage.removeItem(SPEICHER_KEY); } catch (e) { /* dann eben nicht */ }
+};
+
 async function ladeGoogle() {
   // Einmal geklaert, dass nichts verknuepft ist: nicht bei jedem Monatswechsel
   // erneut nachfragen. app.js setzt das nach Verbinden/Trennen zurueck.
@@ -313,6 +364,20 @@ async function ladeGoogle() {
   const { von, bis } = zeitraumDesMonats();
   const schluessel = `${von}|${ids.join(",")}`;
   if (googleGeladen === schluessel) return;
+
+  // Sofort zeichnen, was beim letzten Mal da war. Der Preis ist ein
+  // Sekundenbruchteil mit minimal veraltetem Stand - besser als ein Raster,
+  // das sich unter einem aufbaut. `moeglich` und `schreiben` kommen bewusst
+  // NICHT von hier: ob geschrieben werden darf, entscheidet der Server, und
+  // ein gemerktes schreiben:true boete ein Plus an, das in einen 403 liefe.
+  const gemerkt = speicherLesen(speicherSchluessel(von, ids));
+  if (gemerkt && !googleTermine.length) {
+    googleZustand.verbunden = true;
+    googleZustand.palette = gemerkt.palette || {};
+    if (Array.isArray(gemerkt.kalender)) googleZustand.kalender = gemerkt.kalender;
+    googleTermine = Array.isArray(gemerkt.termine) ? gemerkt.termine : [];
+    if (kalOffen) zeichneKalender();
+  }
 
   googleLaedt = true;
   try {
@@ -330,11 +395,27 @@ async function ladeGoogle() {
         googleZustand.kalender = d.kalender;
         merkeNeueKalender(d.kalender);
       }
-      googleTermine = Array.isArray(d.termine) ? d.termine : [];
+      // Bei einem Fehler bleibt stehen, was schon da ist - in der Regel der
+      // gemerkte Stand. Sonst holte ihn der Zwischenspeicher herauf und die
+      // Fehlerantwort raeumte ihn im selben Atemzug wieder weg; genau das
+      // Springen, gegen das der Speicher gebaut ist.
+      if (!d.fehler) googleTermine = Array.isArray(d.termine) ? d.termine : [];
       googleFehler = !!d.fehler;
       googleGeladen = schluessel;
       googleAus = !d.verbunden;
       if (!d.verbunden) { googleTermine = []; googleZustand.kalender = []; }
+      // Bei d.fehler wird NICHT geschrieben: eine Fehlermeldung ist kein
+      // Terminstand, und der alte bleibt damit brauchbar.
+      if (d.verbunden && !d.fehler) {
+        speicherSchreiben(speicherSchluessel(von, ids), {
+          termine: googleTermine,
+          kalender: googleZustand.kalender,
+          palette: googleZustand.palette,
+        });
+      }
+      // Zugriff bei Google widerrufen: der Endpunkt hat die Kontozeile schon
+      // geloescht, hier muss der Zwischenspeicher mit.
+      if (!d.verbunden) window.kalenderSpeicherLeeren();
     } else {
       // Serverseitiges Problem (z. B. Tabelle google_konten fehlt noch): nicht
       // bei jedem Neuzeichnen erneut dagegenlaufen.
@@ -2438,6 +2519,7 @@ window.kalenderNeuZeichnen = function () {
 // Nach Verbinden/Trennen in den Einstellungen: alles zu Google vergessen und
 // beim naechsten Zeichnen frisch holen (siehe app.js).
 window.kalenderGoogleVergessen = function () {
+  window.kalenderSpeicherLeeren();
   googleZustand = { moeglich: false, verbunden: false, email: null, schreiben: false, kalender: [], palette: {} };
   googleTermine = [];
   googleGeladen = null;

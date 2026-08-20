@@ -642,6 +642,10 @@ function login() {
 // Neustart ist Absicht - er wirft den Board-Zustand aus dem Speicher, statt
 // die fremden ToDos bis zum naechsten Login sichtbar zu lassen.
 async function logout() {
+  // Termine des abgemeldeten Kontos duerfen nicht liegen bleiben - der
+  // Neustart unten wirft nur den Speicher im Arbeitsspeicher weg, nicht den
+  // localStorage.
+  window.kalenderSpeicherLeeren?.();
   try {
     await fetch("/api/auth/logout", { method: "POST" });
   } catch (e) {
