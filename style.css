@@ -1577,11 +1577,11 @@ button.lz-name:hover { color: var(--accent); }
    Logik in kalender.js. Das Panel traegt seine Verschiebung als INLINE
    transform (JS folgt damit dem Finger); hier steht nur der Ruhezustand
    und der Uebergang fuer den animierten Rest des Weges. */
-/* Nur im Umschalt-Modus: dort liegt der Kalender ueber der Liste, und ein
-   mitscrollender Hintergrund waere Unsinn. Im Split-Modus stehen beide
-   nebeneinander und die Liste muss scrollbar bleiben. */
-html.kal-offen:not(.kal-split),
-html.kal-offen:not(.kal-split) body { overflow: hidden; }
+/* Unterhalb der Split-Grenze ist der Kalender eine eigene Ansicht: das Board
+   ist dann nicht verdeckt, sondern weg. Damit gibt es nichts mehr, was
+   dahinter mitscrollen koennte - die frueher noetige Sperre am html ist
+   deshalb ersatzlos entfallen. Siehe BETRIEB.md, Abschnitt "Kalender". */
+html.kal-ansicht .app { display: none; }
 
 /* ---------- Split-Modus (breite Fenster) ---------- */
 /* Ab einer Fensterbreite von SPLIT_AB (kalender.js) ist der Kalender kein
@@ -1601,8 +1601,6 @@ html.kal-split .kalender {
      laege die Liste im Halbdunkel. */
   box-shadow: none;
 }
-/* Kein Abdunkeln: die Liste daneben bleibt bedienbar. */
-html.kal-split .kal-hintergrund { display: none; }
 /* Die Snackbar haengt als position:fixed am Bildschirm, nicht am body - ohne
    diesen Versatz stuende sie mittig ueber BEIDEN Haelften und schoebe sich bei
    knappem Split unter das Panel (z-index 50 gegen 56). Sie gehoert zum Board,
@@ -1627,16 +1625,6 @@ html:not(.breit) #kalZu { display: none; }
 /* Das ✕ aussen rechts, unabhaengig davon, was links davon steht. */
 .kal-ansicht-zeile #kalZu { margin-left: auto; }
 
-.kal-hintergrund {
-  position: fixed;
-  inset: 0;
-  z-index: 55;                 /* ueber Board und Menue, unter Sperrbildschirm (100) */
-  background: rgba(0, 0, 0, .38);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .26s;
-}
-.kal-hintergrund.sichtbar { opacity: 1; pointer-events: auto; }
 
 .kalender {
   position: fixed;

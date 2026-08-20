@@ -879,9 +879,28 @@ die beiden Zahlen gehören zusammen):
   alle inneren Flex-Regeln unverändert weiter; Platz macht ihm stattdessen der
   `body` per `padding-right`. Kein Abdunkeln, keine Scroll-Sperre, kein
   Wisch-Zuziehen: die Liste daneben bleibt vollständig bedienbar.
-* **Umschalt-Modus** (Handy, schmales Fenster): der Kalender legt sich als
-  Panel über die Liste, mit abgedunkeltem Hintergrund und `overflow: hidden`
-  am `html` — also alles wie vor dem Umbau.
+* **Umschalt-Modus** (Handy, schmales Fenster): der Kalender ist eine eigene
+  Ansicht. Board und Kalender lösen einander ab, statt sich zu überlagern —
+  `html.kal-ansicht` blendet dazu `.app` aus.
+
+**Der Umschalt-Modus war bis zum 20.08.2026 ein Overlay** mit abgedunkeltem
+`.kal-hintergrund` und `overflow: hidden` am `html`. Beides ist ersatzlos
+entfallen, samt dem Element und seinen Verweisen in `kalender.js`: Wenn das
+Board ausgeblendet ist, liegt dahinter nichts mehr, was mitscrollen oder
+abgedunkelt werden müsste. Ausblenden statt Überlagern ist der ganze
+Unterschied zwischen „Ansicht" und „Panel" — daran hängen alle drei Effekte.
+
+**Die Scrollposition der Liste wird von Hand gemerkt** (`listeScroll`,
+gesetzt und zurückgegeben in `setzePanel()`). `display: none` wirft sie weg,
+und ohne das landete man nach jedem Blick in den Kalender wieder ganz oben.
+Gemerkt wird nur beim WECHSEL — ein zweiter Aufruf von `setzePanel()` im
+selben Zustand (etwa aus dem `resize`-Wächter) darf den Wert sonst mit einer
+Position überschreiben, die gar nicht die der Liste ist.
+
+**Animiert wird nur noch im Split** (`!sofort && split`). Das Hereinfahren im
+Umschalt-Modus ruckelte, weil parallel der `body` sein `padding-right`
+änderte — ein Layout-Umbruch, der nicht flüssig animieren kann. Als eigene
+Ansicht steht der Kalender einfach da; es gibt nichts hereinzufahren.
 
 Die 1000 px kommen aus dem Platz: 440 px Kalender lassen darunter noch zwei
 Board-Spalten (min. 250 px) übrig. Bei weniger bliebe eine einzige Spalte, und

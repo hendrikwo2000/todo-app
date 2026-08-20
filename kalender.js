@@ -36,7 +36,6 @@
    ==================================================================== */
 
 const kalPanel       = document.getElementById("kalenderPanel");
-const kalHintergrund = document.getElementById("kalenderHintergrund");
 const kalMonatName   = document.getElementById("kalMonatName");
 const kalWochentage  = document.getElementById("kalWochentage");
 const kalRaster      = document.getElementById("kalRaster");
@@ -110,6 +109,11 @@ let kalVollbild = false;
 // 0 = noch nicht gemessen; gefuellt wird es aus der echten Zellenhoehe, weil
 // die von der Bildschirmhoehe und der Zahl der Wochen abhaengt.
 let vollbildPlaetze = 0;
+
+// Wohin das Board gescrollt war, bevor der Kalender die Ansicht uebernahm.
+// Unterhalb der Split-Grenze wird das Board ausgeblendet, und display:none
+// wirft die Scrollposition weg - also merken wir sie selbst.
+let listeScroll = 0;
 
 // ---------- Google-Kalender (nur lesen) ----------
 // Die Verbindung haelt der Server (functions/api/google/), die App bekommt
@@ -1794,14 +1798,26 @@ function springeZuHeute() {
  */
 function setzePanel(offen, sofort) {
   const split = istSplit();
+  // Unterhalb der Split-Grenze loesen Board und Kalender einander ab, statt
+  // sich zu ueberlagern - dahinter liegt dann nichts mehr, was abgedunkelt
+  // oder gegen Scrollen gesperrt werden muesste. Ob sich daran gerade etwas
+  // aendert, muss VOR dem Umschalten der Klasse feststehen.
+  const alsAnsicht = offen && !split;
+  const wechselt = alsAnsicht !== document.documentElement.classList.contains("kal-ansicht");
+  if (wechselt && alsAnsicht) listeScroll = window.scrollY;
+
   document.documentElement.classList.toggle("kal-split", offen && split);
-  kalPanel.classList.toggle("animiert", !sofort);
+  // Animiert wird nur im Split. Unterhalb loesen sich zwei Ansichten ab - da
+  // faehrt nichts herein, und genau dieses Hereinfahren ruckelte, weil der
+  // body gleichzeitig sein padding-right aenderte (ein Layout-Umbruch, der
+  // nicht fluessig animieren kann).
+  kalPanel.classList.toggle("animiert", !sofort && split);
   kalPanel.style.transform = offen ? "translateX(0)" : "";
-  kalHintergrund.style.opacity = "";
-  // Im Split verdunkelt nichts - die Liste daneben bleibt bedienbar.
-  kalHintergrund.classList.toggle("sichtbar", offen && !split);
   kalPanel.setAttribute("aria-hidden", offen ? "false" : "true");
   document.documentElement.classList.toggle("kal-offen", offen);
+  document.documentElement.classList.toggle("kal-ansicht", alsAnsicht);
+  // Zurueck zur Liste: dorthin, wo man sie verlassen hat.
+  if (wechselt && !alsAnsicht) window.scrollTo(0, listeScroll);
   // Genau eines der beiden Segmente gilt: 📋 wenn der Streifen zu ist, sonst
   // 📅. WAS unten steht, sagen die Reiter dort - die Pille beantwortet nur
   // noch "Streifen auf oder zu".
@@ -1971,7 +1987,6 @@ const ZOOM_WEG = 60;   // px, ab denen wirklich umgeschaltet wird
 function setzeVersatz(v) {
   geste.versatz = v;
   kalPanel.style.transform = `translateX(${v}px)`;
-  kalHintergrund.style.opacity = String(1 - v / geste.breite);
 }
 
 /**
@@ -2055,7 +2070,6 @@ document.addEventListener("touchmove", e => {
         // Wie beim Knopf: jedes Oeffnen startet beim heutigen Tag, sonst haengt
         // das Panel noch im Monat, in dem man zuletzt geblaettert hat.
         frischOeffnen();
-        kalHintergrund.classList.add("sichtbar");
         kalPanel.setAttribute("aria-hidden", "false");
       }
     }
@@ -2147,7 +2161,6 @@ for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
   });
 }
 document.getElementById("kalZu").addEventListener("click", schliesseKalender);
-kalHintergrund.addEventListener("click", schliesseKalender);
 kalMonatName.addEventListener("click", schalteWahl);
 document.getElementById("kalZurueck").addEventListener("click", () => monatVerschieben(-1));
 document.getElementById("kalVor").addEventListener("click", () => monatVerschieben(1));
