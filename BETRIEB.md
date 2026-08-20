@@ -1155,6 +1155,28 @@ Touch-Events geprüft (öffnen, schließen, senkrecht verwerfen, Mitte
 verwerfen, bei offenem Dialog blockiert), nicht mit einem echten Finger auf
 einem Gerät.
 
+**Was beim Umbau vom 20.08.2026 ungeprüft geblieben ist** (eigene Ansicht am
+Handy, zwei Ziehgriffe, Zwischenspeicher, Balkentitel):
+
+* Der **echte Google-Rundlauf** — lokal fehlen die Zugangsdaten. Geprüft wurde
+  gegen nachgebaute Antworten (Termine, Fehlerfall, `verbunden:false`); der
+  `getrennt`-Zweig traf es dabei mit der **echten** lokalen Serverantwort, die
+  ohne Zugangsdaten `verbunden:false` meldet — der Zwischenspeicher wurde
+  daraufhin korrekt geleert.
+* **Echte Finger** auf einem Gerät. Beide Griffe und die Gesten liefen gegen
+  selbst erzeugte Pointer- und Touch-Ereignisse.
+* Der **Fokus-Teil mit echten Daten** — dafür bräuchte es den zweiten
+  Dev-Server (siehe „Fokus-Panel"). Geprüft ist die Anordnung: der Griff sitzt
+  zwischen Tagesliste und Reiterzeile und zieht auch dort.
+* Der **Abmeldevorgang im Ganzen** — geprüft ist, dass
+  `kalenderSpeicherLeeren()` räumt, nicht der Durchlauf durch `logout()`.
+
+**Bekannte Vereinfachung:** `rasterMindest()` rechnet immer mit dem
+Monatsraster, auch wenn unten gerade Gewohnheiten oder der Timer stehen. Die
+Aufteilung wird dort also etwas früher geklemmt, als nötig wäre. Unschädlich,
+aber der Punkt, an dem man ansetzt, falls der Fokus-Teil einmal mehr Platz
+braucht.
+
 ## Google Kalender
 
 Verknüpftes Google-Konto je Nutzer, **ausschließlich lesend**
