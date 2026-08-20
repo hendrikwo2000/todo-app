@@ -918,6 +918,44 @@ Die 1000 px kommen aus dem Platz: 440 px Kalender lassen darunter noch zwei
 Board-Spalten (min. 250 px) übrig. Bei weniger bliebe eine einzige Spalte, und
 dann ist Umschalten ehrlicher als Nebeneinander.
 
+**Die Breite lässt sich ziehen** (seit 20.08.2026): ein Griff an der linken
+Kante des Streifens (`#kalGriffBreite`, nur im Split sichtbar), 360 bis 720 px,
+gemerkt unter `kalBreite`. Doppelklick löscht den Wert und stellt den
+ursprünglichen Zustand her. Gezogen wird `--kal-breite` am `:root` — und **nur**
+das: Panelbreite, `padding-right` des `body` im Split und der Versatz der
+Snackbar hängen alle an derselben Variablen. Eine zweite Stelle mit einer
+Breite wäre der Punkt, an dem das auseinanderläuft.
+
+**Damit wandert die Split-Grenze mit.** `istSplit()` rechnet bei gezogener
+Breite `kalBreite + BOARD_MINDEST` (520 px = zwei Board-Spalten plus Ränder)
+statt `SPLIT_AB`. Ohne gezogene Breite gilt weiter die feste Zahl — wer nie
+zieht, merkt von der Änderung nichts. Ein schmal gezogener Streifen erlaubt den
+Split früher, ein breiter erst später; ohne diese Kopplung könnte man den
+Streifen auf 720 px ziehen und hätte bei 1000 px Fenster 280 px Board.
+
+`gemerkteBreite()` steht deshalb ganz oben bei `SPLIT_AB` und nicht bei der
+übrigen Griff-Technik am Dateiende: `pflegeBreit()` läuft schon beim Laden und
+ruft `istSplit()`. Stünden die Konstanten weiter unten, liefe der Aufruf in die
+zeitliche Tote Zone von `const` und die Datei bräche beim Laden ab.
+
+**`pflegeSplit()` hängt nicht mehr nur am `resize`.** Mit einer eigenen Breite
+verschiebt sich die Grenze selbst — das Fenster muss sich dafür gar nicht
+ändern. Deshalb ruft auch der Griff sie nach jedem Zug auf.
+
+**Die Griff-Mechanik ist geteilt** (`zieheGriff()` in `kalender.js`, dazu
+`klemme()`): Breite und Aufteilung benutzen dieselbe Funktion, unterschieden
+nur durch `achse`. Pointer-Ereignisse statt Maus UND Touch — ein Weg für beide
+Eingaben. Beide Griffe hören zusätzlich auf die Pfeiltasten (16 px, mit Shift
+64 px); die App ist sonst durchgehend mit der Tastatur bedienbar, und ein Griff,
+der nur auf die Maus hört, wäre der erste Bruch darin.
+
+**Welcher Zeiger zieht, steht in einer eigenen Variablen** (`aktiv`), nicht in
+`hasPointerCapture()`. Das Einfangen kann fehlschlagen — bei nachgebauten
+Ereignissen tut es das immer (`NotFoundError: No active pointer`) —, und dann
+wäre ein Griff, der sich darauf verlässt, schlicht tot. `setPointerCapture`
+steht deshalb in einem `try` und ist nur die Zugabe, die die Bewegung beim
+Griff hält, wenn der Zeiger ihn verlässt.
+
 **Umschalter 📋 | 📅.** Steckt ZWEIMAL im Dokument: in der Kopfzeile
 der App (`#ansichtSchalter`) und noch einmal im Kalender selbst
 (`.kal-ansicht-zeile`), weil der im Umschalt-Modus die Kopfzeile verdeckt.

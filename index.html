@@ -107,6 +107,12 @@
        ToDo im gewohnten Bearbeiten-Modus auf dem Board. Inhalt kommt aus
        kalender.js. -->
   <aside id="kalenderPanel" class="kalender" aria-label="Kalender" aria-hidden="true">
+    <!-- Zieht die Breite des Streifens. Nur im Split sichtbar - im
+         Umschalt-Modus nimmt der Kalender ohnehin den ganzen Bildschirm. -->
+    <div id="kalGriffBreite" class="kal-griff kal-griff-breite" role="separator"
+         tabindex="0" aria-orientation="vertical"
+         aria-label="Breite des Kalenders"
+         title="Breite ziehen, Doppelklick setzt zurück"></div>
     <!-- Die oberste Zeile des Panels. Sie traegt zweierlei, je nach Lage:
          im Umschalt-Modus dieselbe Ecke wie die App-Kopfzeile (Zahnrad, dann
          Umschalter) - im Split, wo die App-Kopfzeile daneben steht, nur noch

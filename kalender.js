@@ -67,6 +67,23 @@ const UHR_FORMAT   = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute:
 // einzige Spalte, und dann ist Umschalten ehrlicher als Nebeneinander.
 // Gehoert zu --kal-breite und html.kal-split in style.css.
 const SPLIT_AB = 1000;
+// Was das Board neben dem Streifen mindestens braucht: zwei Spalten (je 250)
+// plus Raender. Erst damit laesst sich die Split-Grenze aus einer selbst
+// gezogenen Breite ausrechnen, statt fest bei SPLIT_AB zu stehen.
+const BOARD_MINDEST = 520;
+// Grenzen der ziehbaren Breite. Darunter passt das Raster nicht mehr sinnvoll
+// in sieben Spalten, darueber bleibt vom Board zu wenig.
+const BREITE_MIN = 360;
+const BREITE_MAX = 720;
+const BREITE_KEY = "kalBreite";
+
+// 0 = keine eigene Breite gezogen. Dann gilt weiter --kal-breite aus dem CSS
+// und die alte feste Grenze - wer nie zieht, merkt von der Aenderung nichts.
+// Steht hier oben, weil pflegeBreit() schon beim Laden istSplit() ruft.
+function gemerkteBreite() {
+  const roh = Number(localStorage.getItem(BREITE_KEY));
+  return roh >= BREITE_MIN && roh <= BREITE_MAX ? roh : 0;
+}
 // Gemerkte Ansicht: "liste" (Streifen zu), "kalender" oder "fokus". EIN
 // Schluessel fuer beide Modi - wer den Streifen am Rechner zuklappt, will ihn
 // beim naechsten Laden auch nicht sehen, und am Handy gilt dasselbe.
@@ -82,7 +99,14 @@ const ANSICHT_KEY = "kalAnsicht";
 // faellig", fuer die man aufgemacht hatte.
 let kalUntenModus = "kalender";
 
-function istSplit() { return window.innerWidth >= SPLIT_AB; }
+function istSplit() {
+  const eigen = gemerkteBreite();
+  // Mit eigener Breite wandert die Grenze mit: ein schmal gezogener Streifen
+  // erlaubt den Split frueher, ein breiter spaeter. Bei der Standardbreite
+  // kommt rechnerisch dieselbe Grenze heraus wie vorher.
+  return eigen ? window.innerWidth >= eigen + BOARD_MINDEST
+               : window.innerWidth >= SPLIT_AB;
+}
 
 /**
  * Die Klasse `breit` am <html> sagt dem CSS, ob NEBENEINANDER ueberhaupt geht -
@@ -2042,6 +2066,68 @@ function gestenZone(ziel) {
   return istSplit() ? null : "zu";
 }
 
+// ---------- Ziehgriffe ----------
+// Zwei Griffe teilen sich diese Mechanik: die Breite des Streifens (nur im
+// Split) und die Aufteilung zwischen Tagesliste und unterem Teil. Pointer-
+// Ereignisse statt Maus UND Touch: ein Weg fuer beide Eingaben.
+//
+//   achse    "breite" waagerecht, "hoehe" senkrecht
+//   start    Wert beim Anfassen, in px
+//   setze    wendet einen bereits geklemmten Wert an
+//   zurueck  Doppelklick: gemerkten Wert vergessen
+//   min/max  Grenzen; max als Funktion, weil das Fenster sich aendert
+function klemme(wert, min, max) { return Math.min(max, Math.max(min, wert)); }
+
+function zieheGriff(griff, o) {
+  // Welcher Zeiger zieht gerade? Eigene Variable statt hasPointerCapture:
+  // das Einfangen kann fehlschlagen (und tut es bei nachgebauten Ereignissen
+  // immer), und dann duerfte der Griff nicht einfach tot sein.
+  let anfang = 0, wertAnfang = 0, aktiv = null;
+
+  griff.addEventListener("pointerdown", e => {
+    anfang = o.achse === "breite" ? e.clientX : e.clientY;
+    wertAnfang = o.start();
+    aktiv = e.pointerId;
+    // Haelt die Bewegung beim Griff, auch wenn der Zeiger ihn verlaesst.
+    try { griff.setPointerCapture(e.pointerId); } catch (err) { /* geht auch ohne */ }
+    griff.classList.add("zieht");
+    e.preventDefault();
+  });
+
+  griff.addEventListener("pointermove", e => {
+    if (aktiv !== e.pointerId) return;
+    const jetzt = o.achse === "breite" ? e.clientX : e.clientY;
+    // Der Streifen sitzt rechts: nach LINKS ziehen macht ihn breiter. Die
+    // Hoehe waechst dagegen nach unten, daher das andere Vorzeichen.
+    const weg = o.achse === "breite" ? anfang - jetzt : jetzt - anfang;
+    o.setze(klemme(wertAnfang + weg, o.min, o.max()));
+  });
+
+  const loslassen = e => {
+    if (aktiv !== e.pointerId) return;
+    aktiv = null;
+    try { griff.releasePointerCapture(e.pointerId); } catch (err) { /* war nie gefangen */ }
+    griff.classList.remove("zieht");
+  };
+  griff.addEventListener("pointerup", loslassen);
+  griff.addEventListener("pointercancel", loslassen);
+
+  griff.addEventListener("dblclick", o.zurueck);
+
+  // Die App ist durchgehend mit der Tastatur bedienbar - ein Griff, der nur
+  // auf die Maus hoert, waere der erste Bruch darin.
+  griff.addEventListener("keydown", e => {
+    const runter = o.achse === "breite" ? "ArrowLeft" : "ArrowDown";
+    const hoch = o.achse === "breite" ? "ArrowRight" : "ArrowUp";
+    if (e.key !== runter && e.key !== hoch) return;
+    // Bei "breite" zeigt ArrowLeft nach aussen, macht also GROESSER.
+    const vorzeichen = o.achse === "breite" ? -1 : 1;
+    const schritt = (e.shiftKey ? 64 : 16) * (e.key === hoch ? 1 : -1) * vorzeichen;
+    o.setze(klemme(o.start() + schritt, o.min, o.max()));
+    e.preventDefault();
+  });
+}
+
 // Beim Blaettern folgt der Inhalt ein Stueck weit dem Finger - gedaempft, weil
 // er ja nicht wirklich mitwandert. Ohne diese Rueckmeldung fuehlt sich der
 // Wisch an, als haette man danebengegriffen.
@@ -2191,6 +2277,33 @@ for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
   });
 }
 document.getElementById("kalZu").addEventListener("click", schliesseKalender);
+
+// Die gezogene Breite ueberschreibt --kal-breite am :root. Alles, was daran
+// haengt (body-padding im Split, Panelbreite, Versatz der Snackbar), zieht von
+// selbst mit - eine zweite Stelle mit einer Breite gibt es bewusst nicht.
+function setzeBreite(px) {
+  document.documentElement.style.setProperty("--kal-breite", Math.round(px) + "px");
+  try { localStorage.setItem(BREITE_KEY, String(Math.round(px))); }
+  catch (e) { /* voller Speicher - dann eben ungemerkt */ }
+}
+
+if (gemerkteBreite()) {
+  document.documentElement.style.setProperty("--kal-breite", gemerkteBreite() + "px");
+}
+
+zieheGriff(document.getElementById("kalGriffBreite"), {
+  achse: "breite",
+  start: () => kalPanel.getBoundingClientRect().width,
+  setze: px => { setzeBreite(px); pflegeSplit(); },
+  zurueck: () => {
+    localStorage.removeItem(BREITE_KEY);
+    document.documentElement.style.removeProperty("--kal-breite");
+    pflegeSplit();
+  },
+  min: BREITE_MIN,
+  max: () => Math.max(BREITE_MIN, Math.min(BREITE_MAX, window.innerWidth - BOARD_MINDEST)),
+});
+
 kalMonatName.addEventListener("click", schalteWahl);
 document.getElementById("kalZurueck").addEventListener("click", () => monatVerschieben(-1));
 document.getElementById("kalVor").addEventListener("click", () => monatVerschieben(1));
@@ -2231,7 +2344,10 @@ document.addEventListener("keydown", e => {
 // aus dem Panel wird dann eine Spalte oder umgekehrt. Ohne diesen Abgleich
 // bliebe ein am Handy geoeffneter Kalender nach dem Drehen ein Overlay, das
 // die halbe Liste verdeckt.
-window.addEventListener("resize", () => {
+// Auch nach dem Ziehen aufgerufen, nicht nur bei resize: mit einer eigenen
+// Breite verschiebt sich die Split-Grenze selbst, das Fenster muss sich dafuer
+// gar nicht aendern.
+function pflegeSplit() {
   // Vor dem Ausstieg: die Klasse gilt auch bei zugeklapptem Kalender, das
   // Fokus-Panel haengt ebenfalls daran.
   pflegeBreit();
@@ -2240,7 +2356,9 @@ window.addEventListener("resize", () => {
     setzePanel(true, true);
   }
   if (kalVollbild) messeVollbild();
-});
+}
+
+window.addEventListener("resize", pflegeSplit);
 
 // Aus render() aufgerufen: haelt das offene Panel auf Stand, wenn sich am
 // Board etwas aendert (Abhaken, Sync vom Server). Zugeklappt kostet es nichts.
