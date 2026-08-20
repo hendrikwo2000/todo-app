@@ -206,6 +206,27 @@ Hinzugefügtes. Für wenige Leute, die selten zeitgleich tippen, ist das
 vertretbar. Echtes gleichzeitiges Bearbeiten wäre ein ToDo-für-ToDo-Abgleich
 statt „alles auf einmal" — ein späterer Schritt, falls nötig.
 
+**Die Werkzeugzeile am Spaltenkopf endet mit „＋ ToDo"** (`baueAddKnopfzeile()`
+in `app.js`): Farbpunkt, ＋ Thema, ＋ ToDo. Die Zeile sitzt rechtsbündig neben
+dem Bereichsnamen, also bleibt beim Auf- und Zuklappen der Werkzeuge (Klick auf
+den Titel) nur der LETZTE Knopf an Ort und Stelle. Bis zum 20.08.2026 stand
+＋ ToDo in der Mitte und rückte dabei jedes Mal unter dem Finger weg — bei dem
+Knopf, den man täglich braucht, ist das der teuerste Platz in der Zeile.
+
+**Jedes ToDo hat neben dem 🗑️ einen Bleistift** (`.act.edit`, seit
+20.08.2026), der dasselbe tut wie der Doppelklick auf die Zeile — der bleibt.
+Am Handy gibt es keinen Doppelklick, der zuverlässig trifft; dort war
+Bearbeiten vorher schlicht nicht auffindbar. Der Bleistift steht LINKS vom
+Mülleimer: die harmlose Aktion zuerst, die unwiderrufliche am Zeilenrand.
+
+**Ein leeres Über-Thema klappt nicht** (`leer` in `renderThemaGruppe()`, seit
+20.08.2026): kein Pfeil, ein Klick auf den Namen tut nichts. Eingeklappt sähe
+es genauso aus wie ausgeklappt, und wer einmal darauf tippte, versteckte sich
+unbemerkt einen Pfeil, der nichts mehr aufmacht. Ein gemerktes „zu" aus vollen
+Zeiten wird dabei nur ignoriert und nicht gelöscht — kommt ein ToDo hinein,
+steht das Thema wieder so da, wie man es verlassen hat. Umbenennen per
+Doppelklick und Verschieben per Drag bleiben.
+
 **Thema in einen anderen Bereich ziehen.** Ein Über-Thema lässt sich per
 Drag komplett (mit allen ToDos) in einen anderen Bereich verschieben, nicht
 nur innerhalb der eigenen Spalte umsortieren. Dabei müssen ToDos und Thema
@@ -244,6 +265,24 @@ Kalenderansicht gar nicht mehr in die Einstellungen. Beide tragen
 `.ein-knopf`, werden gemeinsam verdrahtet und gemeinsam mit der Anmeldung
 sichtbar gemacht (`zeigeEinstellungenKnopf()`). Reihenfolge in beiden Ecken
 gleich: Zahnrad, dann Umschalter.
+
+**„Zoom mit zwei Fingern" (seit 20.08.2026), Standard AUS.** Die Sperre steht
+in der Viewport-Zeile in `index.html` (`maximum-scale=1, user-scalable=no`)
+und nicht im JS — so gilt sie ab dem ersten Bild und nicht erst, wenn das
+Skript gelaufen ist. `wendeZoomAn()` in `app.js` nimmt sie beim Einschalten
+wieder heraus. Dazu zwei Riegel für Browser, die den Viewport-Eintrag nur halb
+ernst nehmen: `html.ohne-zoom { touch-action: pan-x pan-y }` (nimmt das Zoomen,
+lässt jedes Scrollen — Elemente mit eigenem `touch-action` wie das
+Kalenderraster behalten ihres) und `preventDefault()` auf `gesturestart` /
+`gesturechange` / `gestureend`, die es nur in Safari gibt: iOS ignoriert
+`user-scalable=no` seit iOS 10.
+
+Grund für „aus": beim Ziehen eines ToDos und beim Wischen im Kalender löst die
+Geste ständig aus Versehen aus, und eine schief gezoomte App bekommt man nur
+mit Mühe wieder gerade. **Die Zeile erscheint nur am Touchscreen**
+(`pointer: coarse`) — am Rechner zoomt man mit Strg+Mausrad, und daran ändert
+der Viewport-Eintrag nichts; ein Schalter, der dort nichts tut, wäre schlimmer
+als keiner. Gilt pro Gerät (`localStorage`, Schlüssel `zoom`).
 
 **Am Handy Vollbild** (`max-width: 560px`), am Rechner ein mittiger Kasten von
 620 × max. 92vh — dort bleibt das Board drumherum sichtbar, und ein
@@ -366,6 +405,22 @@ Skript das Icon nur anfassen kann, waehrend ein Fenster offen ist:
 - Im Hintergrund: der Push-Payload traegt die Zahl mit (`badge` im
   JSON), der Service Worker setzt sie im `push`-Event
   (`self.registration.setAppBadge()`, siehe `sw.js`).
+
+**Die Zahl haengt am Benachrichtigungs-Schalter** (seit 20.08.2026). Steht er
+auf Aus, verschwindet die Zahl sofort (`setzeBadgeErlaubt(false)` loescht sie
+und sperrt `aktualisiereBadge()`), und beim naechsten Einschalten kommt sie
+zurueck. Grund: fuer den Nutzer ist beides dasselbe „die App meldet sich" - ein
+roter Punkt am Icon nach dem Abschalten der Benachrichtigungen sieht aus, als
+haette der Schalter nicht gegriffen.
+
+Beim Start entscheidet `pruefeBadgeErlaubnis()`. Sie prueft ERST
+`Notification.permission` und danach das Abo - der Umweg ueber
+`navigator.serviceWorker.ready` kommt bei einem Service Worker, der sich nicht
+installieren laesst, naemlich nie zurueck, und die Zahl haenge dann fuer immer
+in der Schwebe. Aus demselben Grund steht ein 4-Sekunden-Rennen um die
+Abo-Abfrage: bleibt sie stumm, entscheidet die erteilte Erlaubnis allein.
+Ohne `PushManager` (Safari-Tab am iPhone) gibt es gar keinen Schalter, den man
+umlegen koennte - dort bleibt die Zahl wie bisher erlaubt.
 
 **Bekannter Kompromiss:** ohne Push (0 faellige ToDos) wird die Zahl NICHT
 im Hintergrund auf 0 gesetzt - eine "stille" Push-Nachricht ohne sichtbare
@@ -1336,6 +1391,28 @@ Rückmeldung fühlt sich der Wisch an, als hätte man danebengegriffen. Läuft d
 Tageswechsel aus dem Monat heraus, blättert das Raster mit — sonst zeigte es
 einen Monat, in dem der gewählte Tag gar nicht vorkommt.
 
+**Genau diese Dämpfung wählte bis zum 20.08.2026 den falschen Tag.** Nach jedem
+Wisch schiebt der Browser noch einen `click` nach, und der traf die Zelle, über
+der der Finger ENDET. Weil das Raster nur 35 % des Weges mitgeht, wandert der
+Finger relativ zu den Zellen: ein Wisch von 40 px landet gut einen halben Tag
+weiter, und ein zu kurz geratener Blätterversuch sprang deshalb scheinbar
+grundlos einen Tag weiter. `klickSchlucken` in `kalender.js` setzt einen Riegel,
+sobald aus der Berührung ein Wisch geworden ist (also nach den 8 px, ab denen
+die Achse feststeht), und löst ihn beim nächsten `touchstart` wieder. Ein echter
+Tipp kommt an der Stelle nie vorbei. Gilt für BEIDE Achsen — auch der senkrechte
+Vollbild-Wisch kann über eine Zellengrenze hinausführen.
+
+**Hover am Kalender: zwei Fälle, zwei Ursachen, beide am 20.08.2026 behoben.**
+- Am Touchscreen bleibt `:hover` nach einem Tipp am zuletzt berührten Tag
+  kleben, bis man woandershin tippt — der graue Kasten stand dann neben der
+  blauen Markierung wie eine zweite Auswahl. `.kal-tag:hover` steckt deshalb in
+  `@media (hover: hover)`.
+- Am Rechner baute `waehleTag()` über `zeichneKalender()` das ganze Raster neu.
+  Die angeklickte Zelle verschwand mitsamt ihrem `:hover` aus dem Dokument, und
+  der Ersatz darunter bekam ihn erst beim nächsten Mausruck. Ein Tageswechsel
+  hängt jetzt nur noch die Klasse `gewaehlt` um und zeichnet die Tagesliste neu
+  (`aktualisiereAuswahl()`) — am Raster ändert sich sonst ohnehin nichts.
+
 **Monat und Jahr direkt wählen:** Ein Tipp auf den Monatsnamen klappt zwei
 scrollbare Walzen auf (`zeichneWahl()`), Antippen setzt sofort. Die Jahre
 reichen fünf Jahre um das heutige UND das gerade angezeigte Jahr, damit man
@@ -1540,6 +1617,13 @@ eine Zeit lang neben dem Timer. Dieselbe Familie wie bei `.offline-banner`.
 
 **Im Vollbild** (⤢) gibt es den unteren Teil nicht; `zeichneUnten()` prüft
 `kalVollbild` mit. Der Modus bleibt gemerkt und steht beim Verlassen wieder da.
+
+**Am Handy schaltet ein senkrechter Wisch über dem Raster das Vollbild: nach
+OBEN groß, nach UNTEN wieder klein** (`ZOOM_WEG` = 60 px in `kalender.js`).
+Seit dem 20.08.2026 andersherum als vorher — die Richtung folgt jetzt dem, was
+wandert: das Raster sitzt unten im Streifen und muss nach oben, um den
+Bildschirm zu füllen. Die alte Lesart („wie ein Rollo, das man über die
+Tagesliste zieht") war in sich stimmig, aber niemand zieht ein Rollo von unten.
 
 ### Der Umschalter: nur noch auf oder zu
 

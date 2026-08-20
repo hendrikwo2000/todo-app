@@ -73,6 +73,13 @@ html, body {
    gaebe es beim Zuklappen keine Animation. */
 body { transition: background .2s, color .2s, padding-right .26s cubic-bezier(.32, .72, 0, 1); }
 
+/* Kein Zoom mit zwei Fingern (Standard, abschaltbar in den Einstellungen -
+   siehe wendeZoomAn in app.js). pan-x pan-y laesst jedes Scrollen zu und nimmt
+   nur das Zoomen; Elemente mit eigenem touch-action - das Kalenderraster -
+   behalten ihres. Zweiter Riegel neben dem Viewport-Eintrag im HTML, weil den
+   nicht jeder Browser gleich ernst nimmt. */
+html.ohne-zoom { touch-action: pan-x pan-y; }
+
 .app {
   max-width: 1900px;
   margin: 0 auto;
@@ -759,6 +766,12 @@ input[type="date"]:focus {
 }
 .act:hover { background: var(--hover); color: var(--text); }
 .act.del:hover { background: var(--del-soft); color: var(--red); }
+/* Der Bleistift steht LINKS vom Muelleimer - die harmlose Aktion zuerst, die
+   unwiderrufliche zuletzt und damit am weitesten weg vom Zeilenrand, an dem
+   man den Finger ohnehin hat. Etwas kleiner als das 🗑️, damit die beiden
+   Symbole optisch gleich schwer wiegen (das Bleistift-Emoji traegt mehr
+   Flaeche). */
+.act.edit { font-size: 13px; }
 
 /* Inline-Bearbeiten */
 .edit-row { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
@@ -1939,7 +1952,13 @@ html:not(.breit) #kalZu { display: none; }
   font: inherit; font-size: 13.5px;
   cursor: pointer;
 }
-.kal-tag:hover { background: var(--hover); }
+/* Nur auf Geraeten mit echtem Zeiger. Am Touchscreen bleibt :hover nach einem
+   Tipp am zuletzt beruehrten Tag KLEBEN, bis man woandershin tippt - der graue
+   Kasten stand dann auf einem Tag, der laengst nicht mehr der gewaehlte war,
+   und sah aus wie eine zweite Markierung neben der blauen. */
+@media (hover: hover) {
+  .kal-tag:hover { background: var(--hover); }
+}
 /* Heute: farbiger Rand und fette Zahl. Gewaehlt: KRAEFTIGER Ring statt einer
    blauen Flaeche - die schluckte Balken, Punkte und Tageszahl gleich mit.
    Der Ring liegt als inset-Schatten INNEN, damit die 1px-Rasterlinie stehen

@@ -82,6 +82,9 @@ const pushSwitch       = document.getElementById("pushSwitch");
 const pushSwitchLabel  = document.getElementById("pushSwitchLabel");
 const pushSwitchWrap   = document.getElementById("pushSwitchWrap");
 const pushHinweis      = document.getElementById("pushHinweis");
+const zoomZeile        = document.getElementById("zoomZeile");
+const zoomSwitch       = document.getElementById("zoomSwitch");
+const zoomSwitchLabel  = document.getElementById("zoomSwitchLabel");
 const fokusPanelZeile       = document.getElementById("fokusPanelZeile");
 const fokusPanelSwitch      = document.getElementById("fokusPanelSwitch");
 const fokusPanelSwitchLabel = document.getElementById("fokusPanelSwitchLabel");
@@ -218,9 +221,16 @@ function dueInfo(iso) {
 // Zahl auch ohne offene App; hier zusaetzlich bei jedem Rendern, damit sie
 // sich sofort senkt, sobald man ein ToDo abhakt - waehrend die App offen ist,
 // kann kein Push das nachholen.
+// Die Zahl haengt am Benachrichtigungs-Schalter: wer die Benachrichtigungen
+// abschaltet, will auch den roten Punkt am Icon nicht mehr sehen - fuer ihn
+// ist beides dasselbe "die App meldet sich". null = noch nicht geprueft
+// (die Pruefung ist asynchron, siehe pruefeBadgeErlaubnis); bis dahin bleibt
+// die Zahl unangetastet, statt sie kurz zu setzen und gleich zurueckzunehmen.
+let badgeErlaubt = null;
 let letzteBadgeZahl = null;
 function aktualisiereBadge() {
   if (!("setAppBadge" in navigator)) return;
+  if (badgeErlaubt !== true) return;
   const heute = todayStr();
   let n = 0;
   for (const id in daten) {
@@ -232,6 +242,22 @@ function aktualisiereBadge() {
   letzteBadgeZahl = n;
   if (n > 0) navigator.setAppBadge(n).catch(() => {});
   else navigator.clearAppBadge().catch(() => {});
+}
+
+/**
+ * Den Schalter-Zustand an die Badge-Zahl melden.
+ *
+ * Beim Abschalten wird die Zahl SOFORT geloescht - das ist der sichtbare Teil
+ * des Wunsches. `letzteBadgeZahl` muss dabei zurueckgesetzt werden, sonst
+ * haelt die Sperre gegen doppeltes Setzen die Zahl beim spaeteren Einschalten
+ * faelschlich fuer "steht ja schon".
+ */
+function setzeBadgeErlaubt(an) {
+  badgeErlaubt = !!an;
+  if (!("setAppBadge" in navigator)) return;
+  if (an) { aktualisiereBadge(); return; }
+  letzteBadgeZahl = null;
+  navigator.clearAppBadge().catch(() => {});
 }
 
 // Dringlich = ueberfaellig, heute oder morgen faellig. Steuert die Ampelfarben
@@ -756,6 +782,50 @@ function zeigeFokusPanelSchalter() {
   fokusPanelSwitch.checked = fokusPanelAn;
   fokusPanelSwitchLabel.textContent = fokusPanelAn ? "An" : "Aus";
 }
+
+// ---------- Zoom mit zwei Fingern ----------
+// Standard AUS (siehe die Viewport-Zeile in index.html): die Geste rutscht am
+// Handy staendig zwischen Ziehen und Wischen dazwischen, und eine schief
+// gezoomte App bekommt man nur mit Muehe wieder gerade. Der Schalter gilt pro
+// Geraet, wie die Darstellung.
+const ZOOM_KEY = "zoom";
+let zoomAn = localStorage.getItem(ZOOM_KEY) === "an";
+const VIEWPORT_BASIS = "width=device-width, initial-scale=1, viewport-fit=cover";
+
+function wendeZoomAn() {
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (meta) {
+    meta.setAttribute("content", zoomAn
+      ? VIEWPORT_BASIS
+      : VIEWPORT_BASIS + ", maximum-scale=1, user-scalable=no");
+  }
+  // Der zweite Riegel, fuer Browser, die den Viewport-Eintrag nur halb ernst
+  // nehmen: touch-action an der Wurzel nimmt der Seite das Zoomen, laesst aber
+  // jedes Scrollen zu. Kinder mit eigenem touch-action (das Kalenderraster)
+  // bleiben davon unberuehrt.
+  document.documentElement.classList.toggle("ohne-zoom", !zoomAn);
+  zoomZeile.hidden = !istTouchGeraet();
+  zoomSwitch.checked = zoomAn;
+  zoomSwitchLabel.textContent = zoomAn ? "An" : "Aus";
+}
+
+function istTouchGeraet() {
+  return !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+}
+
+// Safari am iPhone hat user-scalable=no seit iOS 10 stillschweigend ignoriert.
+// Dort bleibt nur, die Zwei-Finger-Geste selbst abzufangen - diese Ereignisse
+// gibt es ausschliesslich in Safari, ueberall sonst laeuft die Zeile leer.
+for (const name of ["gesturestart", "gesturechange", "gestureend"]) {
+  document.addEventListener(name, e => { if (!zoomAn) e.preventDefault(); }, { passive: false });
+}
+
+zoomSwitch.addEventListener("change", () => {
+  zoomAn = zoomSwitch.checked;
+  localStorage.setItem(ZOOM_KEY, zoomAn ? "an" : "aus");
+  wendeZoomAn();
+});
+wendeZoomAn();
 
 // Kurztext in jeder Kopfzeile, auch zugeklappt sichtbar - Antwort auf "ich
 // finde Dinge nicht wieder": man sieht schon vor dem Aufklappen, was
@@ -2701,7 +2771,13 @@ function verschiebeThema(th, zielCatId, vorThemaId) {
 // die offenen ToDos des Themas. `open` sind alle offenen ToDos des Bereichs.
 function renderThemaGruppe(cat, th, open) {
   const offen = open.filter(t => t.themaId === th.id).sort(sortOpen);
-  const collapsed = !!themaCollapsed[th.id];
+  // Ein leeres Thema klappt nicht: eingeklappt saehe es genauso aus wie
+  // ausgeklappt, und wer einmal auf den Namen tippt, versteckt sich sonst
+  // unbemerkt einen Pfeil, der nichts mehr aufmacht. Ein gemerktes "zu" aus
+  // vollen Zeiten wird dabei ignoriert (nicht geloescht) - kommt ein ToDo
+  // hinein, steht es wieder so da, wie man es verlassen hat.
+  const leer = !offen.length;
+  const collapsed = !leer && !!themaCollapsed[th.id];
 
   const gruppe = document.createElement("div");
   gruppe.className = "thema-gruppe";
@@ -2727,15 +2803,18 @@ function renderThemaGruppe(cat, th, open) {
     toggle.type = "button";
     toggle.className = "thema-toggle";
     toggle.innerHTML =
-      `<span class="arrow">▾</span>` +
+      (leer ? "" : `<span class="arrow">▾</span>`) +
       `<span class="thema-name">${escapeHtml(th.name)}</span>` +
       `<span class="thema-count ${ampelKlasse(offen)}">${offen.length}</span>`;
-    toggle.title = "Klick: ein-/ausklappen · Doppelklick: umbenennen · ziehen: verschieben";
+    toggle.title = leer
+      ? "Doppelklick: umbenennen · ziehen: verschieben"
+      : "Klick: ein-/ausklappen · Doppelklick: umbenennen · ziehen: verschieben";
     toggle.draggable = true;
     // Timer trennt Einfach- (einklappen) von Doppelklick (umbenennen), wie am Titel.
     let klickTimer = null;
     toggle.addEventListener("click", () => {
       clearTimeout(klickTimer);
+      if (leer) return;
       klickTimer = setTimeout(() => toggleThemaCollapse(th.id), 220);
     });
     toggle.addEventListener("dblclick", () => {
@@ -2814,9 +2893,14 @@ function baueAddKnopfzeile(cat) {
   const zeile = document.createElement("div");
   zeile.className = "col-tools";
 
-  // Farbe, ＋ ToDo, ＋ Thema - in dieser Reihenfolge. Farbe und ＋ Thema
+  // Farbe, ＋ Thema, ＋ ToDo - in dieser Reihenfolge. Farbe und ＋ Thema
   // stehen seltener im Weg als ein ToDo - deshalb nur sichtbar, solange fuer
   // DIESEN Bereich die Werkzeuge aufgeklappt sind.
+  //
+  // ＋ ToDo steht ganz RECHTS, nicht in der Mitte: die Zeile sitzt rechtsbuendig
+  // neben dem Bereichsnamen, also bleibt nur der letzte Knopf beim Auf- und
+  // Zuklappen an Ort und Stelle. Waere es der mittlere, rueckte der Knopf, den
+  // man taeglich braucht, bei jedem Klick auf den Titel unter dem Finger weg.
   const farbeOffen = themaWerkzeugeFuer === cat.id && farbePickerFuer === cat.id;
   if (themaWerkzeugeFuer === cat.id) {
     const farbeBtn = document.createElement("button");
@@ -2853,13 +2937,6 @@ function baueAddKnopfzeile(cat) {
     }
   }
 
-  const todoBtn = document.createElement("button");
-  todoBtn.type = "button";
-  todoBtn.className = "col-add-btn";
-  todoBtn.textContent = "＋ ToDo";
-  todoBtn.addEventListener("click", () => openAdd(cat.id, null));
-  zeile.appendChild(todoBtn);
-
   if (themaWerkzeugeFuer === cat.id) {
     const themaBtn = document.createElement("button");
     themaBtn.type = "button";
@@ -2869,6 +2946,14 @@ function baueAddKnopfzeile(cat) {
     themaBtn.addEventListener("click", () => addThema(cat.id));
     zeile.appendChild(themaBtn);
   }
+
+  const todoBtn = document.createElement("button");
+  todoBtn.type = "button";
+  todoBtn.className = "col-add-btn";
+  todoBtn.textContent = "＋ ToDo";
+  todoBtn.addEventListener("click", () => openAdd(cat.id, null));
+  zeile.appendChild(todoBtn);
+
   return zeile;
 }
 
@@ -3341,6 +3426,16 @@ function renderTodo(t) {
   const actions = document.createElement("div");
   actions.className = "actions";
 
+  // Bearbeiten als eigener Knopf, obwohl der Doppelklick auf die Zeile es
+  // schon kann: am Handy gibt es keinen Doppelklick, der zuverlaessig trifft -
+  // dort war Bearbeiten bisher schlicht nicht auffindbar.
+  const edit = document.createElement("button");
+  edit.className = "act edit";
+  edit.title = "Bearbeiten";
+  edit.textContent = "✏️";
+  edit.addEventListener("click", () => startEdit(t.id));
+  actions.appendChild(edit);
+
   const del = document.createElement("button");
   del.className = "act del";
   del.title = "Endgültig löschen";
@@ -3787,6 +3882,33 @@ async function aktuelleSubscription() {
   return await reg.pushManager.getSubscription();
 }
 
+/**
+ * Darf am App-Icon eine Zahl stehen? Genau dann, wenn Benachrichtigungen
+ * wirklich laufen - dieselbe Bedingung wie beim Schalter.
+ *
+ * Laeuft einmal beim Start und danach bei jeder Aenderung am Schalter. Ohne
+ * Push-Unterstuetzung (Safari-Tab am iPhone) gibt es keinen Schalter, den man
+ * umlegen koennte - dann bleibt die Zahl erlaubt, sonst haette dort niemand je
+ * eine.
+ */
+async function pruefeBadgeErlaubnis() {
+  if (!("setAppBadge" in navigator)) return;
+  if (!pushUnterstuetzt()) { setzeBadgeErlaubt(true); return; }
+  // Ohne erteilte Erlaubnis kann gar kein Abo laufen. Das vorweg zu pruefen
+  // spart den Umweg ueber serviceWorker.ready - der kommt bei einem Service
+  // Worker, der sich nicht installieren laesst, NIE zurueck, und die Zahl
+  // haenge dann fuer immer in der Schwebe.
+  if (Notification.permission !== "granted") { setzeBadgeErlaubt(false); return; }
+  const sub = await Promise.race([
+    aktuelleSubscription().catch(() => null),
+    new Promise(r => setTimeout(() => r("unklar"), 4000)),
+  ]);
+  // Bleibt der Service Worker stumm, entscheidet die erteilte Erlaubnis
+  // allein: eine Zahl zu viel ist besser als eine, die nie wiederkommt.
+  setzeBadgeErlaubt(sub === "unklar" ? true : !!sub);
+}
+pruefeBadgeErlaubnis();
+
 // Bei jedem Oeffnen der Einstellungen den Schalter auf den echten Stand
 // bringen - eine Berechtigung kann sich auch ausserhalb der App aendern
 // (z. B. in den iOS-Systemeinstellungen entzogen).
@@ -3803,6 +3925,9 @@ async function aktualisierePushSchalter() {
   const an = !!sub && Notification.permission === "granted";
   pushSwitch.checked = an;
   pushSwitchLabel.textContent = an ? "An" : "Aus";
+  // Die Erlaubnis kann sich auch ausserhalb der App geaendert haben - dann
+  // zieht die Zahl am Icon hier mit.
+  setzeBadgeErlaubt(an);
 }
 
 async function schaltePushUm() {
@@ -3828,6 +3953,7 @@ async function schaltePushUm() {
         return;
       }
       pushSwitchLabel.textContent = "An";
+      setzeBadgeErlaubt(true);
     } catch (e) {
       pushSwitch.checked = false;
       snackInfo("Benachrichtigungen ließen sich nicht aktivieren.");
@@ -3845,6 +3971,8 @@ async function schaltePushUm() {
       }
     } catch (e) { /* Schalter bleibt trotzdem aus */ }
     pushSwitchLabel.textContent = "Aus";
+    // Auch im Fehlerfall: der Schalter steht auf Aus, also gehoert die Zahl weg.
+    setzeBadgeErlaubt(false);
   }
 }
 if (pushSwitch) pushSwitch.addEventListener("change", schaltePushUm);

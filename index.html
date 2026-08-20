@@ -1,8 +1,15 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" class="ohne-zoom">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Kein Pinch-Zoom, solange nichts anderes gesagt wird: beim Ziehen eines
+       ToDos oder beim Wischen im Kalender loest die Zwei-Finger-Geste sonst
+       leicht aus Versehen aus, und danach steht die App schief da. Wer sie
+       braucht, schaltet sie in den Einstellungen an - dann nimmt app.js
+       maximum-scale/user-scalable hier wieder heraus (siehe wendeZoomAn).
+       Deshalb steht die Sperre im HTML und nicht im JS: so gilt sie ab dem
+       ersten Bild und nicht erst, wenn das Skript gelaufen ist. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
   <meta name="keywords" content="todo liste, todo app, aufgabenliste, aufgaben organisieren, kostenlose todo liste, it wolf, todo liste teilen, aufgabenverwaltung, werbefreie todo app, digitale aufgabenliste">
   <meta name="author" content="Hendrik Wolf">
   <meta name="description" content="Kostenlose ToDo-Liste von IT Wolf: Aufgaben in Bereichen und Themen organisieren, Listen teilen, überall synchron. Werbefrei, ohne Kosten.">
@@ -175,9 +182,9 @@
       </button>
       <button type="button" id="kalHeute" class="btn klein">Heute</button>
       <!-- Vollbild: am Handy geht es auch per Wisch ueber dem Raster (nach
-           unten gross, nach oben klein), am Rechner gibt es nur den Knopf. -->
+           oben gross, nach unten klein), am Rechner gibt es nur den Knopf. -->
       <button type="button" id="kalVollbild" class="kal-pfeil kal-vollbild-knopf"
-              aria-label="Kalender groß" title="Kalender groß – am Handy: über dem Raster nach unten wischen">⤢</button>
+              aria-label="Kalender groß" title="Kalender groß – am Handy: über dem Raster nach oben wischen">⤢</button>
     </div>
 
     <!-- Quellen-Umschalter: je eine Pille pro ToDo-Liste und pro
@@ -269,6 +276,20 @@
           <label class="switch" id="themeSwitchWrap">
             <input type="checkbox" id="themeSwitch">
             <span class="switch-label" id="themeSwitchLabel">Hell</span>
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+
+        <!-- Nur am Touchscreen sichtbar (JS blendet es ein): am Rechner zoomt
+             man mit Strg+Mausrad, und daran aendert ein Viewport-Eintrag
+             nichts - ein Schalter, der dort nichts tut, waere schlimmer als
+             keiner. Gilt pro Geraet (localStorage), wie die Darstellung. -->
+        <div class="ein-abschnitt ein-zeile" id="zoomZeile" data-abschnitt="zoom" hidden>
+          <span class="ein-kopf-icon">🔍</span>
+          <span class="ein-kopf-text">Zoom mit zwei Fingern</span>
+          <label class="switch" id="zoomSwitchWrap">
+            <input type="checkbox" id="zoomSwitch">
+            <span class="switch-label" id="zoomSwitchLabel">Aus</span>
             <span class="switch-track"><span class="switch-thumb"></span></span>
           </label>
         </div>

@@ -1698,7 +1698,29 @@ function waehleTag(iso) {
   kalAuswahl = iso;
   schliesseEingaben();
   setzePanel(kalOffen, true);
-  zeichneKalender();
+  aktualisiereAuswahl();
+}
+
+/**
+ * Nur die Auswahl umhaengen, statt den ganzen Kalender neu zu zeichnen.
+ *
+ * Am Raster aendert ein Tageswechsel genau eine Klasse - alles andere
+ * (Wochentage, Punkte, Balken, Zeilenzahl) bleibt, wie es ist. Es KOMPLETT neu
+ * zu bauen hatte am Rechner eine haessliche Nebenwirkung: die angeklickte
+ * Zelle verschwand mitsamt ihrem :hover aus dem Dokument, und der Ersatz
+ * darunter bekam ihn erst beim naechsten Mausruck wieder. Fuer den Nutzer sah
+ * das aus, als bliebe der Hover am alten Tag haengen.
+ *
+ * Die Tagesliste muss neu, die ist ja die eigentliche Antwort auf den Tipp.
+ */
+function aktualisiereAuswahl() {
+  for (const zelle of kalRaster.querySelectorAll(".kal-tag")) {
+    zelle.classList.toggle("gewaehlt", zelle.dataset.tag === kalAuswahl);
+  }
+  const todos = kalenderTermine();
+  const heute = todayStr();
+  zeichneTagesliste(nachTagen(todos), termineNachTagen(),
+                    todos.filter(t => t.due < heute), heute);
 }
 
 // Halb ausgefuelltes Formular und offene Eingabe gehoeren zu EINEM Tag - beim
@@ -1910,6 +1932,17 @@ const ZU_ANTEIL = 0.35;   // beim Schliessen: so weit muss es hinausgezogen sein
 
 let geste = null;   // { x, y, achse, modus, breite, versatz }
 
+/* Nach einem Wisch ueber dem Raster schiebt der Browser noch einen Klick nach.
+   Der waehlte bisher einen Tag aus - und zwar den FALSCHEN: beim Blaettern
+   folgt das Raster dem Finger nur gedaempft (MITGABE 0.35), der Finger wandert
+   also relativ zu den Zellen und liegt am Ende ueber dem Nachbartag. Bei einem
+   Wisch, der die Umblaetter-Schwelle nicht erreicht hat, sprang die Auswahl
+   deshalb scheinbar grundlos einen Tag weiter.
+   Der Riegel wird gesetzt, sobald aus der Beruehrung ein Wisch geworden ist,
+   und beim naechsten Aufsetzen wieder geloest. Ein echter Tipp (unter der
+   8-px-Schwelle) laeuft nie hier vorbei. */
+let klickSchlucken = false;
+
 // Keine Geste, solange ein Dialog offen ist oder gerade etwas gezogen wird -
 // sonst kaempft der Kalender mit dem Drag & Drop des Boards.
 function darfGeste() {
@@ -1923,10 +1956,13 @@ function darfGeste() {
   return true;
 }
 
-// Senkrecht ueber dem Raster wischen schaltet das Vollbild: nach UNTEN zieht
-// den Kalender gross (wie ein Rollo, das man ueber die Tagesliste zieht), nach
-// OBEN wieder klein. Vorher lag das auf einer Zwei-Finger-Zoomgeste - die war
-// am Handy einhaendig kaum zu treffen.
+// Senkrecht ueber dem Raster wischen schaltet das Vollbild: nach OBEN schiebt
+// das Raster die Tagesliste weg und wird gross, nach UNTEN laesst es sie wieder
+// herein. Die Richtung folgt dem, was WANDERT: das Raster sitzt unten, es muss
+// also nach oben, um den Bildschirm zu fuellen. (Bis zum 20.08.2026 war es
+// andersherum - "wie ein Rollo" gedacht, aber Rollos zieht niemand von unten.)
+// Vorher lag das auf einer Zwei-Finger-Zoomgeste - die war am Handy einhaendig
+// kaum zu treffen.
 //
 // Nur ueber dem Raster: die Tagesliste darunter muss senkrecht scrollbar
 // bleiben, und in der Kopfzeile wischt man zum Schliessen.
@@ -1982,6 +2018,7 @@ function setzeBlaetterVersatz(dx) {
 
 document.addEventListener("touchstart", e => {
   geste = null;
+  klickSchlucken = false;   // neue Beruehrung, alter Riegel hat sich erledigt
   if (e.touches.length !== 1) return;
   const t = e.touches[0];
   if (!kalOffen) {
@@ -2025,13 +2062,16 @@ document.addEventListener("touchmove", e => {
   }
 
   e.preventDefault();   // ab hier gehoert die Bewegung dem Panel
+  // Ab hier ist es ein Wisch und kein Tipp mehr - der nachgeschobene Klick
+  // darf keinen Tag mehr waehlen (siehe klickSchlucken).
+  if (geste.modus === "monat") klickSchlucken = true;
 
   if (geste.achse === "y") {
     // Nach dem Umschalten ist die Geste erledigt (geste = null), sonst
     // schaltete ein Weiterziehen ueber die Schwelle hinaus gleich wieder
     // zurueck.
-    if (dy > ZOOM_WEG) { geste = null; setzeVollbild(true); }
-    else if (dy < -ZOOM_WEG) { geste = null; setzeVollbild(false); }
+    if (dy < -ZOOM_WEG) { geste = null; setzeVollbild(true); }
+    else if (dy > ZOOM_WEG) { geste = null; setzeVollbild(false); }
     return;
   }
 
@@ -2120,6 +2160,7 @@ kalFilterKnopf.addEventListener("click", () => {
 });
 document.getElementById("kalVollbild").addEventListener("click", () => setzeVollbild(!kalVollbild));
 kalRaster.addEventListener("click", e => {
+  if (klickSchlucken) { klickSchlucken = false; return; }
   const zelle = e.target.closest(".kal-tag");
   if (zelle) waehleTag(zelle.dataset.tag);
 });
