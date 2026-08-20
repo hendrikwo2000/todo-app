@@ -76,6 +76,13 @@ const BOARD_MINDEST = 520;
 const BREITE_MIN = 360;
 const BREITE_MAX = 720;
 const BREITE_KEY = "kalBreite";
+// Ab wie vielen Tagen ein Balken seinen Titel traegt. Bei rund 55 px
+// Spaltenbreite blieb von einem Titel ohnehin nur "Finn H..." uebrig - der
+// Text kostete Zellhoehe und sagte nichts. Massgeblich ist die Spanne in
+// DIESER Rasterzeile, nicht die Gesamtlaenge des Termins: ein
+// Ein-Tages-Abschnitt am Wochenrand ist genauso schmal wie ein echter
+// Ein-Tages-Termin.
+const TITEL_AB_TAGEN = 2;
 
 // 0 = keine eigene Breite gezogen. Dann gilt weiter --kal-breite aus dem CSS
 // und die alte feste Grenze - wer nie zieht, merkt von der Aenderung nichts.
@@ -1118,10 +1125,16 @@ function baueTagesZelle(tag, spalte, ctx) {
       balken.style.background = farbe;
       balken.style.color = kontrastFarbe(farbe);
     }
-    const text = document.createElement("span");
-    text.className = "kal-balken-text";
-    text.textContent = eintrag.termin.titel;
-    balken.appendChild(text);
+    // Der Name steht ohnehin in der Tagesliste darunter; fuer Mauszeiger und
+    // Screenreader bleibt er am Balken.
+    balken.title = eintrag.termin.titel;
+    balken.setAttribute("aria-label", eintrag.termin.titel);
+    if (spanne >= TITEL_AB_TAGEN) {
+      const text = document.createElement("span");
+      text.className = "kal-balken-text";
+      text.textContent = eintrag.termin.titel;
+      balken.appendChild(text);
+    }
     stapel.appendChild(balken);
   }
   zelle.appendChild(stapel);

@@ -1277,20 +1277,20 @@ Zwischenspeicher den Stand herauf und die Fehlerantwort räumte ihn im selben
 Atemzug wieder weg — genau das Springen, gegen das er gebaut ist. Und eine
 Fehlermeldung ist kein Terminstand, taugt also auch nicht zum Merken.
 
-**Das Raster faellt beim Nachladen nicht mehr flach zusammen.** `spurenVorher`
-haelt die Spurenzahl je Woche vom letzten Zeichnen; solange fuer den Monat noch
+**Das Raster fällt beim Nachladen nicht mehr flach zusammen.** `spurenVorher`
+hält die Spurenzahl je Woche vom letzten Zeichnen; solange für den Monat noch
 keine frische Antwort da ist (`googleLaedt || !googleGeladen`), gilt sie als
-Untergrenze. **Nicht nur waehrend `googleLaedt`**: das erste Zeichnen passiert
-VOR der Anfrage, und genau dort faellt das Raster sonst zusammen, um beim
+Untergrenze. **Nicht nur während `googleLaedt`**: das erste Zeichnen passiert
+VOR der Anfrage, und genau dort fällt das Raster sonst zusammen, um beim
 Eintreffen der Termine wieder aufzugehen.
 
-`spurenVorherMonat` haelt fest, fuer welchen Monat die Zahlen gelten — ein
-anderer Monat hat andere Wochen, dessen Spurenzahl waere geraten. Geprueft wird
+`spurenVorherMonat` hält fest, für welchen Monat die Zahlen gelten — ein
+anderer Monat hat andere Wochen, dessen Spurenzahl wäre geraten. Geprüft wird
 das in `zeichneRaster()` selbst und nicht an den drei Stellen, die den Monat
 setzen: eine Stelle kann man nicht vergessen, drei schon.
 
 `kalenderGoogleVergessen` leert `spurenVorher` mit. Sonst hielte die Untergrenze
-das Raster auf der Hoehe von Terminen, die es nach dem Trennen gar nicht mehr
+das Raster auf der Höhe von Terminen, die es nach dem Trennen gar nicht mehr
 gibt.
 
 **Anzeige.** Seit 13.08.2026 stehen im Tagesbereich die **ToDos zuerst** und
@@ -1431,6 +1431,28 @@ verhindert, dass die Breite wieder zurueckgestaucht wird, `overflow: hidden`
 schneidet den Titel am Ende des Termins ab statt ihn in fremde Tage laufen zu
 lassen, und `position: relative` + `z-index: 1` heben ihn ueber den Hintergrund
 der ueberdeckten Nachbarzellen (etwa den gewaehlten Tag).
+
+**Den Titel bekommt nur ein Balken ab zwei Tagen** (seit 20.08.2026,
+`TITEL_AB_TAGEN`). Bei rund 55 px Spaltenbreite blieb von „Finn Hausaufgaben"
+ohnehin nur „Finn H…" übrig — der Text kostete Zellhöhe und sagte nichts.
+Eintägige Termine zeigen nur ihren Farbbalken; ihr Name steht in der Tagesliste
+darunter, und `title` und `aria-label` bleiben am Balken, damit Mauszeiger und
+Screenreader ihn weiter finden.
+
+Maßgeblich ist die **Spanne in dieser Rasterzeile**, nicht die Gesamtlänge des
+Termins. Ein Termin von Sonntag auf Montag bekommt also in beiden Zeilen keinen
+Titel, obwohl er mehrtägig ist: Ein Ein-Tages-Abschnitt am Wochenrand ist
+genauso schmal wie ein echter Ein-Tages-Termin, und Lesbarkeit ist die Frage,
+um die es geht.
+
+**Eine flachere Spur für titellose Wochen war gebaut und ist wieder raus.** Die
+Idee war, in Wochen ohne mehrtägigen Termin Höhe zurückzugewinnen. Sie gewinnt
+keine: Seit das Raster seine Höhe vom Container bekommt (`flex: 1 1 auto` plus
+`grid-auto-rows: minmax(0, 1fr)`, siehe oben), ändert die Balkenhöhe daran
+nichts — gemessen 378 px Rasterhöhe mit und ohne. Geblieben wären nur
+unterschiedlich dicke Balken von Woche zu Woche. Wer die Idee wieder aufgreift,
+müsste zuerst das Raster wieder inhaltsgetrieben machen — und das war eine
+bewusste Entscheidung in die andere Richtung.
 
 **Falle: `1fr` waechst mit dem Inhalt.** Mit `repeat(7, 1fr)` zog der
 ueberbreite Balken die Rasterspalten mit auf — ein Sieben-Tage-Balken war
