@@ -115,6 +115,14 @@ let vollbildPlaetze = 0;
 // wirft die Scrollposition weg - also merken wir sie selbst.
 let listeScroll = 0;
 
+// Liegt gerade ein eigener Verlaufseintrag fuer die Kalenderansicht? Nur
+// unterhalb der Split-Grenze - im Split steht ohnehin beides nebeneinander.
+let historieEintrag = false;
+// Laeuft das Schliessen gerade AUS popstate heraus? Dann darf setzePanel den
+// Eintrag nicht noch einmal zuruecknehmen, sonst schiebt sich der Verlauf
+// gegenseitig und der Zurueck-Knopf springt zwei Schritte.
+let ausPopstate = false;
+
 // ---------- Google-Kalender (nur lesen) ----------
 // Die Verbindung haelt der Server (functions/api/google/), die App bekommt
 // fertige Termine und kennt kein Google-Token. `moeglich` bleibt false,
@@ -1825,9 +1833,31 @@ function setzePanel(offen, sofort) {
     const gilt = offen ? seg.dataset.ansicht === "kalender" : seg.dataset.ansicht === "liste";
     seg.setAttribute("aria-pressed", String(gilt));
   }
+  // Der Zurueck-Knopf soll am Handy zur Liste fuehren statt die App zu
+  // verlassen - fuer eine PWA vom Startbildschirm ist das der Unterschied
+  // zwischen "eine Ansicht zurueck" und "weg".
+  if (alsAnsicht && !historieEintrag) {
+    historieEintrag = true;
+    history.pushState({ kalender: true }, "");
+  } else if (!alsAnsicht && historieEintrag) {
+    historieEintrag = false;
+    if (!ausPopstate) history.back();
+  }
+
   try { localStorage.setItem(ANSICHT_KEY, offen ? kalUntenModus : "liste"); }
   catch (e) { /* voller Speicher - dann eben ungemerkt */ }
 }
+
+// Zurueck-Knopf des Browsers: eine Ansicht zurueck, nicht aus der App heraus.
+// Der Eintrag ist zu diesem Zeitpunkt schon vom Browser abgeraeumt, deshalb
+// darf setzePanel kein history.back() nachschieben.
+window.addEventListener("popstate", () => {
+  if (!historieEintrag) return;
+  ausPopstate = true;
+  historieEintrag = false;
+  setzePanel(false);
+  ausPopstate = false;
+});
 
 /**
  * Was steht unten: das Monatsraster oder Fokus. Die Sichtbarkeit haengt an

@@ -902,6 +902,18 @@ Umschalt-Modus ruckelte, weil parallel der `body` sein `padding-right`
 änderte — ein Layout-Umbruch, der nicht flüssig animieren kann. Als eigene
 Ansicht steht der Kalender einfach da; es gibt nichts hereinzufahren.
 
+**Der Zurück-Knopf führt zur Liste, nicht aus der App.** Beim Wechsel in die
+Kalenderansicht legt `setzePanel()` einen Verlaufseintrag an
+(`history.pushState`), beim Wechsel zurück nimmt es ihn wieder
+(`history.back()`). Für eine PWA vom Startbildschirm ist das der Unterschied
+zwischen „eine Ansicht zurück" und „weg". **Nur unterhalb der Split-Grenze** —
+im Split steht ohnehin beides nebeneinander, ein Eintrag wäre dort sinnlos.
+
+`ausPopstate` ist dabei kein Beiwerk: Kommt das Schließen AUS dem
+Zurück-Knopf, hat der Browser den Eintrag schon abgeräumt. Ein zusätzliches
+`history.back()` spränge dann einen Schritt zu weit und führte aus der App
+heraus — genau das, was der Eintrag verhindern sollte.
+
 Die 1000 px kommen aus dem Platz: 440 px Kalender lassen darunter noch zwei
 Board-Spalten (min. 250 px) übrig. Bei weniger bliebe eine einzige Spalte, und
 dann ist Umschalten ehrlicher als Nebeneinander.
