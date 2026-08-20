@@ -134,6 +134,16 @@ let kalVollbild = false;
 // die von der Bildschirmhoehe und der Zahl der Wochen abhaengt.
 let vollbildPlaetze = 0;
 
+// Wie viele Balkenspuren jede Woche beim letzten Zeichnen brauchte, und fuer
+// welchen Monat das galt. Solange eine Google-Anfrage laeuft, dient das als
+// UNTERgrenze: das Raster faellt nicht erst flach zusammen, um gleich darauf
+// wieder aufzugehen. Der Monat gehoert dazu, weil ein anderer Monat andere
+// Wochen hat - dessen Spurenzahl waere geraten. Gepruefet wird das in
+// zeichneRaster selbst und nicht an den drei Stellen, die den Monat setzen:
+// eine Stelle kann man nicht vergessen, drei schon.
+let spurenVorher = [];
+let spurenVorherMonat = "";
+
 // Wohin das Board gescrollt war, bevor der Kalender die Ansicht uebernahm.
 // Unterhalb der Split-Grenze wird das Board ausgeblendet, und display:none
 // wirft die Scrollposition weg - also merken wir sie selbst.
@@ -987,6 +997,20 @@ function zeichneRaster(tage, spuren, heute) {
     const w = wocheVon(tag);
     spurenJeWoche[w] = Math.max(spurenJeWoche[w] || 0, reihen.length);
   }
+
+  // Solange fuer diesen Monat noch keine frische Antwort da ist, mindestens so
+  // hoch bleiben wie beim letzten Zeichnen. Nicht nur waehrend googleLaedt:
+  // das erste Zeichnen passiert VOR der Anfrage, und genau dort faellt das
+  // Raster sonst flach zusammen.
+  const monatSchluessel = kalJahr + "-" + kalMonatNr;
+  if ((googleLaedt || !googleGeladen) && spurenVorherMonat === monatSchluessel) {
+    const bis = Math.max(spurenJeWoche.length, spurenVorher.length);
+    for (let w = 0; w < bis; w++) {
+      spurenJeWoche[w] = Math.max(spurenJeWoche[w] || 0, spurenVorher[w] || 0);
+    }
+  }
+  spurenVorher = spurenJeWoche.slice();
+  spurenVorherMonat = monatSchluessel;
 
   const zeilen = Math.ceil((ersterWochentag + tageImMonat) / 7);
   // Das CSS rechnet daraus die Wunsch- und die Mindesthoehe des Rasters (siehe
@@ -2520,6 +2544,9 @@ window.kalenderNeuZeichnen = function () {
 // beim naechsten Zeichnen frisch holen (siehe app.js).
 window.kalenderGoogleVergessen = function () {
   window.kalenderSpeicherLeeren();
+  // Vergessen heisst vergessen: sonst hielte die Untergrenze das Raster auf
+  // der Hoehe von Terminen, die es nach dem Trennen gar nicht mehr gibt.
+  spurenVorher = [];
   googleZustand = { moeglich: false, verbunden: false, email: null, schreiben: false, kalender: [], palette: {} };
   googleTermine = [];
   googleGeladen = null;

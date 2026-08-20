@@ -1277,6 +1277,22 @@ Zwischenspeicher den Stand herauf und die Fehlerantwort räumte ihn im selben
 Atemzug wieder weg — genau das Springen, gegen das er gebaut ist. Und eine
 Fehlermeldung ist kein Terminstand, taugt also auch nicht zum Merken.
 
+**Das Raster faellt beim Nachladen nicht mehr flach zusammen.** `spurenVorher`
+haelt die Spurenzahl je Woche vom letzten Zeichnen; solange fuer den Monat noch
+keine frische Antwort da ist (`googleLaedt || !googleGeladen`), gilt sie als
+Untergrenze. **Nicht nur waehrend `googleLaedt`**: das erste Zeichnen passiert
+VOR der Anfrage, und genau dort faellt das Raster sonst zusammen, um beim
+Eintreffen der Termine wieder aufzugehen.
+
+`spurenVorherMonat` haelt fest, fuer welchen Monat die Zahlen gelten — ein
+anderer Monat hat andere Wochen, dessen Spurenzahl waere geraten. Geprueft wird
+das in `zeichneRaster()` selbst und nicht an den drei Stellen, die den Monat
+setzen: eine Stelle kann man nicht vergessen, drei schon.
+
+`kalenderGoogleVergessen` leert `spurenVorher` mit. Sonst hielte die Untergrenze
+das Raster auf der Hoehe von Terminen, die es nach dem Trennen gar nicht mehr
+gibt.
+
 **Anzeige.** Seit 13.08.2026 stehen im Tagesbereich die **ToDos zuerst** und
 die Termine darunter. Der Streifen beantwortet zuerst „was muss ich heute
 tun" — und die Termin-Überschrift samt ihrer Leerzeile („Kein Google-Kalender
