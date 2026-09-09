@@ -234,6 +234,27 @@ verrutscht, öffnen das Bearbeiten. Drei Feinheiten:
   Knöpfe und Unterpunkte sind ausgenommen: dort hat der Tipp eine eigene
   Aufgabe.
 
+**Dieselbe Lücke gab es an jedem Titel** (seit 21.08.2026): Bereichsname,
+Über-Thema und Listentitel benennen sich per Doppelklick um — am Handy kamen
+dort nur zwei Einfachklicks an, also zweimal „Werkzeuge auf, Werkzeuge zu".
+`doppeltippAuf(element, schlüssel, aktion)` bei den Hilfsfunktionen hängt den
+Doppeltipp an ein einzelnes Element, **immer zusätzlich** zum
+`dblclick`-Handler (am Rechner bleibt der Doppelklick der Weg, ein
+Touch-Rechner kann beides). Die gemeinsame Aktion steckt in einer Variablen,
+die beide bekommen — sonst läuft eine der beiden Fassungen irgendwann
+auseinander.
+
+**Der Merker `letzterTipp` gehört bewusst NICHT ins Element**, sondern ist
+global und wird über einen Schlüssel angesprochen (`"bereich:<id>"`,
+`"thema:<id>"`, `"liste"`, für ToDos die id selbst). Grund: Die Einfach-Aktion
+feuert nach 220 ms und zeichnet dabei neu — beim zweiten Tipp liegt unter dem
+Finger dann oft schon ein anderes DOM-Element, und eine Variable im Handler
+wäre mitsamt dem alten Element weg. Der Schlüssel überlebt das. Getestet:
+Tipp, `render()`, Tipp — das Umbenennen geht auf.
+
+`istDoppeltipp()` macht die Erkennung für beide Wege; wer eine dritte Stelle
+anschließt, nimmt dieselbe Funktion und **keine eigenen Zeitgrenzen**.
+
 **Falle: Am Touchscreen frisst `:hover` den ersten Tipp.** Mobile Browser
 liefern einen Tipp, der einen `:hover`-Effekt sichtbar macht, ZUERST als Hover
 aus und verschlucken den Klick dabei — man muss also ein zweites Mal tippen.

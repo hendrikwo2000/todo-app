@@ -130,6 +130,58 @@ function uid() {
   return "id-" + Date.now() + "-" + Math.random().toString(16).slice(2);
 }
 
+// Wie schnell und wie ruhig zwei Beruehrungen sein muessen, um als Doppeltipp
+// zu zaehlen. Gilt fuer alles, was am Rechner an `dblclick` haengt.
+const DOPPELTIPP = 350;        // ms zwischen den beiden Beruehrungen
+const DOPPELTIPP_WACKEL = 24;  // px, die der Finger dabei wandern darf
+
+// Die zuletzt beruehrte Stelle - gemeinsam fuer alle Doppeltipps (ToDo-Karten,
+// Titel, Themen-Koepfe). Der Merker gehoert bewusst NICHT ins Element: die
+// Einfach-Aktion feuert nach 220 ms und zeichnet dabei neu, das Element unter
+// dem Finger ist beim zweiten Tipp also oft schon ein anderes. Ein Schluessel
+// ueberlebt das, eine Variable im Handler nicht.
+let letzterTipp = { id: null, zeit: 0, x: 0, y: 0 };
+
+// Zaehlt diese Beruehrung als zweite auf derselben Stelle? Merkt sie sich
+// gleich als neue "erste", wenn nicht.
+function istDoppeltipp(schluessel, t) {
+  const jetzt = Date.now();
+  const passt = letzterTipp.id === schluessel
+    && jetzt - letzterTipp.zeit < DOPPELTIPP
+    && Math.abs(t.clientX - letzterTipp.x) < DOPPELTIPP_WACKEL
+    && Math.abs(t.clientY - letzterTipp.y) < DOPPELTIPP_WACKEL;
+  letzterTipp = passt
+    ? { id: null, zeit: 0, x: 0, y: 0 }   // verbraucht, sonst zaehlt ein dritter Tipp weiter
+    : { id: schluessel, zeit: jetzt, x: t.clientX, y: t.clientY };
+  return passt;
+}
+
+/**
+ * Doppeltipp fuer ein einzelnes Element - das Gegenstueck zu `dblclick`, das
+ * es am Touchscreen nicht gibt. Immer ZUSAETZLICH zum dblclick-Handler
+ * registrieren, nicht statt seiner: am Rechner bleibt der Doppelklick der
+ * Weg, und ein Touch-Rechner kann beides.
+ *
+ * Der `schluessel` benennt die Stelle ueber den Neuaufbau hinweg
+ * ("bereich:<id>", "thema:<id>", "liste") - siehe letzterTipp oben.
+ *
+ * `preventDefault()` haelt den Klick zurueck, den der Browser sonst aus der
+ * zweiten Beruehrung erzeugt - er liefe in dieselbe Einfach-Aktion (Menue
+ * auf, Werkzeuge auf), die der Doppeltipp gerade ueberspringen will.
+ *
+ * Die ToDo-Karten benutzen das NICHT: sie haengen zentral am Board (siehe
+ * "Werkzeuge am Finger" weiter unten), weil dort noch der einfache Tipp eine
+ * eigene Aufgabe hat. Sie teilen sich aber denselben Merker.
+ */
+function doppeltippAuf(el, schluessel, aktion) {
+  el.addEventListener("touchend", e => {
+    if (e.changedTouches.length !== 1) return;
+    if (!istDoppeltipp(schluessel, e.changedTouches[0])) return;
+    e.preventDefault();
+    aktion();
+  });
+}
+
 // ---------- Sonder-Bereich "Ohne Bereich" ----------
 // Ein Auffangbereich fuer ToDos, die (noch) zu keinem Bereich gehoeren.
 // Technisch ein ganz normaler Eintrag in `lists` - kein Schema-Sonderfall -,
@@ -2598,10 +2650,12 @@ function renderColumn(cat) {
         clearTimeout(titelKlickTimer);
         titelKlickTimer = setTimeout(() => toggleThemaWerkzeuge(cat.id), 220);
       });
-      title.addEventListener("dblclick", () => {
+      const bereichUmbenennen = () => {
         clearTimeout(titelKlickTimer);
         startRenameCategory(cat.id);
-      });
+      };
+      title.addEventListener("dblclick", bereichUmbenennen);
+      doppeltippAuf(title, "bereich:" + cat.id, bereichUmbenennen);
       title.addEventListener("dragstart", e => {
         draggedCat = cat.id;
         e.dataTransfer.effectAllowed = "move";
@@ -2822,10 +2876,12 @@ function renderThemaGruppe(cat, th, open) {
       if (leer) return;
       klickTimer = setTimeout(() => toggleThemaCollapse(th.id), 220);
     });
-    toggle.addEventListener("dblclick", () => {
+    const themaUmbenennen = () => {
       clearTimeout(klickTimer);
       startRenameThema(th.id);
-    });
+    };
+    toggle.addEventListener("dblclick", themaUmbenennen);
+    doppeltippAuf(toggle, "thema:" + th.id, themaUmbenennen);
     toggle.addEventListener("dragstart", e => {
       draggedThema = th.id;
       e.dataTransfer.effectAllowed = "move";
@@ -3489,11 +3545,16 @@ titel.addEventListener("click", () => {
     if (listen.length >= 2) toggleMenue();
   }, 220);
 });
-titel.addEventListener("dblclick", () => {
+// Der Listentitel bekommt den Doppeltipp gleich mit: dasselbe Muster, dieselbe
+// Luecke am Handy - dort waeren zwei Tipps sonst nur zweimal "Menue auf, Menue
+// zu" gewesen.
+const listeUmbenennen = () => {
   clearTimeout(titelKlickTimer);
   const meta = listen.find(b => b.id === aktiveListe);
   if (meta && meta.istEigen) starteTitelUmbenennen();
-});
+};
+titel.addEventListener("dblclick", listeUmbenennen);
+doppeltippAuf(titel, "liste", listeUmbenennen);
 // Klick irgendwo sonst schliesst das offene Menue.
 document.addEventListener("click", e => {
   if (listenMenue.hidden) return;
@@ -3838,10 +3899,9 @@ document.addEventListener("touchcancel", abbrechenFingerZug);
 // ohne den Finger nennenswert zu bewegen.
 //
 // Sitzt am Board statt an jeder Zeile: die Karten werden bei jedem render()
-// neu gebaut, ein Handler pro Karte muesste dabei jedes Mal mit.
-const DOPPELTIPP = 350;        // ms zwischen den beiden Beruehrungen
-const DOPPELTIPP_WACKEL = 24;  // px, die der Finger dabei wandern darf
-let letzterTipp = { id: null, zeit: 0, x: 0, y: 0 };
+// neu gebaut, ein Handler pro Karte muesste dabei jedes Mal mit. Titel und
+// Koepfe nehmen stattdessen doppeltippAuf() (siehe Hilfsfunktionen); den
+// Merker letzterTipp teilen sich beide Wege.
 
 // Setzt die Klasse direkt am DOM statt ueber render(): ein kompletter Neubau
 // des Boards fuer zwei eingeblendete Knoepfe waere zu viel, und er wuerde
@@ -3865,17 +3925,7 @@ board.addEventListener("touchend", e => {
   const karte = main.closest(".todo");
   if (!karte || !karte.dataset.id) return;
 
-  const t = e.changedTouches[0];
-  const jetzt = Date.now();
-  const passt = letzterTipp.id === karte.dataset.id
-    && jetzt - letzterTipp.zeit < DOPPELTIPP
-    && Math.abs(t.clientX - letzterTipp.x) < DOPPELTIPP_WACKEL
-    && Math.abs(t.clientY - letzterTipp.y) < DOPPELTIPP_WACKEL;
-  letzterTipp = passt
-    ? { id: null, zeit: 0, x: 0, y: 0 }   // verbraucht, sonst zaehlt ein dritter Tipp weiter
-    : { id: karte.dataset.id, zeit: jetzt, x: t.clientX, y: t.clientY };
-
-  if (!passt) {
+  if (!istDoppeltipp(karte.dataset.id, e.changedTouches[0])) {
     zeigeWerkzeuge(werkzeugeFuer === karte.dataset.id ? null : karte.dataset.id);
     return;
   }
