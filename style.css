@@ -660,7 +660,15 @@ input[type="date"]:focus {
   position: relative;
   transition: all .15s;
 }
-.check:hover { border-color: var(--accent); }
+/* Nur mit echtem Zeiger. Am Touchscreen liefern die Browser einen Tipp, der
+   einen :hover-Effekt sichtbar macht, ZUERST als Hover aus und verschlucken
+   den Klick dabei - man musste den Haken also einmal antippen ("markieren")
+   und dann noch einmal, um wirklich abzuhaken. Dieselbe Ueberlegung gilt
+   weiter unten fuer .todo.is-done:hover, .todo:hover .actions und .act:hover:
+   an der ToDo-Zeile darf am Finger nichts mehr an :hover haengen. */
+@media (hover: hover) {
+  .check:hover { border-color: var(--accent); }
+}
 .check:checked { background: var(--green); border-color: var(--green); }
 .check:checked::after {
   content: "";
@@ -688,6 +696,14 @@ input[type="date"]:focus {
 }
 .todo.dated .check-tap, .todo.urgent .check-tap { margin-top: 3px; }  /* zentriert auf Titel+Termin */
 .todo.is-done .check-tap { width: 24px; height: 24px; margin: -4px; margin-top: -4px; }
+/* Am Finger 40 statt 32 px - die uebliche Empfehlung fuer eine Tippflaeche.
+   Der negative Rand waechst mit, das sichtbare Kaestchen und alles daneben
+   bleiben also genau da, wo sie am Rechner auch sitzen. */
+@media (hover: none) {
+  .check-tap { width: 40px; height: 40px; margin: -11px; margin-top: -10px; }
+  .todo.dated .check-tap, .todo.urgent .check-tap { margin-top: -1px; }
+  .todo.is-done .check-tap { width: 32px; height: 32px; margin: -8px; margin-top: -8px; }
+}
 
 .todo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0; cursor: text; }
 .todo-text { font-size: 15.5px; line-height: 1.3; word-break: break-word; }
@@ -702,7 +718,9 @@ input[type="date"]:focus {
   padding-top: 3px;
   padding-bottom: 3px;
 }
-.todo.is-done:hover { opacity: 1; }
+@media (hover: hover) {
+  .todo.is-done:hover { opacity: 1; }
+}
 .todo.is-done .todo-text { text-decoration: line-through; color: var(--muted); font-size: 14px; }
 .todo.is-done .check { width: 16px; height: 16px; }
 .todo.is-done .check:checked { background: var(--muted); border-color: var(--muted); }
@@ -750,7 +768,19 @@ input[type="date"]:focus {
 }
 .todo.dated .actions, .todo.urgent .actions { top: 30px; }  /* zentriert auf Titel+Termin */
 .todo.is-done .actions { top: 12px; }  /* erledigt: schmaleres Padding, eigener Versatz */
-.todo:hover .actions { opacity: 1; pointer-events: auto; }
+@media (hover: hover) {
+  .todo:hover .actions { opacity: 1; pointer-events: auto; }
+}
+/* Ohne Hover gibt es kein Einblenden - die Knoepfe stehen fest da. Sonst
+   waeren Bearbeiten und Loeschen am Handy nur ueber den Umweg erreichbar, der
+   oben gerade weggefallen ist. Der Platz dafuer kommt aus .todo-main, damit
+   der Titel nicht darunter laeuft; damit ist auch der Verlaufsschleier
+   ueberfluessig, der ihn bisher ausgeblendet hat. */
+@media (hover: none) {
+  .actions { opacity: 1; pointer-events: auto; background: none; padding-left: 0; }
+  .todo.is-done .actions { background: none; padding-left: 0; }
+  .todo-main { padding-right: 76px; }
+}
 .act {
   border: none;
   background: transparent;
@@ -764,8 +794,10 @@ input[type="date"]:focus {
   justify-content: center;
   transition: all .12s;
 }
-.act:hover { background: var(--hover); color: var(--text); }
-.act.del:hover { background: var(--del-soft); color: var(--red); }
+@media (hover: hover) {
+  .act:hover { background: var(--hover); color: var(--text); }
+  .act.del:hover { background: var(--del-soft); color: var(--red); }
+}
 /* Der Bleistift steht LINKS vom Muelleimer - die harmlose Aktion zuerst, die
    unwiderrufliche zuletzt und damit am weitesten weg vom Zeilenrand, an dem
    man den Finger ohnehin hat. Etwas kleiner als das 🗑️, damit die beiden
@@ -2208,7 +2240,12 @@ html.kal-eigene-teilung .kal-liste {
   font: inherit;
   cursor: pointer;
 }
-.kal-eintrag:hover { border-color: var(--accent); }
+/* Nur mit echtem Zeiger - sonst verschluckt der Touchscreen den ersten Tipp
+   auf eine Zeile, weil er ihn als Hover ausliefert. Dieselbe Ursache wie beim
+   Haken auf dem Board, siehe .check:hover. */
+@media (hover: hover) {
+  .kal-eintrag:hover { border-color: var(--accent); }
+}
 .kal-eintrag .kal-punkt { margin-top: 6px; }
 
 /* ToDo-Zeile der Tagesliste: Haken + Eintrag in EINER Karte. Der Rahmen sitzt
@@ -2222,7 +2259,9 @@ html.kal-eigene-teilung .kal-liste {
   border-radius: 10px;
   background: var(--row);
 }
-.kal-todo-zeile:hover { border-color: var(--accent); }
+@media (hover: hover) {
+  .kal-todo-zeile:hover { border-color: var(--accent); }
+}
 /* Faellig: derselbe 4-px-Balken links, den auch eine ToDo-Karte auf dem Board
    traegt - nur eben rot. Ein voll eingefaerbter Hintergrund war die Alternative
    und faellt aus: bei fuenf ueberfaelligen Zeilen untereinander wird daraus
@@ -2232,7 +2271,9 @@ html.kal-eigene-teilung .kal-liste {
   border-color: var(--del-soft);
   border-left: 4px solid var(--red);
 }
-.kal-todo-zeile.faellig:hover { border-color: var(--red); }
+@media (hover: hover) {
+  .kal-todo-zeile.faellig:hover { border-color: var(--red); }
+}
 .kal-todo-zeile .kal-eintrag {
   border-color: transparent;
   background: none;
@@ -2378,20 +2419,30 @@ html.kal-eigene-teilung .kal-liste {
 /* Dieselbe Form als Marke in der Filter-Pille. */
 .kal-balken-marke { flex: none; width: 13px; height: 5px; border-radius: 3px; z-index: auto; }
 
-/* Zwischenueberschriften in der Tagesliste - nur wenn ein Tag BEIDES hat. */
+/* Zwischenueberschriften in der Tagesliste.
+   Seit 21.08.2026 trennen sie sichtbar: Linie darueber, Symbol davor und die
+   volle Textfarbe statt Grau. Vorher sahen ToDo- und Termin-Abschnitt gleich
+   aus (dieselbe kleine graue Kapitaelchen-Zeile) und liefen ineinander - man
+   musste lesen, um zu wissen, wo man gerade ist. Die Linie kostet rund 7 px
+   je Abschnitt; der erste bekommt keine, dort trennt schon der Tagestitel. */
 .kal-gruppe {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  /* 5 statt 7 oben: die Ueberschrift gehoert optisch zu dem, was unter ihr
-     steht - der Abstand nach oben darf deshalb der groessere von beiden sein,
-     nur eben nicht so gross wie vorher. */
-  margin: 5px 0 1px;
-  font-size: 11px; font-weight: 700;
+  margin: 7px 0 2px;
+  padding-top: 5px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px; font-weight: 700;
   letter-spacing: .06em; text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text);
 }
+.kal-gruppe-text { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+/* Eigene Groesse und kein Sperrsatz: das Symbol ist ein Bild, kein Buchstabe. */
+.kal-gruppe-symbol { font-size: 12px; letter-spacing: 0; line-height: 1; }
+/* Der erste Abschnitt steht direkt unter dem Tagestitel (h3) - eine Linie
+   dazwischen waere die zweite in drei Zeilen. */
+.kal-liste-kopf + .kal-gruppe { border-top: 0; padding-top: 0; margin-top: 2px; }
 /* Faelliges faellt auf: dieselbe Regel wie im Raster ("rot = da liegt was an"),
    nur hier in Worten. Gilt fuer den Ueberfaellig-Abschnitt und fuer die ToDos
    des heutigen Tages - an allen anderen Tagen ist nichts faellig, was gerade
@@ -2410,7 +2461,7 @@ html.kal-eigene-teilung .kal-liste {
   cursor: pointer;
 }
 .kal-gruppe-plus:hover { color: var(--accent); border-color: var(--accent); }
-.kal-gruppe:first-child { margin-top: 0; }
+.kal-gruppe:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
 
 .kal-termin-box { display: flex; flex-direction: column; }
 /* Termin-Zeile: kraeftiger Farbbalken links (Farbe kommt inline von Google),
@@ -2421,21 +2472,45 @@ html.kal-eigene-teilung .kal-liste {
   background: var(--col-bg);
   padding-left: 10px;
 }
-.kal-eintrag.kal-termin.offen { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-.kal-termin-still { cursor: default; }
-.kal-termin-still:hover { border-color: var(--line); }
-.kal-termin-pfeil { margin-left: auto; align-self: center; color: var(--muted); font-size: 11px; }
-.kal-termin-details {
-  border: 1px solid var(--line);
-  border-top: 0;
-  border-radius: 0 0 10px 10px;
-  background: var(--col-bg);
-  padding: 8px 11px 10px;
-  font-size: 12.5px;
-  color: var(--muted);
+.kal-termin-pfeil { margin-left: auto; align-self: center; color: var(--muted); font-size: 15px; }
+
+/* ---------- Zwischenmaske: Termin ansehen ---------- */
+/* Liegt im selben Vollbild-Dialog wie das Formular. Bis zum 21.08.2026
+   klappten Ort und Notiz stattdessen in der Tagesliste auf - eine lange Notiz
+   schob dabei alles darunter aus dem Bild, und mit Schreibrecht fuehrte ein
+   Tipp sogar direkt ins Formular, obwohl man nur nachsehen wollte. */
+.kal-detail { display: flex; flex-direction: column; gap: 10px; }
+/* Farbbalken links wie an der Termin-Zeile - die Google-Farbe bleibt so auch
+   im Dialog die Zuordnung zum Kalender. */
+.kal-detail-titel {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 4px solid var(--muted);
+  font-size: 17px; font-weight: 700; line-height: 1.3;
+  color: var(--text);
+  overflow-wrap: anywhere;
 }
-.kal-termin-details p { margin: 0 0 5px; overflow-wrap: anywhere; }
-.kal-termin-details p:last-child { margin-bottom: 0; }
+.kal-detail-zeit { margin: 0; font-size: 14px; color: var(--text); }
+.kal-detail-quelle { margin: -6px 0 0; font-size: 12.5px; color: var(--muted); }
+.kal-detail-ort { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+/* pre-wrap: Absaetze und Listen aus der Google-Notiz bleiben stehen, statt zu
+   einem Block zusammenzulaufen. Keine Hoehenbegrenzung und kein eigenes
+   Scrollen - der Dialog scrollt, das Feld waechst mit dem Text. */
+.kal-detail-notiz {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--col-bg);
+  font-size: 14px; line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* Unterstrichen bleiben sie von selbst - nur die Farbe fehlt, damit man sie
+   auch als Link erkennt und nicht bloss als andersfarbigen Text. */
+.kal-detail a { color: var(--accent); }
+/* Der Knopfstreifen sitzt am Ende, mit etwas Luft zum Inhalt darueber. */
+.kal-detail .kal-form-knoepfe { margin-top: 4px; }
 .kal-google-fehler { font-size: 12.5px; font-style: italic; }
 
 /* Anlegen direkt aus dem Kalender: Feld plus ein bis zwei Knoepfe, unter der

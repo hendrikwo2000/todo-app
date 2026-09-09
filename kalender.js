@@ -51,6 +51,8 @@ const kalWahl        = document.getElementById("kalWahl");
 const kalWahlBox     = kalWahl.querySelector(".kal-wahl-box");
 const kalTerminPopup = document.getElementById("kalTerminPopup");
 const kalTerminBox   = kalTerminPopup.querySelector(".kal-termin-popup-box");
+const kalDetailPopup = document.getElementById("kalDetailPopup");
+const kalDetailBox   = kalDetailPopup.querySelector(".kal-detail-popup-box");
 
 const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const MONAT_FORMAT = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
@@ -76,13 +78,12 @@ const BOARD_MINDEST = 520;
 const BREITE_MIN = 360;
 const BREITE_MAX = 720;
 const BREITE_KEY = "kalBreite";
-// Ab wie vielen Tagen ein Balken seinen Titel traegt. Bei rund 55 px
-// Spaltenbreite blieb von einem Titel ohnehin nur "Finn H..." uebrig - der
-// Text kostete Zellhoehe und sagte nichts. Massgeblich ist die Spanne in
-// DIESER Rasterzeile, nicht die Gesamtlaenge des Termins: ein
-// Ein-Tages-Abschnitt am Wochenrand ist genauso schmal wie ein echter
-// Ein-Tages-Termin.
-const TITEL_AB_TAGEN = 2;
+// Jeder Balken traegt seinen Titel, auch der eintaegige. Vom 20. bis zum
+// 21.08.2026 war das anders (TITEL_AB_TAGEN = 2): bei rund 55 px
+// Spaltenbreite blieb von einem Titel nur "Finn H..." uebrig, und der Text
+// kostete Zellhoehe. Hendriks Entscheidung nach einem Tag damit: ein
+// abgeschnittener Name sagt mehr als ein namenloser Farbbalken - im Raster
+// steht sonst nur "da ist was", ohne zu verraten, was.
 
 // 0 = keine eigene Breite gezogen. Dann gilt weiter --kal-breite aus dem CSS
 // und die alte feste Grenze - wer nie zieht, merkt von der Aenderung nichts.
@@ -191,8 +192,11 @@ function speichereMenge(schluessel, menge) {
 let quellenAus = ladeMenge("kalQuellenAus");
 let quellenBekannt = ladeMenge("kalQuellenBekannt");
 
-// Aufgeklappte Google-Termine (Ort/Beschreibung), Schluessel ist die Termin-id.
-let offeneTermine = new Set();
+// Der Termin, der gerade in der Zwischenmaske steht (null = keine offen).
+// Das frueher hier stehende Set offeneTermine ist mit ihr entfallen: Ort und
+// Beschreibung klappten in der Tagesliste auf und schoben dabei alles darunter
+// nach unten - eine lange Notiz machte den halben Tag unsichtbar.
+let detailTermin = null;
 
 // Halb getippter Titel im Anlege-Feld. Das Panel zeichnet sich bei jeder
 // Aenderung neu; ohne diesen Zwischenspeicher waere der Text dann weg.
@@ -1125,16 +1129,14 @@ function baueTagesZelle(tag, spalte, ctx) {
       balken.style.background = farbe;
       balken.style.color = kontrastFarbe(farbe);
     }
-    // Der Name steht ohnehin in der Tagesliste darunter; fuer Mauszeiger und
-    // Screenreader bleibt er am Balken.
+    // title und aria-label zusaetzlich zum sichtbaren Text: der ist bei
+    // schmalen Spalten abgeschnitten, hier steht er vollstaendig.
     balken.title = eintrag.termin.titel;
     balken.setAttribute("aria-label", eintrag.termin.titel);
-    if (spanne >= TITEL_AB_TAGEN) {
-      const text = document.createElement("span");
-      text.className = "kal-balken-text";
-      text.textContent = eintrag.termin.titel;
-      balken.appendChild(text);
-    }
+    const text = document.createElement("span");
+    text.className = "kal-balken-text";
+    text.textContent = eintrag.termin.titel;
+    balken.appendChild(text);
     stapel.appendChild(balken);
   }
   zelle.appendChild(stapel);
@@ -1237,7 +1239,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     // zu suchen, dort ist es weder faellig noch entstanden.
     if (faelligHeute && ueberfaellige.length) {
       kalTagesliste.appendChild(baueGruppenKopf(
-        `Überfällig (${ueberfaellige.length})`, null, null, true));
+        `Überfällig (${ueberfaellige.length})`, null, null, true, "⚠️"));
       for (const t of ueberfaellige) kalTagesliste.appendChild(baueEintrag(t, true, true));
     }
 
@@ -1249,7 +1251,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
           const feld = kalTagesliste.querySelector(".kal-anlegen-feld");
           if (feld) feld.focus();
         } : null,
-      "ToDo", faelligHeute && todosDesTages.length > 0));
+      "ToDo", faelligHeute && todosDesTages.length > 0, "☑️"));
     if (todoEingabeOffen && aktiveListe) kalTagesliste.appendChild(baueAnlegeZeile(kalAuswahl));
     for (const t of todosDesTages) {
       kalTagesliste.appendChild(baueEintrag(t, false, faelligHeute));
@@ -1269,7 +1271,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     const mitZeit  = termineDesTages.filter(e => !e.termin.ganztags);
 
     if (ganztags.length) {
-      kalTagesliste.appendChild(baueGruppenKopf("Ganztägig", terminePlus, "Termin"));
+      kalTagesliste.appendChild(baueGruppenKopf("Ganztägig", terminePlus, "Termin", false, "📅"));
       for (const e of ganztags) kalTagesliste.appendChild(baueTerminZeile(e.termin));
     }
     // Das ＋ haengt am ERSTEN sichtbaren Termin-Abschnitt, damit es genau
@@ -1277,7 +1279,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     // Terminen. Stehen keine ganztaegigen da, wandert es hierher.
     if (mitZeit.length || !ganztags.length) {
       kalTagesliste.appendChild(baueGruppenKopf("Termine",
-        ganztags.length ? null : terminePlus, "Termin"));
+        ganztags.length ? null : terminePlus, "Termin", false, "📅"));
       for (const e of mitZeit) kalTagesliste.appendChild(baueTerminZeile(e.termin));
       if (!mitZeit.length) {
         kalTagesliste.appendChild(baueLeerZeile(googleZustand.verbunden
@@ -1642,11 +1644,23 @@ function legeToDoAn(tag, text) {
   addTodoTo(bereich, null, text, tag, null);   // rendert und speichert selbst
 }
 
-function baueGruppenKopf(text, beimPlus, einzahl, faellig) {
+// Das Symbol steht vor der Beschriftung: ToDos und Termine unterscheiden sich
+// dadurch schon am Rand, bevor man das Wort gelesen hat. Vorher sahen beide
+// Ueberschriften gleich aus (dieselbe graue Kapitaelchen-Zeile) und die
+// Abschnitte liefen ineinander.
+function baueGruppenKopf(text, beimPlus, einzahl, faellig, symbol) {
   const kopf = document.createElement("p");
   kopf.className = "kal-gruppe" + (faellig ? " faellig" : "");
   const beschriftung = document.createElement("span");
-  beschriftung.textContent = text;
+  beschriftung.className = "kal-gruppe-text";
+  if (symbol) {
+    const zeichen = document.createElement("span");
+    zeichen.className = "kal-gruppe-symbol";
+    zeichen.setAttribute("aria-hidden", "true");
+    zeichen.textContent = symbol;
+    beschriftung.appendChild(zeichen);
+  }
+  beschriftung.appendChild(document.createTextNode(text));
   kopf.appendChild(beschriftung);
   if (beimPlus) {
     const plus = document.createElement("button");
@@ -1667,7 +1681,10 @@ function baueLeerZeile(text) {
   return p;
 }
 
-// Google-Termin: rein lesend, ein Tipp klappt Ort und Beschreibung auf.
+// Google-Termin: ein Tipp oeffnet die Zwischenmaske (siehe
+// oeffneTerminDetail). Bearbeitet wird erst aus ihr heraus - vorher landete
+// man beim blossen Nachsehen sofort im Formular und musste "Abbrechen"
+// treffen, um nichts zu veraendern.
 function baueTerminZeile(t) {
   const box = document.createElement("div");
   box.className = "kal-termin-box";
@@ -1677,27 +1694,11 @@ function baueTerminZeile(t) {
   // Kalender-Farbe); der Rueckgriff auf den Kalender faengt nur aeltere
   // Antworten ohne das Feld ab.
   const farbe = farbWert(t.farbe) || farbWert(kal && kal.farbe);
-  const offen = offeneTermine.has(t.id);
-  const hatDetails = !!(t.ort || t.beschreibung);
 
-  // Darf die Verknuepfung schreiben, oeffnet ein Tipp den Termin zum
-  // Bearbeiten - das ist dann die naheliegende Erwartung. Sonst bleibt es
-  // beim Aufklappen der Details, und ohne Ort und Beschreibung gibt es gar
-  // nichts anzutippen (ein Knopf, der mit "nichts da" antwortet, waere
-  // schlechter als keiner).
-  const bearbeitbar = googleZustand.verbunden && googleZustand.schreiben;
-  const anklickbar = bearbeitbar || hatDetails;
-  const knopf = document.createElement(anklickbar ? "button" : "div");
-  knopf.className = "kal-eintrag kal-termin" + (offen ? " offen" : "") + (anklickbar ? "" : " kal-termin-still");
-  if (anklickbar) {
-    knopf.type = "button";
-    knopf.addEventListener("click", () => {
-      if (bearbeitbar) { oeffneTerminFormular(kalAuswahl, t); return; }
-      if (offeneTermine.has(t.id)) offeneTermine.delete(t.id);
-      else offeneTermine.add(t.id);
-      zeichneKalender();
-    });
-  }
+  const knopf = document.createElement("button");
+  knopf.className = "kal-eintrag kal-termin";
+  knopf.type = "button";
+  knopf.addEventListener("click", () => oeffneTerminDetail(t));
 
   // Kraeftiger Farbbalken am linken Rand statt eines kleinen Punktes: das ist
   // der sichtbare Unterschied zur ToDo-Zeile und traegt zugleich die
@@ -1723,34 +1724,196 @@ function baueTerminZeile(t) {
   text.appendChild(meta);
 
   knopf.appendChild(text);
-  // Das Zeichen rechts sagt, was ein Tipp tut: Stift = oeffnet zum
-  // Bearbeiten, Pfeil = klappt nur Ort und Notiz auf.
-  if (bearbeitbar || hatDetails) {
-    const zeichen = document.createElement("span");
-    zeichen.className = "kal-termin-pfeil";
-    zeichen.textContent = bearbeitbar ? "✏️" : (offen ? "▴" : "▾");
-    knopf.appendChild(zeichen);
-  }
+  // Das Winkelzeichen rechts sagt: hier geht etwas auf. Ein Stift stand hier
+  // frueher und versprach zu viel - er fuehrte direkt ins Formular.
+  const zeichen = document.createElement("span");
+  zeichen.className = "kal-termin-pfeil";
+  zeichen.textContent = "›";
+  knopf.appendChild(zeichen);
   box.appendChild(knopf);
-
-  if (offen) {
-    const details = document.createElement("div");
-    details.className = "kal-termin-details";
-    if (t.ort) {
-      const ort = document.createElement("p");
-      ort.textContent = "📍 " + t.ort;
-      details.appendChild(ort);
-    }
-    if (t.beschreibung) {
-      const bes = document.createElement("p");
-      // Beschreibungen kommen aus Google teils als HTML - als TEXT einsetzen,
-      // nie als Markup. textContent macht genau das.
-      bes.textContent = t.beschreibung.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-      details.appendChild(bes);
-    }
-    box.appendChild(details);
-  }
   return box;
+}
+
+/* ---------- Zwischenmaske: Termin ansehen ---------- */
+
+// Klickbare Links aus einem Text: alles, was mit http:// oder https://
+// anfaengt. Bewusst nur diese beiden Schemata - "javascript:" waere hier ein
+// offenes Scheunentor, und der Text kommt von fremden Kalendern.
+// Der Rest bleibt Text (textContent), nie Markup.
+function textMitLinks(roh) {
+  const stueck = document.createDocumentFragment();
+  const muster = /https?:\/\/[^\s<>"']+/g;
+  let zuletzt = 0;
+  let treffer;
+  while ((treffer = muster.exec(roh)) !== null) {
+    if (treffer.index > zuletzt) {
+      stueck.appendChild(document.createTextNode(roh.slice(zuletzt, treffer.index)));
+    }
+    // Satzzeichen am Ende gehoeren zum Satz, nicht zur Adresse.
+    let adresse = treffer[0].replace(/[.,;:!?)\]]+$/, "");
+    const a = document.createElement("a");
+    a.href = adresse;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = adresse;
+    stueck.appendChild(a);
+    zuletzt = treffer.index + adresse.length;
+  }
+  if (zuletzt < roh.length) stueck.appendChild(document.createTextNode(roh.slice(zuletzt)));
+  return stueck;
+}
+
+// Google liefert Beschreibungen teils als HTML. Tags fliegen raus, aber
+// Zeilenumbrueche bleiben erhalten: eine Liste, die zu einem einzigen Absatz
+// zusammenlaeuft, ist im Dialog schlechter lesbar als im Kalender selbst.
+function beschreibungAlsText(roh) {
+  return roh
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|tr|h[1-6])>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+// Der Zeitraum in Worten - im Dialog steht mehr Platz zur Verfuegung als in
+// der Zeile, also auch das Datum und bei mehrtaegigen Terminen beide Enden.
+function detailZeitraum(t) {
+  const tageDrin = tageEinesTermins(t);
+  const ersterTag = tageDrin[0];
+  const letzterTag = tageDrin[tageDrin.length - 1];
+  const alsDatum = iso => {
+    if (!iso) return "";
+    const [j, m, tg] = iso.split("-").map(Number);
+    return TAG_FORMAT.format(new Date(j, m - 1, tg));
+  };
+  if (t.ganztags) {
+    return ersterTag === letzterTag
+      ? `${alsDatum(ersterTag)} · ganztägig`
+      : `${alsDatum(ersterTag)} – ${alsDatum(letzterTag)} · ganztägig`;
+  }
+  const zeit = zeitLabel(t);
+  return [alsDatum(ersterTag), zeit].filter(Boolean).join(" · ");
+}
+
+function oeffneTerminDetail(termin) {
+  detailTermin = termin;
+  zeichneTerminDetail();
+}
+
+function schliesseTerminDetail() {
+  if (!detailTermin) return;
+  detailTermin = null;
+  zeichneTerminDetail();
+}
+
+// Wie beim Formular bewusst NICHT aus zeichneKalender() heraus: das laeuft bei
+// jedem Sync, und ein Dialog, der einem unter den Fingern neu entsteht,
+// verliert die Scrollposition in einer langen Notiz.
+function zeichneTerminDetail() {
+  kalDetailPopup.hidden = !detailTermin;
+  kalDetailBox.innerHTML = "";
+  if (!detailTermin) return;
+  const t = detailTermin;
+
+  const kopf = document.createElement("p");
+  kopf.className = "kal-popup-kopf";
+  kopf.appendChild(document.createTextNode("Termin"));
+  const zu = document.createElement("button");
+  zu.type = "button";
+  zu.className = "kal-schliessen";
+  zu.setAttribute("aria-label", "Schließen");
+  zu.textContent = "✕";
+  zu.addEventListener("click", schliesseTerminDetail);
+  kopf.appendChild(zu);
+  kalDetailBox.appendChild(kopf);
+
+  const inhalt = document.createElement("div");
+  inhalt.className = "kal-detail";
+
+  const kal = googleZustand.kalender.find(k => k.id === t.kalenderId);
+  const farbe = farbWert(t.farbe) || farbWert(kal && kal.farbe);
+
+  const titel = document.createElement("h4");
+  titel.className = "kal-detail-titel";
+  if (farbe) titel.style.borderLeftColor = farbe;
+  titel.textContent = t.titel || "(ohne Titel)";
+  inhalt.appendChild(titel);
+
+  const zeitZeile = document.createElement("p");
+  zeitZeile.className = "kal-detail-zeit";
+  zeitZeile.textContent = detailZeitraum(t);
+  inhalt.appendChild(zeitZeile);
+
+  // Herkunft wie in der Zeile nur bei WEITEREN Kalendern - beim eigenen
+  // Hauptkalender stuende hier der eigene Name.
+  if (kal && !kal.primaer) {
+    const quelle = document.createElement("p");
+    quelle.className = "kal-detail-quelle";
+    quelle.textContent = kalenderName(kal);
+    inhalt.appendChild(quelle);
+  }
+
+  // Der Ort fuehrt zu Google Maps. Die Adresse steht als Text da UND als
+  // Link: wer nur nachsehen will, liest sie, wer hinmuss, tippt sie an.
+  // Der maps-Link ist plattformneutral (Web); auf dem Handy uebernimmt ihn
+  // die installierte Karten-App von selbst.
+  if (t.ort) {
+    const zeile = document.createElement("p");
+    zeile.className = "kal-detail-ort";
+    zeile.appendChild(document.createTextNode("📍 "));
+    const a = document.createElement("a");
+    a.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(t.ort);
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = t.ort;
+    a.title = "Auf Google Maps zeigen";
+    zeile.appendChild(a);
+    inhalt.appendChild(zeile);
+  }
+
+  if (t.beschreibung) {
+    const text = beschreibungAlsText(t.beschreibung);
+    if (text) {
+      const notiz = document.createElement("div");
+      notiz.className = "kal-detail-notiz";
+      notiz.appendChild(textMitLinks(text));
+      inhalt.appendChild(notiz);
+    }
+  }
+
+  const knoepfe = document.createElement("div");
+  knoepfe.className = "kal-form-knoepfe";
+  // Bearbeiten nur mit Schreibrecht: ohne es waere der Knopf ein Versprechen,
+  // das die Verknuepfung nicht halten kann.
+  if (googleZustand.verbunden && googleZustand.schreiben) {
+    const bearbeiten = document.createElement("button");
+    bearbeiten.type = "button";
+    bearbeiten.className = "btn klein primary";
+    bearbeiten.textContent = "Bearbeiten";
+    bearbeiten.addEventListener("click", () => {
+      const tag = kalAuswahl;
+      schliesseTerminDetail();
+      oeffneTerminFormular(tag, t);
+    });
+    knoepfe.appendChild(bearbeiten);
+  }
+  const schliessen = document.createElement("button");
+  schliessen.type = "button";
+  schliessen.className = "btn klein";
+  schliessen.textContent = "Schließen";
+  schliessen.addEventListener("click", schliesseTerminDetail);
+  knoepfe.appendChild(schliessen);
+  inhalt.appendChild(knoepfe);
+
+  kalDetailBox.appendChild(inhalt);
 }
 
 // Eine ToDo-Zeile der Tagesliste: Haken zum Erledigen + der Eintrag selbst,
@@ -1891,8 +2054,10 @@ function schliesseEingaben() {
   loeschFrage = false;
   todoEingabeOffen = false;
   anlegenText = "";
+  detailTermin = null;
   kalWahl.hidden = true;
   kalTerminPopup.hidden = true;
+  kalDetailPopup.hidden = true;
 }
 
 // Beim Monatswechsel den ersten Tag MIT Terminen waehlen - ein leerer
@@ -2508,13 +2673,17 @@ kalRaster.addEventListener("click", e => {
 // bleibt nur die ✕ im Kopf.
 kalWahl.addEventListener("click", e => { if (e.target === kalWahl) schliesseWahl(); });
 kalTerminPopup.addEventListener("click", e => { if (e.target === kalTerminPopup) schliesseTerminFormular(); });
+kalDetailPopup.addEventListener("click", e => { if (e.target === kalDetailPopup) schliesseTerminDetail(); });
 
 // Escape arbeitet sich von innen nach aussen: erst der offene Dialog, dann das
 // Vollbild, erst zuletzt das Panel. Sonst raeumte ein Tastendruck alles auf
 // einmal weg.
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape" || !kalOffen) return;
+  // "Bearbeiten" loest die Zwischenmaske ab, statt sich darueberzulegen -
+  // offen ist also immer hoechstens eins von beiden.
   if (formularOffen) { schliesseTerminFormular(); return; }
+  if (detailTermin) { schliesseTerminDetail(); return; }
   if (wahlOffen) { schliesseWahl(); return; }
   if (kalVollbild) { setzeVollbild(false); return; }
   schliesseKalender();
@@ -2565,6 +2734,9 @@ window.kalenderGoogleVergessen = function () {
   googleGeladen = null;
   googleAus = false;
   googleFehler = false;
-  offeneTermine.clear();
+  // Eine offene Zwischenmaske zeigt einen Termin, den es nach dem Trennen
+  // nicht mehr gibt - und ihr Bearbeiten-Knopf liefe ins Leere.
+  detailTermin = null;
+  zeichneTerminDetail();
   if (kalOffen) zeichneKalender();
 };

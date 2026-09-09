@@ -215,9 +215,44 @@ Knopf, den man täglich braucht, ist das der teuerste Platz in der Zeile.
 
 **Jedes ToDo hat neben dem 🗑️ einen Bleistift** (`.act.edit`, seit
 20.08.2026), der dasselbe tut wie der Doppelklick auf die Zeile — der bleibt.
-Am Handy gibt es keinen Doppelklick, der zuverlässig trifft; dort war
-Bearbeiten vorher schlicht nicht auffindbar. Der Bleistift steht LINKS vom
-Mülleimer: die harmlose Aktion zuerst, die unwiderrufliche am Zeilenrand.
+Der Bleistift steht LINKS vom Mülleimer: die harmlose Aktion zuerst, die
+unwiderrufliche am Zeilenrand. Er bleibt auch, seit es den Doppeltipp gibt:
+eine Geste, die man nicht kennt, findet man nicht.
+
+**Der Doppeltipp am Handy ist selbst gebaut** (seit 21.08.2026, Abschnitt
+„Doppeltipp" in `app.js`) — `dblclick` gibt es am Touchscreen nicht. Zwei
+`touchend` auf derselben Karte, weniger als 350 ms auseinander und keine 24 px
+verrutscht, öffnen das Bearbeiten. Drei Feinheiten:
+
+- Der Handler sitzt **am Board**, nicht an jeder Zeile: die Karten werden bei
+  jedem `render()` neu gebaut, ein Handler pro Karte müsste jedes Mal mit.
+- Ein erkannter Doppeltipp **verbraucht** den gemerkten Tipp (`letzterTipp`
+  wird geleert), sonst zählte ein dritter Tipp als vierter weiter.
+- `preventDefault()` hält den nachgeschobenen Klick zurück — der landete sonst
+  im gerade geöffneten Eingabefeld und setzte den Cursor irgendwohin.
+- Ein laufender Fingerzug (`fingerZug.aktiv`) ist kein Tipp, und Haken,
+  Knöpfe und Unterpunkte sind ausgenommen: dort hat der Tipp eine eigene
+  Aufgabe.
+
+**Falle: Am Touchscreen frisst `:hover` den ersten Tipp.** Mobile Browser
+liefern einen Tipp, der einen `:hover`-Effekt sichtbar macht, ZUERST als Hover
+aus und verschlucken den Klick dabei — man muss also ein zweites Mal tippen.
+Genau das war Hendriks Meldung „beim Abhaken muss das ToDo erst markiert
+werden": `.todo:hover .actions` blendete Bleistift und Mülleimer ein, und
+`.check:hover` färbte den Rahmen des Kästchens. Seit 21.08.2026 stehen alle
+Hover-Regeln der ToDo-Zeile in `@media (hover: hover)`; am Finger hängt nichts
+mehr an `:hover`, was sich sichtbar ändern könnte. Dieselbe Behandlung haben
+`.kal-eintrag:hover` und `.kal-todo-zeile:hover` in der Tagesliste bekommen.
+
+Zwei Folgen davon in `@media (hover: none)`:
+
+- **Die Aktionsknöpfe stehen am Handy fest da** (`opacity: 1`), sonst wären
+  Bearbeiten und Löschen dort über keinen Weg mehr erreichbar. Den Platz
+  bekommen sie aus `.todo-main` (`padding-right: 76px`); der Verlaufsschleier
+  hinter ihnen fällt damit weg, er hätte den Titel dauerhaft ausgeblendet.
+- **Die Tippfläche des Hakens ist 40 statt 32 px** (`.check-tap`) — die übliche
+  Empfehlung für den Finger. Der negative Rand wächst mit, das sichtbare
+  Kästchen bleibt also auf den Pixel da, wo es am Rechner auch sitzt.
 
 **Ein leeres Über-Thema klappt nicht** (`leer` in `renderThemaGruppe()`, seit
 20.08.2026): kein Pfeil, ein Klick auf den Namen tut nichts. Eingeklappt sähe
@@ -1335,10 +1370,27 @@ auch leer stehen („Nichts fällig."), weil das die eigentliche Frage des
 Streifens beantwortet.
 
 **Die Zeilen sind bewusst knapp bemessen** (seit 13.08.2026): `.kal-eintrag`
-hat 7 px Innenabstand statt 9, die Gruppenüberschrift 5 px Abstand nach oben
-statt 7, die Liste 5 px zwischen den Zeilen statt 6. Zusammen rund 30 px bei
-acht Zeilen. **Weiter runter geht es nicht** — eine einzeilige Zeile misst so
-noch 35 px, und darunter trifft man sie am Handy nicht mehr zuverlässig.
+hat 7 px Innenabstand statt 9, die Liste 5 px zwischen den Zeilen statt 6.
+Zusammen rund 30 px bei acht Zeilen. **Weiter runter geht es nicht** — eine
+einzeilige Zeile misst so noch 35 px, und darunter trifft man sie am Handy
+nicht mehr zuverlässig.
+
+**Die Abschnitte trennen sich sichtbar** (seit 21.08.2026, `.kal-gruppe`):
+Linie darüber, Symbol davor (⚠️ / ☑️ / 📅) und die volle Textfarbe statt Grau.
+Hendriks Beobachtung am Handy war, dass ToDos und Termine „nicht übersichtlich
+getrennt" seien — und tatsächlich sahen beide Überschriften bis dahin gleich
+aus: dieselbe kleine graue Kapitälchen-Zeile, die man lesen musste, um zu
+wissen, wo man gerade ist. Das Symbol steht in einem eigenen `<span>`
+(`.kal-gruppe-symbol`) mit eigener Größe und ohne Sperrsatz — es ist ein Bild,
+kein Buchstabe — und trägt `aria-hidden`, weil die Beschriftung daneben schon
+alles sagt.
+
+Der Preis sind rund **7 px je Abschnitt** (Linie plus Abstand). Der erste
+Abschnitt bekommt keine Linie: darüber steht schon der Tagestitel, und zwei
+Trenner in drei Zeilen sind einer zu viel. Dafür gibt es ZWEI Regeln —
+`.kal-gruppe:first-child` und `.kal-liste-kopf + .kal-gruppe`. Die zweite ist
+die, die im Normalfall greift (vor dem ersten Kopf steht das `h3` mit dem
+Datum); die erste fängt den Fall ohne Tagestitel ab.
 
 **Zellen: Zahl oben, Rest darunter.** `justify-content: flex-start` statt
 `center` — sonst wandert die Tageszahl je nach Anzahl der Balken auf und ab und
@@ -1454,18 +1506,17 @@ schneidet den Titel am Ende des Termins ab statt ihn in fremde Tage laufen zu
 lassen, und `position: relative` + `z-index: 1` heben ihn ueber den Hintergrund
 der ueberdeckten Nachbarzellen (etwa den gewaehlten Tag).
 
-**Den Titel bekommt nur ein Balken ab zwei Tagen** (seit 20.08.2026,
-`TITEL_AB_TAGEN`). Bei rund 55 px Spaltenbreite blieb von „Finn Hausaufgaben"
-ohnehin nur „Finn H…" übrig — der Text kostete Zellhöhe und sagte nichts.
-Eintägige Termine zeigen nur ihren Farbbalken; ihr Name steht in der Tagesliste
-darunter, und `title` und `aria-label` bleiben am Balken, damit Mauszeiger und
-Screenreader ihn weiter finden.
+**Jeder Balken trägt seinen Titel, auch der eintägige.** Vom 20. bis zum
+21.08.2026 war das anders (`TITEL_AB_TAGEN = 2`): Bei rund 55 px Spaltenbreite
+blieb von „Finn Hausaufgaben" nur „Finn H…" übrig, der Text kostete Zellhöhe
+und sagte scheinbar nichts. Hendriks Entscheidung nach einem Tag damit war die
+Gegenrichtung — ein abgeschnittener Name sagt mehr als ein namenloser
+Farbbalken: im Raster stand sonst nur „da ist was", ohne zu verraten, was.
+`title` und `aria-label` sitzen zusätzlich am Balken und tragen den
+vollständigen Namen.
 
-Maßgeblich ist die **Spanne in dieser Rasterzeile**, nicht die Gesamtlänge des
-Termins. Ein Termin von Sonntag auf Montag bekommt also in beiden Zeilen keinen
-Titel, obwohl er mehrtägig ist: Ein Ein-Tages-Abschnitt am Wochenrand ist
-genauso schmal wie ein echter Ein-Tages-Termin, und Lesbarkeit ist die Frage,
-um die es geht.
+**Nicht erneut vorschlagen**, den Titel an eine Mindestbreite oder eine
+Mindestspanne zu hängen — beides war gebaut und ist bewusst gefallen.
 
 **Eine flachere Spur für titellose Wochen war gebaut und ist wieder raus.** Die
 Idee war, in Wochen ohne mehrtägigen Termin Höhe zurückzugewinnen. Sie gewinnt
@@ -1549,9 +1600,40 @@ Abbrechen-Knopf gab es nicht. Escape schließt jetzt und **stoppt dabei die
 Weitergabe** (`stopPropagation`), sonst fängt der Panel-Handler denselben
 Tastendruck ab und schließt gleich den ganzen Kalender. Das ＋ neben „Termine" erscheint nur, wenn die Verknüpfung
 wirklich schreiben darf (`schreiben` aus `/api/google/status`) — ein Knopf, der
-in einen 403 läuft, wäre schlechter als keiner. Aus demselben Grund öffnet ein
-Tipp auf einen Termin nur dann das Formular; ohne Schreibrecht klappt er wie
-früher Ort und Notiz auf.
+in einen 403 läuft, wäre schlechter als keiner.
+
+**Ein Tipp auf einen Termin öffnet die Zwischenmaske** (seit 21.08.2026,
+`#kalDetailPopup` / `oeffneTerminDetail()`), nicht mehr das Formular. Vorher
+galt: mit Schreibrecht führte der Tipp direkt ins Bearbeiten, ohne klappten Ort
+und Notiz in der Liste auf. Beides war unbefriedigend — man musste „Abbrechen"
+treffen, um nichts zu verändern, und eine lange Notiz schob im Aufklapp-Fall
+alles darunter aus dem Bild. Die Maske ist derselbe Vollbild-Dialog wie das
+Formular (eigenes Element, damit „Bearbeiten" sauber übergeben kann) und zeigt
+Titel mit Farbbalken, Zeitraum in Worten, Herkunft bei Fremdkalendern, Ort und
+Notiz. Unten „Bearbeiten" (nur mit Schreibrecht) und „Schließen"; Escape und
+Klick daneben schließen ebenfalls.
+
+„Bearbeiten" **löst die Maske ab, statt sich darüberzulegen** — offen ist immer
+höchstens eins von beiden. Deshalb steht `formularOffen` im Escape-Handler
+trotzdem zuerst.
+
+Drei Dinge in der Maske, die man leicht falsch baut:
+
+- **Der Ort ist ein Link zu Google Maps** (`maps/search/?api=1&query=…`,
+  Adresse `encodeURIComponent`-kodiert). Bewusst der Web-Link und kein
+  `geo:`- oder `maps://`-Schema: am Handy übernimmt ihn die installierte
+  Karten-App von selbst, am Rechner öffnet er die Karte im Browser — ein
+  App-Schema hätte dort ins Leere geführt.
+- **Links in der Notiz werden erkannt** (`textMitLinks()`), aber nur `http://`
+  und `https://`. Der Text kommt aus fremden Kalendern; `javascript:`
+  zuzulassen wäre ein offenes Scheunentor. Alles andere bleibt `textContent`,
+  nie Markup. Satzzeichen am Ende einer Adresse gehören zum Satz und fallen
+  aus dem Link heraus.
+- **Zeilenumbrüche der Google-Beschreibung bleiben** (`beschreibungAlsText()`
+  wandelt `<br>` und schließende Block-Tags in `\n`, `<li>` in „• "), das Feld
+  hat `white-space: pre-wrap` und **keine** Höhenbegrenzung. Eine Liste, die zu
+  einem Absatz zusammenläuft, ist im Dialog schlechter lesbar als im Kalender
+  selbst; gescrollt wird im Dialog, nicht im Feld.
 
 **Schreiben in Google.** `functions/api/google/termin.js` legt an (POST),
 ändert (PUT) und löscht (DELETE) — immer im Hauptkalender. Das Formular deckt

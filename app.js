@@ -3387,6 +3387,8 @@ function renderTodo(t) {
   li.appendChild(cbTap);
 
   // --- Text + Termin (Doppelklick = bearbeiten) ---
+  // Der Doppeltipp am Handy haengt nicht hier, sondern zentral am Board
+  // (siehe "Doppeltipp" weiter unten): dblclick feuert dort nicht.
   const main = document.createElement("div");
   main.className = "todo-main";
   main.title = "Doppelklick zum Bearbeiten";
@@ -3430,9 +3432,9 @@ function renderTodo(t) {
   const actions = document.createElement("div");
   actions.className = "actions";
 
-  // Bearbeiten als eigener Knopf, obwohl der Doppelklick auf die Zeile es
-  // schon kann: am Handy gibt es keinen Doppelklick, der zuverlaessig trifft -
-  // dort war Bearbeiten bisher schlicht nicht auffindbar.
+  // Bearbeiten als eigener Knopf, obwohl Doppelklick und Doppeltipp auf die
+  // Zeile es auch koennen: der Knopf sagt, DASS es geht - eine Geste, die man
+  // nicht kennt, findet man nicht.
   const edit = document.createElement("button");
   edit.className = "act edit";
   edit.title = "Bearbeiten";
@@ -3815,6 +3817,46 @@ document.addEventListener("touchend", e => {
   }
 });
 document.addEventListener("touchcancel", abbrechenFingerZug);
+
+// ---------- Doppeltipp zum Bearbeiten ----------
+// `dblclick` gibt es am Touchscreen nicht - deshalb hier von Hand: zwei
+// Beruehrungen derselben Karte, kurz hintereinander und ohne den Finger
+// nennenswert zu bewegen. Der Knopf mit dem Bleistift bleibt daneben
+// bestehen; die Geste ist der schnelle Weg fuer den, der sie kennt.
+//
+// Sitzt am Board statt an jeder Zeile: die Karten werden bei jedem render()
+// neu gebaut, ein Handler pro Karte muesste dabei jedes Mal mit.
+const DOPPELTIPP = 350;        // ms zwischen den beiden Beruehrungen
+const DOPPELTIPP_WACKEL = 24;  // px, die der Finger dabei wandern darf
+let letzterTipp = { id: null, zeit: 0, x: 0, y: 0 };
+
+board.addEventListener("touchend", e => {
+  if (editingId || addingCat) return;
+  if (e.changedTouches.length !== 1) return;
+  // Ein Zug ist kein Tipp - und der Bereich unter dem Text (Haken, Knoepfe,
+  // Unterpunkte) hat eigene Aufgaben.
+  if (fingerZug && fingerZug.aktiv) return;
+  const main = e.target.closest(".todo-main");
+  if (!main || e.target.closest("input, textarea, button, label, select, a")) return;
+  const karte = main.closest(".todo");
+  if (!karte || !karte.dataset.id) return;
+
+  const t = e.changedTouches[0];
+  const jetzt = Date.now();
+  const passt = letzterTipp.id === karte.dataset.id
+    && jetzt - letzterTipp.zeit < DOPPELTIPP
+    && Math.abs(t.clientX - letzterTipp.x) < DOPPELTIPP_WACKEL
+    && Math.abs(t.clientY - letzterTipp.y) < DOPPELTIPP_WACKEL;
+  letzterTipp = passt
+    ? { id: null, zeit: 0, x: 0, y: 0 }   // verbraucht, sonst zaehlt ein dritter Tipp weiter
+    : { id: karte.dataset.id, zeit: jetzt, x: t.clientX, y: t.clientY };
+  if (!passt) return;
+
+  // Haelt den nachgeschobenen Klick vom Browser zurueck - der landete sonst
+  // im gerade geoeffneten Eingabefeld und setzte den Cursor irgendwohin.
+  e.preventDefault();
+  startEdit(karte.dataset.id);
+});
 
 // ---------- Ablage "aus dem Bereich loesen" fuer die Maus ----------
 ohneZone.addEventListener("dragover", e => {
