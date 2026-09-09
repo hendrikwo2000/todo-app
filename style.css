@@ -771,15 +771,15 @@ input[type="date"]:focus {
 @media (hover: hover) {
   .todo:hover .actions { opacity: 1; pointer-events: auto; }
 }
-/* Ohne Hover gibt es kein Einblenden - die Knoepfe stehen fest da. Sonst
-   waeren Bearbeiten und Loeschen am Handy nur ueber den Umweg erreichbar, der
-   oben gerade weggefallen ist. Der Platz dafuer kommt aus .todo-main, damit
-   der Titel nicht darunter laeuft; damit ist auch der Verlaufsschleier
-   ueberfluessig, der ihn bisher ausgeblendet hat. */
+/* Am Finger uebernimmt ein Tipp die Rolle des Hinzeigens: er setzt
+   .werkzeuge-offen (siehe "Werkzeuge am Finger" in app.js), und nur diese
+   eine Zeile blendet ihre Knoepfe ein. Ueber :hover ginge es nicht - der
+   Browser verschluckt den ersten Tipp, sobald er einen Hover-Effekt sichtbar
+   macht, und genau das machte vorher das Abhaken zum Zwei-Tipp-Vorgang.
+   Sichtbar sind sie also gleich lang wie am Rechner, nur ausgeloest von etwas
+   anderem - samt Verlaufsschleier, der den Titel darunter wegblendet. */
 @media (hover: none) {
-  .actions { opacity: 1; pointer-events: auto; background: none; padding-left: 0; }
-  .todo.is-done .actions { background: none; padding-left: 0; }
-  .todo-main { padding-right: 76px; }
+  .todo.werkzeuge-offen .actions { opacity: 1; pointer-events: auto; }
 }
 .act {
   border: none;

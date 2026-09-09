@@ -40,6 +40,7 @@ let addingThema = null;    // Ueber-Thema fuer das offene Eingabefeld (null = fr
 let farbePickerFuer = null; // id des Bereichs, dessen Farbauswahl gerade offen ist
 let themaWerkzeugeFuer = null; // id des Bereichs, dessen "+Thema"/Farbe-Zeile offen ist
 let unterpunktEingabeOffen = null; // id des ToDos, dessen "+Unterpunkt"-Feld im Bearbeiten-Dialog offen ist
+let werkzeugeFuer = null;  // id des ToDos, das am Finger gerade Bleistift und Muelleimer zeigt
 
 // Feste Palette fuer die Bereichsfarbe (Punkt am Namen + Streifen am
 // Bereich). Muss zu FARBEN_ERLAUBT in functions/api/todos.js passen.
@@ -3353,6 +3354,10 @@ function renderTodo(t) {
   }
 
   if (!t.done && !t.due) li.classList.add("undated");
+  // Am Finger haengen die Werkzeuge an dieser Klasse statt an :hover - beim
+  // Neubau muss sie deshalb mitkommen, sonst waeren sie nach jedem Sync weg
+  // (siehe "Werkzeuge am Finger" weiter unten).
+  if (werkzeugeFuer === t.id) li.classList.add("werkzeuge-offen");
 
   // --- Drag & Drop: ToDo ist ziehbar ---
   li.draggable = true;
@@ -3818,17 +3823,36 @@ document.addEventListener("touchend", e => {
 });
 document.addEventListener("touchcancel", abbrechenFingerZug);
 
-// ---------- Doppeltipp zum Bearbeiten ----------
-// `dblclick` gibt es am Touchscreen nicht - deshalb hier von Hand: zwei
-// Beruehrungen derselben Karte, kurz hintereinander und ohne den Finger
-// nennenswert zu bewegen. Der Knopf mit dem Bleistift bleibt daneben
-// bestehen; die Geste ist der schnelle Weg fuer den, der sie kennt.
+// ---------- Werkzeuge am Finger + Doppeltipp zum Bearbeiten ----------
+// Zwei Dinge haengen an derselben Beruehrung, deshalb stehen sie zusammen:
+//
+// EIN Tipp auf eine Zeile zeigt ihren Bleistift und ihren Muelleimer. Am
+// Rechner erledigt das :hover; am Finger darf es das NICHT, weil der Browser
+// den ersten Tipp verschluckt, sobald er einen Hover-Effekt sichtbar macht
+// (siehe .todo.werkzeuge-offen in style.css). Genau eine Zeile zeigt sie: ein
+// Tipp auf eine andere nimmt sie mit, ein zweiter Tipp auf dieselbe legt sie
+// wieder weg.
+//
+// ZWEI Tipps oeffnen das Bearbeiten - `dblclick` gibt es am Touchscreen nicht,
+// also von Hand: zwei Beruehrungen derselben Karte, kurz hintereinander und
+// ohne den Finger nennenswert zu bewegen.
 //
 // Sitzt am Board statt an jeder Zeile: die Karten werden bei jedem render()
 // neu gebaut, ein Handler pro Karte muesste dabei jedes Mal mit.
 const DOPPELTIPP = 350;        // ms zwischen den beiden Beruehrungen
 const DOPPELTIPP_WACKEL = 24;  // px, die der Finger dabei wandern darf
 let letzterTipp = { id: null, zeit: 0, x: 0, y: 0 };
+
+// Setzt die Klasse direkt am DOM statt ueber render(): ein kompletter Neubau
+// des Boards fuer zwei eingeblendete Knoepfe waere zu viel, und er wuerde
+// nebenbei jede offene Eingabe einkassieren. renderTodo() liest die Variable
+// beim naechsten echten Neubau selbst aus.
+function zeigeWerkzeuge(id) {
+  werkzeugeFuer = id;
+  for (const el of board.querySelectorAll(".todo")) {
+    el.classList.toggle("werkzeuge-offen", !!id && el.dataset.id === id);
+  }
+}
 
 board.addEventListener("touchend", e => {
   if (editingId || addingCat) return;
@@ -3850,12 +3874,26 @@ board.addEventListener("touchend", e => {
   letzterTipp = passt
     ? { id: null, zeit: 0, x: 0, y: 0 }   // verbraucht, sonst zaehlt ein dritter Tipp weiter
     : { id: karte.dataset.id, zeit: jetzt, x: t.clientX, y: t.clientY };
-  if (!passt) return;
+
+  if (!passt) {
+    zeigeWerkzeuge(werkzeugeFuer === karte.dataset.id ? null : karte.dataset.id);
+    return;
+  }
 
   // Haelt den nachgeschobenen Klick vom Browser zurueck - der landete sonst
   // im gerade geoeffneten Eingabefeld und setzte den Cursor irgendwohin.
   e.preventDefault();
+  zeigeWerkzeuge(null);   // im Bearbeiten-Dialog stehen eigene Knoepfe
   startEdit(karte.dataset.id);
+});
+
+// Daneben getippt heisst: fertig. Ohne das bliebe die zuletzt angetippte Zeile
+// den ganzen Tag mit offenen Werkzeugen stehen. Der Handler am Board oben
+// laeuft vorher und hat den Fall "auf einer Karte" da schon entschieden.
+document.addEventListener("touchend", e => {
+  if (!werkzeugeFuer) return;
+  if (e.target.closest(".todo")) return;
+  zeigeWerkzeuge(null);
 });
 
 // ---------- Ablage "aus dem Bereich loesen" fuer die Maus ----------

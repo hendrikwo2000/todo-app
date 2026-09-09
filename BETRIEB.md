@@ -246,13 +246,26 @@ mehr an `:hover`, was sich sichtbar ändern könnte. Dieselbe Behandlung haben
 
 Zwei Folgen davon in `@media (hover: none)`:
 
-- **Die Aktionsknöpfe stehen am Handy fest da** (`opacity: 1`), sonst wären
-  Bearbeiten und Löschen dort über keinen Weg mehr erreichbar. Den Platz
-  bekommen sie aus `.todo-main` (`padding-right: 76px`); der Verlaufsschleier
-  hinter ihnen fällt damit weg, er hätte den Titel dauerhaft ausgeblendet.
+- **Ein Tipp auf die Zeile übernimmt die Rolle des Hinzeigens.** Er setzt
+  `.werkzeuge-offen` (JS, Abschnitt „Werkzeuge am Finger" in `app.js`), und
+  nur diese eine Zeile blendet Bleistift und Mülleimer ein — samt
+  Verlaufsschleier, genau wie am Rechner. Ein Tipp auf eine andere Zeile nimmt
+  sie mit, ein zweiter Tipp auf dieselbe legt sie weg, ein Tipp daneben
+  ebenfalls. **Erster Versuch war, sie am Handy dauerhaft zu zeigen** (mit
+  `padding-right: 76px` an `.todo-main` als Platz dafür) — Hendriks Urteil am
+  21.08.2026: „gefällt mir nicht, den soll man nur sehen wenn man das ToDo
+  einmal angeklickt hat". Nicht erneut vorschlagen.
 - **Die Tippfläche des Hakens ist 40 statt 32 px** (`.check-tap`) — die übliche
   Empfehlung für den Finger. Der negative Rand wächst mit, das sichtbare
   Kästchen bleibt also auf den Pixel da, wo es am Rechner auch sitzt.
+
+**Warum eine Klasse und nicht `:hover`:** genau deshalb, weil `:hover` den
+ersten Tipp fressen würde — die Klasse kommt aus einem `touchend`, den der
+Browser schon ausgeliefert hat. `zeigeWerkzeuge()` setzt sie direkt am DOM
+statt über `render()`: ein kompletter Neubau des Boards für zwei eingeblendete
+Knöpfe wäre zu viel und kassierte nebenbei jede offene Eingabe ein.
+`renderTodo()` liest `werkzeugeFuer` beim nächsten echten Neubau selbst aus —
+sonst wären die Knöpfe nach jedem Sync wieder weg.
 
 **Ein leeres Über-Thema klappt nicht** (`leer` in `renderThemaGruppe()`, seit
 20.08.2026): kein Pfeil, ein Klick auf den Namen tut nichts. Eingeklappt sähe
