@@ -1,13 +1,18 @@
 /**
  * Termine im Google-Hauptkalender anlegen, aendern und loeschen.
  *
- *   POST   { titel, startDatum, endDatum, ganztags, vonZeit, bisZeit, farbe, notiz, zeitzone }
- *   PUT    dasselbe + { id }
- *   DELETE { id }
+ *   GET    ?serie=<id>  -> { regel }   Regel einer Serie, fuers Formular
+ *   POST   { titel, startDatum, endDatum, ganztags, vonZeit, bisZeit, farbe, notiz, ort, zeitzone, regel? }
+ *   PUT    dasselbe + { id, serieId?, umfang? }
+ *   DELETE { id, serieId?, umfang? }
+ *
+ * `regel` ist eine RRULE-Zeile ("" = keine Wiederholung, fehlt = unveraendert),
+ * `umfang` bei Serien "dieser" | "folgende" | "alle". Was dahinter passiert,
+ * steht in _lib/serien.js.
  *
  * Der einzige schreibende Zugriff der App auf Google. Bewusst eng gefasst:
  * immer der Hauptkalender, und nur die Felder, die das Panel auch anzeigt -
- * Ort, Gaeste und Erinnerungen bleiben unangetastet (deshalb PATCH statt PUT
+ * Gaeste und Erinnerungen bleiben unangetastet (deshalb PATCH statt PUT
  * Richtung Google, siehe _lib/google.js).
  */
 
@@ -15,13 +20,27 @@ import { json } from "../../_lib/listen.js";
 import { nutzerOderFehler } from "../../_lib/zugang.js";
 import {
   fehltEinrichtung, kontoFuer, loescheKonto, frischesZugriffToken,
-  kalenderListe, legeTerminAn, aendereTermin, loescheTermin, darfSchreiben,
+  kalenderListe, darfSchreiben,
 } from "../../_lib/google.js";
+import { regelLesen, UMFAENGE, legeAn, aendere, loesche, regelDerSerie } from "../../_lib/serien.js";
 
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const UHR = /^([01]\d|2[0-3]):[0-5]\d$/;
 // Googles Termin-Palette hat die ids 1-11; alles andere waere geraten.
 const FARBEN = new Set(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"]);
+// Google-Kennungen sind base32hex, Ausgaben einer Serie haengen "_<zeitpunkt>"
+// an. Mehr als das braucht keine id - und sie landet in einer Adresse.
+const KENNUNG = /^[A-Za-z0-9_\-]{1,1024}$/;
+
+/** Serien-Angaben aus dem Rumpf: gehoert der Termin zu einer, und wofuer gilt die Aenderung? */
+function serieLesen(body) {
+  const serieId = String((body && body.serieId) || "").trim();
+  if (!serieId) return { serieId: null, umfang: null };
+  if (!KENNUNG.test(serieId)) return { fehler: "Serien-Kennung ist ungueltig" };
+  const umfang = String((body && body.umfang) || "");
+  if (!UMFAENGE.has(umfang)) return { fehler: "Umfang fehlt" };
+  return { serieId, umfang };
+}
 
 /** Gemeinsame Vorpruefung: angemeldet, verknuepft, darf schreiben. */
 async function konteneNehmen(request, env) {
@@ -41,6 +60,7 @@ async function konteneNehmen(request, env) {
 function felderLesen(body, mitId) {
   const id = String((body && body.id) || "").trim();
   if (mitId && !id) return { fehler: "Termin-Kennung fehlt" };
+  if (id && !KENNUNG.test(id)) return { fehler: "Termin-Kennung ist ungueltig" };
 
   const titel = String((body && body.titel) || "").trim();
   if (!titel) return { fehler: "Titel fehlt" };
@@ -78,8 +98,12 @@ function felderLesen(body, mitId) {
   const zeitzone = /^[A-Za-z_+\-]+\/[A-Za-z_+\-/]+$/.test(String((body && body.zeitzone) || ""))
     ? body.zeitzone : "Europe/Berlin";
 
+  const { regel, fehler: regelFehler } = regelLesen(body);
+  if (regelFehler) return { fehler: regelFehler };
+
   return {
     id,
+    regel,
     felder: {
       titel: titel.slice(0, 300), ganztags, startDatum, endDatum, vonZeit, bisZeit,
       farbe: FARBEN.has(farbe) ? farbe : null, notiz, ort, zeitzone,
@@ -120,14 +144,14 @@ export async function onRequestPost({ request, env }) {
   if (antwort) return antwort;
   const body = await rumpfLesen(request);
   if (!body) return json({ error: "Ungueltiges JSON" }, 400);
-  const { fehler, felder } = felderLesen(body, false);
+  const { fehler, felder, regel } = felderLesen(body, false);
   if (fehler) return json({ error: fehler }, 400);
 
   return await mitFehlern(env, nutzerId, async () => {
     const token = await frischesZugriffToken(env, konto);
     const ziel = await zielKalender(token);
     if (!ziel) return json({ error: "Kein Kalender gefunden" }, 400);
-    const angelegt = await legeTerminAn(token, ziel.id, felder);
+    const angelegt = await legeAn(token, ziel.id, felder, regel);
     return json({ ok: true, id: angelegt.id });
   });
 }
@@ -137,14 +161,16 @@ export async function onRequestPut({ request, env }) {
   if (antwort) return antwort;
   const body = await rumpfLesen(request);
   if (!body) return json({ error: "Ungueltiges JSON" }, 400);
-  const { fehler, felder, id } = felderLesen(body, true);
+  const { fehler, felder, id, regel } = felderLesen(body, true);
   if (fehler) return json({ error: fehler }, 400);
+  const serie = serieLesen(body);
+  if (serie.fehler) return json({ error: serie.fehler }, 400);
 
   return await mitFehlern(env, nutzerId, async () => {
     const token = await frischesZugriffToken(env, konto);
     const ziel = await zielKalender(token);
     if (!ziel) return json({ error: "Kein Kalender gefunden" }, 400);
-    await aendereTermin(token, ziel.id, id, felder);
+    await aendere(token, ziel.id, { id, serieId: serie.serieId, umfang: serie.umfang, felder, regel });
     return json({ ok: true });
   });
 }
@@ -155,12 +181,31 @@ export async function onRequestDelete({ request, env }) {
   const body = await rumpfLesen(request);
   const id = String((body && body.id) || "").trim();
   if (!id) return json({ error: "Termin-Kennung fehlt" }, 400);
+  if (!KENNUNG.test(id)) return json({ error: "Termin-Kennung ist ungueltig" }, 400);
+  const serie = serieLesen(body);
+  if (serie.fehler) return json({ error: serie.fehler }, 400);
 
   return await mitFehlern(env, nutzerId, async () => {
     const token = await frischesZugriffToken(env, konto);
     const ziel = await zielKalender(token);
     if (!ziel) return json({ error: "Kein Kalender gefunden" }, 400);
-    await loescheTermin(token, ziel.id, id);
+    await loesche(token, ziel.id, { id, serieId: serie.serieId, umfang: serie.umfang });
     return json({ ok: true });
+  });
+}
+
+// Nur lesend, braucht aber dieselbe Vorpruefung: wer nicht schreiben darf,
+// oeffnet das Formular gar nicht erst.
+export async function onRequestGet({ request, env }) {
+  const { antwort, nutzerId, konto } = await konteneNehmen(request, env);
+  if (antwort) return antwort;
+  const serieId = new URL(request.url).searchParams.get("serie") || "";
+  if (!KENNUNG.test(serieId)) return json({ error: "Serien-Kennung fehlt" }, 400);
+
+  return await mitFehlern(env, nutzerId, async () => {
+    const token = await frischesZugriffToken(env, konto);
+    const ziel = await zielKalender(token);
+    if (!ziel) return json({ error: "Kein Kalender gefunden" }, 400);
+    return json(await regelDerSerie(token, ziel.id, serieId));
   });
 }

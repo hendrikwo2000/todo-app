@@ -249,6 +249,10 @@ export async function termineVon(token, kalenderId, vonIso, bisIso) {
       start: (e.start && (e.start.dateTime || e.start.date)) || null,
       ende: (e.end && (e.end.dateTime || e.end.date)) || null,
       ort: e.location || null,
+      // Gehoert der Termin zu einer Serie, steht hier deren Kennung. Die
+      // Regel selbst liefert Google bei aufgeloesten Einzelterminen nicht mit -
+      // das Formular holt sie erst beim Bearbeiten (GET /api/google/termin).
+      serieId: e.recurringEventId || null,
       // Grosszuegig gekappt, nicht knapp: der Text geht beim Bearbeiten im
       // Panel wieder zurueck an Google - was hier abgeschnitten wuerde, waere
       // beim naechsten Speichern weg.
@@ -288,7 +292,9 @@ export function terminRumpf({ titel, ganztags, startDatum, endDatum, vonZeit, bi
   return rumpf;
 }
 
-async function schreibeTermin(methode, token, kalenderId, terminId, rumpf) {
+// Exportiert fuer die Serien-Logik (_lib/serien.js), die Rumpf und Methode
+// selbst zusammenstellt. Die Fehlerabbildung (401/403/404) gilt dort genauso.
+export async function schreibeTermin(methode, token, kalenderId, terminId, rumpf) {
   const pfad = terminId
     ? `${API_BASE}/calendars/${encodeURIComponent(kalenderId)}/events/${encodeURIComponent(terminId)}`
     : `${API_BASE}/calendars/${encodeURIComponent(kalenderId)}/events`;
@@ -327,6 +333,23 @@ export function aendereTermin(token, kalenderId, terminId, felder) {
 
 export function loescheTermin(token, kalenderId, terminId) {
   return schreibeTermin("DELETE", token, kalenderId, terminId, null);
+}
+
+// Ein einzelner Termin samt allem, was Google dazu weiss - bei einer Serie
+// die Regel (`recurrence`), bei einer Ausgabe daraus `originalStartTime`.
+// Ueber schreibeTermin, weil dessen Fehlerabbildung auch hier stimmt: 404 und
+// 410 heissen "den gibt es nicht mehr".
+export function holeTermin(token, kalenderId, terminId) {
+  return schreibeTermin("GET", token, kalenderId, terminId, null);
+}
+
+// Die Ausgaben einer Serie. showDeleted, weil einzeln geloeschte Ausgaben bei
+// einer festen Anzahl (COUNT) trotzdem mitzaehlen.
+export async function ausgabenDerSerie(token, kalenderId, serieId, bisIso) {
+  const daten = await hole(
+    `/calendars/${encodeURIComponent(kalenderId)}/events/${encodeURIComponent(serieId)}/instances`,
+    token, { timeMax: bisIso, showDeleted: "true", maxResults: "2500" });
+  return daten.items || [];
 }
 
 export async function widerrufe(token) {
