@@ -193,6 +193,12 @@
                 stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
         </svg>
       </button>
+      <!-- Quellen-Umschalter: eine Zeile je ToDo-Liste und je
+           Google-Kalender. Seit dem 24.09.2026 ein Menue, das unter dem
+           Trichter aufgeht - vorher schob es sich als Pillenreihe zwischen
+           Kopf und Raster. Steht deshalb IM Kopf: der ist der Bezugsrahmen
+           fuer die Position. -->
+      <div id="kalFilter" class="kal-filter" role="menu" aria-label="Quellen" hidden></div>
       <button type="button" id="kalHeute" class="btn klein">Heute</button>
       <!-- Vollbild: am Handy geht es auch per Wisch ueber dem Raster (nach
            oben gross, nach unten klein), am Rechner gibt es nur den Knopf. -->
@@ -200,11 +206,6 @@
               aria-label="Kalender groß" title="Kalender groß – am Handy: über dem Raster nach oben wischen">⤢</button>
     </div>
 
-    <!-- Quellen-Umschalter: je eine Pille pro ToDo-Liste und pro
-         Google-Kalender. Liegt seit dem 13.08.2026 hinter dem Trichter im Kopf
-         und steht nur aufgeklappt da - als eigene Dauerzeile kostete er 37 px,
-         die dem Tagesbereich fehlten. -->
-    <div id="kalFilter" class="kal-filter" hidden></div>
     <div id="kalWochentage" class="kal-wochentage"></div>
     <div id="kalRaster" class="kal-raster"></div>
     </div><!-- /#kalOben -->
@@ -241,18 +242,38 @@
        Pflicht: das Panel traegt ein transform, und darunter richtet sich
        position:fixed nicht mehr am Bildschirm aus, sondern am Panel - ein
        Vollbild-Dialog waere dann nur so gross wie der Kalender.
-       Beide Inhalte fuellt kalender.js. -->
+       Alle Inhalte fuellt kalender.js.
+
+       Die Tages-Karte steht vorn, damit Formular und Detail sich bei gleichem
+       z-index DARUEBER legen: beide lassen sich aus ihr heraus oeffnen. -->
+  <div id="kalTagPopup" class="kal-popup kal-tag-popup" hidden>
+    <div class="kal-popup-box kal-tagkarte" role="dialog" aria-label="Tag">
+      <div class="kal-tagkarte-kopf"></div>
+      <div class="kal-tagkarte-liste"></div>
+      <div class="kal-tagkarte-fuss">
+        <input type="text" class="kal-tagkarte-feld" enterkeyhint="done"
+               aria-label="ToDo für diesen Tag anlegen">
+        <button type="button" class="kal-tagkarte-plus" aria-label="Neuer Termin an diesem Tag"
+                title="Neuer Termin">＋</button>
+      </div>
+    </div>
+  </div>
   <div id="kalWahl" class="kal-popup" hidden>
     <div class="kal-popup-box kal-wahl-box"></div>
   </div>
   <div id="kalTerminPopup" class="kal-popup kal-popup-voll" hidden>
-    <div class="kal-popup-box kal-termin-popup-box"></div>
+    <div class="kal-popup-box kal-termin-popup-box" role="dialog"></div>
   </div>
   <!-- Zwischenmaske: ein Tipp auf einen Termin zeigt ihn erst an. Bearbeitet
        wird erst ueber den Knopf darin - vorher fasste man beim blossen
        Nachsehen sofort das Formular an. -->
   <div id="kalDetailPopup" class="kal-popup kal-popup-voll" hidden>
     <div class="kal-popup-box kal-detail-popup-box"></div>
+  </div>
+  <!-- Rueckfrage (Serientermin: welche Termine? / wirklich loeschen?). Ganz
+       oben, weil sie sich ueber Formular UND Zwischenmaske legt. -->
+  <div id="kalFrage" class="kal-popup kal-frage" hidden>
+    <div class="kal-popup-box kal-frage-box" role="alertdialog" aria-label="Rückfrage"></div>
   </div>
 
   <!-- Einstellungen hinter dem Zahnrad. Ein Dialog mit mehreren Ansichten:

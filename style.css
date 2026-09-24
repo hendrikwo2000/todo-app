@@ -2086,6 +2086,25 @@ html:not(.breit) #kalZu { display: none; }
 .kalender.vollbild .kal-zahl { text-align: center; }
 .kalender.vollbild .kal-punkte { display: none; }
 .kalender.vollbild .kal-tag.viele .kal-punkte::after { content: none; }
+
+/* ---------- Handy: Raster ueber die ganze Ansicht ---------- */
+/* Unterhalb der Split-Grenze (kein html.breit) gibt es seit 24.09.2026 keine
+   Tagesliste neben dem Raster mehr - ein Tag oeffnet sich als Karte darueber
+   (.kal-tagkarte), wie im Samsung Kalender. Das Raster sieht deshalb aus wie
+   im Vollbild: ganze Hoehe, ToDos im Klartext statt als Punkte. Die Reiter
+   Kalender | Gewohnheiten | Timer bleiben stehen - anders als im Vollbild. */
+html:not(.breit) .kal-griff-teilung,
+html:not(.breit) .kal-vollbild-knopf { display: none; }
+html:not(.breit) .kal-raster {
+  flex: 1;
+  min-height: 0;
+  grid-auto-rows: minmax(0, 1fr);
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+html:not(.breit) .kal-tag { min-height: 0; align-items: stretch; }
+html:not(.breit) .kal-zahl { text-align: center; }
+html:not(.breit) .kal-punkte { display: none; }
+html:not(.breit) .kal-tag.viele .kal-punkte::after { content: none; }
 /* Trichter im Kalender-Kopf: klappt den Quellen-Umschalter darunter auf.
    inline-flex zentriert das SVG - deshalb braucht er auch die [hidden]-Zeile
    (bei nur einer Quelle gibt es nichts zu waehlen). */
@@ -2335,31 +2354,59 @@ html.kal-eigene-teilung .kal-liste {
 #googleTrennen[hidden] { display: none; }
 .google-g { display: inline-flex; align-items: center; flex: none; }
 
-/* Quellen-Umschalter oben im Panel: je eine Pille pro ToDo-Liste und pro
-   Google-Kalender. Ausgeschaltet bleibt lesbar, nur zurueckgenommen -
-   ein unsichtbarer Aus-Zustand waere schwer wiederzufinden. */
-.kal-filter { display: flex; flex-wrap: wrap; gap: 5px; }
-.kal-filter[hidden] { display: none; }
-.kal-pille {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 100%;
-  padding: 4px 10px 4px 8px;
+/* Quellen-Menue unter dem Trichter: eine Zeile je ToDo-Liste und je
+   Google-Kalender, Haken rechts. Seit 24.09.2026 ein Menue statt einer
+   Pillenreihe - die schob sich zwischen Kopf und Raster und drueckte das
+   Raster nach unten. Ausgeschaltet bleibt lesbar, nur zurueckgenommen - ein
+   unsichtbarer Aus-Zustand waere schwer wiederzufinden.
+   Der Kalender-Kopf ist der Bezugsrahmen (position: relative), das Menue
+   haengt rechtsbuendig darunter. */
+.kal-kopf { position: relative; }
+.kal-filter {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 32px));
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 6px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--row);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
+}
+.kal-filter[hidden] { display: none; }
+.kal-filter-zeile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
   color: var(--text);
-  font: inherit; font-size: 12.5px; font-weight: 600;
+  font: inherit;
+  font-size: 14.5px;
+  text-align: left;
   cursor: pointer;
 }
-.kal-pille > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kal-pille:hover { border-color: var(--accent); }
-.kal-pille.aus { background: transparent; color: var(--muted); border-style: dashed; }
-/* KW schaltet eine Spalte, keine Eintraege - deshalb ohne Farbmarke und
-   etwas schmaler als die Quellen-Pillen daneben. */
-.kal-pille-kw { padding-left: 10px; letter-spacing: .03em; }
-.kal-pille.aus .kal-punkt, .kal-pille.aus .kal-balken { opacity: .35; }
+@media (hover: hover) {
+  .kal-filter-zeile:hover { background: var(--hover); }
+}
+/* Punkt (6 px) und Balken (13 px) auf dieselbe Breite, damit die Namen
+   untereinander auf einer Linie stehen. */
+.kal-filter-zeile .kal-punkt { margin: 0 3.5px; }
+.kal-filter-leer { flex: none; width: 13px; }
+.kal-filter-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kal-filter-haken { flex: none; width: 16px; text-align: center; font-weight: 700; color: var(--accent); }
+.kal-filter-zeile.aus { color: var(--muted); }
+.kal-filter-zeile.aus .kal-punkt,
+.kal-filter-zeile.aus .kal-balken { opacity: .35; }
 
 /* Zwei FORMEN statt zweier Farbtoene: Punkt = ToDo, Balken = Termin. Die
    Farben gehoeren den Bereichen bzw. Google und koennen sich gleichen; die
@@ -2416,7 +2463,7 @@ html.kal-eigene-teilung .kal-liste {
    Balken nach oben und die durchgezogene Linie versetzt sich. */
 .kal-balken-luecke { background: transparent; width: 100%; z-index: auto; }
 
-/* Dieselbe Form als Marke in der Filter-Pille. */
+/* Dieselbe Form als Marke im Filter-Menue. */
 .kal-balken-marke { flex: none; width: 13px; height: 5px; border-radius: 3px; z-index: auto; }
 
 /* Zwischenueberschriften in der Tagesliste.
@@ -2584,74 +2631,380 @@ body.zieht, body.zieht .todo {
   -webkit-touch-callout: none;
 }
 
+/* ---------- Tages-Karte (Handy) ---------- */
+/* Ein Tag als Karte ueber dem Raster, wie im Samsung Kalender: Kopf mit
+   Tageszahl und Wochentag, darunter der Inhalt der Tagesliste, unten ein Feld
+   fuer ein ToDo und ein rundes Plus fuer einen Termin. Nicht randlos wie das
+   Formular - man soll sehen, dass das Raster dahinter noch da ist. */
+.kal-tag-popup { padding: 16px; }
+.kal-popup-box.kal-tagkarte {
+  width: min(440px, 100%);
+  height: min(74vh, 640px);
+  overflow: hidden;
+  gap: 10px;
+  padding: 18px 16px 14px;
+  border-radius: 24px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .35);
+  /* Waagerecht gehoert der Finger dem Blaettern (siehe gestenZone),
+     senkrecht der Liste. */
+  touch-action: pan-y;
+}
+.kal-tagkarte-kopf {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 0 4px 12px;
+  border-bottom: 2px dotted var(--line);
+}
+.kal-tagkarte-zahl { font-size: 32px; font-weight: 700; line-height: 1; }
+.kal-tagkarte-wochentag { font-size: 20px; font-weight: 700; }
+.kal-tagkarte-unter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--muted);
+}
+.kal-tagkarte-liste {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.kal-tagkarte-fuss { display: flex; align-items: center; gap: 10px; }
+.kal-tagkarte-feld {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  outline: none;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;   /* darunter zoomt iOS beim Antippen hinein */
+}
+.kal-tagkarte-feld:focus { border-color: var(--accent); }
+.kal-tagkarte-plus {
+  flex: none;
+  margin-left: auto;
+  width: 50px; height: 50px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 26px;
+  line-height: 1;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .25);
+  cursor: pointer;
+}
+.kal-tagkarte-feld[hidden],
+.kal-tagkarte-plus[hidden] { display: none; }
+
 /* ---------- Termin-Formular ---------- */
 /* Steht im eigenen Dialog (kal-popup), am Handy ueber den ganzen Bildschirm.
-   Frueher klappte es in der Tagesliste auf - dort teilte es sich die Hoehe
-   mit Raster und Liste, und auf dem Handy war vom Formular kaum die Haelfte
-   zu sehen. */
+   Aufbau seit 24.09.2026 nach dem Samsung Kalender: Titel mit Farbpunkt,
+   Zeilen mit Symbol und feiner Linie darunter, Von -> Bis nebeneinander,
+   unten nur Abbrechen | Speichern. Frueher klappte das Formular in der
+   Tagesliste auf - dort teilte es sich die Hoehe mit Raster und Liste, und
+   auf dem Handy war davon kaum die Haelfte zu sehen. */
 .kal-form {
   display: flex;
   flex-direction: column;
-  gap: 9px;
 }
-/* Die Knopfzeile bleibt am unteren Rand stehen, auch wenn das Formular kurz
-   ist - am Handy sucht man "Anlegen" sonst irgendwo in der Mitte. */
 .kal-popup .kal-form { flex: 1; min-height: 0; }
-.kal-popup .kal-form-knoepfe { margin-top: auto; padding-top: 6px; }
+
+/* Alle Eingaben randlos: die Zeile mit ihrer Linie ist der Rahmen. 16px ist
+   kein Geschmack, sondern Pflicht - iOS Safari zoomt beim Antippen in jedes
+   Feld hinein, das kleiner gesetzt ist. */
 .kal-form input[type="text"],
-.kal-form input[type="date"],
-.kal-form input[type="time"],
 .kal-form textarea {
-  font: inherit;
-  font-size: 13.5px;
-  padding: 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--row);
-  color: var(--text);
-  outline: none;
+  flex: 1;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
 }
-.kal-form-titel { width: 100%; font-size: 14.5px; font-weight: 600; }
-/* 16px im Dialog ist kein Geschmack, sondern Pflicht: iOS Safari zoomt beim
-   Antippen in jedes Feld hinein, das kleiner gesetzt ist. */
-.kal-popup .kal-form input,
-.kal-popup .kal-form textarea { font-size: 16px; padding: 9px 10px; }
-.kal-form-schalter {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 13px; color: var(--text); cursor: pointer;
+.kal-form input::placeholder,
+.kal-form textarea::placeholder { color: var(--muted); }
+
+.kal-form-titelzeile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 2px 14px;
+  border-bottom: 1px solid var(--line);
 }
-.kal-form-zeile { display: flex; align-items: center; gap: 6px; }
-.kal-form-zeile input { flex: 1 1 0; }
-.kal-form-label { flex: none; width: 28px; font-size: 12px; color: var(--muted); }
-.kal-form-notiz { width: 100%; resize: vertical; }
+.kal-form input.kal-form-titel { font-size: 22px; font-weight: 600; padding: 4px 0; }
+/* Speichern ohne Titel: die Linie wird rot, statt dass der Knopf stumm bleibt. */
+.kal-form-titelzeile.fehlt { border-bottom-color: var(--red); }
+.kal-form-farbpunkt {
+  flex: none;
+  width: 26px; height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+/* Ohne bekannte Kalenderfarbe: ein gestrichelter Ring wie in der Palette. */
+.kal-form-farbpunkt.leer { background: transparent; border: 2px dashed var(--check-border); }
+.kal-form-farbpunkt:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 /* Farbwahl aus Googles Palette - eine eigene Skala waere im Google-Kalender
-   hinterher nicht wiederzuerkennen. */
-.kal-form-farben { display: flex; flex-wrap: wrap; gap: 6px; }
+   hinterher nicht wiederzuerkennen. Klappt unter dem Titel auf. */
+.kal-form-farben {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--line);
+}
 .kal-farbe {
-  width: 22px; height: 22px;
+  width: 30px; height: 30px;
   border-radius: 50%;
   border: 2px solid transparent;
   background: var(--muted);
   cursor: pointer;
   padding: 0;
 }
-.kal-farbe.gewaehlt { border-color: var(--text); }
-/* "Farbe des Kalenders": kein eigener Ton, sondern ein leerer Ring. */
-.kal-farbe-standard {
-  background: transparent;
-  border: 2px dashed var(--check-border);
-}
-.kal-farbe-standard.gewaehlt { border-color: var(--text); border-style: solid; }
+/* Doppelter Ring: die gewaehlte Farbe muss sich auch auf dunklem Grund und bei
+   dunklen Farben abheben. */
+.kal-farbe.gewaehlt { box-shadow: 0 0 0 2px var(--row), 0 0 0 4px var(--text); }
+/* "Farbe des Kalenders": kein eigener Ton, sondern ein Ring. */
+.kal-farbe-standard:not([style]) { background: transparent; border: 2px dashed var(--check-border); }
 
+/* Eine Zeile: Symbol links, Inhalt daneben, feine Linie darunter. 56 px hoch
+   wie in der Vorlage - und gut ueber dem Mass, ab dem ein Finger danebenlangt. */
+.kal-form-reihe {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+.kal-form-reihe-oben { align-items: flex-start; padding-top: 17px; padding-bottom: 14px; }
+.kal-form-symbol { flex: none; display: inline-flex; color: var(--muted); }
+.kal-form-reihe-text { flex: 1; min-width: 0; }
+.kal-form-notiz { resize: none; line-height: 1.4; }
+.kal-form-weiter { color: var(--muted); font-size: 22px; line-height: 1; }
+.kal-form-wdh:disabled { cursor: default; color: var(--muted); }
+@media (hover: hover) {
+  .kal-form-wdh:not(:disabled):hover { background: var(--hover); }
+}
+
+/* Schalter statt Haekchen (Ganztaegig), wie in der Vorlage. */
+.kal-schalter {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 46px; height: 28px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--check-border);
+  cursor: pointer;
+  transition: background .15s;
+}
+.kal-schalter::after {
+  content: "";
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+  transition: transform .15s;
+}
+.kal-schalter:checked { background: var(--accent); }
+.kal-schalter:checked::after { transform: translateX(18px); }
+.kal-schalter:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Von -> Bis nebeneinander: Datum oben, Uhrzeit darunter, der Pfeil
+   dazwischen. Beide Seiten gleich breit, damit der Pfeil mittig bleibt. */
+.kal-form-zeitraum {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+.kal-form-zeitpunkt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.kal-form-pfeil { color: var(--muted); font-size: 20px; }
+.kal-form-wahl {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 10px;
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .kal-form-wahl:hover { background: var(--hover); }
+}
+.kal-form-wahl-text { overflow: hidden; text-overflow: ellipsis; }
+.kal-form-datum { font-size: 16px; }
+.kal-form-uhr { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Das native Feld: mit der Maus unsichtbar und ohne Trefferflaeche (geoeffnet
+   wird per showPicker), am Finger unsichtbar UEBER dem Text - dort oeffnet nur
+   ein echter Tipp auf das Feld den Picker zuverlaessig (iOS). Dasselbe Muster
+   wie .date-field am ToDo. */
+.kal-form-wahl input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+@media (pointer: coarse) {
+  .kal-form-wahl input { pointer-events: auto; -webkit-appearance: none; appearance: none; }
+}
+.kal-form-wahl[hidden] { display: none; }
+
+/* Unten Abbrechen | Speichern ueber die ganze Breite, wie in der Vorlage.
+   sticky: bei langer Notiz scrollt der Dialog, die beiden Knoepfe bleiben. */
+.kal-form-fuss {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+  background: var(--row);
+}
+.kal-fuss-knopf {
+  flex: 1 1 0;
+  min-height: 50px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .kal-fuss-knopf:hover { background: var(--hover); }
+}
+.kal-fuss-knopf:disabled { opacity: .5; cursor: default; }
+
+/* ---------- Wiederholen-Seite ---------- */
+/* Eigene Seite im selben Dialog, mit "‹" zurueck - wie in der Vorlage. */
+.kal-wdh { display: flex; flex-direction: column; gap: 12px; }
+.kal-wdh-kopf { display: flex; align-items: center; gap: 4px; }
+.kal-wdh-kopf h3 { margin: 0; font-size: 21px; font-weight: 700; color: var(--accent); }
+.kal-wdh-zurueck {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 30px;
+  line-height: 1;
+  padding: 0 12px 4px 2px;
+  cursor: pointer;
+}
+.kal-wdh-satz { margin: 0 2px; color: var(--muted); font-size: 15px; line-height: 1.45; }
+.kal-wdh-gruppe {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 16px;
+  border-radius: 18px;
+  background: var(--bg);
+}
+.kal-wdh-zeile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  border-bottom: 1px solid var(--line);
+  font-size: 16px;
+  cursor: pointer;
+}
+.kal-wdh-zeile:last-child { border-bottom: 0; }
+.kal-wdh-zeile input[type="radio"] {
+  flex: none;
+  width: 22px; height: 22px;
+  margin: 0 6px 0 0;
+  accent-color: var(--accent);
+}
+.kal-wdh-zahl {
+  width: 2.6em;
+  padding: 2px 0;
+  border: 0;
+  border-bottom: 1.5px solid var(--muted);
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.kal-wdh-zahl::-webkit-inner-spin-button,
+.kal-wdh-zahl::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.kal-wdh-zahl:focus { outline: none; border-bottom-color: var(--accent); }
+.kal-wdh-ueberschrift { margin: 6px 0 8px 4px; font-size: 14px; font-weight: 700; color: var(--muted); }
+.kal-wdh-laufzeit[hidden] { display: none; }
+.kal-wdh-extra { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--muted); }
+.kal-wdh-extra[hidden] { display: none; }
+.kal-wdh-bis { margin-left: auto; font-size: 16px; color: var(--accent); }
+
+/* ---------- Rueckfrage ---------- */
+/* Serientermin: "welche Termine?", Loeschen: "wirklich?". Liegt ueber allem
+   anderen im Kalender. Die Knoepfe untereinander: die drei Wege bei einer
+   Serie sind zu lang fuer eine Reihe. */
+.kal-frage { z-index: 62; }
+.kal-popup-box.kal-frage-box { width: min(360px, 100%); gap: 8px; }
+.kal-frage-titel { margin: 0; font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+.kal-frage-text { margin: 0 0 6px; color: var(--muted); font-size: 14px; }
+.kal-frage-knoepfe { display: flex; flex-direction: column; gap: 8px; }
+.kal-frage-knoepfe .btn { justify-content: center; min-height: 46px; font-size: 15px; }
+
+/* Knopfreihe der Zwischenmaske (Bearbeiten, Schliessen, Loeschen). */
 .kal-form-knoepfe { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .kal-form-knoepfe .btn.gefahr { margin-left: auto; }
-/* Speichern, Abbrechen, Loeschen sind die Knöpfe, die man am Handy wirklich
-   trifft - mit .btn.klein waren sie 25 px hoch. 44 px ist das Mass, unter dem
-   ein Finger regelmaessig danebenlangt. Die Klasse .klein bleibt am Element,
-   nur Hoehe und Schrift werden hier zurueckgeholt; ein eigener Knopftyp waere
-   fuer drei Knöpfe zu viel. */
+/* Am Handy fuellt die Zwischenmaske den Bildschirm - die Knoepfe gehoeren
+   dann an den unteren Rand, nicht irgendwo in die Mitte. */
+.kal-popup .kal-form-knoepfe { margin-top: auto; padding-top: 6px; }
+/* Das sind die Knoepfe, die man am Handy wirklich trifft - mit .btn.klein
+   waren sie 25 px hoch. 44 px ist das Mass, unter dem ein Finger regelmaessig
+   danebenlangt. Die Klasse .klein bleibt am Element, nur Hoehe und Schrift
+   werden hier zurueckgeholt; ein eigener Knopftyp waere fuer drei Knoepfe zu
+   viel. */
 .kal-form-knoepfe .btn {
   min-height: 44px;
   padding: 6px 16px;

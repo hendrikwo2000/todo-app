@@ -22,8 +22,9 @@
    - Split (breites Fenster): der Kalender steht fest neben der Liste. Der
      body macht ihm per padding-right Platz, das Panel selbst bleibt
      position:fixed.
-   - Umschalt-Modus (Handy, schmales Fenster): der Kalender legt sich als
-     Panel ueber die Liste, mit abgedunkeltem Hintergrund.
+   - Umschalt-Modus (Handy, schmales Fenster): der Kalender ist eine eigene
+     Ansicht. Das Raster fuellt sie, ein Tag oeffnet sich als Karte darueber
+     (seit 24.09.2026, nach dem Samsung Kalender).
 
    Bedient wird beides ueber denselben Umschalter "Liste | Kalender" - in der
    Kopfzeile der App, und noch einmal im Kalender an genau derselben Stelle,
@@ -53,6 +54,16 @@ const kalTerminPopup = document.getElementById("kalTerminPopup");
 const kalTerminBox   = kalTerminPopup.querySelector(".kal-termin-popup-box");
 const kalDetailPopup = document.getElementById("kalDetailPopup");
 const kalDetailBox   = kalDetailPopup.querySelector(".kal-detail-popup-box");
+// Tages-Karte (nur am Handy, siehe oeffneTagKarte) und die Rueckfrage bei
+// Serienterminen und beim Loeschen (siehe frage).
+const kalTagPopup    = document.getElementById("kalTagPopup");
+const kalTagKarte    = kalTagPopup.querySelector(".kal-tagkarte");
+const kalTagKopf     = kalTagPopup.querySelector(".kal-tagkarte-kopf");
+const kalTagListe    = kalTagPopup.querySelector(".kal-tagkarte-liste");
+const kalTagFeld     = kalTagPopup.querySelector(".kal-tagkarte-feld");
+const kalTagPlus     = kalTagPopup.querySelector(".kal-tagkarte-plus");
+const kalFrage       = document.getElementById("kalFrage");
+const kalFrageBox    = kalFrage.querySelector(".kal-frage-box");
 
 const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const MONAT_FORMAT = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
@@ -114,6 +125,16 @@ function istSplit() {
   // kommt rechnerisch dieselbe Grenze heraus wie vorher.
   return eigen ? window.innerWidth >= eigen + BOARD_MINDEST
                : window.innerWidth >= SPLIT_AB;
+}
+
+/**
+ * Fuellt das Raster die ganze Ansicht? Am Rechner nur im Vollbild, am Handy
+ * immer (seit 24.09.2026): dort steht keine Tagesliste mehr neben dem Raster,
+ * ein Tag zeigt seinen Inhalt in der Tages-Karte. Die Zellen tragen dann ihre
+ * ToDos im Klartext statt als Punkte - wie bisher nur im Vollbild.
+ */
+function rasterVoll() {
+  return kalVollbild || !istSplit();
 }
 
 /**
@@ -202,10 +223,9 @@ let detailTermin = null;
 // Aenderung neu; ohne diesen Zwischenspeicher waere der Text dann weg.
 let anlegenText = "";
 let todoEingabeOffen = false;
-// Steht der Quellen-Umschalter offen? Bewusst NICHT gemerkt: er ist eine
-// Einstellung, die man selten anfasst, und zugeklappt gehoeren seine 37 px
-// dem Tagesbereich. Dass etwas abgewaehlt ist, sieht man am gefaerbten
-// Trichter im Kopf.
+// Steht das Quellen-Menue offen? Bewusst NICHT gemerkt: es ist eine
+// Einstellung, die man selten anfasst, und offen liegt es ueber dem Raster.
+// Dass etwas abgewaehlt ist, sieht man am gefaerbten Trichter im Kopf.
 let filterOffen = false;
 
 // Termin-Formular (eigener Dialog): offen ja/nein, welcher Termin (null =
@@ -216,7 +236,6 @@ let formularOffen = false;
 let formularTermin = null;   // das Termin-Objekt, null = neuer Termin
 let formularTag = null;      // ISO-Tag, auf den sich ein neuer Termin bezieht
 let formularFelder = null;
-let loeschFrage = false;
 
 // Schluessel der Kalenderwochen-Spalte im selben Umschalt-Vorrat wie die
 // Listen und Kalender - sie ist zwar keine Datenquelle, wird aber genauso
@@ -503,7 +522,8 @@ function termineNachTagen() {
 // sind - drei Reihen wuerden das Raster so weit aufblaehen, dass fuer die
 // Tagesliste darunter kaum Platz bliebe.
 //
-// Im Vollbild gilt der gemessene Platz der Zelle - abzueglich EINER Zeile.
+// Im Vollbild (und am Handy) gilt der gemessene Platz der Zelle - abzueglich
+// EINER Zeile.
 // Die bleibt der Rest-Anzeige vorbehalten ("+3"): ohne sie fraessen an einem
 // vollen Tag die Termine alle Zeilen auf, und die ToDos verschwaenden
 // stillschweigend - ein Tag saehe erledigt aus, obwohl noch etwas ansteht.
@@ -511,7 +531,7 @@ function termineNachTagen() {
 // einen zweiten Zeichendurchgang, zu wenige zeigten beim ersten Bild zu wenig.
 const MAX_SPUREN = 2;
 function maxSpuren() {
-  return kalVollbild ? Math.max(1, (vollbildPlaetze || 6) - 1) : MAX_SPUREN;
+  return rasterVoll() ? Math.max(1, (vollbildPlaetze || 6) - 1) : MAX_SPUREN;
 }
 
 /**
@@ -621,6 +641,7 @@ function zeichneKalender() {
   // der zeitlichen Sortierung - zwei verschiedene Fragen an dieselben Daten.
   zeichneRaster(tage, baueSpurenplan(), heute);
   zeichneTagesliste(tage, tageTermine, ueberfaellige, heute);
+  zeichneTagKarte(tage, tageTermine, ueberfaellige, heute);
   zeichneUnten();
   // Ein anderer Monat kann eine Rasterzeile mehr oder weniger haben - damit
   // aendert sich, wie weit die Aufteilung geklemmt werden muss.
@@ -631,7 +652,7 @@ function zeichneKalender() {
   // Umbruch selbst, ein eventueller zweiter Durchgang laeuft dadurch noch vor
   // dem Zeichnen (kein Aufblitzen) - und in einem Hintergrund-Tab, wo rAF gar
   // nicht feuert, bliebe die Messung sonst liegen.
-  if (kalVollbild) messeVollbild();
+  if (rasterVoll()) messeVollbild();
 
   // Laeuft nebenher und zeichnet bei neuen Daten selbst noch einmal; ist der
   // Zeitraum schon geladen (oder gar kein Google verknuepft), kostet der
@@ -660,9 +681,11 @@ let messLauf = false;
  * doch anders aussieht.
  */
 function messeVollbild() {
-  if (!kalVollbild || !kalOffen || messLauf) return;
+  if (!rasterVoll() || !kalOffen || messLauf) return;
   const zelle = kalRaster.querySelector(".kal-tag");
-  if (!zelle) return;
+  // Ohne Hoehe (das Raster ist ausgeblendet, weil Gewohnheiten oder Timer
+  // vorn stehen) gibt es nichts zu messen - es kaeme ein einziger Platz heraus.
+  if (!zelle || !zelle.clientHeight) return;
   const zahl = zelle.querySelector(".kal-zahl");
   // Zellenhoehe minus Tageszahl, Innenabstand oben und der 3px Fuss des
   // Balken-/ToDo-Stapels.
@@ -682,9 +705,12 @@ function setzeVollbild(an) {
   zeichneKalender();   // zeichneUnten() raeumt den unteren Teil mit weg
 }
 
-// Eine Pille je Quelle: ToDo-Listen zuerst, dann die Google-Kalender.
+// Eine Zeile je Quelle: ToDo-Listen zuerst, dann die Google-Kalender.
 // Erscheint erst ab zwei Quellen - bei einer Liste ohne Google gibt es nichts
 // zu filtern und das Panel bleibt so schlicht wie vorher.
+//
+// Seit 24.09.2026 ein Menue unter dem Trichter. Vorher schob sich eine
+// Pillenreihe zwischen Kopf und Wochentage und drueckte das Raster nach unten.
 function zeichneFilter() {
   const quellen = listen.map(b => ({
     schluessel: "liste:" + b.id, name: b.name, art: "liste",
@@ -696,7 +722,7 @@ function zeichneFilter() {
   }
   // Die Kalenderwoche steht am Ende: sie ist eine Anzeige-Einstellung, keine
   // Datenquelle - und sie ist immer da, auch ohne Google.
-  quellen.push({ schluessel: KW_QUELLE, name: "KW", art: "kw" });
+  quellen.push({ schluessel: KW_QUELLE, name: "Kalenderwochen", art: "kw" });
 
   // Bei nur einer Quelle gibt es nichts zu waehlen - dann faellt auch der
   // Trichter im Kopf weg.
@@ -715,25 +741,37 @@ function zeichneFilter() {
   if (!zeigen) return;
 
   for (const q of quellen) {
-    const pille = document.createElement("button");
-    pille.type = "button";
-    pille.className = "kal-pille kal-pille-" + q.art + (quelleAn(q.schluessel) ? "" : " aus");
-    pille.addEventListener("click", () => schalteQuelle(q.schluessel));
+    const an = quelleAn(q.schluessel);
+    const zeile = document.createElement("button");
+    zeile.type = "button";
+    zeile.className = "kal-filter-zeile" + (an ? "" : " aus");
+    zeile.setAttribute("role", "menuitemcheckbox");
+    zeile.setAttribute("aria-checked", String(an));
+    zeile.addEventListener("click", () => schalteQuelle(q.schluessel));
 
     // Dieselben zwei Formen wie im Raster: Punkt fuer eine ToDo-Liste,
-    // Balken fuer einen Google-Kalender. Die KW-Pille traegt keine Marke -
-    // sie schaltet keine Eintraege, sondern eine Spalte.
-    if (q.art !== "kw") {
-      const marke = document.createElement("span");
+    // Balken fuer einen Google-Kalender. Die KW-Zeile traegt keine Marke -
+    // sie schaltet keine Eintraege, sondern eine Spalte. Der leere Platzhalter
+    // haelt die Namen trotzdem auf einer Linie.
+    const marke = document.createElement("span");
+    if (q.art === "kw") marke.className = "kal-filter-leer";
+    else {
       marke.className = q.art === "gcal" ? "kal-balken kal-balken-marke" : "kal-punkt";
       if (q.art === "gcal" && q.farbe) marke.style.background = q.farbe;
-      pille.appendChild(marke);
     }
+    zeile.appendChild(marke);
 
     const name = document.createElement("span");
+    name.className = "kal-filter-name";
     name.textContent = q.name;
-    pille.appendChild(name);
-    kalFilter.appendChild(pille);
+    zeile.appendChild(name);
+
+    const haken = document.createElement("span");
+    haken.className = "kal-filter-haken";
+    haken.setAttribute("aria-hidden", "true");
+    haken.textContent = an ? "✓" : "";
+    zeile.appendChild(haken);
+    kalFilter.appendChild(zeile);
   }
 }
 
@@ -1141,11 +1179,11 @@ function baueTagesZelle(tag, spalte, ctx) {
   }
   zelle.appendChild(stapel);
 
-  // Im Vollbild stehen die ToDos im Klartext unter den Terminen - das ist der
-  // eigentliche Gewinn der grossen Ansicht. Wie viele hineinpassen, sagt die
+  // Im Vollbild und am Handy stehen die ToDos im Klartext unter den Terminen -
+  // das ist der eigentliche Gewinn der grossen Ansicht. Wie viele hineinpassen, sagt die
   // gemessene Zellenhoehe abzueglich der Balken, die diese WOCHE braucht (je
   // Woche, nicht je Tag - sonst staende jeder Tag auf anderer Hoehe).
-  if (kalVollbild && (todosDesTages.length || ueberzaehlig[iso])) {
+  if (rasterVoll() && (todosDesTages.length || ueberzaehlig[iso])) {
     const frei = Math.max(0, (vollbildPlaetze || 0) - (spurenJeWoche[wocheVon(tag)] || 0));
     // Termine, die schon im Raster keine Spur mehr bekommen haben, zaehlen in
     // dieselbe Restzahl - es geht um die Frage "was steht hier noch?", nicht
@@ -1190,8 +1228,12 @@ function baueTagesZelle(tag, spalte, ctx) {
   return zelle;
 }
 
-function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
-  kalTagesliste.innerHTML = "";
+// Schreibt den Inhalt eines Tages nach `ziel`: am Rechner in die Tagesliste
+// neben dem Raster, am Handy in die Tages-Karte (`karte`). Die Karte hat ihren
+// eigenen Kopf und unten Feld und Plus - Tagestitel und die ＋ an den
+// Abschnitten entfallen dort, sonst gaebe es jeden Weg zweimal.
+function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute, ziel = kalTagesliste, karte = false) {
+  ziel.innerHTML = "";
 
   let titel;
   let todosDesTages;
@@ -1208,7 +1250,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     todosDesTages = [];
   }
 
-  if (titel) {
+  if (titel && !karte) {
     const kopf = document.createElement("h3");
     kopf.className = "kal-liste-kopf";
     kopf.textContent = titel;
@@ -1218,7 +1260,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
       heuteChip.textContent = "heute";
       kopf.appendChild(heuteChip);
     }
-    kalTagesliste.appendChild(kopf);
+    ziel.appendChild(kopf);
   }
 
   // Ein gewaehlter Tag hat feste Abschnitte, jeder mit eigener Ueberschrift -
@@ -1238,12 +1280,12 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     // und die 41 px fehlten dem Tagesbereich. An anderen Tagen hat es nichts
     // zu suchen, dort ist es weder faellig noch entstanden.
     if (faelligHeute && ueberfaellige.length) {
-      kalTagesliste.appendChild(baueGruppenKopf(
+      ziel.appendChild(baueGruppenKopf(
         `Überfällig (${ueberfaellige.length})`, null, null, true, "⚠️"));
-      for (const t of ueberfaellige) kalTagesliste.appendChild(baueEintrag(t, true, true));
+      for (const t of ueberfaellige) ziel.appendChild(baueEintrag(t, true, true));
     }
 
-    kalTagesliste.appendChild(baueGruppenKopf("ToDos", aktiveListe
+    ziel.appendChild(baueGruppenKopf("ToDos", aktiveListe && !karte
       ? () => {
           todoEingabeOffen = true;
           zeichneKalender();
@@ -1252,11 +1294,11 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
           if (feld) feld.focus();
         } : null,
       "ToDo", faelligHeute && todosDesTages.length > 0, "☑️"));
-    if (todoEingabeOffen && aktiveListe) kalTagesliste.appendChild(baueAnlegeZeile(kalAuswahl));
+    if (!karte && todoEingabeOffen && aktiveListe) ziel.appendChild(baueAnlegeZeile(kalAuswahl));
     for (const t of todosDesTages) {
-      kalTagesliste.appendChild(baueEintrag(t, false, faelligHeute));
+      ziel.appendChild(baueEintrag(t, false, faelligHeute));
     }
-    if (!todosDesTages.length) kalTagesliste.appendChild(baueLeerZeile("Nichts fällig."));
+    if (!todosDesTages.length) ziel.appendChild(baueLeerZeile("Nichts fällig."));
 
     // Termine stehen unter den ToDos: der Streifen beantwortet zuerst "was
     // muss ich heute tun", und die Termin-Ueberschrift samt Leerzeile schob
@@ -1265,24 +1307,24 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     // Ganztaegige bekommen einen eigenen Abschnitt und stehen zuerst: sie
     // rahmen den Tag, statt in ihm zu liegen, und zwischen den Uhrzeiten
     // standen sie als zeitlose Zeilen ohne erkennbare Ordnung.
-    const terminePlus = googleZustand.verbunden && googleZustand.schreiben
+    const terminePlus = !karte && googleZustand.verbunden && googleZustand.schreiben
       ? () => oeffneTerminFormular(kalAuswahl, null) : null;
     const ganztags = termineDesTages.filter(e => e.termin.ganztags);
     const mitZeit  = termineDesTages.filter(e => !e.termin.ganztags);
 
     if (ganztags.length) {
-      kalTagesliste.appendChild(baueGruppenKopf("Ganztägig", terminePlus, "Termin", false, "📅"));
-      for (const e of ganztags) kalTagesliste.appendChild(baueTerminZeile(e.termin));
+      ziel.appendChild(baueGruppenKopf("Ganztägig", terminePlus, "Termin", false, "📅"));
+      for (const e of ganztags) ziel.appendChild(baueTerminZeile(e.termin));
     }
     // Das ＋ haengt am ERSTEN sichtbaren Termin-Abschnitt, damit es genau
     // einmal vorkommt und immer an derselben Stelle steht: oben bei den
     // Terminen. Stehen keine ganztaegigen da, wandert es hierher.
     if (mitZeit.length || !ganztags.length) {
-      kalTagesliste.appendChild(baueGruppenKopf("Termine",
+      ziel.appendChild(baueGruppenKopf("Termine",
         ganztags.length ? null : terminePlus, "Termin", false, "📅"));
-      for (const e of mitZeit) kalTagesliste.appendChild(baueTerminZeile(e.termin));
+      for (const e of mitZeit) ziel.appendChild(baueTerminZeile(e.termin));
       if (!mitZeit.length) {
-        kalTagesliste.appendChild(baueLeerZeile(googleZustand.verbunden
+        ziel.appendChild(baueLeerZeile(googleZustand.verbunden
           ? "Keine Termine." : "Kein Google-Kalender verbunden."));
       }
     }
@@ -1294,22 +1336,220 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute) {
     const hinweis = document.createElement("p");
     hinweis.className = "kal-leer kal-google-fehler";
     hinweis.textContent = "Google-Termine gerade nicht erreichbar.";
-    kalTagesliste.appendChild(hinweis);
+    ziel.appendChild(hinweis);
   }
 }
 
 /* ---------- Termin-Formular ---------- */
+/*
+ * Aufbau nach dem Samsung Kalender (seit 24.09.2026, Vorlage von Hendrik):
+ * Titel mit Farbpunkt, Ganztaegig als Schalter, Von -> Bis NEBENEINANDER,
+ * darunter je eine Zeile mit Symbol fuer Ort, Wiederholung und Notizen, unten
+ * nur Abbrechen und Speichern. Geloescht wird in der Zwischenmaske davor.
+ * Kalenderkonto, Erinnerung, Videokonferenz, Anhang und Teilnehmer aus der
+ * Vorlage sind bewusst nicht dabei ("brauche ich nicht").
+ */
 
 function zeitAus(iso) {
   const d = new Date(iso);
-  return isNaN(d) ? "09:00"
-    : `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return isNaN(d) ? "09:00" : uhrVon(d);
+}
+
+// Datum im Formular so, wie Samsung es zeigt: "Mi., 16. Sept.". Die nativen
+// Felder zeigten je nach Browser 16.09.2026 - und fuer zwei Zeitpunkte
+// nebeneinander ist das Jahr am Handy zu breit.
+const FORM_DATUM = new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "numeric", month: "short" });
+const BIS_DATUM  = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "numeric", year: "numeric" });
+const STUNDE = 60 * 60 * 1000;
+
+function datumAusIso(iso) {
+  const [j, m, t] = String(iso).split("-").map(Number);
+  return new Date(j, m - 1, t);
+}
+
+// Datum + Uhrzeit als Zeitpunkt in Ortszeit.
+function zeitpunkt(datum, zeit) {
+  const d = datumAusIso(datum);
+  const [h, min] = String(zeit || "00:00").split(":").map(Number);
+  d.setHours(h || 0, min || 0, 0, 0);
+  return d;
+}
+
+function uhrVon(d) {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function tagePlus(iso, n) {
+  const d = datumAusIso(iso);
+  d.setDate(d.getDate() + n);
+  return isoVonDate(d);
+}
+
+// Math.round, weil ein Tag mit Zeitumstellung 23 oder 25 Stunden hat.
+function tageZwischen(von, bis) {
+  return Math.round((datumAusIso(bis) - datumAusIso(von)) / 86400000);
+}
+
+/**
+ * Beginn aendern - das Ende rueckt sofort mit, die Dauer bleibt. Hendriks
+ * Wunsch: Beginn auf 9 Uhr, und das Ende steht gleich auf 10, nicht erst nach
+ * dem Speichern. (Der Server zog ein Ende vor dem Beginn schon immer gerade,
+ * nur sah man es im Formular nicht.)
+ */
+function setzeBeginn(f, datum, zeit) {
+  if (f.ganztags) {
+    const tage = Math.max(0, tageZwischen(f.startDatum, f.endDatum));
+    f.startDatum = datum;
+    f.endDatum = tagePlus(datum, tage);
+    return;
+  }
+  let dauer = zeitpunkt(f.endDatum, f.bisZeit) - zeitpunkt(f.startDatum, f.vonZeit);
+  if (!(dauer > 0)) dauer = STUNDE;
+  f.startDatum = datum;
+  f.vonZeit = zeit;
+  const ende = new Date(zeitpunkt(datum, zeit).getTime() + dauer);
+  f.endDatum = isoVonDate(ende);
+  f.bisZeit = uhrVon(ende);
+}
+
+// Ende aendern. Laege es danach nicht HINTER dem Beginn, wird daraus Beginn
+// plus eine Stunde - dieselbe Regel, die der Server beim Speichern anwendet.
+function setzeEnde(f, datum, zeit) {
+  f.endDatum = datum;
+  f.bisZeit = zeit;
+  if (f.ganztags) {
+    if (f.endDatum < f.startDatum) f.endDatum = f.startDatum;
+    return;
+  }
+  if (zeitpunkt(f.endDatum, f.bisZeit) <= zeitpunkt(f.startDatum, f.vonZeit)) {
+    const ende = new Date(zeitpunkt(f.startDatum, f.vonZeit).getTime() + STUNDE);
+    f.endDatum = isoVonDate(ende);
+    f.bisZeit = uhrVon(ende);
+  }
+}
+
+/* ---------- Wiederholung ---------- */
+// So, wie das Formular sie kennt:
+//   art        "keine" | "tag" | "woche" | "monat" | "jahr" | "fremd"
+//   intervall  jede n-te Woche usw.
+//   laufzeit   "immer" | "anzahl" | "bis"
+// "fremd" ist eine Regel aus Google, die sich hier nicht abbilden laesst
+// (etwa "jeden 3. Mittwoch"). Sie bleibt unangetastet, bis man etwas anderes
+// waehlt.
+const WDH_FREQ = { tag: "DAILY", woche: "WEEKLY", monat: "MONTHLY", jahr: "YEARLY" };
+const WDH_NAMEN = {
+  tag:   ["Jeden", "Tag", "Tage"],
+  woche: ["Jede", "Woche", "Wochen"],
+  monat: ["Jeden", "Monat", "Monate"],
+  jahr:  ["Jedes", "Jahr", "Jahre"],
+};
+
+function keineWiederholung() {
+  return { art: "keine", intervall: 1, laufzeit: "immer", anzahl: 10, bis: "" };
+}
+
+// UNTIL aus Google als Kalendertag: bei ganztaegigen steht dort ein Datum,
+// bei terminierten ein UTC-Zeitpunkt - der gehoert zum Tag in Ortszeit.
+function untilAlsIso(until) {
+  if (/^\d{8}$/.test(until)) return `${until.slice(0, 4)}-${until.slice(4, 6)}-${until.slice(6, 8)}`;
+  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(until);
+  return m ? isoVonDate(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]))) : "";
+}
+
+// RRULE -> Formular. BYDAY bei woechentlichen und BYMONTHDAY bei monatlichen
+// Serien sind erlaubt, solange es EIN Wert ist: so legt Googles eigene
+// Oberflaeche ganz gewoehnliche Serien an, und es sagt nichts anderes als der
+// Starttag.
+function regelAlsWiederholung(zeile) {
+  const w = keineWiederholung();
+  if (!zeile) return w;
+  const teile = {};
+  for (const stueck of zeile.replace(/^RRULE:/, "").split(";")) {
+    const [k, v] = stueck.split("=");
+    teile[k] = v;
+  }
+  const art = Object.keys(WDH_FREQ).find(a => WDH_FREQ[a] === teile.FREQ);
+  const bekannt = new Set(["FREQ", "INTERVAL", "COUNT", "UNTIL", "WKST"]);
+  if (art === "woche" && /^[A-Z]{2}$/.test(teile.BYDAY || "")) bekannt.add("BYDAY");
+  if (art === "monat" && /^\d{1,2}$/.test(teile.BYMONTHDAY || "")) bekannt.add("BYMONTHDAY");
+  if (!art || Object.keys(teile).some(k => !bekannt.has(k))) return { ...w, art: "fremd" };
+  w.art = art;
+  w.intervall = Math.min(99, Math.max(1, Number(teile.INTERVAL) || 1));
+  if (teile.COUNT) { w.laufzeit = "anzahl"; w.anzahl = Number(teile.COUNT) || 10; }
+  else if (teile.UNTIL) { w.laufzeit = "bis"; w.bis = untilAlsIso(teile.UNTIL); }
+  return w;
+}
+
+// Formular -> RRULE ("" = keine). UNTIL bei ganztaegigen als Datum, sonst als
+// UTC-Zeitpunkt am ENDE des gewaehlten Tages in Ortszeit: ein Termin am
+// letzten Tag zaehlt so noch mit, einer am Tag danach nicht mehr.
+function baueRegel(w, ganztags) {
+  if (!WDH_FREQ[w.art]) return "";
+  let zeile = "RRULE:FREQ=" + WDH_FREQ[w.art];
+  if (w.intervall > 1) zeile += ";INTERVAL=" + w.intervall;
+  if (w.laufzeit === "anzahl") zeile += ";COUNT=" + w.anzahl;
+  else if (w.laufzeit === "bis" && w.bis) {
+    if (ganztags) zeile += ";UNTIL=" + w.bis.replace(/-/g, "");
+    else {
+      const ende = zeitpunkt(w.bis, "23:59");
+      ende.setSeconds(59);
+      zeile += ";UNTIL=" + ende.toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
+    }
+  }
+  return zeile;
+}
+
+// Vorgabe fuer "Bis", passend zum Rhythmus: bei "jedes Jahr" waere ein Monat
+// spaeter nur ein einziger Termin.
+function standardBis(art, start) {
+  const monate = { tag: 1, woche: 3, monat: 12, jahr: 60 }[art] || 1;
+  const d = datumAusIso(start);
+  d.setMonth(d.getMonth() + monate);
+  return isoVonDate(d);
+}
+
+function wdhRhythmus(w) {
+  const [jede, eins, mehr] = WDH_NAMEN[w.art];
+  return w.intervall > 1 ? `alle ${w.intervall} ${mehr}` : `${jede.toLowerCase()} ${eins}`;
+}
+
+function wdhEnde(w) {
+  if (w.laufzeit === "anzahl") return `, ${w.anzahl}-mal`;
+  if (w.laufzeit === "bis" && w.bis) return `, bis ${BIS_DATUM.format(datumAusIso(w.bis))}`;
+  return "";
+}
+
+// Fuer die Zeile im Formular: "Alle 2 Wochen, 10-mal".
+function wiederholungText(w) {
+  if (w.art === "keine") return "Nicht wiederholen";
+  if (w.art === "fremd") return "Eigene Regel aus Google";
+  const text = wdhRhythmus(w) + wdhEnde(w);
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// Fuer den Satz oben auf der Wiederholen-Seite.
+function wiederholungSatz(w) {
+  if (w.art === "keine") return "Dieser Termin wird nicht wiederholt.";
+  if (w.art === "fremd") {
+    return "Diese Serie folgt einer Regel aus Google, die sich hier nicht einstellen lässt. "
+      + "Sie bleibt, wie sie ist – außer du wählst hier etwas anderes.";
+  }
+  return `Dieser Termin wird ${wdhRhythmus(w)} wiederholt${wdhEnde(w)}.`;
 }
 
 // Formularwerte aus einem bestehenden Termin - oder Vorgaben fuer einen neuen.
 function felderAusTermin(tag, t) {
+  // Was nicht von Google kommt, sondern nur zum Formular gehoert: welche Seite
+  // offen ist, ob die Palette aufgeklappt ist, und die Wiederholung.
+  // regelAlt ist die Regel beim Oeffnen ("" = keine). null heisst: der Termin
+  // gehoert zu einer Serie, deren Regel noch geladen wird (ladeRegel).
+  const zusatz = {
+    seite: "formular", farbWahl: false, speichert: false,
+    wiederholung: keineWiederholung(), wdhAngefasst: false,
+    regelAlt: t && t.serieId ? null : "", regelFehlt: false,
+  };
   if (!t) {
-    return { titel: "", ganztags: true, startDatum: tag, endDatum: tag,
+    return { ...zusatz, titel: "", ganztags: true, startDatum: tag, endDatum: tag,
              vonZeit: "09:00", bisZeit: "10:00", farbe: "", notiz: "", ort: "" };
   }
   if (t.ganztags) {
@@ -1322,13 +1562,14 @@ function felderAusTermin(tag, t) {
       ende = isoVonDate(d);
       if (ende < t.start) ende = t.start;
     }
-    return { titel: t.titel, ganztags: true, startDatum: t.start, endDatum: ende,
+    return { ...zusatz, titel: t.titel, ganztags: true, startDatum: t.start, endDatum: ende,
              vonZeit: "09:00", bisZeit: "10:00", farbe: t.colorId || "",
              notiz: t.beschreibung || "", ort: t.ort || "" };
   }
   const start = new Date(t.start);
   const ende = t.ende ? new Date(t.ende) : null;
   return {
+    ...zusatz,
     titel: t.titel, ganztags: false,
     startDatum: isNaN(start) ? tag : isoVonDate(start),
     endDatum: (ende && !isNaN(ende)) ? isoVonDate(ende) : (isNaN(start) ? tag : isoVonDate(start)),
@@ -1344,22 +1585,44 @@ function felderAusTermin(tag, t) {
  * Vorher klappte das Formular in der Tagesliste auf. Dort teilte es sich die
  * Hoehe mit Raster und Liste, und am Handy war die Haelfte davon nicht zu
  * sehen: man tippte den Titel, scrollte zu den Datumsfeldern, scrollte
- * weiter zum Anlegen-Knopf. Neu und Bearbeiten teilen sich denselben Dialog -
- * es ist dasselbe Formular, nur mit anderer Ueberschrift.
+ * weiter zum Anlegen-Knopf. Neu und Bearbeiten teilen sich denselben Dialog.
  */
 function oeffneTerminFormular(tag, termin) {
   formularOffen = true;
   formularTermin = termin || null;
   formularTag = tag;
   formularFelder = felderAusTermin(tag, termin);
-  loeschFrage = false;
   todoEingabeOffen = false;
   zeichneKalender();
   zeichneTerminPopup();
+  if (termin && termin.serieId) ladeRegel(formularFelder, termin.serieId);
   const feld = kalTerminBox.querySelector(".kal-form-titel");
   // Nur am Rechner von selbst ins Feld springen: am Handy schoebe die
   // Tastatur den halben Dialog aus dem Bild, bevor man ihn gesehen hat.
   if (feld && !("ontouchstart" in window)) feld.focus();
+}
+
+// Die Regel einer Serie holen. Google liefert sie bei den aufgeloesten
+// Einzelterminen nicht mit - nur der Stammtermin kennt sie.
+async function ladeRegel(f, serieId) {
+  let regel = null;
+  try {
+    const antwort = await fetch("/api/google/termin?serie=" + encodeURIComponent(serieId));
+    if (antwort.ok) regel = (await antwort.json()).regel || "";
+  } catch (e) { /* bleibt null */ }
+  // Inzwischen geschlossen oder ein anderer Termin offen: nichts mehr tun.
+  if (formularFelder !== f) return;
+  if (regel === null) {
+    // Ohne Regel bleibt die Wiederholung gesperrt - gespeichert wird dann
+    // ohne sie, also unveraendert.
+    f.regelFehlt = true;
+  } else {
+    f.regelAlt = regel;
+    f.wiederholung = regelAlsWiederholung(regel);
+  }
+  // Nur die eine Zeile nachziehen: wer gerade den Titel tippt, soll dabei
+  // nicht den Cursor verlieren.
+  aktualisiereWdhZeile();
 }
 
 function schliesseTerminFormular() {
@@ -1368,7 +1631,6 @@ function schliesseTerminFormular() {
   formularTermin = null;
   formularTag = null;
   formularFelder = null;
-  loeschFrage = false;
   zeichneTerminPopup();
   zeichneKalender();
 }
@@ -1380,20 +1642,105 @@ function zeichneTerminPopup() {
   kalTerminPopup.hidden = !formularOffen;
   kalTerminBox.innerHTML = "";
   if (!formularOffen) return;
+  const f = formularFelder;
+  // Eine sichtbare Ueberschrift gibt es nicht mehr (Samsung hat keine) - der
+  // Name des Dialogs steht fuer Screenreader trotzdem da.
+  kalTerminBox.setAttribute("aria-label", formularTermin ? "Termin bearbeiten" : "Neuer Termin");
+  kalTerminBox.appendChild(f.seite === "wiederholung"
+    ? baueWiederholungSeite(f)
+    : baueTerminFormular(formularTag, formularTermin));
+  // Erst jetzt hat das Notizfeld eine Hoehe, an der es wachsen kann.
+  const notiz = kalTerminBox.querySelector(".kal-form-notiz");
+  if (notiz) passeNotizHoeheAn(notiz);
+}
 
-  const kopf = document.createElement("p");
-  kopf.className = "kal-popup-kopf";
-  kopf.appendChild(document.createTextNode(formularTermin ? "Termin bearbeiten" : "Neuer Termin"));
-  const zu = document.createElement("button");
-  zu.type = "button";
-  zu.className = "kal-schliessen";
-  zu.setAttribute("aria-label", "Schließen");
-  zu.textContent = "✕";
-  zu.addEventListener("click", schliesseTerminFormular);
-  kopf.appendChild(zu);
-  kalTerminBox.appendChild(kopf);
+// Linien-Symbole wie in der Vorlage. Feste Zeichenketten, kein fremder Text -
+// deshalb darf hier innerHTML stehen.
+const FORM_SYMBOLE = {
+  uhr:   '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  ort:   '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.3"/>',
+  wdh:   '<path d="M4.5 11V9.5A3.5 3.5 0 0 1 8 6h11.5l-3-3M19.5 13v1.5a3.5 3.5 0 0 1-3.5 3.5H4.5l3 3"/>',
+  notiz: '<rect x="5.5" y="3.5" width="13" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/>',
+};
 
-  kalTerminBox.appendChild(baueTerminFormular(formularTag, formularTermin));
+function formSymbol(name) {
+  const span = document.createElement("span");
+  span.className = "kal-form-symbol";
+  span.setAttribute("aria-hidden", "true");
+  span.innerHTML = `<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" `
+    + `stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${FORM_SYMBOLE[name]}</svg>`;
+  return span;
+}
+
+/**
+ * Datum oder Uhrzeit als grosser Text, das native Feld liegt darueber.
+ * Am Finger faengt es den Tipp selbst ab (unsichtbar, volle Flaeche) - nur so
+ * oeffnet iOS seinen Picker zuverlaessig. Mit der Maus liegt es ohne
+ * Trefferflaeche da und wird per showPicker geoeffnet; ein unsichtbares
+ * Datumsfeld naehme einen Mausklick sonst als Klick in ein Segment, und es
+ * passierte scheinbar nichts. Dasselbe Muster wie .date-field am ToDo.
+ *
+ * `teil` markiert die vier Felder des Zeitraums: die zieht
+ * aktualisiereZeitraum() an Ort und Stelle nach, statt den Dialog neu zu
+ * bauen - am Rechner schloesse ein Neubau den Uhrzeit-Picker, sobald die
+ * Stunde gewaehlt ist, und die Minute bliebe unerreichbar.
+ */
+function baueWahlFeld(typ, wert, text, beiAenderung, klasse, name, teil) {
+  const feld = document.createElement("label");
+  feld.className = "kal-form-wahl " + klasse;
+  if (teil) feld.dataset.teil = teil;
+  const anzeige = document.createElement("span");
+  anzeige.className = "kal-form-wahl-text";
+  anzeige.textContent = text;
+  const eingabe = document.createElement("input");
+  eingabe.type = typ;
+  eingabe.value = wert;
+  // Ohne required bieten manche Picker "Loeschen" an - ein Termin ohne Datum
+  // ist aber keiner.
+  eingabe.required = true;
+  eingabe.setAttribute("aria-label", name);
+  eingabe.addEventListener("change", () => { if (eingabe.value) beiAenderung(eingabe.value); });
+  feld.addEventListener("click", e => {
+    if (e.target === eingabe) return;
+    e.preventDefault();
+    openDatePicker(eingabe);
+  });
+  feld.append(anzeige, eingabe);
+  return feld;
+}
+
+function aktualisiereZeitraum() {
+  const f = formularFelder;
+  if (!f) return;
+  const werte = {
+    "start-datum": [f.startDatum, FORM_DATUM.format(datumAusIso(f.startDatum))],
+    "start-uhr":   [f.vonZeit, f.vonZeit],
+    "ende-datum":  [f.endDatum, FORM_DATUM.format(datumAusIso(f.endDatum))],
+    "ende-uhr":    [f.bisZeit, f.bisZeit],
+  };
+  for (const feld of kalTerminBox.querySelectorAll(".kal-form-wahl[data-teil]")) {
+    const [wert, text] = werte[feld.dataset.teil];
+    feld.querySelector(".kal-form-wahl-text").textContent = text;
+    const eingabe = feld.querySelector("input");
+    if (eingabe.value !== wert) eingabe.value = wert;
+  }
+}
+
+function aktualisiereWdhZeile() {
+  const f = formularFelder;
+  const knopf = kalTerminBox.querySelector(".kal-form-wdh");
+  if (!f || !knopf) return;
+  const laedt = f.regelAlt === null;
+  knopf.disabled = laedt;
+  knopf.querySelector(".kal-form-wdh-text").textContent = laedt
+    ? (f.regelFehlt ? "Serientermin" : "Wird geladen …")
+    : wiederholungText(f.wiederholung);
+}
+
+// Farbe des Hauptkalenders - die gilt, solange der Termin keine eigene hat.
+function hauptkalenderFarbe() {
+  const k = googleZustand.kalender.find(x => x.primaer) || googleZustand.kalender[0];
+  return farbWert(k && k.farbe);
 }
 
 function baueTerminFormular(tag, termin) {
@@ -1401,129 +1748,336 @@ function baueTerminFormular(tag, termin) {
   const box = document.createElement("div");
   box.className = "kal-form";
 
+  // --- Titel mit Farbpunkt ---
+  const titelZeile = document.createElement("div");
+  titelZeile.className = "kal-form-titelzeile";
   const titel = document.createElement("input");
   titel.type = "text";
   titel.className = "kal-form-titel";
-  titel.placeholder = "Titel des Termins";
+  titel.placeholder = "Titel";
+  titel.setAttribute("aria-label", "Titel des Termins");
   titel.value = f.titel;
-  titel.addEventListener("input", () => { f.titel = titel.value; });
-  box.appendChild(titel);
+  titel.addEventListener("input", () => {
+    f.titel = titel.value;
+    titelZeile.classList.remove("fehlt");
+  });
+  titelZeile.appendChild(titel);
 
-  // Ganztaegig blendet die Uhrzeitfelder weg - deshalb neu zeichnen.
-  const schalter = document.createElement("label");
-  schalter.className = "kal-form-schalter";
-  const haken = document.createElement("input");
-  haken.type = "checkbox";
-  haken.checked = f.ganztags;
-  haken.addEventListener("change", () => { f.ganztags = haken.checked; zeichneTerminPopup(); });
-  schalter.appendChild(haken);
-  schalter.appendChild(document.createTextNode(" Ganztägig"));
-  box.appendChild(schalter);
+  // Die Farbe als Punkt neben dem Titel, wie bei Samsung. Vorher stand die
+  // ganze Palette als Reihe mitten im Formular, auch wenn man sie nie anfasst.
+  const punkt = document.createElement("button");
+  punkt.type = "button";
+  punkt.className = "kal-form-farbpunkt";
+  const hex = f.farbe ? farbWert((googleZustand.palette || {})[f.farbe]) : hauptkalenderFarbe();
+  if (hex) punkt.style.background = hex;
+  else punkt.classList.add("leer");
+  punkt.title = "Farbe wählen";
+  punkt.setAttribute("aria-label", "Farbe wählen");
+  punkt.setAttribute("aria-expanded", String(f.farbWahl));
+  punkt.addEventListener("click", () => { f.farbWahl = !f.farbWahl; zeichneTerminPopup(); });
+  titelZeile.appendChild(punkt);
+  box.appendChild(titelZeile);
 
-  const datumZeile = (beschriftung, datumsWert, beimDatum, zeitWert, beimZeit) => {
-    const zeile = document.createElement("div");
-    zeile.className = "kal-form-zeile";
-    const label = document.createElement("span");
-    label.className = "kal-form-label";
-    label.textContent = beschriftung;
-    zeile.appendChild(label);
-    const d = document.createElement("input");
-    d.type = "date";
-    d.value = datumsWert;
-    d.addEventListener("change", () => beimDatum(d.value));
-    zeile.appendChild(d);
-    if (!f.ganztags) {
-      const z = document.createElement("input");
-      z.type = "time";
-      z.value = zeitWert;
-      z.addEventListener("change", () => beimZeit(z.value));
-      zeile.appendChild(z);
+  // Googles eigene Palette - eine eigene Farbskala waere im Google-Kalender
+  // hinterher nicht wiederzuerkennen. Mit der Wahl klappt sie wieder zu.
+  if (f.farbWahl) {
+    const farben = document.createElement("div");
+    farben.className = "kal-form-farben";
+    const knopfFarbe = (id, farbe, name) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "kal-farbe" + (String(f.farbe) === String(id) ? " gewaehlt" : "") + (id ? "" : " kal-farbe-standard");
+      b.title = name;
+      b.setAttribute("aria-label", name);
+      if (farbe) b.style.background = farbe;
+      b.addEventListener("click", () => { f.farbe = id; f.farbWahl = false; zeichneTerminPopup(); });
+      return b;
+    };
+    farben.appendChild(knopfFarbe("", hauptkalenderFarbe(), "Farbe des Kalenders"));
+    for (const [id, wert] of Object.entries(googleZustand.palette || {})) {
+      farben.appendChild(knopfFarbe(id, farbWert(wert), "Farbe " + id));
     }
-    return zeile;
-  };
-  box.appendChild(datumZeile("Von", f.startDatum, v => {
-    f.startDatum = v;
-    if (f.endDatum < v) f.endDatum = v;   // Ende zieht mit, statt ungueltig zu werden
-  }, f.vonZeit, v => { f.vonZeit = v; }));
-  box.appendChild(datumZeile("Bis", f.endDatum, v => { f.endDatum = v; }, f.bisZeit, v => { f.bisZeit = v; }));
-
-  // Farbauswahl aus Googles eigener Palette - eine eigene Farbskala waere im
-  // Google-Kalender hinterher nicht wiederzuerkennen.
-  const farben = document.createElement("div");
-  farben.className = "kal-form-farben";
-  const knopfFarbe = (id, hex, name) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "kal-farbe" + (String(f.farbe) === String(id) ? " gewaehlt" : "") + (id ? "" : " kal-farbe-standard");
-    b.title = name;
-    if (hex) b.style.background = hex;
-    b.addEventListener("click", () => { f.farbe = id; zeichneTerminPopup(); });
-    return b;
-  };
-  farben.appendChild(knopfFarbe("", null, "Farbe des Kalenders"));
-  for (const [id, hex] of Object.entries(googleZustand.palette || {})) {
-    farben.appendChild(knopfFarbe(id, farbWert(hex), "Farbe " + id));
+    box.appendChild(farben);
   }
-  box.appendChild(farben);
 
-  const notiz = document.createElement("textarea");
-  notiz.className = "kal-form-notiz";
-  notiz.rows = 2;
-  notiz.placeholder = "Notiz (optional)";
-  notiz.value = f.notiz;
-  notiz.addEventListener("input", () => { f.notiz = notiz.value; });
-  box.appendChild(notiz);
+  // --- Ganztaegig ---
+  const ganz = document.createElement("label");
+  ganz.className = "kal-form-reihe";
+  const ganzText = document.createElement("span");
+  ganzText.className = "kal-form-reihe-text";
+  ganzText.textContent = "Ganztägig";
+  const schalter = document.createElement("input");
+  schalter.type = "checkbox";
+  schalter.className = "kal-schalter";
+  schalter.setAttribute("role", "switch");
+  schalter.checked = f.ganztags;
+  // Hier darf neu gebaut werden: die Uhrzeitfelder kommen oder gehen.
+  schalter.addEventListener("change", () => { f.ganztags = schalter.checked; zeichneTerminPopup(); });
+  ganz.append(formSymbol("uhr"), ganzText, schalter);
+  box.appendChild(ganz);
 
-  // Frueher stand hier nur ein vorhandener Ort als Text. Google nimmt das Feld
-  // beim Schreiben genauso entgegen wie die Notiz - es gab keinen Grund, es
-  // nicht bearbeitbar zu machen.
-  const ortZeile = document.createElement("div");
-  ortZeile.className = "kal-form-zeile";
-  const ortLabel = document.createElement("span");
-  ortLabel.className = "kal-form-label";
-  ortLabel.textContent = "📍";
+  // --- Von -> Bis nebeneinander ---
+  const zeitraum = document.createElement("div");
+  zeitraum.className = "kal-form-zeitraum";
+  const seite = (datum, zeit, beiDatum, beiZeit, wer, teil) => {
+    const block = document.createElement("div");
+    block.className = "kal-form-zeitpunkt";
+    block.appendChild(baueWahlFeld("date", datum, FORM_DATUM.format(datumAusIso(datum)),
+      beiDatum, "kal-form-datum", wer + " – Datum", teil + "-datum"));
+    if (!f.ganztags) {
+      block.appendChild(baueWahlFeld("time", zeit, zeit, beiZeit, "kal-form-uhr",
+        wer + " – Uhrzeit", teil + "-uhr"));
+    }
+    return block;
+  };
+  const pfeil = document.createElement("span");
+  pfeil.className = "kal-form-pfeil";
+  pfeil.setAttribute("aria-hidden", "true");
+  pfeil.textContent = "→";
+  zeitraum.append(
+    seite(f.startDatum, f.vonZeit,
+      v => { setzeBeginn(f, v, f.vonZeit); aktualisiereZeitraum(); },
+      v => { setzeBeginn(f, f.startDatum, v); aktualisiereZeitraum(); }, "Beginn", "start"),
+    pfeil,
+    seite(f.endDatum, f.bisZeit,
+      v => { setzeEnde(f, v, f.bisZeit); aktualisiereZeitraum(); },
+      v => { setzeEnde(f, f.endDatum, v); aktualisiereZeitraum(); }, "Ende", "ende"));
+  box.appendChild(zeitraum);
+
+  // --- Ort ---
+  const ort = document.createElement("label");
+  ort.className = "kal-form-reihe";
   const ortFeld = document.createElement("input");
   ortFeld.type = "text";
-  ortFeld.placeholder = "Ort (optional)";
-  ortFeld.value = f.ort;
+  ortFeld.className = "kal-form-eingabe";
+  ortFeld.placeholder = "Ort";
   ortFeld.setAttribute("aria-label", "Ort");
+  ortFeld.value = f.ort;
   ortFeld.addEventListener("input", () => { f.ort = ortFeld.value; });
-  ortZeile.append(ortLabel, ortFeld);
-  box.appendChild(ortZeile);
+  ort.append(formSymbol("ort"), ortFeld);
+  box.appendChild(ort);
 
-  const knoepfe = document.createElement("div");
-  knoepfe.className = "kal-form-knoepfe";
+  // --- Wiederholung: fuehrt auf die eigene Seite ---
+  const wdh = document.createElement("button");
+  wdh.type = "button";
+  wdh.className = "kal-form-reihe kal-form-wdh";
+  const wdhText = document.createElement("span");
+  wdhText.className = "kal-form-reihe-text kal-form-wdh-text";
+  const weiter = document.createElement("span");
+  weiter.className = "kal-form-weiter";
+  weiter.setAttribute("aria-hidden", "true");
+  weiter.textContent = "›";
+  wdh.append(formSymbol("wdh"), wdhText, weiter);
+  wdh.addEventListener("click", () => { f.seite = "wiederholung"; zeichneTerminPopup(); });
+  box.appendChild(wdh);
 
-  const speichern = document.createElement("button");
-  speichern.type = "button";
-  speichern.className = "btn klein primary";
-  speichern.textContent = termin ? "Speichern" : "Anlegen";
-  speichern.addEventListener("click", () => speichereTermin(termin));
-  knoepfe.appendChild(speichern);
+  // --- Notizen ---
+  const notizReihe = document.createElement("label");
+  notizReihe.className = "kal-form-reihe kal-form-reihe-oben";
+  const notiz = document.createElement("textarea");
+  notiz.className = "kal-form-eingabe kal-form-notiz";
+  notiz.rows = 1;
+  notiz.placeholder = "Notizen";
+  notiz.setAttribute("aria-label", "Notizen");
+  notiz.value = f.notiz;
+  notiz.addEventListener("input", () => { f.notiz = notiz.value; passeNotizHoeheAn(notiz); });
+  notizReihe.append(formSymbol("notiz"), notiz);
+  box.appendChild(notizReihe);
 
+  // --- Unten: Abbrechen | Speichern, wie in der Vorlage ---
+  const fuss = document.createElement("div");
+  fuss.className = "kal-form-fuss";
   const abbrechen = document.createElement("button");
   abbrechen.type = "button";
-  abbrechen.className = "btn klein";
+  abbrechen.className = "kal-fuss-knopf";
   abbrechen.textContent = "Abbrechen";
   abbrechen.addEventListener("click", schliesseTerminFormular);
-  knoepfe.appendChild(abbrechen);
+  const speichern = document.createElement("button");
+  speichern.type = "button";
+  speichern.className = "kal-fuss-knopf primaer";
+  speichern.textContent = "Speichern";
+  speichern.disabled = f.speichert;
+  speichern.addEventListener("click", () => speichereTermin(termin));
+  fuss.append(abbrechen, speichern);
+  box.appendChild(fuss);
 
-  if (termin) {
-    // Zwei Stufen: Loeschen bei Google ist endgueltig, und der Knopf sitzt
-    // direkt neben "Speichern".
-    const loeschen = document.createElement("button");
-    loeschen.type = "button";
-    loeschen.className = "btn klein gefahr";
-    loeschen.textContent = loeschFrage ? "Wirklich löschen?" : "Löschen";
-    loeschen.addEventListener("click", () => {
-      if (!loeschFrage) { loeschFrage = true; zeichneTerminPopup(); return; }
-      loescheTerminBeiGoogle(termin);
-    });
-    knoepfe.appendChild(loeschen);
-  }
-
-  box.appendChild(knoepfe);
+  // Die Zeile steht schon im Kasten, aber noch nicht im Dialog - deshalb den
+  // Text hier direkt setzen statt ueber aktualisiereWdhZeile().
+  const laedt = f.regelAlt === null;
+  wdh.disabled = laedt;
+  wdhText.textContent = laedt ? (f.regelFehlt ? "Serientermin" : "Wird geladen …") : wiederholungText(f.wiederholung);
   return box;
+}
+
+function zurueckZumFormular() {
+  if (!formularFelder) return;
+  formularFelder.seite = "formular";
+  zeichneTerminPopup();
+}
+
+/**
+ * Die Wiederholen-Seite, nach der Vorlage: ein Satz, was gerade gilt, darunter
+ * die Rhythmen mit Zahl und - sobald sich etwas wiederholt - die Laufzeit.
+ *
+ * Diese Seite baut sich NICHT neu, solange sie offen ist: jede Aenderung zieht
+ * nur Satz, Worte und Sichtbarkeit an Ort und Stelle nach. Sonst verloere eine
+ * Zahl beim Tippen nach jeder Ziffer den Fokus.
+ */
+function baueWiederholungSeite(f) {
+  const w = f.wiederholung;
+  const seite = document.createElement("div");
+  seite.className = "kal-wdh";
+
+  const kopf = document.createElement("div");
+  kopf.className = "kal-wdh-kopf";
+  const zurueck = document.createElement("button");
+  zurueck.type = "button";
+  zurueck.className = "kal-wdh-zurueck";
+  zurueck.setAttribute("aria-label", "Zurück zum Termin");
+  zurueck.textContent = "‹";
+  zurueck.addEventListener("click", zurueckZumFormular);
+  const ueberschrift = document.createElement("h3");
+  ueberschrift.textContent = "Wiederholen";
+  kopf.append(zurueck, ueberschrift);
+  seite.appendChild(kopf);
+
+  const satz = document.createElement("p");
+  satz.className = "kal-wdh-satz";
+  seite.appendChild(satz);
+
+  const laufzeit = document.createElement("div");
+  laufzeit.className = "kal-wdh-laufzeit";
+
+  const nachziehen = () => {
+    satz.textContent = wiederholungSatz(w);
+    laufzeit.hidden = !WDH_FREQ[w.art];
+  };
+  const angefasst = () => { f.wdhAngefasst = true; nachziehen(); };
+
+  const radio = (name, an, beiWahl) => {
+    const r = document.createElement("input");
+    r.type = "radio";
+    r.name = name;
+    r.checked = an;
+    r.addEventListener("change", () => { if (r.checked) beiWahl(); });
+    return r;
+  };
+  const zeile = () => {
+    const z = document.createElement("label");
+    z.className = "kal-wdh-zeile";
+    return z;
+  };
+  const zahlFeld = (wert, max) => {
+    const z = document.createElement("input");
+    z.type = "number";
+    z.className = "kal-wdh-zahl";
+    z.inputMode = "numeric";
+    z.min = "1";
+    z.max = String(max);
+    z.value = String(wert);
+    return z;
+  };
+  const ganzeZahl = (roh, max) => Math.min(max, Math.max(1, Math.round(Number(roh)) || 1));
+
+  // --- Rhythmus ---
+  const gruppe = document.createElement("div");
+  gruppe.className = "kal-wdh-gruppe";
+  const keine = zeile();
+  keine.append(radio("kal-wdh-art", w.art === "keine", () => { w.art = "keine"; angefasst(); }),
+               document.createTextNode("Nicht wiederholen"));
+  gruppe.appendChild(keine);
+
+  for (const art of ["tag", "woche", "monat", "jahr"]) {
+    const [jede, eins, mehr] = WDH_NAMEN[art];
+    const z = zeile();
+    const vor = document.createElement("span");
+    const nach = document.createElement("span");
+    const zahl = zahlFeld(w.art === art ? w.intervall : 1, 99);
+    zahl.setAttribute("aria-label", `Wie oft: ${mehr}`);
+    // "Jeden 1 Tag" liest sich schief - ab 2 heisst es "Alle 2 Tage".
+    const beschrifte = n => { vor.textContent = n > 1 ? "Alle" : jede; nach.textContent = n > 1 ? mehr : eins; };
+    beschrifte(Number(zahl.value));
+    const knopf = radio("kal-wdh-art", w.art === art, () => {
+      w.art = art;
+      w.intervall = ganzeZahl(zahl.value, 99);
+      angefasst();
+    });
+    // Ein Tipp in die Zahl waehlt die Zeile gleich mit - wer "3" tippt, meint
+    // diesen Rhythmus.
+    const nimm = () => {
+      if (!knopf.checked) knopf.checked = true;
+      w.art = art;
+      w.intervall = ganzeZahl(zahl.value, 99);
+      angefasst();
+    };
+    zahl.addEventListener("focus", nimm);
+    zahl.addEventListener("input", () => {
+      beschrifte(ganzeZahl(zahl.value, 99));
+      if (zahl.value) nimm();   // leer waehrend des Tippens: noch nichts uebernehmen
+    });
+    zahl.addEventListener("change", () => { zahl.value = String(ganzeZahl(zahl.value, 99)); nimm(); });
+    z.append(knopf, vor, zahl, nach);
+    gruppe.appendChild(z);
+  }
+  seite.appendChild(gruppe);
+
+  // --- Laufzeit ---
+  const titel = document.createElement("p");
+  titel.className = "kal-wdh-ueberschrift";
+  titel.textContent = "Laufzeit";
+  laufzeit.appendChild(titel);
+  const gruppe2 = document.createElement("div");
+  gruppe2.className = "kal-wdh-gruppe";
+
+  const anzahlExtra = document.createElement("span");
+  anzahlExtra.className = "kal-wdh-extra";
+  const anzahl = zahlFeld(w.anzahl, 999);
+  anzahl.setAttribute("aria-label", "Anzahl der Termine");
+  anzahl.addEventListener("input", () => {
+    if (!anzahl.value) return;
+    w.anzahl = ganzeZahl(anzahl.value, 999);
+    angefasst();
+  });
+  anzahl.addEventListener("change", () => { anzahl.value = String(ganzeZahl(anzahl.value, 999)); w.anzahl = Number(anzahl.value); angefasst(); });
+  anzahlExtra.append(anzahl, document.createTextNode("Termine"));
+
+  const bisFeld = baueWahlFeld("date", w.bis || f.startDatum,
+    w.bis ? BIS_DATUM.format(datumAusIso(w.bis)) : "", v => {
+      w.bis = v < f.startDatum ? f.startDatum : v;
+      bisFeld.querySelector(".kal-form-wahl-text").textContent = BIS_DATUM.format(datumAusIso(w.bis));
+      bisFeld.querySelector("input").value = w.bis;
+      angefasst();
+    }, "kal-wdh-bis", "Wiederholen bis");
+  bisFeld.querySelector("input").min = f.startDatum;
+
+  const zeigeExtras = () => {
+    anzahlExtra.hidden = w.laufzeit !== "anzahl";
+    bisFeld.hidden = w.laufzeit !== "bis";
+  };
+  const laufzeitWahl = (wert, text, extra) => {
+    const z = zeile();
+    z.append(radio("kal-wdh-laufzeit", w.laufzeit === wert, () => {
+      w.laufzeit = wert;
+      if (wert === "bis" && !w.bis) {
+        w.bis = standardBis(w.art, f.startDatum);
+        bisFeld.querySelector(".kal-form-wahl-text").textContent = BIS_DATUM.format(datumAusIso(w.bis));
+        bisFeld.querySelector("input").value = w.bis;
+      }
+      zeigeExtras();
+      angefasst();
+    }), document.createTextNode(text));
+    if (extra) z.appendChild(extra);
+    gruppe2.appendChild(z);
+  };
+  laufzeitWahl("immer", "Für immer");
+  laufzeitWahl("anzahl", "Bestimmte Anzahl", anzahlExtra);
+  laufzeitWahl("bis", "Bis", bisFeld);
+  zeigeExtras();
+  laufzeit.appendChild(gruppe2);
+  seite.appendChild(laufzeit);
+
+  nachziehen();
+  return seite;
 }
 
 async function terminAnfrage(methode, rumpf) {
@@ -1546,30 +2100,145 @@ async function terminAnfrage(methode, rumpf) {
 
 async function speichereTermin(termin) {
   const f = formularFelder;
-  if (!f || !f.titel.trim()) return;
+  if (!f || f.speichert) return;
+  if (!f.titel.trim()) {
+    // Vorher passierte hier einfach nichts - man tippte auf Speichern, und
+    // der Dialog blieb stumm stehen.
+    const zeile = kalTerminBox.querySelector(".kal-form-titelzeile");
+    if (zeile) zeile.classList.add("fehlt");
+    const feld = kalTerminBox.querySelector(".kal-form-titel");
+    if (feld) feld.focus();
+    snackInfo("Bitte einen Titel eingeben.");
+    return;
+  }
+  const w = f.wiederholung;
+  if (w.laufzeit === "bis" && (!w.bis || w.bis < f.startDatum)) w.bis = f.startDatum;
+  const regelNeu = baueRegel(w, f.ganztags);
+  // Die Regel geht nur mit, wenn sie wirklich neu ist. Eine unangetastete
+  // Serie - auch eine, deren Regel das Formular gar nicht abbilden kann -
+  // bleibt so bei Google stehen, wie sie ist.
+  const regelGeaendert = termin
+    ? f.wdhAngefasst && w.art !== "fremd" && f.regelAlt !== null && regelNeu !== f.regelAlt
+    : !!regelNeu;
+
   const rumpf = {
-    ...f,
-    titel: f.titel.trim(),
+    titel: f.titel.trim(), ganztags: f.ganztags,
+    startDatum: f.startDatum, endDatum: f.endDatum, vonZeit: f.vonZeit, bisZeit: f.bisZeit,
+    farbe: f.farbe, notiz: f.notiz, ort: f.ort,
     zeitzone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin",
   };
-  if (termin) rumpf.id = termin.id;
+  if (regelGeaendert) rumpf.regel = regelNeu;
+  if (termin) {
+    rumpf.id = termin.id;
+    if (termin.serieId) {
+      // Eine geaenderte Wiederholung gilt fuer die Serie, nie fuer einen
+      // einzelnen Tag daraus - "Nur diesen Termin" entfaellt dann.
+      const umfang = await frageUmfang("Änderung speichern", !regelGeaendert, false);
+      if (!umfang || formularFelder !== f) return;
+      rumpf.serieId = termin.serieId;
+      rumpf.umfang = umfang;
+    }
+  }
+
+  // Gegen den Doppeltipp: eine zweite Anfrage legte den Termin zweimal an.
+  f.speichert = true;
+  const knopf = kalTerminBox.querySelector(".kal-fuss-knopf.primaer");
+  if (knopf) knopf.disabled = true;
   const ok = await terminAnfrage(termin ? "PUT" : "POST", rumpf);
-  if (!ok) return;
+  f.speichert = false;
+  if (!ok) { if (knopf) knopf.disabled = false; return; }
   schliesseTerminFormular();
   // Frisch holen statt von Hand nachzupflegen: so steht im Panel genau das,
-  // was bei Google steht.
+  // was bei Google steht - bei einer Serie auch alle anderen Tage.
   googleGeladen = null;
   await ladeGoogle();
   snackInfo(termin ? "Termin geändert." : "Termin angelegt.");
 }
 
+// Loeschen sitzt seit 24.09.2026 in der Zwischenmaske, nicht mehr im
+// Formular. Die Rueckfrage bleibt: bei Google ist Loeschen endgueltig.
 async function loescheTerminBeiGoogle(termin) {
-  const ok = await terminAnfrage("DELETE", { id: termin.id });
+  const rumpf = { id: termin.id };
+  if (termin.serieId) {
+    const umfang = await frageUmfang(`„${termin.titel}“ löschen`, true, true);
+    if (!umfang) return;
+    rumpf.serieId = termin.serieId;
+    rumpf.umfang = umfang;
+  } else {
+    const ja = await frage(`„${termin.titel}“ löschen?`, "Der Termin wird auch bei Google gelöscht.",
+      [{ wert: "ja", text: "Löschen", gefahr: true }]);
+    if (!ja) return;
+  }
+  const ok = await terminAnfrage("DELETE", rumpf);
   if (!ok) return;
-  schliesseTerminFormular();
+  schliesseTerminDetail();
   googleGeladen = null;
   await ladeGoogle();
   snackInfo("Termin gelöscht.");
+}
+
+/* ---------- Rueckfrage ---------- */
+/**
+ * Kleiner Dialog mit Knoepfen, liefert als Promise den gewaehlten Wert - oder
+ * null fuer Abbrechen, Tipp daneben, Escape und Zurueck-Taste. Eigenes Element
+ * ganz oben (#kalFrage), weil es sich sowohl ueber das Formular als auch ueber
+ * die Zwischenmaske legt.
+ */
+let frageAufloesen = null;
+
+function frage(titel, text, optionen) {
+  // Eine noch offene Frage gilt als abgebrochen, bevor die naechste kommt.
+  if (frageAufloesen) beantworteFrage(null);
+  return new Promise(aufloesen => {
+    frageAufloesen = aufloesen;
+    kalFrageBox.replaceChildren();
+    const kopf = document.createElement("p");
+    kopf.className = "kal-frage-titel";
+    kopf.textContent = titel;
+    kalFrageBox.appendChild(kopf);
+    if (text) {
+      const erklaerung = document.createElement("p");
+      erklaerung.className = "kal-frage-text";
+      erklaerung.textContent = text;
+      kalFrageBox.appendChild(erklaerung);
+    }
+    const knoepfe = document.createElement("div");
+    knoepfe.className = "kal-frage-knoepfe";
+    for (const o of optionen) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn" + (o.gefahr ? " gefahr" : "");
+      b.textContent = o.text;
+      b.addEventListener("click", () => beantworteFrage(o.wert));
+      knoepfe.appendChild(b);
+    }
+    const abbrechen = document.createElement("button");
+    abbrechen.type = "button";
+    abbrechen.className = "btn";
+    abbrechen.textContent = "Abbrechen";
+    abbrechen.addEventListener("click", () => beantworteFrage(null));
+    knoepfe.appendChild(abbrechen);
+    kalFrageBox.appendChild(knoepfe);
+    kalFrage.hidden = false;
+    if (!("ontouchstart" in window)) knoepfe.firstChild.focus();
+  });
+}
+
+function beantworteFrage(wert) {
+  const aufloesen = frageAufloesen;
+  frageAufloesen = null;
+  kalFrage.hidden = true;
+  kalFrageBox.replaceChildren();
+  if (aufloesen) aufloesen(wert);
+}
+
+// Die drei Wege bei einer Serie - wie bei Samsung und Google.
+function frageUmfang(titel, mitDiesem, gefahr) {
+  const optionen = [];
+  if (mitDiesem) optionen.push({ wert: "dieser", text: "Nur diesen Termin", gefahr });
+  optionen.push({ wert: "folgende", text: "Diesen und alle folgenden", gefahr },
+                { wert: "alle", text: "Alle Termine der Serie", gefahr });
+  return frage(titel, "Dieser Termin gehört zu einer Serie.", optionen);
 }
 
 /**
@@ -1861,6 +2530,15 @@ function zeichneTerminDetail() {
     inhalt.appendChild(quelle);
   }
 
+  // Serientermin: nur der Hinweis, nicht die Regel - die kennt Google nur am
+  // Stammtermin, und fuers Ansehen lohnt die zusaetzliche Anfrage nicht.
+  if (t.serieId) {
+    const serie = document.createElement("p");
+    serie.className = "kal-detail-quelle";
+    serie.textContent = "🔁 Wiederholt sich";
+    inhalt.appendChild(serie);
+  }
+
   // Der Ort fuehrt zu Google Maps. Die Adresse steht als Text da UND als
   // Link: wer nur nachsehen will, liest sie, wer hinmuss, tippt sie an.
   // Der maps-Link ist plattformneutral (Web); auf dem Handy uebernimmt ihn
@@ -1891,9 +2569,10 @@ function zeichneTerminDetail() {
 
   const knoepfe = document.createElement("div");
   knoepfe.className = "kal-form-knoepfe";
-  // Bearbeiten nur mit Schreibrecht: ohne es waere der Knopf ein Versprechen,
-  // das die Verknuepfung nicht halten kann.
-  if (googleZustand.verbunden && googleZustand.schreiben) {
+  // Bearbeiten und Loeschen nur mit Schreibrecht: ohne es waeren die Knoepfe
+  // ein Versprechen, das die Verknuepfung nicht halten kann.
+  const darf = googleZustand.verbunden && googleZustand.schreiben;
+  if (darf) {
     const bearbeiten = document.createElement("button");
     bearbeiten.type = "button";
     bearbeiten.className = "btn klein primary";
@@ -1911,6 +2590,16 @@ function zeichneTerminDetail() {
   schliessen.textContent = "Schließen";
   schliessen.addEventListener("click", schliesseTerminDetail);
   knoepfe.appendChild(schliessen);
+  // Loeschen sitzt seit 24.09.2026 hier und nicht mehr im Formular: dort
+  // stehen unten nur noch Abbrechen und Speichern, wie im Samsung Kalender.
+  if (darf) {
+    const loeschen = document.createElement("button");
+    loeschen.type = "button";
+    loeschen.className = "btn klein gefahr";
+    loeschen.textContent = "Löschen";
+    loeschen.addEventListener("click", () => loescheTerminBeiGoogle(t));
+    knoepfe.appendChild(loeschen);
+  }
   inhalt.appendChild(knoepfe);
 
   kalDetailBox.appendChild(inhalt);
@@ -2010,6 +2699,15 @@ function waehleTag(iso) {
     setzeVollbild(false);
     return;
   }
+  // Am Handy (seit 24.09.2026, wie im Samsung Kalender): der erste Tipp
+  // markiert, der zweite auf denselben Tag oeffnet ihn - siehe oeffneTag().
+  if (!istSplit()) {
+    if (iso === kalAuswahl) { oeffneTag(iso); return; }
+    kalAuswahl = iso;
+    schliesseEingaben();
+    aktualisiereAuswahl();
+    return;
+  }
   // Ein Tipp waehlt den Tag, ein zweiter auf denselben tut nichts. Frueher
   // schaltete er hier zwischen Tag und Fokus hin und her bzw. wählte ab - das
   // hatte seinen Grund, solange beide sich denselben Platz teilten. Seit die
@@ -2043,6 +2741,91 @@ function aktualisiereAuswahl() {
                     todos.filter(t => t.due < heute), heute);
 }
 
+/* ---------- Tages-Karte (Handy) ---------- */
+/**
+ * Am Handy fuellt das Raster die Ansicht (seit 24.09.2026, nach dem Samsung
+ * Kalender); ein Tag zeigt seinen Inhalt in einer Karte darueber. Drin steht
+ * dasselbe wie in der Tagesliste am Rechner - es ist dieselbe Funktion -, und
+ * unten ein Feld fuer ein neues ToDo samt rundem Plus fuer einen Termin.
+ *
+ * Geschlossen wird mit einem Tipp daneben, Escape oder der Zurueck-Taste
+ * (siehe schliesseObersteEbene). Wisch nach links oder rechts blaettert den
+ * Tag, wie in der Tagesliste.
+ */
+let tagKarteOffen = false;
+const KARTE_WOCHENTAG = new Intl.DateTimeFormat("de-DE", { weekday: "long" });
+const KARTE_KURZ = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short" });
+
+// Leer heisst: kein ToDo, kein Termin - und am heutigen Tag auch nichts
+// Ueberfaelliges, denn das steht dort mit in der Karte.
+function tagIstLeer(iso) {
+  const todos = kalenderTermine();
+  if (todos.some(t => t.due === iso)) return false;
+  if (iso === todayStr() && todos.some(t => t.due < iso)) return false;
+  return !(termineNachTagen()[iso] || []).length;
+}
+
+// Der zweite Tipp auf einen Tag. Leer heisst "da will ich etwas eintragen" -
+// also gleich der neue Termin. Ohne Schreibrecht bei Google oeffnet auch ein
+// leerer Tag die Karte: dort laesst sich wenigstens ein ToDo anlegen.
+function oeffneTag(iso) {
+  if (tagIstLeer(iso) && googleZustand.verbunden && googleZustand.schreiben) {
+    oeffneTerminFormular(iso, null);
+    return;
+  }
+  oeffneTagKarte();
+}
+
+function oeffneTagKarte() {
+  if (!kalAuswahl) return;
+  tagKarteOffen = true;
+  kalTagPopup.hidden = false;
+  kalTagFeld.value = "";
+  kalTagListe.scrollTop = 0;
+  zeichneKalender();   // zeichnet die Karte mit
+}
+
+function schliesseTagKarte() {
+  if (!tagKarteOffen) return;
+  tagKarteOffen = false;
+  kalTagPopup.hidden = true;
+  kalTagFeld.value = "";
+  kalTagFeld.blur();
+}
+
+// Kopf und Liste neu, das Feld unten NICHT: wer gerade tippt, soll dabei weder
+// Fokus noch Text verlieren, wenn im Hintergrund etwas synchronisiert.
+function zeichneTagKarte(tage, tageTermine, ueberfaellige, heute) {
+  if (!tagKarteOffen || !kalAuswahl) return;
+  const datum = datumAusIso(kalAuswahl);
+
+  kalTagKopf.replaceChildren();
+  const zahl = document.createElement("span");
+  zahl.className = "kal-tagkarte-zahl";
+  zahl.textContent = String(datum.getDate());
+  const wochentag = document.createElement("span");
+  wochentag.className = "kal-tagkarte-wochentag";
+  wochentag.textContent = KARTE_WOCHENTAG.format(datum);
+  const unter = document.createElement("span");
+  unter.className = "kal-tagkarte-unter";
+  unter.textContent = MONAT_FORMAT.format(datum);
+  if (kalAuswahl === heute) {
+    const chip = document.createElement("span");
+    chip.className = "kal-heute-chip";
+    chip.textContent = "heute";
+    unter.appendChild(chip);
+  }
+  kalTagKopf.append(zahl, wochentag, unter);
+
+  zeichneTagesliste(tage, tageTermine, ueberfaellige, heute, kalTagListe, true);
+
+  kalTagFeld.placeholder = `Am ${KARTE_KURZ.format(datum)} hinzufügen`;
+  // Ohne aktive Liste weiss das Feld nicht, wohin mit dem ToDo; ohne
+  // Schreibrecht bei Google fuehrte das Plus in einen 403.
+  kalTagFeld.hidden = !aktiveListe;
+  kalTagPlus.hidden = !(googleZustand.verbunden && googleZustand.schreiben);
+}
+
 // Halb ausgefuelltes Formular und offene Eingabe gehoeren zu EINEM Tag - beim
 // Wechsel woandershin waeren sie nur noch Altlast.
 function schliesseEingaben() {
@@ -2051,7 +2834,7 @@ function schliesseEingaben() {
   formularTermin = null;
   formularTag = null;
   formularFelder = null;
-  loeschFrage = false;
+  if (frageAufloesen) beantworteFrage(null);
   todoEingabeOffen = false;
   anlegenText = "";
   detailTermin = null;
@@ -2069,7 +2852,15 @@ function zeigeMonat(jahr, monat) {
   const treffer = Object.keys(tage)
     .filter(iso => iso.startsWith(`${jahr}-${String(monat + 1).padStart(2, "0")}`))
     .sort();
-  kalAuswahl = treffer[0] || null;
+  // Am Handy gibt es keine Tagesliste, die leer aussehen koennte - dort ist die
+  // Auswahl nur der erste von zwei Tipps. Ein von selbst gewaehlter Tag
+  // oeffnete sich sonst schon beim ERSTEN Tipp. Heute bleibt gewaehlt.
+  if (!istSplit()) {
+    const heute = todayStr();
+    kalAuswahl = heute.startsWith(`${jahr}-${String(monat + 1).padStart(2, "0")}`) ? heute : null;
+  } else {
+    kalAuswahl = treffer[0] || null;
+  }
   zeichneKalender();
 }
 
@@ -2163,9 +2954,20 @@ function setzePanel(offen, sofort) {
 // darf setzePanel kein history.back() nachschieben.
 window.addEventListener("popstate", () => {
   if (!historieEintrag) return;
+  // Erst die oberste Ebene (Rueckfrage, Formular, Detail, Karte ...): am Handy
+  // ist die Zurueck-Taste DER Weg, so etwas zu schliessen. Der Kalender
+  // bleibt dabei offen - also den Eintrag, den der Browser gerade abgeraeumt
+  // hat, gleich wieder setzen.
+  if (schliesseObersteEbene()) {
+    history.pushState({ kalender: true }, "");
+    return;
+  }
   ausPopstate = true;
   historieEintrag = false;
-  setzePanel(false);
+  // schliesseKalender() statt nur setzePanel(false): sonst blieb kalOffen
+  // stehen, und der 📅-Knopf oeffnete den Kalender danach nicht mehr - er
+  // hielt ihn fuer offen (gefunden am 24.09.2026).
+  schliesseKalender();
   ausPopstate = false;
 });
 
@@ -2199,8 +3001,9 @@ function zeichneUnten() {
   if (fokus) window.fokusZeigen?.();
   else window.fokusVerstecken?.();
 
-  // Die Tagesliste bleibt - nur im Vollbild nicht, dort gibt es sie nicht.
-  kalTagesliste.hidden = kalVollbild;
+  // Die Tagesliste bleibt - nur im Vollbild nicht und am Handy nicht (dort
+  // zeigt die Tages-Karte den Tag).
+  kalTagesliste.hidden = rasterVoll();
 
   // Die Reiterzeile ueberlebt den Wechsel zum Kalender - sie ist der Weg
   // zurueck. Ohne Fokus (kein Zugang oder abgeschaltet) waere sie ein Reiter
@@ -2252,8 +3055,7 @@ function stelleAnsichtHer() {
 function frischOeffnen() {
   kalVollbild = false;
   vollbildPlaetze = 0;
-  // Auch der Quellen-Umschalter startet zu: seine Zeile gehoert im Normalfall
-  // dem Tagesbereich.
+  // Auch das Quellen-Menue startet zu - offen laege es ueber dem Raster.
   filterOffen = false;
   kalPanel.classList.remove("vollbild");
   springeZuHeute();
@@ -2276,6 +3078,7 @@ window.kalenderZeigtFokus = () => kalOffen && kalUntenModus === "fokus" && !kalV
 function schliesseKalender() {
   if (!kalOffen) return;
   schliesseEingaben();
+  schliesseTagKarte();
   kalOffen = false;
   setzePanel(false);
 }
@@ -2349,6 +3152,8 @@ function gestenZone(ziel) {
   // leicht schraeger Zug am Handy als Wisch durchgehen und das Panel zumachen,
   // waehrend man die Aufteilung einstellt.
   if (ziel.closest(".kal-griff")) return null;
+  // Die Tages-Karte blaettert den Tag, wie die Tagesliste am Rechner.
+  if (ziel.closest(".kal-tagkarte")) return "tag";
   if (ziel.closest("#kalRaster, #kalWochentage")) return "monat";
   if (ziel.closest("#kalTagesliste")) return "tag";
   // Blaettern bleibt auch im Split (ein Tablet quer hat Platz UND Finger),
@@ -2426,7 +3231,7 @@ const BLAETTER_WEG = 55;   // px, ab denen wirklich umgeblaettert wird
 
 function blaetterElemente(modus) {
   if (modus === "monat") return [kalWochentage, kalRaster];
-  if (modus === "tag") return [kalTagesliste];
+  if (modus === "tag") return [tagKarteOffen ? kalTagKarte : kalTagesliste];
   return [];
 }
 
@@ -2447,7 +3252,10 @@ document.addEventListener("touchstart", e => {
     if (window.innerWidth - t.clientX > RAND) return;
     geste = { x: t.clientX, y: t.clientY, achse: null, modus: "auf" };
   } else {
-    if (!kalPanel.contains(e.target)) return;
+    // Die Karte liegt ausserhalb des Panels (wie alle Dialoge), gehoert fuer
+    // die Geste aber dazu.
+    const inKarte = tagKarteOffen && kalTagKarte.contains(e.target);
+    if (!kalPanel.contains(e.target) && !inKarte) return;
     const zone = gestenZone(e.target);
     if (!zone) return;
     geste = { x: t.clientX, y: t.clientY, achse: null, modus: zone };
@@ -2466,8 +3274,9 @@ document.addEventListener("touchmove", e => {
     if (Math.abs(dx) < SCHWELLE && Math.abs(dy) < SCHWELLE) return;
     if (Math.abs(dx) <= Math.abs(dy)) {
       // Ueberwiegend senkrecht. Ueber dem Raster ist das die Vollbild-Geste,
-      // ueberall sonst Scrollen - das gehoert dem Browser.
-      if (geste.modus !== "monat") { geste = null; return; }
+      // ueberall sonst Scrollen - das gehoert dem Browser. Am Handy fuellt das
+      // Raster die Ansicht ohnehin, dort gibt es kein Vollbild zu schalten.
+      if (geste.modus !== "monat" || !istSplit()) { geste = null; return; }
       geste.achse = "y";
     } else {
       geste.achse = "x";
@@ -2484,7 +3293,7 @@ document.addEventListener("touchmove", e => {
   e.preventDefault();   // ab hier gehoert die Bewegung dem Panel
   // Ab hier ist es ein Wisch und kein Tipp mehr - der nachgeschobene Klick
   // darf keinen Tag mehr waehlen (siehe klickSchlucken).
-  if (geste.modus === "monat") klickSchlucken = true;
+  if (geste.modus === "monat" || geste.modus === "tag") klickSchlucken = true;
 
   if (geste.achse === "y") {
     // Nach dem Umschalten ist die Geste erledigt (geste = null), sonst
@@ -2661,8 +3470,17 @@ document.getElementById("kalVor").addEventListener("click", () => monatVerschieb
 document.getElementById("kalHeute").addEventListener("click", springeZuHeute);
 kalFilterKnopf.addEventListener("click", () => {
   filterOffen = !filterOffen;
-  zeichneKalender();
+  zeichneFilter();
 });
+// Ein Tipp neben das Menue schliesst es, wie bei jedem Menue. Der Tipp selbst
+// geht trotzdem durch: wer daneben auf einen Tag tippt, will den Tag. In der
+// Einfangphase, damit das Menue schon zu ist, wenn der Tag reagiert.
+document.addEventListener("click", e => {
+  if (!filterOffen) return;
+  if (kalFilter.contains(e.target) || kalFilterKnopf.contains(e.target)) return;
+  filterOffen = false;
+  zeichneFilter();
+}, true);
 document.getElementById("kalVollbild").addEventListener("click", () => setzeVollbild(!kalVollbild));
 kalRaster.addEventListener("click", e => {
   if (klickSchlucken) { klickSchlucken = false; return; }
@@ -2674,17 +3492,52 @@ kalRaster.addEventListener("click", e => {
 kalWahl.addEventListener("click", e => { if (e.target === kalWahl) schliesseWahl(); });
 kalTerminPopup.addEventListener("click", e => { if (e.target === kalTerminPopup) schliesseTerminFormular(); });
 kalDetailPopup.addEventListener("click", e => { if (e.target === kalDetailPopup) schliesseTerminDetail(); });
+kalTagPopup.addEventListener("click", e => { if (e.target === kalTagPopup) schliesseTagKarte(); });
+kalFrage.addEventListener("click", e => { if (e.target === kalFrage) beantworteFrage(null); });
+// Nach einem Wisch in der Karte schiebt der Browser noch einen Klick nach -
+// der darf keinen Eintrag oeffnen (siehe klickSchlucken).
+kalTagKarte.addEventListener("click", e => {
+  if (!klickSchlucken) return;
+  klickSchlucken = false;
+  e.stopPropagation();
+  e.preventDefault();
+}, true);
+kalTagFeld.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  if (!kalTagFeld.value.trim() || !kalAuswahl) return;
+  const text = kalTagFeld.value;
+  kalTagFeld.value = "";
+  legeToDoAn(kalAuswahl, text);   // rendert und speichert selbst, die Karte zieht mit
+});
+kalTagPlus.addEventListener("click", () => { if (kalAuswahl) oeffneTerminFormular(kalAuswahl, null); });
+
+// Schliesst die oberste offene Ebene und sagt, ob es eine gab. Escape und die
+// Zurueck-Taste arbeiten sich damit von innen nach aussen: Rueckfrage,
+// Formular (von der Wiederholen-Seite erst zurueck ins Formular), Detail,
+// Monatswahl, Filter, zuletzt die Tages-Karte. "Bearbeiten" loest die
+// Zwischenmaske ab, statt sich darueberzulegen - Formular und Detail sind
+// also nie gleichzeitig offen.
+function schliesseObersteEbene() {
+  if (frageAufloesen) { beantworteFrage(null); return true; }
+  if (formularOffen) {
+    if (formularFelder && formularFelder.seite === "wiederholung") zurueckZumFormular();
+    else schliesseTerminFormular();
+    return true;
+  }
+  if (detailTermin) { schliesseTerminDetail(); return true; }
+  if (wahlOffen) { schliesseWahl(); return true; }
+  if (filterOffen) { filterOffen = false; zeichneFilter(); return true; }
+  if (tagKarteOffen) { schliesseTagKarte(); return true; }
+  return false;
+}
 
 // Escape arbeitet sich von innen nach aussen: erst der offene Dialog, dann das
 // Vollbild, erst zuletzt das Panel. Sonst raeumte ein Tastendruck alles auf
 // einmal weg.
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape" || !kalOffen) return;
-  // "Bearbeiten" loest die Zwischenmaske ab, statt sich darueberzulegen -
-  // offen ist also immer hoechstens eins von beiden.
-  if (formularOffen) { schliesseTerminFormular(); return; }
-  if (detailTermin) { schliesseTerminDetail(); return; }
-  if (wahlOffen) { schliesseWahl(); return; }
+  if (schliesseObersteEbene()) return;
   if (kalVollbild) { setzeVollbild(false); return; }
   schliesseKalender();
 });
@@ -2709,8 +3562,16 @@ function pflegeSplit() {
   if (!kalOffen) return;
   if (istSplit() !== document.documentElement.classList.contains("kal-split")) {
     setzePanel(true, true);
+    // Handy <-> Rechner: die Zellen tragen dort anderes (Klartext oder
+    // Punkte), die Tages-Karte gibt es nur am Handy und das Vollbild nur am
+    // Rechner - also frisch zeichnen statt nur nachzumessen.
+    schliesseTagKarte();
+    if (!istSplit() && kalVollbild) { kalVollbild = false; kalPanel.classList.remove("vollbild"); }
+    vollbildPlaetze = 0;
+    zeichneKalender();
+    return;
   }
-  if (kalVollbild) messeVollbild();
+  if (rasterVoll()) messeVollbild();
 }
 
 window.addEventListener("resize", pflegeSplit);
