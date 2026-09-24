@@ -1194,11 +1194,10 @@ ein vorhandener Ort nur als Text im Formular. Google nimmt das Feld
 löscht es einen bestehenden Ort, deshalb geht dort ein leerer String hin und
 nicht `null`.
 
-**Die Knopfreihe der Zwischenmaske ist 44 px hoch.** Mit `.btn.klein` waren es
-25 px — unter dem Maß, ab dem ein Finger regelmäßig danebenlangt. Die Klasse
-bleibt an den Knöpfen, `.kal-form-knoepfe .btn` holt Höhe und Schriftgröße
-zurück. Das Termin-Formular selbst hat seit dem 24.09.2026 keine Knopfreihe
-mehr, sondern unten Abbrechen | Speichern (siehe „Samsung-Umbau“).
+**Knöpfe im Termin-Formular:** seit dem 24.09.2026 unten zwei bzw. drei
+Textknöpfe über die ganze Breite, mindestens 50 px hoch (siehe
+„Samsung-Umbau“). Die frühere Knopfreihe mit `.btn.klein` war 25 px hoch — unter
+dem Maß, ab dem ein Finger regelmäßig danebenlangt.
 
 **Wischgeste.** Start nur innerhalb von 24 px am RECHTEN Bildschirmrand
 (links liegt auf iOS/Android die Zurück-Geste des Browsers). Die Achse
@@ -1281,18 +1280,19 @@ schon beim ersten Tipp.
 
 **Die Tages-Karte** (`#kalTagPopup`, liegt wie alle Dialoge außerhalb des
 Panels) zeigt denselben Inhalt wie die Tagesliste: `zeichneTagesliste()` nimmt
-dafür ein Ziel und ein `karte`-Flag. In der Karte entfallen Tagestitel und die
-＋ an den Abschnitten; unten stehen stattdessen ein Feld „Am 24. Sept.
-hinzufügen“ (legt ein **ToDo** in der aktiven Liste an — Hendriks Wahl) und ein
-rundes ＋ für einen **Termin**. `zeichneKalender()` zeichnet Kopf und Liste der
-Karte mit, das Feld nie — wer tippt, verlöre sonst beim nächsten Sync Text und
-Fokus. Wisch nach links/rechts blättert den Tag (`gestenZone()` meldet über
-der Karte „tag“); der nachgeschobene Klick nach dem Wisch wird in der
-Einfangphase geschluckt, wie beim Raster.
+dafür ein Ziel, ein `karte`-Flag, den Tag und ob sie bedienbar ist. In der
+Karte entfallen Tagestitel und das ＋ an den Terminen; unten sitzt ein rundes
+＋ für einen **Termin**. Ein **ToDo** legt das kleine ＋ an der Überschrift
+„ToDos“ an, wie in der Tagesliste am Rechner. Bis zum 25.09.2026 stand dafür
+unten ein großes Feld „Am 24. Sept. hinzufügen“ — Hendrik: „benutze ich so gut
+wie nie“. Wisch nach links/rechts blättert den Tag (`gestenZone()` meldet über
+dem ganzen Popup „tag“); der nachgeschobene Klick nach dem Wisch wird in der
+Einfangphase am Streifen geschluckt, sonst schlösse er neben den Karten die
+Karte.
 
 **Die Zurück-Taste schließt am Handy die oberste Ebene** (Rückfrage, Formular
-— von der Wiederholen-Seite erst zurück ins Formular —, Detail, Monatswahl,
-Filter, Karte) und nicht gleich den ganzen Kalender. `schliesseObersteEbene()`
+— von der Wiederholen-Seite erst zurück ins Formular —, Monatswahl, Filter,
+Karte) und nicht gleich den ganzen Kalender. `schliesseObersteEbene()`
 teilt sich die Reihenfolge mit Escape. Der Trick: Der `popstate`-Handler setzt
 den gerade abgeräumten Verlaufseintrag sofort wieder (`pushState`), solange
 der Kalender offen bleibt — so braucht keine Ebene einen eigenen Eintrag.
@@ -1305,8 +1305,8 @@ nur den unteren Teil um). Jetzt läuft er über `schliesseKalender()`.
 **Termin-Formular im Samsung-Layout:** Titel mit Farbpunkt (ein Tipp klappt
 Googles Palette darunter auf), Ganztägig als Schiebeschalter, Von → Bis
 nebeneinander (Datum oben, Uhrzeit darunter), Zeilen mit Linien-Symbol für
-Ort, Wiederholung und Notizen, unten Abbrechen | Speichern. Keine Kopfzeile,
-kein Löschen — **gelöscht wird in der Zwischenmaske** (mit Rückfrage).
+Ort, Wiederholung und Notizen, unten Abbrechen | Speichern. Keine Kopfzeile.
+Gelöscht wird aus der Ansicht eines Termins (siehe „Zweite Runde“).
 Kalenderkonto, Erinnerung, Videokonferenz, Anhang und Teilnehmer aus der
 Vorlage sind bewusst weggelassen. Speichern ohne Titel färbt die Titellinie
 rot und meldet sich per Snackbar — vorher blieb der Knopf stumm.
@@ -1383,6 +1383,79 @@ Eingabeprüfung vorher `localStorage.kalAnsicht = "liste"` setzen und die
 Anfragen von `/robots.txt` aus schicken — `preview_start` öffnet sonst selbst
 die App.
 
+#### Zweite Runde (25.09.2026)
+
+**Ein Termin öffnet als Ansicht im Formular**, die Zwischenmaske
+(`#kalDetailPopup`) ist entfallen. `formularFelder.modus` sagt, was geht:
+
+* `ansicht` — bestehender Termin mit Schreibrecht. Titel, Farbe, Ganztägig,
+  Datum/Uhrzeit und Wiederholung ändert man direkt. Ort und Notiz stehen als
+  Text mit Links da (Maps-Link, Links in der Notiz — Hendriks Wunsch: „die
+  Links sollen genauso bleiben“) und werden erst über „Bearbeiten“ zu
+  Eingabefeldern. Sind sie leer, sind sie gleich Felder.
+* `bearbeiten` — nach „Bearbeiten“: Ort und Notiz sind Felder.
+* `neu` — neuer Termin, alles Felder, Fokus springt am Rechner in den Titel.
+* `lesen` — ohne Schreibrecht: alles gesperrt, unten nur „Schließen“.
+
+**Die Knopfreihe passt sich an** (`baueFuss()` / `fussArt()`): in der Ansicht
+„Löschen | Bearbeiten | Schließen“, sobald sich etwas geändert hat „Abbrechen |
+Speichern“. Ob sich etwas geändert hat, misst `formularGeaendert()` am Stand
+beim Öffnen (`formStand()`), nicht an einem Merker — wer eine Änderung von Hand
+zurücknimmt, bekommt die Ansicht-Knöpfe zurück. `aktualisiereFuss()` tauscht
+NUR die Knopfreihe und nur, wenn sich ihre Art ändert; ein Neubau des Dialogs
+nähme dem Titelfeld beim Tippen den Fokus.
+
+**Termin-Zeilen wie bei Samsung** (`baueTerminZeile()`): links die Startzeit,
+dann ein 4-px-Balken in der Terminfarbe, rechts Titel und „12:15 – 13:15“.
+Kein Kasten mehr. Beginnen zwei Termine zur selben Zeit, steht die Zeit nur
+beim ersten. Gilt in der Karte und in der Tagesliste am Rechner (dieselbe
+Funktion).
+
+**Karussell für Monat und Tag** (`blaettere()`, `gleite()`): Das Raster ist
+ein Streifen aus drei Monaten (`#kalRasterBahn` → `.kal-raster-streifen` →
+drei `.kal-raster`, `#kalRaster` ist der mittlere), die Tages-Karte ein
+Streifen aus drei Karten mit hervorschauenden Nachbarn. Beim Wischen folgt der
+Streifen dem Finger 1:1; beim Loslassen gleitet er zum Nachbarn (ab 22 % der
+Breite oder einem schnellen Schnipser) oder zurück. Erst NACH dem Gleiten wird
+neu gezeichnet, und der Streifen springt im selben Zug auf null — der Nachbar,
+der eben hereinglitt, ist dann die Mitte, sichtbar springt nichts. Die Pfeile
+‹ › gleiten genauso; ein Tipp auf eine Nachbarkarte blättert dorthin.
+Vorher folgte der Inhalt dem Finger gedämpft (35 %) und sprang beim Loslassen
+um — Hendrik: „nicht flüssig und etwas kantig“. Die Tagesliste am Rechner hat
+keinen Nachbarn und blättert weiter auf die alte Art.
+
+Zwei Dinge daran, die man leicht falsch baut:
+
+* **Auf `transitionend` ist kein Verlass** — es bleibt aus, wenn der Streifen
+  schon am Ziel steht, bei reduzierter Bewegung oder in einem Tab, der gerade
+  nicht zeichnet (etwa im Testbrowser). `gleite()` hat deshalb einen Zeitgeber
+  als Netz, und `gleitEnde` schließt eine laufende Bewegung sofort ab, sobald
+  ein neuer Finger aufsetzt oder ein zweiter Klick kommt.
+* **Die Nachbarmonate brauchen ihre Termine schon beim Hereingleiten.** Der
+  Google-Abruf deckt deshalb Vor-, angezeigten und Folgemonat ab
+  (`zeitraumDesMonats()`), vorher war es der Monat plus eine Woche Rand. Die
+  Untergrenze der Spuren (`spurenVorher`) gilt nur für den mittleren Monat.
+
+Die Lücken zwischen den Nachbarn stehen zweimal: 16 px beim Raster, 12 px bei
+den Karten — in `style.css` (`[data-schritt]`) und als `RASTER_LUECKE` /
+`KARTEN_LUECKE` in `kalender.js`. Laufen sie auseinander, gleitet der Streifen
+ein Stück zu weit oder zu kurz und springt dann.
+
+**iPhone als Homescreen-App: Inhalt 24 px tiefer.** iOS legt dort einen
+Unschärfe-Streifen unter die Statusleiste, der ein Stück in die Seite
+hineinreicht (Hendriks Screenshot: Dialog-Überschrift verschwommen, Feld
+darunter scharf). Abschalten lässt er sich nicht. Alles, was oben klebt,
+richtet sich deshalb nach `--oben` statt direkt nach
+`env(safe-area-inset-top)`; nur mit `display-mode: standalone` UND
+`-webkit-touch-callout` (gibt es nur in iOS-WebKit) kommen 24 px dazu. **Neue
+Elemente, die oben kleben, müssen `var(--oben)` nehmen**, sonst landen sie
+wieder im Streifen.
+
+**Cache-Version:** In der ersten Runde am 24.09.2026 ist das Hochzählen von
+`CACHE_NAME` in `sw.js` vergessen worden (Regel siehe „Offline“). Weil der
+Service Worker zuerst übers Netz lädt, kam die neue Fassung trotzdem an; in
+der zweiten Runde ist es nachgeholt (v22).
+
 **Was ungeprüft blieb:**
 
 * **Echte Google-Serien.** Lokal gibt es keine Zugangsdaten. Geprüft sind die
@@ -1395,6 +1468,13 @@ die App.
 * **Ein echtes Handy.** Die Picker für Datum und Uhrzeit, die Tastatur über dem
   Feld in der Karte und der Wisch liefen gegen nachgebaute Ereignisse im
   Testbrowser.
+* **Wie flüssig das Gleiten aussieht** (zweite Runde). Der Testbrowser
+  zeichnet keine CSS-Übergänge; geprüft sind Lage der Nachbarn, das 1:1-Folgen,
+  Weiterblättern, Zurückfedern, der schnelle Doppelklick und das Aufräumen per
+  Zeitgeber — nicht der Eindruck am Finger.
+* **Die 24 px am iPhone.** Geprüft ist, dass die Regel eingelesen wird und mit
+  dem iPhone-Wert Kopfzeile, Kalender und Dialoge mitrutschen; ob 24 px den
+  Unschärfe-Streifen ganz räumen, zeigt erst das Gerät.
 
 ## Google Kalender
 
@@ -1786,7 +1866,12 @@ Tastendruck ab und schließt gleich den ganzen Kalender. Das ＋ neben „Termin
 wirklich schreiben darf (`schreiben` aus `/api/google/status`) — ein Knopf, der
 in einen 403 läuft, wäre schlechter als keiner.
 
-**Ein Tipp auf einen Termin öffnet die Zwischenmaske** (seit 21.08.2026,
+**Seit dem 25.09.2026 gibt es die Zwischenmaske nicht mehr** — ein Tipp auf
+einen Termin öffnet ihn im Formular als Ansicht (siehe „Samsung-Umbau“, zweite
+Runde). Was hier folgt, ist die Vorgeschichte; die drei Punkte zu Maps-Link,
+Links in der Notiz und Zeilenumbrüchen gelten in der Ansicht unverändert.
+
+**Ein Tipp auf einen Termin öffnete die Zwischenmaske** (vom 21.08.2026 an,
 `#kalDetailPopup` / `oeffneTerminDetail()`), nicht mehr das Formular. Vorher
 galt: mit Schreibrecht führte der Tipp direkt ins Bearbeiten, ohne klappten Ort
 und Notiz in der Liste auf. Beides war unbefriedigend — man musste „Abbrechen"

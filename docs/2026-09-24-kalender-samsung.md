@@ -101,3 +101,21 @@ schließt.
 * Ausnahmen einer Serie (einzeln gelöschte Termine) wandern bei „diesen und
   alle folgenden" nicht in die neue Serie mit.
 * Die verschwommene Leiste am iPhone — wartet auf Screenshot und Gerät.
+
+---
+
+## Nachtrag 25.09.2026: zweite Runde
+
+Nach dem ersten Test am Handy, Hendriks Entscheidungen:
+
+* **Termin ansehen = Formular.** Ein Tipp auf einen Termin öffnet ihn im
+  Formular. Alles außer Ort und Notiz ist direkt änderbar; Ort und Notiz
+  behalten ihre Links und werden über „Bearbeiten“ zu Feldern. Unten
+  „Löschen | Bearbeiten | Schließen“, nach einer Änderung „Abbrechen |
+  Speichern“. Die Zwischenmaske entfällt.
+* **Karussell wie Samsung** für Monat und Tag, Nachbarkarten schauen hervor.
+* **Termin-Zeilen:** Startzeit, Farbbalken, Titel und Dauer.
+* **ToDo in der Karte** über das kleine ＋ an „ToDos“; das große Feld unten
+  entfällt.
+* **iPhone:** Inhalt in der Homescreen-App 24 px tiefer, unter den
+  Unschärfe-Streifen von iOS.
