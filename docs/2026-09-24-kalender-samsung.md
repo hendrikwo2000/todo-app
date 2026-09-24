@@ -130,3 +130,12 @@ Nach dem ersten Test am Handy, Hendriks Entscheidungen:
 * **Ganztägige Termine** stehen mit Kalender-Symbol im selben Abschnitt
   „Termine“ wie die übrigen.
 * **Nachbarkarten** deckend und abgedunkelt statt halb durchsichtig.
+
+## Nachtrag 26.09.2026: vierte Runde
+
+* **Ein Tipp** auf einen Tag öffnet die Tages-Karte, auch einen leeren.
+* **Abbrechen beim Bearbeiten** schließt das Fenster wie Speichern (nicht
+  mehr zurück in die Ansicht).
+* **Mehrtägige Balken:** ein Tipp auf den Balken trifft den Tag darunter,
+  nicht den ersten Tag des Termins.
+* **Knopfreihe fest unten**, auch bei langer Notiz.

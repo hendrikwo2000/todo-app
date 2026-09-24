@@ -1196,7 +1196,10 @@ nicht `null`.
 
 **Knöpfe im Termin-Formular:** seit dem 24.09.2026 unten zwei bzw. drei
 Textknöpfe über die ganze Breite, mindestens 50 px hoch (siehe
-„Samsung-Umbau“). Die frühere Knopfreihe mit `.btn.klein` war 25 px hoch — unter
+„Samsung-Umbau“). Sie stehen AUSSERHALB des Scrollbereichs: die Zeilen liegen
+in `.kal-form-inhalt`, das allein scrollt. Bis zum 26.09.2026 scrollte der
+ganze Kasten und die Knopfreihe klebte nur per `position: sticky` — bei einer
+langen Notiz stand sie dann mitten im Text. Die frühere Knopfreihe mit `.btn.klein` war 25 px hoch — unter
 dem Maß, ab dem ein Finger regelmäßig danebenlangt.
 
 **Wischgeste.** Start nur innerhalb von 24 px am RECHTEN Bildschirmrand
@@ -1269,14 +1272,19 @@ zeichnet beim Wechsel zwischen den Modi komplett neu.
 Gewohnheiten-Reiter (Raster ausgeblendet) den gemessenen Platz auf 1, und
 zurück beim Kalender stand in jeder Zelle nur noch „+n“.
 
-**Erster Tipp markiert, zweiter öffnet** (Hendriks Wahl, wie bei Samsung).
-Ein Tipp auf den schon gewählten Tag öffnet die **Tages-Karte**, bei einem
-leeren Tag direkt „Neuer Termin“ (`oeffneTag()`). Leer heißt: kein ToDo, kein
-Termin und am heutigen Tag nichts Überfälliges. Ohne Schreibrecht bei Google
-öffnet auch ein leerer Tag die Karte, damit man wenigstens ein ToDo anlegen
-kann. Nach dem Blättern in einen anderen Monat ist am Handy nichts gewählt
-(außer heute liegt darin) — sonst öffnete sich der automatisch gewählte Tag
-schon beim ersten Tipp.
+**Ein Tipp öffnet den Tag als Tages-Karte**, auch einen leeren (seit
+26.09.2026, Hendriks Wunsch). Vom 24. bis 26.09. markierte der erste Tipp nur,
+erst der zweite öffnete, und ein leerer Tag sprang dabei gleich in „Neuer
+Termin“ — in der Karte stehen für beides ein ＋. Nach dem Blättern in einen
+anderen Monat ist am Handy nichts gewählt (außer heute liegt darin): ohne
+Tagesliste wäre ein automatisch gewählter Tag nur eine Markierung ohne Grund.
+
+**Welcher Tag angetippt wurde, entscheidet die LAGE, nicht das Element**
+(`zelleUnter()`). Der Balken eines mehrtägigen Termins hängt an der Zelle
+seines ersten Tages und ragt über die folgenden hinaus (siehe „Der Balken
+trägt seinen Titel“) — wer ihn über dem 19. antippte, landete deshalb beim
+18. (gemeldet 26.09.2026). Ohne Koordinaten (Enter per Tastatur) gilt weiter
+die Zelle des Elements.
 
 **Die Tages-Karte** (`#kalTagPopup`, liegt wie alle Dialoge außerhalb des
 Panels) zeigt denselben Inhalt wie die Tagesliste: `zeichneTagesliste()` nimmt
@@ -1392,8 +1400,9 @@ entfallen. `formularFelder.modus` sagt, was geht:
   (`baueTerminAnsicht()`), unten „Löschen | Bearbeiten | Schließen“.
 * `lesen` — ohne Schreibrecht: dieselbe Ansicht, unten nur „Schließen“.
 * `bearbeiten` — nach „Bearbeiten“: das volle Formular, unten „Abbrechen |
-  Speichern“. Abbrechen (auch Escape und die Zurück-Taste) führt zurück zur
-  Ansicht, nicht aus dem Termin heraus — wie bei Samsung.
+  Speichern“. Abbrechen (auch Escape und die Zurück-Taste) schließt das
+  Fenster, genau wie Speichern — Hendriks Wunsch vom 26.09.2026. Einen Tag lang
+  führte es zurück in die Ansicht.
 * `neu` — neuer Termin: das volle Formular, Abbrechen schließt.
 
 **Die Ansicht sieht nach Ansehen aus, nicht nach Bearbeiten** (dritter Anlauf,
