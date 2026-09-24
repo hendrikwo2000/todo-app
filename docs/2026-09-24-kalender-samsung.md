@@ -119,3 +119,14 @@ Nach dem ersten Test am Handy, Hendriks Entscheidungen:
   entfällt.
 * **iPhone:** Inhalt in der Homescreen-App 24 px tiefer, unter den
   Unschärfe-Streifen von iOS.
+
+## Nachtrag 25.09.2026 abends: dritte Runde
+
+* **Ansicht und Bearbeiten sehen verschieden aus.** Die Ansicht ist eine reine
+  Ansicht: Titel und Zeiten als Text, kein Ganztägig-Schalter, Ort, Notiz und
+  Wiederholung nur, wenn es sie gibt. Geändert wird über „Bearbeiten“,
+  Abbrechen führt zurück zur Ansicht.
+* **Farbe** beim Bearbeiten als kleines Menü unter dem Farbpunkt.
+* **Ganztägige Termine** stehen mit Kalender-Symbol im selben Abschnitt
+  „Termine“ wie die übrigen.
+* **Nachbarkarten** deckend und abgedunkelt statt halb durchsichtig.

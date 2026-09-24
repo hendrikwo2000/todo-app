@@ -1385,30 +1385,47 @@ die App.
 
 #### Zweite Runde (25.09.2026)
 
-**Ein Termin öffnet als Ansicht im Formular**, die Zwischenmaske
-(`#kalDetailPopup`) ist entfallen. `formularFelder.modus` sagt, was geht:
+**Ein Termin öffnet als Ansicht**, die Zwischenmaske (`#kalDetailPopup`) ist
+entfallen. `formularFelder.modus` sagt, was geht:
 
-* `ansicht` — bestehender Termin mit Schreibrecht. Titel, Farbe, Ganztägig,
-  Datum/Uhrzeit und Wiederholung ändert man direkt. Ort und Notiz stehen als
-  Text mit Links da (Maps-Link, Links in der Notiz — Hendriks Wunsch: „die
-  Links sollen genauso bleiben“) und werden erst über „Bearbeiten“ zu
-  Eingabefeldern. Sind sie leer, sind sie gleich Felder.
-* `bearbeiten` — nach „Bearbeiten“: Ort und Notiz sind Felder.
-* `neu` — neuer Termin, alles Felder, Fokus springt am Rechner in den Titel.
-* `lesen` — ohne Schreibrecht: alles gesperrt, unten nur „Schließen“.
+* `ansicht` — bestehender Termin mit Schreibrecht: eine REINE Ansicht
+  (`baueTerminAnsicht()`), unten „Löschen | Bearbeiten | Schließen“.
+* `lesen` — ohne Schreibrecht: dieselbe Ansicht, unten nur „Schließen“.
+* `bearbeiten` — nach „Bearbeiten“: das volle Formular, unten „Abbrechen |
+  Speichern“. Abbrechen (auch Escape und die Zurück-Taste) führt zurück zur
+  Ansicht, nicht aus dem Termin heraus — wie bei Samsung.
+* `neu` — neuer Termin: das volle Formular, Abbrechen schließt.
 
-**Die Knopfreihe passt sich an** (`baueFuss()` / `fussArt()`): in der Ansicht
-„Löschen | Bearbeiten | Schließen“, sobald sich etwas geändert hat „Abbrechen |
-Speichern“. Ob sich etwas geändert hat, misst `formularGeaendert()` am Stand
-beim Öffnen (`formStand()`), nicht an einem Merker — wer eine Änderung von Hand
-zurücknimmt, bekommt die Ansicht-Knöpfe zurück. `aktualisiereFuss()` tauscht
-NUR die Knopfreihe und nur, wenn sich ihre Art ändert; ein Neubau des Dialogs
-nähme dem Titelfeld beim Tippen den Fokus.
+**Die Ansicht sieht nach Ansehen aus, nicht nach Bearbeiten** (dritter Anlauf,
+ebenfalls 25.09.2026). Am Vormittag ließ sich in ihr noch fast alles direkt
+ändern, und eine Knopfreihe wechselte bei der ersten Änderung auf
+„Abbrechen | Speichern“. Hendriks Rückmeldung danach: die beiden Fenster
+sollen nicht gleich aussehen. Jetzt:
+
+* Titel und Zeiten als Text, kein Feld und kein Picker; der Farbpunkt ist
+  nur Anzeige.
+* Kein Ganztägig-Schalter. Bei ganztägigen steht „Ganztägig“ unter dem
+  Datum; bei eintägigen nur EIN Datum statt zweimal desselben.
+* Ort, Wiederholung und Notiz nur, wenn es sie gibt — kein leeres Feld, kein
+  „Nicht wiederholen“. Die Wiederholungs-Zeile einer Serie steht da, solange
+  die Regel lädt („Wird geladen …“), und verschwindet, falls die Serie doch
+  keine hat (`fuelleWdhZeile()`).
+* Ort als Link zu Google Maps, Links in der Notiz klickbar (Hendriks Wunsch:
+  „die Links sollen genauso bleiben“).
+
+**Farbe wählen: ein Menü unter dem Farbpunkt** (`.kal-farbwahl`), nicht mehr
+eine Reihe, die ins Formular klappt. Eine Farbe wählen schließt es, ein Tipp
+daneben ebenfalls — in der Einfangphase am Dialog, damit ein Tipp auf den
+Hintergrund nicht gleich das ganze Formular zumacht. Escape schließt erst das
+Menü.
 
 **Termin-Zeilen wie bei Samsung** (`baueTerminZeile()`): links die Startzeit,
 dann ein 4-px-Balken in der Terminfarbe, rechts Titel und „12:15 – 13:15“.
 Kein Kasten mehr. Beginnen zwei Termine zur selben Zeit, steht die Zeit nur
-beim ersten. Gilt in der Karte und in der Tagesliste am Rechner (dieselbe
+beim ersten. **Ganztägige** stehen oben im selben Abschnitt „Termine“ und
+tragen statt der Zeit ein Kalender-Symbol (nur beim ersten) — vorher hatten
+sie eine eigene Überschrift und eine leere Zeitspalte, Hendrik: „am Anfang
+viel Platz“. Gilt in der Karte und in der Tagesliste am Rechner (dieselbe
 Funktion).
 
 **Karussell für Monat und Tag** (`blaettere()`, `gleite()`): Das Raster ist
@@ -1423,6 +1440,16 @@ der eben hereinglitt, ist dann die Mitte, sichtbar springt nichts. Die Pfeile
 Vorher folgte der Inhalt dem Finger gedämpft (35 %) und sprang beim Loslassen
 um — Hendrik: „nicht flüssig und etwas kantig“. Die Tagesliste am Rechner hat
 keinen Nachbarn und blättert weiter auf die alte Art.
+
+**Die Nachbarkarten sind deckend** (seit dem Abend des 25.09.2026 — vorher
+halb durchsichtig, und das Raster schien durch). In Ruhe sind sie abgedunkelt
+und zeigen nur ihre Kante, keinen Inhalt. Beim Wischen setzt `setzeStreifen()`
+`--anteil` (0 bis 1, wie weit der Streifen gewandert ist): die
+hereinkommende Karte hellt auf und blendet ihren Inhalt ein, die abgehende
+dunkelt ab. Am Ende des Wischs stimmt damit schon alles, und beim
+Neuzeichnen springt nichts. `--gleit-dauer` lässt das im Takt des Gleitens
+laufen — beim Zurücksetzen steht sie auf 0, sonst blendete die neue Mitte
+sichtbar nach.
 
 Zwei Dinge daran, die man leicht falsch baut:
 
@@ -1620,16 +1647,14 @@ tun" — und die Termin-Überschrift samt ihrer Leerzeile („Kein Google-Kalend
 verbunden.") schob diese Antwort vorher bei jedem Öffnen nach unten aus dem
 Blick.
 
-**Ganztägige Termine haben einen eigenen Abschnitt** und stehen vor den
-zeitgebundenen: sie rahmen den Tag, statt in ihm zu liegen, und zwischen den
-Uhrzeiten standen sie als zeitlose Zeilen ohne erkennbare Ordnung. Innerhalb
-der zeitgebundenen bleibt es chronologisch.
+**Ganztägige Termine stehen vor den zeitgebundenen**: sie rahmen den Tag,
+statt in ihm zu liegen. Innerhalb der zeitgebundenen bleibt es chronologisch.
+Vom 13.08. bis 25.09.2026 hatten sie einen eigenen Abschnitt „Ganztägig“;
+seitdem stehen beide in EINEM Abschnitt „Termine“, die ganztägigen mit
+Kalender-Symbol in der Zeitspalte (siehe „Samsung-Umbau“).
 
-**Leere Abschnitte fallen weg, und das ＋ hängt am ersten sichtbaren** — so
-kommt es genau einmal vor und sitzt immer oben bei den Terminen. Die drei
-Fälle: nur ganztägige → „Ganztägig" mit ＋ (kein leerer „Termine"-Block); nur
-zeitgebundene → „Termine" mit ＋; gar keine → „Termine" mit ＋ und der
-erklärenden Leerzeile. Für die ToDos gilt das **nicht**: deren Abschnitt bleibt
+**Der Termin-Abschnitt steht immer da**, mit ＋, und ohne Termine mit der
+erklärenden Leerzeile. Für die ToDos gilt dasselbe: ihr Abschnitt bleibt
 auch leer stehen („Nichts fällig."), weil das die eigentliche Frage des
 Streifens beantwortet.
 
