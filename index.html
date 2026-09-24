@@ -207,7 +207,16 @@
     </div>
 
     <div id="kalWochentage" class="kal-wochentage"></div>
-    <div id="kalRaster" class="kal-raster"></div>
+    <!-- Das Raster als Streifen aus drei Monaten: Vormonat, angezeigter Monat
+         (#kalRaster), Folgemonat. Die Nachbarn haengen beim Wischen schon dran
+         und gleiten mit dem Finger herein (siehe blaettere in kalender.js). -->
+    <div id="kalRasterBahn" class="kal-raster-bahn">
+      <div class="kal-raster-streifen">
+        <div class="kal-raster kal-raster-nachbar" data-schritt="-1" aria-hidden="true"></div>
+        <div id="kalRaster" class="kal-raster" data-schritt="0"></div>
+        <div class="kal-raster kal-raster-nachbar" data-schritt="1" aria-hidden="true"></div>
+      </div>
+    </div>
     </div><!-- /#kalOben -->
 
     <!-- Der Fokus-Teil. Steht an derselben Stelle wie der Kalender-Block und
@@ -246,15 +255,34 @@
 
        Die Tages-Karte steht vorn, damit Formular und Detail sich bei gleichem
        z-index DARUEBER legen: beide lassen sich aus ihr heraus oeffnen. -->
+  <!-- Drei Karten auf einem Streifen: Vortag, Tag, Folgetag. Die Nachbarn
+       schauen links und rechts hervor wie im Samsung Kalender; ein Tipp auf
+       sie blaettert. Gefuellt werden alle drei von zeichneTagKarte(). -->
   <div id="kalTagPopup" class="kal-popup kal-tag-popup" hidden>
-    <div class="kal-popup-box kal-tagkarte" role="dialog" aria-label="Tag">
-      <div class="kal-tagkarte-kopf"></div>
-      <div class="kal-tagkarte-liste"></div>
-      <div class="kal-tagkarte-fuss">
-        <input type="text" class="kal-tagkarte-feld" enterkeyhint="done"
-               aria-label="ToDo für diesen Tag anlegen">
-        <button type="button" class="kal-tagkarte-plus" aria-label="Neuer Termin an diesem Tag"
-                title="Neuer Termin">＋</button>
+    <div class="kal-tagkarten" role="dialog" aria-label="Tag">
+      <div class="kal-popup-box kal-tagkarte kal-tagkarte-nachbar" data-schritt="-1" aria-hidden="true">
+        <div class="kal-tagkarte-kopf"></div>
+        <div class="kal-tagkarte-liste"></div>
+        <div class="kal-tagkarte-fuss">
+          <button type="button" class="kal-tagkarte-plus" tabindex="-1" aria-label="Neuer Termin an diesem Tag"
+                  title="Neuer Termin">＋</button>
+        </div>
+      </div>
+      <div class="kal-popup-box kal-tagkarte" data-schritt="0">
+        <div class="kal-tagkarte-kopf"></div>
+        <div class="kal-tagkarte-liste"></div>
+        <div class="kal-tagkarte-fuss">
+          <button type="button" class="kal-tagkarte-plus" aria-label="Neuer Termin an diesem Tag"
+                  title="Neuer Termin">＋</button>
+        </div>
+      </div>
+      <div class="kal-popup-box kal-tagkarte kal-tagkarte-nachbar" data-schritt="1" aria-hidden="true">
+        <div class="kal-tagkarte-kopf"></div>
+        <div class="kal-tagkarte-liste"></div>
+        <div class="kal-tagkarte-fuss">
+          <button type="button" class="kal-tagkarte-plus" tabindex="-1" aria-label="Neuer Termin an diesem Tag"
+                  title="Neuer Termin">＋</button>
+        </div>
       </div>
     </div>
   </div>
@@ -264,14 +292,11 @@
   <div id="kalTerminPopup" class="kal-popup kal-popup-voll" hidden>
     <div class="kal-popup-box kal-termin-popup-box" role="dialog"></div>
   </div>
-  <!-- Zwischenmaske: ein Tipp auf einen Termin zeigt ihn erst an. Bearbeitet
-       wird erst ueber den Knopf darin - vorher fasste man beim blossen
-       Nachsehen sofort das Formular an. -->
-  <div id="kalDetailPopup" class="kal-popup kal-popup-voll" hidden>
-    <div class="kal-popup-box kal-detail-popup-box"></div>
-  </div>
+  <!-- Die fruehere Zwischenmaske (#kalDetailPopup) ist am 25.09.2026 im
+       Formular aufgegangen: ein Tipp auf einen Termin oeffnet ihn dort als
+       Ansicht, in der sich das meiste gleich aendern laesst. -->
   <!-- Rueckfrage (Serientermin: welche Termine? / wirklich loeschen?). Ganz
-       oben, weil sie sich ueber Formular UND Zwischenmaske legt. -->
+       oben, weil sie sich ueber das Formular legt. -->
   <div id="kalFrage" class="kal-popup kal-frage" hidden>
     <div class="kal-popup-box kal-frage-box" role="alertdialog" aria-label="Rückfrage"></div>
   </div>
