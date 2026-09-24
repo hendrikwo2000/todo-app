@@ -1194,10 +1194,11 @@ ein vorhandener Ort nur als Text im Formular. Google nimmt das Feld
 löscht es einen bestehenden Ort, deshalb geht dort ein leerer String hin und
 nicht `null`.
 
-**Die Knopfreihe im Termin-Formular ist 44 px hoch.** Mit `.btn.klein` waren es
+**Die Knopfreihe der Zwischenmaske ist 44 px hoch.** Mit `.btn.klein` waren es
 25 px — unter dem Maß, ab dem ein Finger regelmäßig danebenlangt. Die Klasse
 bleibt an den Knöpfen, `.kal-form-knoepfe .btn` holt Höhe und Schriftgröße
-zurück.
+zurück. Das Termin-Formular selbst hat seit dem 24.09.2026 keine Knopfreihe
+mehr, sondern unten Abbrechen | Speichern (siehe „Samsung-Umbau“).
 
 **Wischgeste.** Start nur innerhalb von 24 px am RECHTEN Bildschirmrand
 (links liegt auf iOS/Android die Zurück-Geste des Browsers). Die Achse
@@ -1208,6 +1209,9 @@ der Ruhezustand). Beim Loslassen entscheidet die Strecke (65 % zum Öffnen,
 35 % zum Schließen). Blockiert, solange ein Dialog offen ist oder etwas
 gezogen wird (`darfGeste()`) — sonst kämpft die Geste mit dem Drag & Drop des
 Boards. Der Umschalter in der Kopfzeile führt zum selben Ziel.
+**Die senkrechte Vollbild-Geste gibt es nur im Split** (seit 24.09.2026):
+am Handy füllt das Raster die Ansicht ohnehin. Senkrecht über dem Raster
+passiert dort nichts.
 **Im Split ist die Geste aus**: Öffnen und Zuziehen macht dort der
 Umschalter, denn eine Spalte wandert nicht mit dem Finger. Das Blättern
 im Raster und in der Tagesliste bleibt auch dort erhalten — ein Tablet quer
@@ -1245,6 +1249,152 @@ Monatsraster, auch wenn unten gerade Gewohnheiten oder der Timer stehen. Die
 Aufteilung wird dort also etwas früher geklemmt, als nötig wäre. Unschädlich,
 aber der Punkt, an dem man ansetzt, falls der Fokus-Teil einmal mehr Platz
 braucht.
+
+### Samsung-Umbau (24.09.2026)
+
+Vorlage waren drei Screenshots aus dem Samsung Kalender (Termin bearbeiten,
+Wiederholen, Monatsansicht mit Tages-Karte). Entwurf mit Hendriks
+Entscheidungen: `docs/2026-09-24-kalender-samsung.md`.
+
+**Am Handy gibt es keine Tagesliste mehr neben dem Raster.** Unterhalb der
+Split-Grenze (kein `html.breit`) füllt das Raster die Ansicht und zeigt die
+ToDos im Klartext — technisch dasselbe wie das Vollbild am Rechner.
+`rasterVoll()` in `kalender.js` fasst beides zusammen und steht überall dort,
+wo früher `kalVollbild` allein stand (Spurenzahl, Messung, Zelleninhalt,
+Tagesliste ausblenden). Die Reiter Kalender | Gewohnheiten | Timer bleiben
+stehen, anders als im Vollbild. Vollbild-Knopf und Teilungsgriff sind am Handy
+ausgeblendet; `pflegeSplit()` räumt ein Vollbild beim Wechsel aufs Handy weg und
+zeichnet beim Wechsel zwischen den Modi komplett neu.
+
+`messeVollbild()` steigt aus, wenn die Zelle keine Höhe hat — sonst setzte der
+Gewohnheiten-Reiter (Raster ausgeblendet) den gemessenen Platz auf 1, und
+zurück beim Kalender stand in jeder Zelle nur noch „+n“.
+
+**Erster Tipp markiert, zweiter öffnet** (Hendriks Wahl, wie bei Samsung).
+Ein Tipp auf den schon gewählten Tag öffnet die **Tages-Karte**, bei einem
+leeren Tag direkt „Neuer Termin“ (`oeffneTag()`). Leer heißt: kein ToDo, kein
+Termin und am heutigen Tag nichts Überfälliges. Ohne Schreibrecht bei Google
+öffnet auch ein leerer Tag die Karte, damit man wenigstens ein ToDo anlegen
+kann. Nach dem Blättern in einen anderen Monat ist am Handy nichts gewählt
+(außer heute liegt darin) — sonst öffnete sich der automatisch gewählte Tag
+schon beim ersten Tipp.
+
+**Die Tages-Karte** (`#kalTagPopup`, liegt wie alle Dialoge außerhalb des
+Panels) zeigt denselben Inhalt wie die Tagesliste: `zeichneTagesliste()` nimmt
+dafür ein Ziel und ein `karte`-Flag. In der Karte entfallen Tagestitel und die
+＋ an den Abschnitten; unten stehen stattdessen ein Feld „Am 24. Sept.
+hinzufügen“ (legt ein **ToDo** in der aktiven Liste an — Hendriks Wahl) und ein
+rundes ＋ für einen **Termin**. `zeichneKalender()` zeichnet Kopf und Liste der
+Karte mit, das Feld nie — wer tippt, verlöre sonst beim nächsten Sync Text und
+Fokus. Wisch nach links/rechts blättert den Tag (`gestenZone()` meldet über
+der Karte „tag“); der nachgeschobene Klick nach dem Wisch wird in der
+Einfangphase geschluckt, wie beim Raster.
+
+**Die Zurück-Taste schließt am Handy die oberste Ebene** (Rückfrage, Formular
+— von der Wiederholen-Seite erst zurück ins Formular —, Detail, Monatswahl,
+Filter, Karte) und nicht gleich den ganzen Kalender. `schliesseObersteEbene()`
+teilt sich die Reihenfolge mit Escape. Der Trick: Der `popstate`-Handler setzt
+den gerade abgeräumten Verlaufseintrag sofort wieder (`pushState`), solange
+der Kalender offen bleibt — so braucht keine Ebene einen eigenen Eintrag.
+
+**Behobener Fehler:** Der `popstate`-Handler rief bis dahin nur
+`setzePanel(false)`. `kalOffen` blieb `true`, und der 📅-Knopf öffnete den
+Kalender nach der Zurück-Taste nicht mehr (er hielt ihn für offen und schaltete
+nur den unteren Teil um). Jetzt läuft er über `schliesseKalender()`.
+
+**Termin-Formular im Samsung-Layout:** Titel mit Farbpunkt (ein Tipp klappt
+Googles Palette darunter auf), Ganztägig als Schiebeschalter, Von → Bis
+nebeneinander (Datum oben, Uhrzeit darunter), Zeilen mit Linien-Symbol für
+Ort, Wiederholung und Notizen, unten Abbrechen | Speichern. Keine Kopfzeile,
+kein Löschen — **gelöscht wird in der Zwischenmaske** (mit Rückfrage).
+Kalenderkonto, Erinnerung, Videokonferenz, Anhang und Teilnehmer aus der
+Vorlage sind bewusst weggelassen. Speichern ohne Titel färbt die Titellinie
+rot und meldet sich per Snackbar — vorher blieb der Knopf stumm.
+
+**Das Ende rückt sofort mit** (`setzeBeginn()`): Beginn ändern verschiebt das
+Ende um denselben Betrag, die Dauer bleibt. Ein Ende, das danach nicht hinter
+dem Beginn liegt, wird zu Beginn + 1 Stunde (`setzeEnde()`), auch über
+Mitternacht in den nächsten Tag.
+
+**Falle: Die Zeitfelder dürfen beim Ändern nicht neu gebaut werden.** Am
+Rechner öffnet `showPicker()` die Uhrzeit als Klappliste mit Stunden- und
+Minutenspalte, und `change` feuert schon nach der Stunde. Ein Neubau des
+Dialogs schlösse die Liste, bevor man die Minute erreicht. Deshalb zieht
+`aktualisiereZeitraum()` nur Text und Werte der vier Felder nach (`data-teil`).
+Neu gebaut wird nur beim Umschalten von Ganztägig — dann kommen oder gehen die
+Uhrzeitfelder. Die nativen Felder liegen wie bei `.date-field` am ToDo: am
+Finger unsichtbar über dem Text, mit der Maus ohne Trefferfläche und per
+`showPicker()` geöffnet.
+
+**Wiederholung** ist eine eigene Seite im selben Dialog (`seite:
+"wiederholung"`), mit „‹“ zurück: Nicht wiederholen · Jeden [n] Tag / Woche /
+Monat / Jahr (ab 2: „Alle 2 Wochen“) und darunter die Laufzeit: für immer,
+bestimmte Anzahl oder bis Datum. Woche heißt Wochentag des Beginns, Monat
+derselbe Tag im Monat — eine Wochentags-Auswahl gibt es nicht (nicht in der
+Vorlage). Samsungs „Nicht wieder anzeigen“ ist ein Übersetzungsfehler, bei uns
+steht „Nicht wiederholen“. Die Seite baut sich nicht neu, solange sie offen
+ist, sonst verlöre eine Zahl nach jeder Ziffer den Fokus.
+
+Die App baut die RRULE selbst (`baueRegel()`); `UNTIL` ist bei ganztägigen ein
+Datum, sonst der UTC-Zeitpunkt am Ende des gewählten Tages in Ortszeit.
+Umgekehrt liest `regelAlsWiederholung()` die Regel einer Serie. Was sie nicht
+abbilden kann (etwa „jeden 3. Mittwoch“, mehrere Wochentage), heißt „Eigene
+Regel aus Google“ und **bleibt unangetastet**, solange man die Wiederholung
+nicht anfasst. Google liefert die Regel bei aufgelösten Einzelterminen nicht
+mit — das Formular holt sie beim Öffnen über `GET /api/google/termin?serie=`,
+bis dahin ist die Zeile gesperrt („Wird geladen …“).
+
+**Serientermin ändern oder löschen — drei Wege** (Hendriks Wahl, wie bei
+Samsung und Google), abgefragt über `frage()` / `frageUmfang()`:
+
+* **Nur diesen Termin** — PATCH auf die Ausgabe, Google führt sie als Ausnahme.
+  Entfällt, wenn die Wiederholung geändert wurde.
+* **Diesen und alle folgenden** — die App legt ab hier eine NEUE Serie an und
+  kürzt danach die alte per `UNTIL` auf die Sekunde vor der Ausgabe.
+  Reihenfolge absichtlich so: Scheitert der zweite Schritt, stehen Termine
+  doppelt da, statt still zu verschwinden. Hatte die alte Serie eine feste
+  Anzahl, bekommt die neue den Rest (gezählt über `instances` samt gelöschter
+  Ausgaben, weil `COUNT` die mitzählt). Ab der ersten Ausgabe ist das dasselbe
+  wie „alle“.
+* **Alle Termine** — PATCH auf den Stammtermin. Wer die Ausgabe vom 16. auf den
+  17. legt, verschiebt die ganze Serie um einen Tag, die Uhrzeit gilt für
+  alle. Mit „Nicht wiederholen“ wird die Serie gelöscht und ein Einzeltermin
+  am Tag aus dem Formular angelegt.
+
+Die ganze Logik steht in `functions/_lib/serien.js`; `termin.js` prüft nur
+Eingaben (`regel` gegen ein enges Muster, Kennungen, `umfang`). Der Termin
+trägt dafür `serieId` (Googles `recurringEventId`).
+
+**Bekannte Lücke:** Bei „diesen und alle folgenden“ wandern einzeln gelöschte
+oder verschobene Ausgaben der alten Serie nicht in die neue mit — sie tauchen
+dort wieder im normalen Rhythmus auf. Google selbst kopiert die Ausnahmen;
+das nachzubauen hieße, sie einzeln auszulesen und als EXDATE zu übertragen.
+
+**Filter als Menü:** `#kalFilter` steht jetzt IM Kalender-Kopf (der ist mit
+`position: relative` der Bezugsrahmen) und hängt rechtsbündig darunter. Ein
+Tipp daneben schließt es (Einfangphase am Dokument), der Tipp selbst geht
+trotzdem durch.
+
+**Falle beim lokalen Testen mit einem Schein-Google-Konto:** Eine von Hand in
+`google_konten` eingetragene Zeile überlebt das Öffnen der App nicht. Der
+Kalender fragt sofort bei Google an, Google lehnt das Schein-Token ab (401),
+und der Endpunkt löscht die Zeile wie vorgesehen („getrennt“). Zum Prüfen der
+Eingabeprüfung vorher `localStorage.kalAnsicht = "liste"` setzen und die
+Anfragen von `/robots.txt` aus schicken — `preview_start` öffnet sonst selbst
+die App.
+
+**Was ungeprüft blieb:**
+
+* **Echte Google-Serien.** Lokal gibt es keine Zugangsdaten. Geprüft sind die
+  Serien-Wege in `serien.js` gegen ein nachgebautes Google (Node, 12 Fälle:
+  anlegen, nur dieser, folgende mit Rest-Anzahl, alle mit Verschiebung, keine
+  Wiederholung mehr, ganztägiges UNTIL, löschen in allen drei Varianten), die
+  Eingabeprüfung im echten Worker und das Formular gegen nachgebaute
+  Antworten. Dass Google einen Einzeltermin per PATCH mit `recurrence` zur
+  Serie macht, ist nicht selbst gesehen.
+* **Ein echtes Handy.** Die Picker für Datum und Uhrzeit, die Tastatur über dem
+  Feld in der Karte und der Wisch liefen gegen nachgebaute Ereignisse im
+  Testbrowser.
 
 ## Google Kalender
 
@@ -1672,7 +1822,8 @@ Drei Dinge in der Maske, die man leicht falsch baut:
 **Schreiben in Google.** `functions/api/google/termin.js` legt an (POST),
 ändert (PUT) und löscht (DELETE) — immer im Hauptkalender. Das Formular deckt
 Titel, ganztägig/Uhrzeit, Start- und Enddatum (auch mehrtägig), Farbe aus
-Googles Palette und Notiz ab. Richtung Google geht ein **PATCH**, kein PUT:
+Googles Palette, Ort, Notiz und seit dem 24.09.2026 die Wiederholung ab
+(Serientermine, siehe „Samsung-Umbau“). Richtung Google geht ein **PATCH**, kein PUT:
 was das Formular nicht kennt (Ort, Gäste, Erinnerungen), bleibt damit stehen
 statt still gelöscht zu werden. Zwei Eigenheiten stecken in `terminRumpf()`:
 ganztägig braucht `{date}` mit dem Ende als erstem Tag DANACH, terminiert
@@ -1695,7 +1846,9 @@ eine Pille **KW** für die Kalenderwochen-Spalte — die ist zwar keine
 Datenquelle, wird aber genauso an- und abgeschaltet und gemerkt (Schlüssel
 `kw` im selben `kalQuellenAus`). Abgeschaltet fällt die erste Rasterspalte weg
 (`.ohne-kw`), das Raster geht auf sieben gleich breite Spalten zurück. Ab zwei
-Quellen gibt es den Trichter im Kalender-Kopf, der die Pillen aufklappt. Zwei localStorage-Mengen: `kalQuellenAus` (abgewählt) und
+Quellen gibt es den Trichter im Kalender-Kopf. Er öffnet seit dem 24.09.2026
+ein Menü darunter (eine Zeile je Quelle, Haken rechts) statt einer
+Pillenreihe, die sich zwischen Kopf und Raster schob. Zwei localStorage-Mengen: `kalQuellenAus` (abgewählt) und
 `kalQuellenBekannt` (je gesehen). Ein NEU auftauchender Kalender startet
 ausgeschaltet — außer dem Hauptkalender —, eine spätere eigene Entscheidung
 wird davon nie wieder überschrieben.
