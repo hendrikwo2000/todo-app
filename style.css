@@ -2581,6 +2581,9 @@ html.kal-eigene-teilung .kal-liste {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+/* Ganztaegige: Kalender-Symbol statt der Uhrzeit, wie bei Samsung - mittig in
+   der Spalte und in Textfarbe, nicht so blass wie die Symbole im Formular. */
+.kal-termin-zeit .kal-form-symbol { display: flex; justify-content: center; color: var(--text); }
 .kal-termin-balken {
   flex: none;
   width: 4px;
@@ -2698,10 +2701,35 @@ body.zieht, body.zieht .todo {
 }
 .kal-tagkarte[data-schritt="-1"] { transform: translate(calc(-150% - 12px), -50%); }
 .kal-tagkarte[data-schritt="1"]  { transform: translate(calc(50% + 12px), -50%); }
-/* Die Nachbarn: zurueckgenommen, und ein Tipp darauf blaettert - deshalb
-   faengt die Karte selbst den Tipp, nicht ihr Inhalt. */
-.kal-tagkarte-nachbar { opacity: .5; cursor: pointer; }
-.kal-tagkarte-nachbar > * { pointer-events: none; }
+/* Die Nachbarn sind DECKEND und nur abgedunkelt (seit 25.09.2026 - vorher
+   halb durchsichtig, und das Raster schien durch). Die Abdunkelung ist eine
+   schwarze Schicht ueber der Karte, deren Deckkraft am Wisch haengt: --anteil
+   setzt kalender.js beim Ziehen (0 in Ruhe, 1 einen ganzen Tag weiter). Die
+   hereinkommende Karte hellt dabei auf, die abgehende dunkelt ab - am Ende
+   des Wischs stimmt die Helligkeit schon, und beim Neuzeichnen springt
+   nichts. --gleit-dauer laesst das im Takt des Gleitens laufen.
+   Ein Tipp auf einen Nachbarn blaettert - deshalb faengt die Karte selbst den
+   Tipp, nicht ihr Inhalt. */
+.kal-tagkarte::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #000;
+  pointer-events: none;
+  opacity: calc(.4 * var(--anteil, 0));
+  transition: opacity var(--gleit-dauer, 0ms) cubic-bezier(.22, .8, .3, 1);
+}
+.kal-tagkarte-nachbar::after { opacity: calc(.4 * (1 - var(--anteil, 0))); }
+.kal-tagkarte-nachbar { cursor: pointer; }
+/* In Ruhe zeigt ein Nachbar nur seine Kante, keinen Inhalt - sonst schauten
+   am Bildschirmrand ein paar abgeschnittene Buchstaben hervor. Beim Wischen
+   blendet der Inhalt im selben Mass ein, wie die Karte hereinkommt. */
+.kal-tagkarte-nachbar > * {
+  pointer-events: none;
+  opacity: var(--anteil, 0);
+  transition: opacity var(--gleit-dauer, 0ms) cubic-bezier(.22, .8, .3, 1);
+}
 .kal-tagkarte-kopf {
   display: flex;
   align-items: baseline;
@@ -2777,6 +2805,7 @@ body.zieht, body.zieht .todo {
 .kal-form textarea::placeholder { color: var(--muted); }
 
 .kal-form-titelzeile {
+  position: relative;   /* Bezugsrahmen fuers Farbmenue */
   display: flex;
   align-items: center;
   gap: 12px;
@@ -2800,13 +2829,22 @@ body.zieht, body.zieht .todo {
 .kal-form-farbpunkt:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 /* Farbwahl aus Googles Palette - eine eigene Skala waere im Google-Kalender
-   hinterher nicht wiederzuerkennen. Klappt unter dem Titel auf. */
-.kal-form-farben {
-  display: flex;
-  flex-wrap: wrap;
+   hinterher nicht wiederzuerkennen. Seit 25.09.2026 ein kleines Menue unter
+   dem Farbpunkt (rechtsbuendig, wie das Filter-Menue), statt einer Reihe, die
+   ins Formular klappte und alles darunter verschob. */
+.kal-farbwahl {
+  position: absolute;
+  top: calc(100% - 6px);
+  right: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(6, 30px);
   gap: 10px;
-  padding: 12px 2px;
-  border-bottom: 1px solid var(--line);
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--row);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
 }
 .kal-farbe {
   width: 30px; height: 30px;
@@ -2847,10 +2885,40 @@ body.zieht, body.zieht .todo {
 .kal-form-weiter { color: var(--muted); font-size: 22px; line-height: 1; }
 .kal-form-wdh:disabled { cursor: default; color: var(--muted); }
 
-/* Ansicht eines Termins (seit 25.09.2026): Ort und Notiz stehen als Text mit
-   Links da, wie in der frueheren Zwischenmaske - geaendert werden sie ueber
-   "Bearbeiten". Die Zeile selbst ist dann kein Knopf. */
+/* Ansicht eines Termins (seit 25.09.2026): eine reine Ansicht, geaendert wird
+   ueber "Bearbeiten" (baueTerminAnsicht). Titel und Zeiten als Text, Ort und
+   Notiz mit Links wie in der frueheren Zwischenmaske; leere Zeilen, der
+   Ganztaegig-Schalter und "Nicht wiederholen" fallen weg. */
 .kal-form-anzeige { cursor: default; }
+/* display:flex an .kal-form-reihe schluege sonst das eingebaute [hidden] -
+   die Wiederholungs-Zeile blendet sich in der Ansicht selbst aus. */
+.kal-form-reihe[hidden] { display: none; }
+.kal-ansicht-titel {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 0;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.kal-form-ansicht .kal-form-farbpunkt { cursor: default; }
+.kal-ansicht-datum { font-size: 16px; padding: 6px 10px 2px; }
+.kal-ansicht-uhr {
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 10px 6px;
+}
+/* Eintaegig und ganztaegig: nur ein Datum, mittig. */
+.kal-form-zeitraum.einzeln { grid-template-columns: minmax(0, 1fr); }
+.kal-ansicht-ganztags {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+}
 .kal-form-link { color: var(--accent); overflow-wrap: anywhere; }
 .kal-form-notiztext {
   flex: 1;
@@ -2860,12 +2928,6 @@ body.zieht, body.zieht .todo {
   line-height: 1.45;
 }
 .kal-form-notiztext a { color: var(--accent); }
-/* Ohne Schreibrecht: Datum und Uhrzeit stehen da, lassen sich aber nicht
-   antippen. */
-.kal-form-wahl.gesperrt { cursor: default; }
-@media (hover: hover) {
-  .kal-form-wahl.gesperrt:hover { background: none; }
-}
 @media (hover: hover) {
   .kal-form-wdh:not(:disabled):hover { background: var(--hover); }
 }

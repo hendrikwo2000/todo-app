@@ -1327,36 +1327,29 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
     // muss ich heute tun", und die Termin-Ueberschrift samt Leerzeile schob
     // diese Antwort vorher jedes Mal nach unten aus dem Blick.
     //
-    // Ganztaegige bekommen einen eigenen Abschnitt und stehen zuerst: sie
-    // rahmen den Tag, statt in ihm zu liegen, und zwischen den Uhrzeiten
-    // standen sie als zeitlose Zeilen ohne erkennbare Ordnung.
+    // EIN Abschnitt wie bei Samsung (seit 25.09.2026): erst die ganztaegigen
+    // - sie rahmen den Tag, statt in ihm zu liegen -, dann die mit Uhrzeit.
+    // Die ganztaegigen tragen ein Kalender-Symbol in der Zeitspalte. Bis dahin
+    // hatten sie eine eigene Ueberschrift und davor eine leere Spalte - Hendrik:
+    // "am Anfang viel Platz".
     const terminePlus = !karte && googleZustand.verbunden && googleZustand.schreiben
       ? () => oeffneTerminFormular(tag, null) : null;
     const ganztags = termineDesTages.filter(e => e.termin.ganztags);
     const mitZeit  = termineDesTages.filter(e => !e.termin.ganztags);
 
-    if (ganztags.length) {
-      ziel.appendChild(baueGruppenKopf("Ganztägig", terminePlus, "Termin", false, "📅"));
-      for (const e of ganztags) ziel.appendChild(baueTerminZeile(e.termin, false));
+    ziel.appendChild(baueGruppenKopf("Termine", terminePlus, "Termin", false, "📅"));
+    // Symbol und Startzeit stehen wie bei Samsung nur einmal - beim ersten
+    // ganztaegigen bzw. beim ersten Termin einer Uhrzeit.
+    ganztags.forEach((e, i) => ziel.appendChild(baueTerminZeile(e.termin, i === 0)));
+    let letzteZeit = "";
+    for (const e of mitZeit) {
+      const zeit = startZeit(e.termin);
+      ziel.appendChild(baueTerminZeile(e.termin, zeit !== letzteZeit));
+      letzteZeit = zeit;
     }
-    // Das ＋ haengt am ERSTEN sichtbaren Termin-Abschnitt, damit es genau
-    // einmal vorkommt und immer an derselben Stelle steht: oben bei den
-    // Terminen. Stehen keine ganztaegigen da, wandert es hierher.
-    if (mitZeit.length || !ganztags.length) {
-      ziel.appendChild(baueGruppenKopf("Termine",
-        ganztags.length ? null : terminePlus, "Termin", false, "📅"));
-      // Wie bei Samsung steht die Startzeit nur einmal, auch wenn mehrere
-      // Termine zur selben Zeit beginnen.
-      let letzteZeit = "";
-      for (const e of mitZeit) {
-        const zeit = startZeit(e.termin);
-        ziel.appendChild(baueTerminZeile(e.termin, zeit !== letzteZeit));
-        letzteZeit = zeit;
-      }
-      if (!mitZeit.length) {
-        ziel.appendChild(baueLeerZeile(googleZustand.verbunden
-          ? "Keine Termine." : "Kein Google-Kalender verbunden."));
-      }
+    if (!termineDesTages.length) {
+      ziel.appendChild(baueLeerZeile(googleZustand.verbunden
+        ? "Keine Termine." : "Kein Google-Kalender verbunden."));
     }
   }
 
@@ -1625,13 +1618,11 @@ function oeffneTerminFormular(tag, termin) {
   formularTag = tag;
   formularFelder = felderAusTermin(tag, termin);
   // Ein bestehender Termin oeffnet als ANSICHT (seit 25.09.2026, statt der
-  // frueheren Zwischenmaske): dasselbe Formular, in dem sich fast alles direkt
-  // aendern laesst - nur Ort und Notiz zeigen ihre Links und werden erst ueber
-  // "Bearbeiten" zu Eingabefeldern. Ohne Schreibrecht bei Google bleibt alles
-  // gesperrt ("lesen").
+  // frueheren Zwischenmaske) - eine reine Ansicht, geaendert wird ueber
+  // "Bearbeiten" (siehe baueTerminAnsicht). Ohne Schreibrecht bei Google gibt
+  // es nur die Ansicht ("lesen").
   formularFelder.modus = !termin ? "neu"
     : (googleZustand.verbunden && googleZustand.schreiben ? "ansicht" : "lesen");
-  formularFelder.original = formStand(formularFelder);
   todoEingabeOffen = false;
   zeichneKalender();
   zeichneTerminPopup();
@@ -1661,7 +1652,6 @@ async function ladeRegel(f, serieId) {
     f.regelAlt = regel;
     f.wiederholung = regelAlsWiederholung(regel);
   }
-  aktualisiereFuss();
   // Nur die eine Zeile nachziehen: wer gerade den Titel tippt, soll dabei
   // nicht den Cursor verlieren.
   aktualisiereWdhZeile();
@@ -1703,6 +1693,8 @@ const FORM_SYMBOLE = {
   ort:   '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.3"/>',
   wdh:   '<path d="M4.5 11V9.5A3.5 3.5 0 0 1 8 6h11.5l-3-3M19.5 13v1.5a3.5 3.5 0 0 1-3.5 3.5H4.5l3 3"/>',
   notiz: '<rect x="5.5" y="3.5" width="13" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/>',
+  // Fuer ganztaegige Termine in der Tagesliste, nach dem Samsung-Vorbild.
+  kalender: '<rect x="4" y="5.5" width="16" height="14.5" rx="2.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4M8.5 14h7M8.5 17h4"/>',
 };
 
 function formSymbol(name) {
@@ -1727,7 +1719,7 @@ function formSymbol(name) {
  * bauen - am Rechner schloesse ein Neubau den Uhrzeit-Picker, sobald die
  * Stunde gewaehlt ist, und die Minute bliebe unerreichbar.
  */
-function baueWahlFeld(typ, wert, text, beiAenderung, klasse, name, teil, gesperrt) {
+function baueWahlFeld(typ, wert, text, beiAenderung, klasse, name, teil) {
   const feld = document.createElement("label");
   feld.className = "kal-form-wahl " + klasse;
   if (teil) feld.dataset.teil = teil;
@@ -1741,13 +1733,11 @@ function baueWahlFeld(typ, wert, text, beiAenderung, klasse, name, teil, gesperr
   // ist aber keiner.
   eingabe.required = true;
   eingabe.setAttribute("aria-label", name);
-  eingabe.disabled = !!gesperrt;
-  if (gesperrt) feld.classList.add("gesperrt");
   eingabe.addEventListener("change", () => { if (eingabe.value) beiAenderung(eingabe.value); });
   feld.addEventListener("click", e => {
     if (e.target === eingabe) return;
     e.preventDefault();
-    if (!gesperrt) openDatePicker(eingabe);
+    openDatePicker(eingabe);
   });
   feld.append(anzeige, eingabe);
   return feld;
@@ -1768,18 +1758,24 @@ function aktualisiereZeitraum() {
     const eingabe = feld.querySelector("input");
     if (eingabe.value !== wert) eingabe.value = wert;
   }
-  aktualisiereFuss();
+}
+
+// Text der Wiederholungs-Zeile. Im Formular ist sie ein Knopf, gesperrt,
+// solange die Regel einer Serie noch geladen wird; in der Ansicht reiner Text
+// - und weg, wenn sich doch nichts wiederholt.
+function fuelleWdhZeile(zeile, f) {
+  const laedt = f.regelAlt === null;
+  zeile.querySelector(".kal-form-wdh-text").textContent = laedt
+    ? (f.regelFehlt ? "Serientermin" : "Wird geladen …")
+    : wiederholungText(f.wiederholung);
+  if (zeile.tagName === "BUTTON") zeile.disabled = laedt;
+  else zeile.hidden = !laedt && f.wiederholung.art === "keine";
 }
 
 function aktualisiereWdhZeile() {
   const f = formularFelder;
-  const knopf = kalTerminBox.querySelector(".kal-form-wdh");
-  if (!f || !knopf) return;
-  const laedt = f.regelAlt === null;
-  knopf.disabled = laedt || f.modus === "lesen";
-  knopf.querySelector(".kal-form-wdh-text").textContent = laedt
-    ? (f.regelFehlt ? "Serientermin" : "Wird geladen …")
-    : wiederholungText(f.wiederholung);
+  const zeile = kalTerminBox.querySelector(".kal-form-wdh");
+  if (f && zeile) fuelleWdhZeile(zeile, f);
 }
 
 // Farbe des Hauptkalenders - die gilt, solange der Termin keine eigene hat.
@@ -1788,8 +1784,11 @@ function hauptkalenderFarbe() {
   return farbWert(k && k.farbe);
 }
 
+// Das Formular zum Anlegen und Bearbeiten. Ein bestehender Termin landet hier
+// erst nach "Bearbeiten" - vorher zeigt ihn baueTerminAnsicht().
 function baueTerminFormular(tag, termin) {
   const f = formularFelder;
+  if (f.modus === "ansicht" || f.modus === "lesen") return baueTerminAnsicht(f, termin);
   const box = document.createElement("div");
   box.className = "kal-form";
 
@@ -1802,51 +1801,53 @@ function baueTerminFormular(tag, termin) {
   titel.placeholder = "Titel";
   titel.setAttribute("aria-label", "Titel des Termins");
   titel.value = f.titel;
-  titel.readOnly = f.modus === "lesen";
   titel.addEventListener("input", () => {
     f.titel = titel.value;
     titelZeile.classList.remove("fehlt");
-    aktualisiereFuss();
   });
   titelZeile.appendChild(titel);
 
-  // Die Farbe als Punkt neben dem Titel, wie bei Samsung. Vorher stand die
-  // ganze Palette als Reihe mitten im Formular, auch wenn man sie nie anfasst.
+  // Die Farbe als Punkt neben dem Titel, wie bei Samsung. Ein Tipp oeffnet
+  // die Palette als kleines Menue direkt darunter (seit 25.09.2026 - vorher
+  // klappte sie als Reihe ins Formular und schob alles darunter nach unten).
   const punkt = document.createElement("button");
   punkt.type = "button";
   punkt.className = "kal-form-farbpunkt";
-  const hex = f.farbe ? farbWert((googleZustand.palette || {})[f.farbe]) : hauptkalenderFarbe();
-  if (hex) punkt.style.background = hex;
-  else punkt.classList.add("leer");
+  faerbePunkt(punkt, f);
   punkt.title = "Farbe wählen";
   punkt.setAttribute("aria-label", "Farbe wählen");
+  punkt.setAttribute("aria-haspopup", "menu");
   punkt.setAttribute("aria-expanded", String(f.farbWahl));
-  punkt.disabled = f.modus === "lesen";
   punkt.addEventListener("click", () => { f.farbWahl = !f.farbWahl; zeichneTerminPopup(); });
   titelZeile.appendChild(punkt);
-  box.appendChild(titelZeile);
 
   // Googles eigene Palette - eine eigene Farbskala waere im Google-Kalender
-  // hinterher nicht wiederzuerkennen. Mit der Wahl klappt sie wieder zu.
+  // hinterher nicht wiederzuerkennen. Mit der Wahl geht das Menue wieder zu;
+  // ein Tipp daneben schliesst es ebenfalls (siehe Verdrahtung unten).
   if (f.farbWahl) {
-    const farben = document.createElement("div");
-    farben.className = "kal-form-farben";
+    const wahl = document.createElement("div");
+    wahl.className = "kal-farbwahl";
+    wahl.setAttribute("role", "menu");
+    wahl.setAttribute("aria-label", "Farbe");
     const knopfFarbe = (id, farbe, name) => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "kal-farbe" + (String(f.farbe) === String(id) ? " gewaehlt" : "") + (id ? "" : " kal-farbe-standard");
       b.title = name;
+      b.setAttribute("role", "menuitemradio");
+      b.setAttribute("aria-checked", String(String(f.farbe) === String(id)));
       b.setAttribute("aria-label", name);
       if (farbe) b.style.background = farbe;
       b.addEventListener("click", () => { f.farbe = id; f.farbWahl = false; zeichneTerminPopup(); });
       return b;
     };
-    farben.appendChild(knopfFarbe("", hauptkalenderFarbe(), "Farbe des Kalenders"));
+    wahl.appendChild(knopfFarbe("", hauptkalenderFarbe(), "Farbe des Kalenders"));
     for (const [id, wert] of Object.entries(googleZustand.palette || {})) {
-      farben.appendChild(knopfFarbe(id, farbWert(wert), "Farbe " + id));
+      wahl.appendChild(knopfFarbe(id, farbWert(wert), "Farbe " + id));
     }
-    box.appendChild(farben);
+    titelZeile.appendChild(wahl);
   }
+  box.appendChild(titelZeile);
 
   // --- Ganztaegig ---
   const ganz = document.createElement("label");
@@ -1859,7 +1860,6 @@ function baueTerminFormular(tag, termin) {
   schalter.className = "kal-schalter";
   schalter.setAttribute("role", "switch");
   schalter.checked = f.ganztags;
-  schalter.disabled = f.modus === "lesen";
   // Hier darf neu gebaut werden: die Uhrzeitfelder kommen oder gehen.
   schalter.addEventListener("change", () => { f.ganztags = schalter.checked; zeichneTerminPopup(); });
   ganz.append(formSymbol("uhr"), ganzText, schalter);
@@ -1871,12 +1871,11 @@ function baueTerminFormular(tag, termin) {
   const seite = (datum, zeit, beiDatum, beiZeit, wer, teil) => {
     const block = document.createElement("div");
     block.className = "kal-form-zeitpunkt";
-    const gesperrt = f.modus === "lesen";
     block.appendChild(baueWahlFeld("date", datum, FORM_DATUM.format(datumAusIso(datum)),
-      beiDatum, "kal-form-datum", wer + " – Datum", teil + "-datum", gesperrt));
+      beiDatum, "kal-form-datum", wer + " – Datum", teil + "-datum"));
     if (!f.ganztags) {
       block.appendChild(baueWahlFeld("time", zeit, zeit, beiZeit, "kal-form-uhr",
-        wer + " – Uhrzeit", teil + "-uhr", gesperrt));
+        wer + " – Uhrzeit", teil + "-uhr"));
     }
     return block;
   };
@@ -1895,38 +1894,17 @@ function baueTerminFormular(tag, termin) {
   box.appendChild(zeitraum);
 
   // --- Ort ---
-  // In der Ansicht ist ein vorhandener Ort ein Link zu Google Maps, wie in der
-  // frueheren Zwischenmaske (Hendriks Wunsch: die Links bleiben). Bewusst der
-  // Web-Link und kein geo:-Schema: am Handy uebernimmt ihn die Karten-App von
-  // selbst, am Rechner oeffnet er die Karte im Browser. Geaendert wird der Ort
-  // ueber "Bearbeiten" - ist er leer, gibt es keinen Link, und das Feld steht
-  // gleich zum Hineintippen da.
-  const alsText = f.modus === "ansicht" || f.modus === "lesen";
-  if (alsText && f.ort.trim()) {
-    const ort = document.createElement("div");
-    ort.className = "kal-form-reihe kal-form-anzeige";
-    const link = document.createElement("a");
-    link.className = "kal-form-link";
-    link.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(f.ort);
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.title = "Auf Google Maps zeigen";
-    link.textContent = f.ort;
-    ort.append(formSymbol("ort"), link);
-    box.appendChild(ort);
-  } else if (f.modus !== "lesen") {
-    const ort = document.createElement("label");
-    ort.className = "kal-form-reihe";
-    const ortFeld = document.createElement("input");
-    ortFeld.type = "text";
-    ortFeld.className = "kal-form-eingabe";
-    ortFeld.placeholder = "Ort";
-    ortFeld.setAttribute("aria-label", "Ort");
-    ortFeld.value = f.ort;
-    ortFeld.addEventListener("input", () => { f.ort = ortFeld.value; aktualisiereFuss(); });
-    ort.append(formSymbol("ort"), ortFeld);
-    box.appendChild(ort);
-  }
+  const ort = document.createElement("label");
+  ort.className = "kal-form-reihe";
+  const ortFeld = document.createElement("input");
+  ortFeld.type = "text";
+  ortFeld.className = "kal-form-eingabe";
+  ortFeld.placeholder = "Ort";
+  ortFeld.setAttribute("aria-label", "Ort");
+  ortFeld.value = f.ort;
+  ortFeld.addEventListener("input", () => { f.ort = ortFeld.value; });
+  ort.append(formSymbol("ort"), ortFeld);
+  box.appendChild(ort);
 
   // --- Wiederholung: fuehrt auf die eigene Seite ---
   const wdh = document.createElement("button");
@@ -1943,80 +1921,150 @@ function baueTerminFormular(tag, termin) {
   box.appendChild(wdh);
 
   // --- Notizen ---
-  // Wie der Ort: in der Ansicht Text mit klickbaren Links (nur http/https,
-  // siehe textMitLinks), Zeilenumbrueche aus Google bleiben stehen. Geaendert
-  // wird ueber "Bearbeiten", eine leere Notiz gleich direkt.
-  if (alsText && f.notiz.trim()) {
+  const notizReihe = document.createElement("label");
+  notizReihe.className = "kal-form-reihe kal-form-reihe-oben";
+  const notiz = document.createElement("textarea");
+  notiz.className = "kal-form-eingabe kal-form-notiz";
+  notiz.rows = 1;
+  notiz.placeholder = "Notizen";
+  notiz.setAttribute("aria-label", "Notizen");
+  notiz.value = f.notiz;
+  notiz.addEventListener("input", () => { f.notiz = notiz.value; passeNotizHoeheAn(notiz); });
+  notizReihe.append(formSymbol("notiz"), notiz);
+  box.appendChild(notizReihe);
+
+  box.appendChild(baueFuss(f, termin));
+  fuelleWdhZeile(wdh, f);
+  return box;
+}
+
+// Farbe des Punkts: die eigene Farbe des Termins oder die des Kalenders. Ohne
+// beides ein gestrichelter Ring wie in der Palette.
+function faerbePunkt(punkt, f) {
+  const hex = f.farbe ? farbWert((googleZustand.palette || {})[f.farbe]) : hauptkalenderFarbe();
+  if (hex) punkt.style.background = hex;
+  else punkt.classList.add("leer");
+}
+
+/**
+ * Die ANSICHT eines bestehenden Termins (seit 25.09.2026, zweiter Anlauf am
+ * selben Tag). Hendriks Wunsch: sie soll nach Ansehen aussehen, nicht nach
+ * Bearbeiten - also eine reine Ansicht, geaendert wird ueber "Bearbeiten".
+ *
+ * Aufbau wie das Formular (Titel, Zeitraum, Zeilen mit Symbol), aber:
+ *   - Titel und Zeiten als Text, kein Feld und kein Picker
+ *   - kein Ganztaegig-Schalter; bei ganztaegigen steht "Ganztaegig" unter dem
+ *     Datum, bei eintaegigen nur EIN Datum statt zweimal desselben
+ *   - Ort, Wiederholung und Notiz nur, wenn es sie gibt
+ *   - Ort als Link zu Google Maps, Links in der Notiz klickbar
+ */
+function baueTerminAnsicht(f, termin) {
+  const box = document.createElement("div");
+  box.className = "kal-form kal-form-ansicht";
+
+  const titelZeile = document.createElement("div");
+  titelZeile.className = "kal-form-titelzeile";
+  const titel = document.createElement("h2");
+  titel.className = "kal-ansicht-titel";
+  titel.textContent = f.titel || "(ohne Titel)";
+  const punkt = document.createElement("span");
+  punkt.className = "kal-form-farbpunkt";
+  punkt.setAttribute("aria-hidden", "true");
+  faerbePunkt(punkt, f);
+  titelZeile.append(titel, punkt);
+  box.appendChild(titelZeile);
+
+  // --- Zeitraum als Text ---
+  const zeitraum = document.createElement("div");
+  zeitraum.className = "kal-form-zeitraum";
+  const seite = (datum, zeit) => {
+    const block = document.createElement("div");
+    block.className = "kal-form-zeitpunkt";
+    const d = document.createElement("span");
+    d.className = "kal-ansicht-datum";
+    d.textContent = FORM_DATUM.format(datumAusIso(datum));
+    block.appendChild(d);
+    if (zeit) {
+      const z = document.createElement("span");
+      z.className = "kal-ansicht-uhr";
+      z.textContent = zeit;
+      block.appendChild(z);
+    }
+    return block;
+  };
+  if (f.ganztags && f.startDatum === f.endDatum) {
+    zeitraum.classList.add("einzeln");
+    zeitraum.appendChild(seite(f.startDatum, ""));
+  } else {
+    const pfeil = document.createElement("span");
+    pfeil.className = "kal-form-pfeil";
+    pfeil.setAttribute("aria-hidden", "true");
+    pfeil.textContent = "→";
+    zeitraum.append(seite(f.startDatum, f.ganztags ? "" : f.vonZeit), pfeil,
+                    seite(f.endDatum, f.ganztags ? "" : f.bisZeit));
+  }
+  if (f.ganztags) {
+    const hinweis = document.createElement("span");
+    hinweis.className = "kal-ansicht-ganztags";
+    hinweis.textContent = "Ganztägig";
+    zeitraum.appendChild(hinweis);
+  }
+  box.appendChild(zeitraum);
+
+  // --- Ort, nur wenn es einen gibt: Link zu Google Maps ---
+  // Bewusst der Web-Link und kein geo:-Schema: am Handy uebernimmt ihn die
+  // Karten-App von selbst, am Rechner oeffnet er die Karte im Browser.
+  if (f.ort.trim()) {
+    const ort = document.createElement("div");
+    ort.className = "kal-form-reihe kal-form-anzeige";
+    const link = document.createElement("a");
+    link.className = "kal-form-link";
+    link.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(f.ort);
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.title = "Auf Google Maps zeigen";
+    link.textContent = f.ort;
+    ort.append(formSymbol("ort"), link);
+    box.appendChild(ort);
+  }
+
+  // --- Wiederholung, nur bei einer Serie ---
+  // Die Regel kommt erst nach (ladeRegel) - bis dahin "Wird geladen ...".
+  if (termin && termin.serieId) {
+    const wdh = document.createElement("div");
+    wdh.className = "kal-form-reihe kal-form-anzeige kal-form-wdh";
+    const wdhText = document.createElement("span");
+    wdhText.className = "kal-form-reihe-text kal-form-wdh-text";
+    wdh.append(formSymbol("wdh"), wdhText);
+    box.appendChild(wdh);
+    fuelleWdhZeile(wdh, f);
+  }
+
+  // --- Notiz, nur wenn es eine gibt: Text mit klickbaren Links ---
+  // Nur http/https (siehe textMitLinks), Zeilenumbrueche aus Google bleiben.
+  const notizText = f.notiz.trim() ? beschreibungAlsText(f.notiz) : "";
+  if (notizText) {
     const notizReihe = document.createElement("div");
     notizReihe.className = "kal-form-reihe kal-form-reihe-oben kal-form-anzeige";
     const text = document.createElement("div");
     text.className = "kal-form-notiztext";
-    text.appendChild(textMitLinks(beschreibungAlsText(f.notiz)));
+    text.appendChild(textMitLinks(notizText));
     notizReihe.append(formSymbol("notiz"), text);
-    box.appendChild(notizReihe);
-  } else if (f.modus !== "lesen") {
-    const notizReihe = document.createElement("label");
-    notizReihe.className = "kal-form-reihe kal-form-reihe-oben";
-    const notiz = document.createElement("textarea");
-    notiz.className = "kal-form-eingabe kal-form-notiz";
-    notiz.rows = 1;
-    notiz.placeholder = "Notizen";
-    notiz.setAttribute("aria-label", "Notizen");
-    notiz.value = f.notiz;
-    notiz.addEventListener("input", () => {
-      f.notiz = notiz.value;
-      passeNotizHoeheAn(notiz);
-      aktualisiereFuss();
-    });
-    notizReihe.append(formSymbol("notiz"), notiz);
     box.appendChild(notizReihe);
   }
 
-  // --- Unten: je nach Lage Loeschen | Bearbeiten | Schliessen oder
-  // Abbrechen | Speichern (siehe baueFuss) ---
   box.appendChild(baueFuss(f, termin));
-
-  // Die Zeile steht schon im Kasten, aber noch nicht im Dialog - deshalb den
-  // Text hier direkt setzen statt ueber aktualisiereWdhZeile().
-  const laedt = f.regelAlt === null;
-  wdh.disabled = laedt || f.modus === "lesen";
-  wdhText.textContent = laedt ? (f.regelFehlt ? "Serientermin" : "Wird geladen …") : wiederholungText(f.wiederholung);
   return box;
 }
 
 /* ---------- Fuss des Formulars ---------- */
-// Der Stand, an dem sich "geaendert" misst. Die Uhrzeiten zaehlen bei
-// ganztaegigen Terminen nicht - sie stehen dort nur als Vorgabe fuers
-// Zurueckschalten.
-function formStand(f) {
-  return JSON.stringify([f.titel, f.ganztags, f.startDatum, f.endDatum,
-    f.ganztags ? "" : f.vonZeit, f.ganztags ? "" : f.bisZeit,
-    String(f.farbe || ""), f.notiz, f.ort]);
-}
-
-function formularGeaendert(f) {
-  if (formStand(f) !== f.original) return true;
-  // Die Wiederholung zaehlt nur, wenn sie wirklich eine andere Regel ergibt -
-  // wer die Seite nur ansieht, hat nichts geaendert.
-  return f.wdhAngefasst && f.wiederholung.art !== "fremd" && f.regelAlt !== null
-    && baueRegel(f.wiederholung, f.ganztags) !== f.regelAlt;
-}
-
 // Welche Knoepfe unten stehen (Hendriks Wahl, 25.09.2026):
-//   "ansicht"    Termin angesehen, nichts geaendert: Loeschen | Bearbeiten | Schliessen
-//   "speichern"  neu, im Bearbeiten oder etwas geaendert: Abbrechen | Speichern
-//   "lesen"      ohne Schreibrecht bei Google: nur Schliessen
-function fussArt(f) {
-  if (f.modus === "lesen") return "lesen";
-  if (f.modus === "ansicht" && !formularGeaendert(f)) return "ansicht";
-  return "speichern";
-}
-
+//   Ansicht             Loeschen | Bearbeiten | Schliessen
+//   ohne Schreibrecht   Schliessen
+//   neu / bearbeiten    Abbrechen | Speichern
 function baueFuss(f, termin) {
-  const art = fussArt(f);
   const fuss = document.createElement("div");
   fuss.className = "kal-form-fuss";
-  fuss.dataset.art = art;
   const knopf = (text, klasse, aktion) => {
     const b = document.createElement("button");
     b.type = "button";
@@ -2026,30 +2074,25 @@ function baueFuss(f, termin) {
     fuss.appendChild(b);
     return b;
   };
-  if (art === "ansicht") {
+  if (f.modus === "ansicht") {
     knopf("Löschen", "gefahr", () => loescheTerminBeiGoogle(termin));
-    // Bearbeiten macht nur noch Ort und Notiz zu Eingabefeldern - alles
-    // andere laesst sich in der Ansicht schon direkt aendern.
     knopf("Bearbeiten", "", () => { f.modus = "bearbeiten"; zeichneTerminPopup(); });
     knopf("Schließen", "", schliesseTerminFormular);
-  } else if (art === "lesen") {
+  } else if (f.modus === "lesen") {
     knopf("Schließen", "", schliesseTerminFormular);
   } else {
-    knopf("Abbrechen", "", schliesseTerminFormular);
+    knopf("Abbrechen", "", brichBearbeitenAb);
     knopf("Speichern", "primaer", () => speichereTermin(termin)).disabled = f.speichert;
   }
   return fuss;
 }
 
-// Nach jeder Aenderung: passt die Knopfreihe noch? Getauscht wird nur, wenn
-// sich ihre Art aendert - beim Tippen im Titel also einmal beim ersten
-// Buchstaben und nicht bei jedem. Das Formular selbst bleibt stehen, sonst
-// verloere das Feld, in dem man gerade tippt, den Fokus.
-function aktualisiereFuss() {
-  const f = formularFelder;
-  const alt = kalTerminBox.querySelector(".kal-form-fuss");
-  if (!f || !alt || alt.dataset.art === fussArt(f)) return;
-  alt.replaceWith(baueFuss(f, formularTermin));
+// Abbrechen beim Bearbeiten fuehrt zurueck zur Ansicht, wie bei Samsung -
+// die Aenderungen sind verworfen, der Termin bleibt offen. Ein NEUER Termin
+// hat keine Ansicht, dort schliesst Abbrechen.
+function brichBearbeitenAb() {
+  if (formularTermin) oeffneTerminFormular(formularTag, formularTermin);
+  else schliesseTerminFormular();
 }
 
 function zurueckZumFormular() {
@@ -2506,7 +2549,8 @@ function startZeit(t) {
  * vorher war es eine Karte mit Farbrand und Pfeil.
  *
  * `zeitZeigen` ist false, wenn der Termin davor zur selben Zeit beginnt: dann
- * steht die Zeit wie bei Samsung nur einmal. Ein Tipp oeffnet den Termin im
+ * steht die Zeit wie bei Samsung nur einmal. Ganztaegige tragen statt der Zeit
+ * ein Kalender-Symbol, ebenfalls nur beim ersten. Ein Tipp oeffnet den Termin im
  * Formular als Ansicht (siehe oeffneTerminFormular).
  */
 function baueTerminZeile(t, zeitZeigen) {
@@ -2523,7 +2567,9 @@ function baueTerminZeile(t, zeitZeigen) {
 
   const zeit = document.createElement("span");
   zeit.className = "kal-termin-zeit";
-  zeit.textContent = zeitZeigen ? startZeit(t) : "";
+  if (!zeitZeigen) { /* dieselbe Zeit wie darueber - bleibt leer */ }
+  else if (t.ganztags) zeit.appendChild(formSymbol("kalender"));
+  else zeit.textContent = startZeit(t);
   zeile.appendChild(zeit);
 
   const balken = document.createElement("span");
@@ -3267,6 +3313,16 @@ function schrittweite(modus) {
 function setzeStreifen(el, x, dauer) {
   el.style.transition = dauer ? `transform ${dauer}ms cubic-bezier(.22, .8, .3, 1)` : "none";
   el.style.transform = x ? `translateX(${x}px)` : "";
+  // Tages-Karten: die Nachbarn sind abgedunkelt. Wie weit der Streifen
+  // gewandert ist (--anteil, 0 bis 1), hellt die hereinkommende Karte auf und
+  // dunkelt die abgehende ab - im selben Takt wie das Gleiten (--gleit-dauer).
+  // So ist am Ende, wenn neu gezeichnet und zurueckgesetzt wird, schon alles
+  // so hell, wie es danach bleibt, und nichts springt.
+  if (el === kalTagStreifen) {
+    const breite = kalTagKarte.offsetWidth + KARTEN_LUECKE;
+    el.style.setProperty("--anteil", String(breite ? Math.min(1, Math.abs(x) / breite) : 0));
+    el.style.setProperty("--gleit-dauer", (dauer || 0) + "ms");
+  }
 }
 
 // Gleitet `el` nach x und ruft danach `fertig`. Auf transitionend allein ist
@@ -3587,6 +3643,20 @@ kalRaster.addEventListener("click", e => {
 // bleibt nur die ✕ im Kopf.
 kalWahl.addEventListener("click", e => { if (e.target === kalWahl) schliesseWahl(); });
 kalTerminPopup.addEventListener("click", e => { if (e.target === kalTerminPopup) schliesseTerminFormular(); });
+// Ein Tipp neben das Farbmenue schliesst nur das Menue - in der Einfangphase,
+// damit ein Tipp auf den Hintergrund nicht gleich das ganze Formular zumacht.
+// Anderswo im Formular geht der Tipp danach normal weiter.
+kalTerminPopup.addEventListener("click", e => {
+  const f = formularFelder;
+  if (!f || !f.farbWahl) return;
+  if (e.target.closest(".kal-farbwahl, .kal-form-farbpunkt")) return;
+  f.farbWahl = false;
+  const wahl = kalTerminBox.querySelector(".kal-farbwahl");
+  if (wahl) wahl.remove();
+  const punkt = kalTerminBox.querySelector(".kal-form-farbpunkt");
+  if (punkt) punkt.setAttribute("aria-expanded", "false");
+  if (e.target === kalTerminPopup) e.stopPropagation();
+}, true);
 // Neben die Karte getippt heisst: auf den Streifen oder das Popup selbst -
 // alles andere ist eine Karte.
 kalTagPopup.addEventListener("click", e => {
@@ -3612,12 +3682,17 @@ for (const karte of kalTagKarten) {
 
 // Schliesst die oberste offene Ebene und sagt, ob es eine gab. Escape und die
 // Zurueck-Taste arbeiten sich damit von innen nach aussen: Rueckfrage,
-// Formular (von der Wiederholen-Seite erst zurueck ins Formular), Monatswahl,
+// Formular (von der Wiederholen-Seite erst zurueck ins Formular, aus dem
+// Farbmenue erst das Menue, aus dem Bearbeiten erst zur Ansicht), Monatswahl,
 // Filter, zuletzt die Tages-Karte.
 function schliesseObersteEbene() {
   if (frageAufloesen) { beantworteFrage(null); return true; }
   if (formularOffen) {
-    if (formularFelder && formularFelder.seite === "wiederholung") zurueckZumFormular();
+    const f = formularFelder;
+    if (f && f.seite === "wiederholung") zurueckZumFormular();
+    else if (f && f.farbWahl) { f.farbWahl = false; zeichneTerminPopup(); }
+    // Beim Bearbeiten eines Termins erst zurueck zur Ansicht, wie Abbrechen.
+    else if (f && f.modus === "bearbeiten") brichBearbeitenAb();
     else schliesseTerminFormular();
     return true;
   }
