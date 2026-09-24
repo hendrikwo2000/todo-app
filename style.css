@@ -2785,6 +2785,18 @@ body.zieht, body.zieht .todo {
   flex-direction: column;
 }
 .kal-popup .kal-form { flex: 1; min-height: 0; }
+/* Die Zeilen scrollen fuer sich, die Knopfreihe (.kal-form-fuss) steht fest
+   darunter. Bis zum 26.09.2026 scrollte der ganze Kasten und die Knopfreihe
+   klebte nur per position:sticky - bei einer langen Notiz stand sie mitten im
+   Text. */
+.kal-form-inhalt {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 
 /* Alle Eingaben randlos: die Zeile mit ihrer Linie ist der Rahmen. 16px ist
    kein Geschmack, sondern Pflicht - iOS Safari zoomt beim Antippen in jedes
@@ -3014,14 +3026,12 @@ body.zieht, body.zieht .todo {
 }
 .kal-form-wahl[hidden] { display: none; }
 
-/* Unten Abbrechen | Speichern ueber die ganze Breite, wie in der Vorlage.
-   sticky: bei langer Notiz scrollt der Dialog, die beiden Knoepfe bleiben. */
+/* Unten die Knoepfe ueber die ganze Breite, wie in der Vorlage. Sie stehen
+   ausserhalb des Scrollbereichs (.kal-form-inhalt) und damit immer unten. */
 .kal-form-fuss {
-  position: sticky;
-  bottom: 0;
+  flex: none;
   display: flex;
   gap: 8px;
-  margin-top: auto;
   padding-top: 12px;
   background: var(--row);
 }
