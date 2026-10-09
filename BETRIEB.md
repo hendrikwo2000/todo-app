@@ -935,10 +935,10 @@ DOM-Update statt des vollen `render()` — beides über den Rahmen dieser
 
 Rechte Hälfte des Bildschirms (`kalender.js`, Markup in `index.html`,
 CSS-Block „Kalender" in `style.css`): Tagesliste oben, Monatsraster darunter.
-**Seit 09.10.2026 steht die Tagesliste in breiten Fenstern (ab 1380 px) als
-eigene Spalte neben dem Raster** — siehe „Board | Heute | Kalender“ weiter
-unten; was hier über die gestapelte Anordnung steht, gilt seitdem nur noch
-zwischen Split-Grenze und 1380 px.
+**Seit 09.10.2026 steht die Tagesliste in breiten Fenstern (ab 1180 px, also
+auch auf dem iPad quer) als eigene Spalte neben dem Raster** — siehe „Board |
+Heute | Kalender“ weiter unten; was hier über die gestapelte Anordnung steht,
+gilt seitdem nur noch zwischen Split-Grenze und 1180 px.
 Zeigt alle OFFENEN ToDos mit Termin aus ALLEN geladenen Listen — eigene wie
 geteilte —, also bewusst mehr als das Board, das immer nur eine Liste zeigt.
 Erledigte bleiben draußen, ToDos ohne Termin tauchen gar nicht auf.
@@ -1526,9 +1526,30 @@ Streifen und das Verhältnis links/rechts (links leer, rechts zu dicht).
 
 | Klasse am `<html>` | Bedingung | Aufbau |
 | --- | --- | --- |
-| `breit dreispaltig` | `istDrei()`: Fenster ≥ `BREITE_MIN_DREI` + `HEUTE_BREITE` + `BOARD_MINDEST` (560 + 300 + 520 = 1380 px) | Board, Heute-Spalte, Kalender in voller Höhe |
+| `breit dreispaltig` | `istDrei()`: Fenster ≥ `BREITE_MIN_DREI` + `HEUTE_BREITE` + `BOARD_EINSPALTIG` (560 + 300 + 320 = 1180 px) | Board, Heute-Spalte, Kalender in voller Höhe |
 | `breit` | `istSplit()` | gestapelt wie bisher: Tagesliste über dem Raster, mit Teilungs-Griff |
 | — | darunter | Handy-Ansicht (Raster füllt alles, Tages-Karte) |
+
+**Die Grenze lag zuerst bei 1380 px** (zwei Board-Spalten, `BOARD_MINDEST`).
+Hendriks iPad quer ist aber 1180 px breit und blieb damit beim gestapelten
+Streifen. Seit der zweiten Runde (09.10.2026 abends) reicht EINE
+Board-Spalte: 250 px Spalte + 2 × 26 px App-Rand + 18 px für eine feste
+Scrollleiste (Windows; am iPad liegt sie über dem Inhalt, dort bleiben der
+Spalte 268 px). Ohne die 18 px liefe ein Windows-Fenster knapp über der
+Grenze in waagerechtes Scrollen. Auf dem iPad stand das Board vorher schon
+einspaltig, es verliert also nichts, wird nur schmaler. Hendriks Wahl,
+gefragt gegen „Heute-Spalte schmaler“ und „iPad so lassen“.
+`istSplit()` gibt im Drei-Spalten-Aufbau immer wahr zurück, auch wenn eine
+gemerkte Breite allein die alte Grenze nicht erreicht.
+
+**Schmales Board, umbrechende Kopfzeile:** liegt das Board neben Heute und
+Kalender unter `BOARD_SCHMAL` (600 px), setzt `pflegeBreit()` die Klasse
+`html.board-schmal`, und die Kopfzeile bricht um wie am Handy (Titel, Zahnrad
+und Umschalter oben, Anlege-Knöpfe darunter) — nur bei offenem Kalender
+(`.kal-split`). Ohne das lief sie in 268 px über, und der Umschalter rutschte
+unter den Kalender. Der Titel kürzt sich dort mit „…“. Eine Container-Abfrage
+auf `.app` wäre die elegantere Form, machte `.app` aber je nach Browser zum
+Bezugsrahmen für `position: fixed` darin.
 
 **Es bleibt EIN Panel.** `#kalenderPanel` wird um `--heute-breite` breiter
 und teilt sich innen per CSS-Grid: links die Tagesliste über alle Zeilen,
@@ -1571,12 +1592,22 @@ nimmt `min` deshalb jetzt als Funktion (vorher eine Zahl).
 
 **Getönte Balken.** `kalender.js` setzt nur noch `--balken-farbe`; Grund
 (`color-mix` 22 % mit `--row`), Schrift (40 % mit `--text`) und die 3-px-Kante
-links macht das CSS. Dadurch kippt es im dunklen Modus von selbst. Die Kante
-sitzt nur am Anfang eines Termins (`weiter-links` hat keine). `kontrastFarbe()`
-ist mit dem Umbau entfallen. Gemessen: alle 22 Google-Farben (neue und alte
-Palette) erreichen in beiden Modi mindestens 4,67 : 1; mit 45 % Farbe in der
-Schrift fielen die hellen alten Töne im hellen Modus unter 4,5. Die Marke im
-Quellen-Filter bleibt satt.
+links macht das CSS. Die Kante sitzt nur am Anfang eines Termins
+(`weiter-links` hat keine). `kontrastFarbe()` ist mit dem Umbau entfallen.
+Gemessen: alle 22 Google-Farben (neue und alte Palette) erreichen mindestens
+4,67 : 1; mit 45 % Farbe in der Schrift fielen die hellen alten Töne unter
+4,5. Die Marke im Quellen-Filter bleibt satt.
+
+**Der Darkmode hat eine eigene Mischung** (zweite Runde): Grund 24 % Farbe
+auf `--bg`, Schrift 60 % Farbe mit Weiß — die Farbe steckt in der Schrift,
+wie im Apple Kalender. Die erste Fassung mischte auch dort mit `--row` und
+grauer Schrift; Gelb und Orange wurden braun, das gefiel Hendrik nicht.
+Gefragt gegen „satt wie früher“ und „kräftiger getönt, weiße Schrift“. Mit
+72 % Farbe in der Schrift (leuchtender, so im Vorschaubild) fielen dunkles Rot
+und Lila auf 3,9 : 1, mit 60 % liegen alle 22 Farben bei mindestens 4,84.
+**Falle:** die Darkmode-Regel braucht `:not(.kal-balken-luecke)` — sie ist
+spezifischer als das `transparent` der Platzhalter-Spuren und malte sonst
+graue Kästchen in leere Tage.
 
 **Die Raster-Untergrenze wächst mit den Balken.** Bis hierher galten pauschal
 36 px je Zeile — das Maß aus der Punkte-Zeit. Jetzt setzt `fuelleRaster()`
@@ -1598,28 +1629,22 @@ Gemessen bei 1300 × 900 und 1300 × 700, in Standardstellung und mit dem Griff
 ganz oben bzw. unten: das Raster endet jedes Mal genau am Fensterrand, kein
 Balken liegt über einer Tageszahl.
 
-**Bereichs-Spalten bis unten.** `.app` ist eine Spalte mit `min-height:
-100dvh`, das Board füllt den Rest, `align-items: stretch` zieht jede Spalte
-auf die Höhe ihrer Reihe. Bis zum Rand reicht die Reihe nur mit `.einreihig`
-(`align-content: stretch`); bei umgebrochenen Spalten bliebe die obere sonst
-als Wand vor der unteren stehen. Gesetzt wird die Klasse von
-`pruefeEinreihig()` in `app.js`, angestoßen von einem `MutationObserver`
-(jedes Neuzeichnen, `render()` hat mehrere vorzeitige Ausgänge) und einem
-`ResizeObserver` (jede andere Breite). Am Rechner endet die Reihe mit
-`margin-bottom: -42px` auf derselben Linie wie die Heute-Spalte statt 56 px
-über dem Rand. Nebenwirkung: Ablegen per Drag & Drop trifft jetzt die ganze
-Spaltenhöhe.
-
-**Falle beim Testen:** der Testbrowser zeichnet nicht, und dann meldet sich
-der `ResizeObserver` nicht (dieselbe Familie wie `requestAnimationFrame`).
-Nach einem `resize_window` steht `.einreihig` deshalb auf dem alten Wert —
-`pruefeEinreihig()` von Hand aufrufen. Die Rechnung selbst ist geprüft (Handy:
-zwei Reihen, kein Strecken).
+**Bereichs-Spalten: linksbündig, Höhe nach Inhalt.** Einen halben Tag lang
+reichten die Spalten bis zum unteren Fensterrand (`.app` als Spalte mit
+`min-height`, `align-items: stretch`, eine Klasse `.einreihig` aus einem
+Resize- und Mutation-Observer). Hendrik fand das „etwas komisch“ — es ist
+ersatzlos zurückgebaut, **nicht wieder vorschlagen**.
+Geblieben ist aus derselben Runde `justify-content: flex-start` am Board: ein
+Bereich, der nicht mehr in die erste Reihe passt, beginnt die nächste Reihe
+links. Mit `center` stand er allein unten in der Mitte. Gefragt gegen „in
+die Lücke unter der kürzesten Spalte“ (Masonry) und „alles in einer Reihe,
+waagerecht scrollen“. Preis: stehen wenige Spalten auf ihrer Höchstbreite
+(Kalender zu), bleibt der Rest rechts frei statt zu beiden Seiten.
 
 **Ungeprüft:** der echte Zug am Breiten-Griff mit der Maus (geprüft per
 Pfeiltasten und Doppelklick), echte Google-Termine (nachgebaute Antwort mit
-Hendriks Terminen aus dem Screenshot) und der `ResizeObserver` in einem
-echten Browser.
+Hendriks Terminen aus dem Screenshot) und das echte iPad (geprüft mit
+1180 × 820 im Testbrowser, dort mit fester Scrollleiste).
 
 ## Google Kalender
 

@@ -88,4 +88,17 @@ Reihe wie eine Wand vor der unteren.
 ## Ablauf
 
 Lokal mit `wrangler pages dev` testen, dann **nicht pushen**: Hendrik testet
-selbst und gibt frei.
+selbst und gibt frei. So geschehen, live am 09.10.2026.
+
+## Zweite Runde (09.10.2026 abends, nach Hendriks Test)
+
+* **Darkmode:** die Farbe steckt in der Schrift, der Grund ist nur dunkel
+  getönt (Variante „leuchtende Schrift“, gewählt aus drei Varianten an seinen
+  Einträgen). Die erste Fassung wurde bei Gelb und Orange braun.
+* **iPad:** der Drei-Spalten-Aufbau beginnt bei 1180 px statt 1380 px, das
+  Board hat dort eine Spalte (rund 270 px). Seine Wahl gegen „Heute-Spalte
+  schmaler“ und „iPad so lassen“.
+* **Spalten bis unten:** zurückgebaut („finde ich etwas komisch“).
+* **Neuer Bereich:** beginnt die nächste Reihe links statt allein unten in
+  der Mitte. Gewählt gegen „in die Lücke darunter“ und „alles in einer
+  Reihe, waagerecht scrollen“.

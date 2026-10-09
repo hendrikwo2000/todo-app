@@ -101,6 +101,18 @@ const BREITE_KEY = "kalBreite";
 // = (Breite - 64) / 7, davon gehen 17 px an Rahmen, Kante und Abstaende.
 const HEUTE_BREITE = 300;
 const BREITE_MIN_DREI = 560;
+// Was das Board im Drei-Spalten-Aufbau mindestens braucht: EINE Spalte (min.
+// 250) plus die Raender der App (2 x 26) plus 18 px fuer eine feste
+// Scrollleiste (Windows; am iPad liegt sie ueber dem Inhalt). Ohne die 18 px
+// liefe ein Windows-Fenster knapp ueber der Grenze in waagerechtes Scrollen.
+// Bis zum 09.10.2026 abends galten hier zwei Spalten (BOARD_MINDEST) - dann
+// begann der Aufbau erst bei 1380 px, und Hendriks iPad (quer 1180 px) blieb
+// beim gestapelten Streifen. Dort stand das Board ohnehin schon einspaltig.
+const BOARD_EINSPALTIG = 320;
+// Darunter passt die Kopfzeile der App (Titel, ＋ToDo, ＋Bereich, Zahnrad,
+// Umschalter) nicht mehr in eine Zeile; sie bricht dann um wie am Handy
+// (html.board-schmal, siehe style.css). Betrifft vor allem das iPad quer.
+const BOARD_SCHMAL = 600;
 // Jeder Balken traegt seinen Titel, auch der eintaegige. Vom 20. bis zum
 // 21.08.2026 war das anders (TITEL_AB_TAGEN = 2): bei rund 55 px
 // Spaltenbreite blieb von einem Titel nur "Finn H..." uebrig, und der Text
@@ -131,6 +143,10 @@ const ANSICHT_KEY = "kalAnsicht";
 let kalUntenModus = "kalender";
 
 function istSplit() {
+  // Wo Board | Heute | Kalender passt, ist es immer ein Split - auch wenn eine
+  // gemerkte Breite allein die alte Grenze nicht erreichte (die wird dort
+  // ohnehin geklemmt, siehe breiteDrei).
+  if (istDrei()) return true;
   const eigen = gemerkteBreite();
   // Mit eigener Breite wandert die Grenze mit: ein schmal gezogener Streifen
   // erlaubt den Split frueher, ein breiter spaeter. Bei der Standardbreite
@@ -140,21 +156,22 @@ function istSplit() {
 }
 
 /**
- * Board | Heute | Kalender? Nur wenn neben Heute und dem schmalsten Kalender
- * noch zwei Board-Spalten passen. Darunter bleibt es beim gestapelten Split
- * (Tagesliste ueber dem Raster), unterhalb der Split-Grenze bei der
- * Handy-Ansicht. Haengt bewusst NICHT an der gemerkten Breite: die wird in
- * diesem Aufbau geklemmt (siehe breiteDrei), sonst verhinderte ein einmal
- * breit gezogener Kalender die Heute-Spalte auf einem kleineren Bildschirm.
+ * Board | Heute | Kalender? Sobald neben Heute und dem schmalsten Kalender
+ * noch eine Board-Spalte passt: 560 + 300 + 320 = 1180 px, also auch ein iPad
+ * quer (genau 1180). Darunter bleibt es beim gestapelten Split (Tagesliste ueber dem
+ * Raster), unterhalb der Split-Grenze bei der Handy-Ansicht. Haengt bewusst
+ * NICHT an der gemerkten Breite: die wird in diesem Aufbau geklemmt (siehe
+ * breiteDrei), sonst verhinderte ein einmal breit gezogener Kalender die
+ * Heute-Spalte auf einem kleineren Bildschirm.
  */
 function istDrei() {
-  return istSplit() && window.innerWidth >= BREITE_MIN_DREI + HEUTE_BREITE + BOARD_MINDEST;
+  return window.innerWidth >= BREITE_MIN_DREI + HEUTE_BREITE + BOARD_EINSPALTIG;
 }
 
 // Wie breit der Kalender-Teil im Drei-Spalten-Aufbau hoechstens sein darf:
-// was neben Heute und zwei Board-Spalten bleibt.
+// was neben Heute und einer Board-Spalte bleibt.
 function breiteDreiMax() {
-  return Math.max(BREITE_MIN_DREI, Math.min(BREITE_MAX, window.innerWidth - HEUTE_BREITE - BOARD_MINDEST));
+  return Math.max(BREITE_MIN_DREI, Math.min(BREITE_MAX, window.innerWidth - HEUTE_BREITE - BOARD_EINSPALTIG));
 }
 
 // Die Breite, mit der der Kalender-Teil dort tatsaechlich steht: die gemerkte,
@@ -195,6 +212,8 @@ function rasterVoll() {
 function pflegeBreit() {
   document.documentElement.classList.toggle("breit", istSplit());
   document.documentElement.classList.toggle("dreispaltig", istDrei());
+  document.documentElement.classList.toggle("board-schmal",
+    istDrei() && window.innerWidth - HEUTE_BREITE - breiteDrei() < BOARD_SCHMAL);
   wendeBreiteAn();
 }
 pflegeBreit();

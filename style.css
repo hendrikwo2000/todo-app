@@ -100,15 +100,7 @@ body { transition: background .2s, color .2s, padding-right .26s cubic-bezier(.3
    nicht jeder Browser gleich ernst nimmt. */
 html.ohne-zoom { touch-action: pan-x pan-y; }
 
-/* Eine Spalte, mindestens so hoch wie der Bildschirm: damit das Board die
-   restliche Hoehe fuellen kann und seine Bereichs-Spalten bis unten reichen
-   (siehe .board). Die Kinder haben nur margin-bottom, das Zusammenfallen von
-   Raendern, das im Flex-Layout entfaellt, spielt also keine Rolle. */
 .app {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
   max-width: 1900px;
   margin: 0 auto;
   padding: 24px 26px 56px;
@@ -314,6 +306,18 @@ html.ohne-zoom { touch-action: pan-x pan-y; }
   .topbar::after { content: ""; order: 2; flex-basis: 100%; width: 0; }
   #addTodoBtn, #addCatBtn, #saveStatus { order: 3; }
 }
+/* Dasselbe, wenn das Board neben Heute und Kalender schmal wird (iPad quer:
+   rund 270 px, seit 09.10.2026). html.board-schmal setzt kalender.js aus der
+   tatsaechlichen Breite; .kal-split, weil das Board bei zugeklapptem Kalender
+   wieder die volle Breite hat. Eine Container-Abfrage auf .app waere die
+   elegantere Form - sie machte .app aber je nach Browser zum Bezugsrahmen
+   fuer position:fixed darin. */
+html.board-schmal.kal-split .topbar { flex-wrap: wrap; row-gap: 6px; column-gap: 8px; }
+html.board-schmal.kal-split .topbar h1 { flex: 1 1 0; }
+html.board-schmal.kal-split .topbar::after { content: ""; order: 2; flex-basis: 100%; width: 0; }
+html.board-schmal.kal-split #addTodoBtn,
+html.board-schmal.kal-split #addCatBtn,
+html.board-schmal.kal-split #saveStatus { order: 3; }
 
 input[type="text"],
 input[type="date"] {
@@ -334,29 +338,21 @@ input[type="date"]:focus {
 }
 
 /* ---------- Board / Spalten ---------- */
-/* Die Bereichs-Spalten reichen bis zum unteren Rand (seit 09.10.2026,
-   Hendriks Wunsch: links wirkte die Flaeche unter kurzen Spalten wie ein
-   Loch). Dafuer fuellt das Board die Hoehe der App (.app ist eine Spalte mit
-   min-height), und align-items: stretch zieht jede Spalte auf die Hoehe ihrer
-   Reihe. Ob die Reihe bis unten reicht, entscheidet align-content: nur bei
-   EINER Reihe (Klasse .einreihig, gesetzt von pruefeEinreihig() in app.js).
-   Bei umgebrochenen Spalten bleibt jede Reihe so hoch wie ihre laengste
-   Spalte - sonst stuende die obere wie eine Wand vor der unteren. */
+/* Linksbuendig statt zentriert (seit 09.10.2026): ein Bereich, der nicht mehr
+   in die erste Reihe passt, beginnt die naechste Reihe links - wie Text. Mit
+   center stand er allein unten in der Mitte, das hat Hendrik gestoert. Preis:
+   stehen wenige Spalten auf ihrer Hoechstbreite (Kalender zu), bleibt der
+   Rest rechts frei statt zu beiden Seiten.
+   Die Spalten enden unter ihrer letzten Karte. Einen halben Tag lang reichten
+   sie bis zum unteren Rand - Hendrik fand das „etwas komisch“, nicht wieder
+   vorschlagen. */
 .board {
-  flex: 1 0 auto;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 16px;
-  align-items: stretch;
-  align-content: flex-start;
+  align-items: flex-start;
 }
-.board.einreihig { align-content: stretch; }
-/* Unten endet die Reihe auf derselben Linie wie die Heute-Spalte daneben (14 px
-   ueber dem Rand) statt 56 px darueber, wo der untere Rand der App endet. Die
-   56 px halten am Seitenende Platz fuer den Rueckgaengig-Hinweis; bei einer
-   Reihe, die den Bildschirm fuellt, liegt darunter nur leere Spaltenflaeche. */
-html.breit .board.einreihig { margin-bottom: -42px; }
 
 .column {
   flex: 1 1 280px;
@@ -2573,9 +2569,9 @@ html.dreispaltig .kalender .kal-liste {
    jeder Termin gleich laut, und neben den ruhigen Karten des Boards wirkte
    der Kalender wie eine Wand.
    Die 40 % Farbe in der Schrift sind gemessen: damit liegt der Kontrast fuer
-   alle 22 Google-Farben (neue und alte Palette) in beiden Modi bei
-   mindestens 4,67:1. Mit 45 % fielen die hellen alten Toene (#e1e1e1,
-   #fbd75b, #7ae7bf) im hellen Modus unter 4,5. */
+   alle 22 Google-Farben (neue und alte Palette) bei mindestens 4,67:1. Mit
+   45 % fielen die hellen alten Toene (#e1e1e1, #fbd75b, #7ae7bf) unter 4,5.
+   Der Darkmode hat seine eigene Mischung, siehe gleich darunter. */
 .kal-balken {
   --balken-farbe: var(--muted);
   position: relative;
@@ -2588,6 +2584,21 @@ html.dreispaltig .kalender .kal-liste {
   background: color-mix(in srgb, var(--balken-farbe) 22%, var(--row));
   color: color-mix(in srgb, var(--balken-farbe) 40%, var(--text));
   overflow: hidden;
+}
+/* Darkmode (seit 09.10.2026 abends, Hendriks Wahl aus drei Varianten): die
+   Farbe steckt in der SCHRIFT, der Grund ist nur dunkel getoent - wie im
+   Apple Kalender. Die erste Fassung mischte auch hier mit --row und grauer
+   Schrift; Gelb und Orange wurden dabei braun. Satte Flaechen und eine
+   kraeftigere Toenung mit weisser Schrift waren die Alternativen.
+   60 % Farbe in der Schrift sind gemessen: alle 22 Google-Farben erreichen
+   damit mindestens 4,84:1. Mit 72 % (leuchtender) fielen dunkles Rot und
+   Lila auf 3,9.
+   :not(.kal-balken-luecke) ist Pflicht: die Regel ist spezifischer als das
+   transparent der Platzhalter-Spuren und faerbte sie sonst als graue
+   Kaestchen in leere Tage. */
+:root[data-theme="dark"] .kal-balken:not(.kal-balken-luecke) {
+  background: color-mix(in srgb, var(--balken-farbe) 24%, var(--bg));
+  color: color-mix(in srgb, var(--balken-farbe) 60%, #fff);
 }
 /* 3 px statt 4: links steht seit 09.10.2026 die farbige Kante, und der
    gewonnene Pixel je Seite ist bei schmalen Zellen ein Buchstabe mehr. */
