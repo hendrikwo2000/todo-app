@@ -934,7 +934,11 @@ DOM-Update statt des vollen `render()` — beides über den Rahmen dieser
 ## Kalender
 
 Rechte Hälfte des Bildschirms (`kalender.js`, Markup in `index.html`,
-CSS-Block „Kalender" in `style.css`): Monatsraster oben, Tagesliste darunter.
+CSS-Block „Kalender" in `style.css`): Tagesliste oben, Monatsraster darunter.
+**Seit 09.10.2026 steht die Tagesliste in breiten Fenstern (ab 1380 px) als
+eigene Spalte neben dem Raster** — siehe „Board | Heute | Kalender“ weiter
+unten; was hier über die gestapelte Anordnung steht, gilt seitdem nur noch
+zwischen Split-Grenze und 1380 px.
 Zeigt alle OFFENEN ToDos mit Termin aus ALLEN geladenen Listen — eigene wie
 geteilte —, also bewusst mehr als das Board, das immer nur eine Liste zeigt.
 Erledigte bleiben draußen, ToDos ohne Termin tauchen gar nicht auf.
@@ -1511,6 +1515,111 @@ der zweiten Runde ist es nachgeholt (v22).
 * **Die 24 px am iPhone.** Geprüft ist, dass die Regel eingelesen wird und mit
   dem iPhone-Wert Kopfzeile, Kalender und Dialoge mitrutschen; ob 24 px den
   Unschärfe-Streifen ganz räumen, zeigt erst das Gerät.
+
+### Board | Heute | Kalender (09.10.2026)
+
+Entwurf mit Hendriks Entscheidungen: `docs/2026-10-09-heute-spalte.md`. Ihn
+störten am Rechner das gequetschte Raster, die Unlesbarkeit bei schmalem
+Streifen und das Verhältnis links/rechts (links leer, rechts zu dicht).
+
+**Drei Aufbauten statt zwei**, entschieden in `kalender.js`:
+
+| Klasse am `<html>` | Bedingung | Aufbau |
+| --- | --- | --- |
+| `breit dreispaltig` | `istDrei()`: Fenster ≥ `BREITE_MIN_DREI` + `HEUTE_BREITE` + `BOARD_MINDEST` (560 + 300 + 520 = 1380 px) | Board, Heute-Spalte, Kalender in voller Höhe |
+| `breit` | `istSplit()` | gestapelt wie bisher: Tagesliste über dem Raster, mit Teilungs-Griff |
+| — | darunter | Handy-Ansicht (Raster füllt alles, Tages-Karte) |
+
+**Es bleibt EIN Panel.** `#kalenderPanel` wird um `--heute-breite` breiter
+und teilt sich innen per CSS-Grid: links die Tagesliste über alle Zeilen,
+rechts ✕-Zeile, Reiterzeile und Kalender- bzw. Fokus-Block. Damit bleiben
+Öffnen, Schließen, Animation und der Umschalter unverändert, und 📅/📋 schalten
+Heute und Kalender gemeinsam (Hendriks Wahl). `row-gap` ist 0, die Abstände
+sitzen an den Zeilen selbst: eine ausgeblendete Reiterzeile ließe sonst eine
+doppelte Lücke.
+
+**`--kal-breite` ist im Drei-Spalten-Aufbau nur der Kalender-Teil.** Die
+Panelbreite, das `padding-right` des `body` und der Versatz der Snackbar
+rechnen `--heute-breite` dazu. `wendeBreiteAn()` setzt die Variable in diesem
+Aufbau IMMER, geklemmt zwischen `BREITE_MIN_DREI` und `breiteDreiMax()` —
+ohne den gemerkten Wert zu überschreiben (dieselbe Regel wie bei der
+Teilung). Ohne gemerkten Wert gilt ein knappes Drittel des Fensters. `istDrei()`
+hängt bewusst NICHT an der gemerkten Breite: sonst verhinderte ein einmal auf
+720 px gezogener Kalender die Heute-Spalte auf einem kleineren Bildschirm.
+
+**`BREITE_MIN_DREI` = 560 ist gemessen:** Zelle = (Breite − 64) / 7, davon
+gehen 17 px an Zellrand, Stapel-Innenabstand, Kante und Textabstand. Bei 560
+bleiben 54 px Text, das ist „HNT Train…“ (neun Zeichen). Der Balkentext hat
+dafür 3 statt 4 px Innenabstand.
+
+**Das Raster zeigt sich dort wie im Vollbild** (`rasterVoll()` ist im
+Drei-Spalten-Aufbau wahr): ToDos im Klartext, so viele Balken, wie die
+gemessene Zellenhöhe trägt. Die CSS-Regeln teilen sich die Selektoren mit der
+Handy-Ansicht (`html:not(.breit) …, html.dreispaltig …`). Die Tagesliste
+bleibt trotzdem sichtbar (`zeichneUnten()`: `rasterVoll() && !istDrei()`).
+Vollbild-Knopf, senkrechte Vollbild-Geste und Teilungs-Griff gibt es dort
+nicht; `setzeVollbild(true)` steigt im Drei-Spalten-Aufbau sofort aus, und
+`pflegeSplit()` räumt ein offenes Vollbild beim Wechsel hinein weg.
+
+**`pflegeSplit()` erkennt auch den Wechsel gestapelt ↔ dreispaltig** und
+zeichnet dann neu: die Zellen tragen in beiden Aufbauten anderes (Punkte oder
+Klartext). Dafür merkt es sich die Klasse VOR `pflegeBreit()`.
+
+**Der Breiten-Griff** zieht im Drei-Spalten-Aufbau nur den Kalender-Teil:
+`start` zieht `HEUTE_BREITE` ab, `min` und `max` hängen am Aufbau. `zieheGriff`
+nimmt `min` deshalb jetzt als Funktion (vorher eine Zahl).
+
+**Getönte Balken.** `kalender.js` setzt nur noch `--balken-farbe`; Grund
+(`color-mix` 22 % mit `--row`), Schrift (40 % mit `--text`) und die 3-px-Kante
+links macht das CSS. Dadurch kippt es im dunklen Modus von selbst. Die Kante
+sitzt nur am Anfang eines Termins (`weiter-links` hat keine). `kontrastFarbe()`
+ist mit dem Umbau entfallen. Gemessen: alle 22 Google-Farben (neue und alte
+Palette) erreichen in beiden Modi mindestens 4,67 : 1; mit 45 % Farbe in der
+Schrift fielen die hellen alten Töne im hellen Modus unter 4,5. Die Marke im
+Quellen-Filter bleibt satt.
+
+**Die Raster-Untergrenze wächst mit den Balken.** Bis hierher galten pauschal
+36 px je Zeile — das Maß aus der Punkte-Zeit. Jetzt setzt `fuelleRaster()`
+`--kal-zeile-min` auf der Bahn: `ZEILE_GRUND` (36) plus `ZEILE_HOCH` (16) je
+Balkenspur der vollsten Woche. CSS und `rasterMindest()` lesen denselben Wert.
+
+**Der zweite Teil des Fehlers saß in `teilungMax()`:** es rechnete pauschal
+84 px für alles zwischen Liste und Raster. Seit der Reiterzeile waren es rund
+130 px, und die unterste Rasterzeile lief bei weit heruntergezogenem Griff aus
+dem Fenster (Hendriks Screenshot 2). Jetzt wird gemessen: Abstand Liste →
+Kalender-Block plus `kopfHoehe` (Block-Oberkante → Raster, beim letzten
+sichtbaren Zeichnen gemessen, damit es bei vorn stehendem Fokus nicht springt).
+
+**Die Tagesliste hat dadurch auch ohne gezogenen Wert einen Deckel**
+(`--kal-liste-max`, gesetzt in `wendeTeilungAn()`): mit der größeren
+Untergrenze passten ihre feste Mindesthöhe und das Raster nicht mehr
+übereinander. Die Mindesthöhe nimmt `min(360px, 44vh, var(--kal-liste-max))`.
+Gemessen bei 1300 × 900 und 1300 × 700, in Standardstellung und mit dem Griff
+ganz oben bzw. unten: das Raster endet jedes Mal genau am Fensterrand, kein
+Balken liegt über einer Tageszahl.
+
+**Bereichs-Spalten bis unten.** `.app` ist eine Spalte mit `min-height:
+100dvh`, das Board füllt den Rest, `align-items: stretch` zieht jede Spalte
+auf die Höhe ihrer Reihe. Bis zum Rand reicht die Reihe nur mit `.einreihig`
+(`align-content: stretch`); bei umgebrochenen Spalten bliebe die obere sonst
+als Wand vor der unteren stehen. Gesetzt wird die Klasse von
+`pruefeEinreihig()` in `app.js`, angestoßen von einem `MutationObserver`
+(jedes Neuzeichnen, `render()` hat mehrere vorzeitige Ausgänge) und einem
+`ResizeObserver` (jede andere Breite). Am Rechner endet die Reihe mit
+`margin-bottom: -42px` auf derselben Linie wie die Heute-Spalte statt 56 px
+über dem Rand. Nebenwirkung: Ablegen per Drag & Drop trifft jetzt die ganze
+Spaltenhöhe.
+
+**Falle beim Testen:** der Testbrowser zeichnet nicht, und dann meldet sich
+der `ResizeObserver` nicht (dieselbe Familie wie `requestAnimationFrame`).
+Nach einem `resize_window` steht `.einreihig` deshalb auf dem alten Wert —
+`pruefeEinreihig()` von Hand aufrufen. Die Rechnung selbst ist geprüft (Handy:
+zwei Reihen, kein Strecken).
+
+**Ungeprüft:** der echte Zug am Breiten-Griff mit der Maus (geprüft per
+Pfeiltasten und Doppelklick), echte Google-Termine (nachgebaute Antwort mit
+Hendriks Terminen aus dem Screenshot) und der `ResizeObserver` in einem
+echten Browser.
 
 ## Google Kalender
 

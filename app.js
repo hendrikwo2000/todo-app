@@ -2519,6 +2519,21 @@ function synchronisiereOhneBereich() {
   else if (!hatTodos && !wirdBefuellt && idx >= 0) state.categories.splice(idx, 1);
 }
 
+// Bereichs-Spalten bis zum unteren Rand (seit 09.10.2026) - aber nur, solange
+// alle in EINER Reihe stehen. Brechen sie um, reichen sie bis zur laengsten
+// Spalte ihrer Reihe; sonst stuende die obere Reihe wie eine Wand vor der
+// unteren. Ob umgebrochen ist, weiss nur das Layout, deshalb zwei Beobachter
+// statt einer Rechnung hier: der MutationObserver meldet jedes Neuzeichnen
+// (render() hat mehrere vorzeitige Ausgaenge), der ResizeObserver jede
+// andere Breite (Fenster, Kalender auf/zu, Breiten-Griff).
+function pruefeEinreihig() {
+  const spalten = [...board.children].filter(k => k.classList.contains("column"));
+  const reihen = new Set(spalten.map(s => s.offsetTop));
+  board.classList.toggle("einreihig", spalten.length > 0 && reihen.size === 1);
+}
+new MutationObserver(pruefeEinreihig).observe(board, { childList: true });
+new ResizeObserver(pruefeEinreihig).observe(board);
+
 function render() {
   aktualisiereBadge();
   // Offenes Kalender-Panel mitziehen (siehe kalender.js). Zugeklappt und

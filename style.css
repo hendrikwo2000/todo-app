@@ -100,7 +100,15 @@ body { transition: background .2s, color .2s, padding-right .26s cubic-bezier(.3
    nicht jeder Browser gleich ernst nimmt. */
 html.ohne-zoom { touch-action: pan-x pan-y; }
 
+/* Eine Spalte, mindestens so hoch wie der Bildschirm: damit das Board die
+   restliche Hoehe fuellen kann und seine Bereichs-Spalten bis unten reichen
+   (siehe .board). Die Kinder haben nur margin-bottom, das Zusammenfallen von
+   Raendern, das im Flex-Layout entfaellt, spielt also keine Rolle. */
 .app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
   max-width: 1900px;
   margin: 0 auto;
   padding: 24px 26px 56px;
@@ -326,13 +334,29 @@ input[type="date"]:focus {
 }
 
 /* ---------- Board / Spalten ---------- */
+/* Die Bereichs-Spalten reichen bis zum unteren Rand (seit 09.10.2026,
+   Hendriks Wunsch: links wirkte die Flaeche unter kurzen Spalten wie ein
+   Loch). Dafuer fuellt das Board die Hoehe der App (.app ist eine Spalte mit
+   min-height), und align-items: stretch zieht jede Spalte auf die Hoehe ihrer
+   Reihe. Ob die Reihe bis unten reicht, entscheidet align-content: nur bei
+   EINER Reihe (Klasse .einreihig, gesetzt von pruefeEinreihig() in app.js).
+   Bei umgebrochenen Spalten bleibt jede Reihe so hoch wie ihre laengste
+   Spalte - sonst stuende die obere wie eine Wand vor der unteren. */
 .board {
+  flex: 1 0 auto;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 16px;
-  align-items: flex-start;
+  align-items: stretch;
+  align-content: flex-start;
 }
+.board.einreihig { align-content: stretch; }
+/* Unten endet die Reihe auf derselben Linie wie die Heute-Spalte daneben (14 px
+   ueber dem Rand) statt 56 px darueber, wo der untere Rand der App endet. Die
+   56 px halten am Seitenende Platz fuer den Rueckgaengig-Hinweis; bei einer
+   Reihe, die den Bildschirm fuellt, liegt darunter nur leere Spaltenflaeche. */
+html.breit .board.einreihig { margin-bottom: -42px; }
 
 .column {
   flex: 1 1 280px;
@@ -1976,11 +2000,12 @@ html:not(.breit) #kalZu { display: none; }
      jetzt hoehere Zellen statt einer Luecke darunter; die 58 px waren ohnehin
      als UNTERgrenze fuer die Optik gedacht, nicht als Deckel.
 
-     min-height bleibt: 36 px je Zeile ist das Mass, unter dem Tageszahl und
-     Punktreihe nicht mehr uebereinander passen. Das Raster gibt bis dahin
-     nach, wenn die Tagesliste darueber Platz braucht. */
+     min-height bleibt: --kal-zeile-min ist das Mass, unter dem Tageszahl,
+     Punktreihe und Balken nicht mehr uebereinander passen (siehe
+     .kal-raster-bahn). Das Raster gibt bis dahin nach, wenn die Tagesliste
+     darueber Platz braucht. */
   flex: 1 1 auto;
-  min-height: calc(var(--kal-zeilen, 6) * 36px + (var(--kal-zeilen, 6) - 1) * 2px);
+  min-height: calc(var(--kal-zeilen, 6) * var(--kal-zeile-min, 36px) + (var(--kal-zeilen, 6) - 1) * 2px);
   grid-auto-rows: minmax(0, 1fr);
 }
 /* Ueber dem Raster gehoert JEDE Wischrichtung dem Kalender: waagerecht
@@ -1993,11 +2018,15 @@ html:not(.breit) #kalZu { display: none; }
    Fenster und traegt Hoehe und Mindesthoehe, die drei Raster liegen absolut
    darin - der Vormonat links daneben, der Folgemonat rechts. Beim Wischen
    verschiebt kalender.js nur den Streifen (siehe blaettere).
-   Die 16 px Luecke gehoeren zu RASTER_LUECKE in kalender.js. */
+   Die 16 px Luecke gehoeren zu RASTER_LUECKE in kalender.js.
+   --kal-zeile-min setzt kalender.js (fuelleRaster): 36 px Grundhoehe plus
+   16 px je Balkenspur, die der Monat braucht. Bis zum 09.10.2026 standen
+   hier pauschal 36 px, und die Balkentitel liefen bei weit heruntergezogenem
+   Griff ueber die Tageszahlen. rasterMindest() rechnet mit demselben Wert. */
 .kal-raster-bahn {
   position: relative;
   flex: 1 1 auto;
-  min-height: calc(var(--kal-zeilen, 6) * 36px + (var(--kal-zeilen, 6) - 1) * 2px);
+  min-height: calc(var(--kal-zeilen, 6) * var(--kal-zeile-min, 36px) + (var(--kal-zeilen, 6) - 1) * 2px);
   overflow: hidden;
 }
 .kal-raster-bahn[hidden] { display: none; }
@@ -2133,19 +2162,31 @@ html:not(.breit) #kalZu { display: none; }
    (.kal-tagkarte), wie im Samsung Kalender. Das Raster sieht deshalb aus wie
    im Vollbild: ganze Hoehe, ToDos im Klartext statt als Punkte. Die Reiter
    Kalender | Gewohnheiten | Timer bleiben stehen - anders als im Vollbild. */
+/* Dieselben Regeln gelten im Drei-Spalten-Aufbau am Rechner (html.dreispaltig,
+   seit 09.10.2026): das Raster hat dort die volle Hoehe, die Tagesliste steht
+   als eigene Spalte daneben. Griff und Vollbild-Knopf haetten nichts mehr zu
+   tun. */
 html:not(.breit) .kal-griff-teilung,
-html:not(.breit) .kal-vollbild-knopf { display: none; }
-html:not(.breit) .kal-raster-bahn { min-height: 0; }
-html:not(.breit) .kal-raster {
+html:not(.breit) .kal-vollbild-knopf,
+html.dreispaltig .kal-griff-teilung,
+html.dreispaltig .kal-vollbild-knopf { display: none; }
+html:not(.breit) .kal-raster-bahn,
+html.dreispaltig .kal-raster-bahn { min-height: 0; }
+html:not(.breit) .kal-raster,
+html.dreispaltig .kal-raster {
   flex: 1;
   min-height: 0;
   grid-auto-rows: minmax(0, 1fr);
   padding-bottom: max(10px, env(safe-area-inset-bottom));
 }
-html:not(.breit) .kal-tag { min-height: 0; align-items: stretch; }
-html:not(.breit) .kal-zahl { text-align: center; }
-html:not(.breit) .kal-punkte { display: none; }
-html:not(.breit) .kal-tag.viele .kal-punkte::after { content: none; }
+html:not(.breit) .kal-tag,
+html.dreispaltig .kal-tag { min-height: 0; align-items: stretch; }
+html:not(.breit) .kal-zahl,
+html.dreispaltig .kal-zahl { text-align: center; }
+html:not(.breit) .kal-punkte,
+html.dreispaltig .kal-punkte { display: none; }
+html:not(.breit) .kal-tag.viele .kal-punkte::after,
+html.dreispaltig .kal-tag.viele .kal-punkte::after { content: none; }
 /* Trichter im Kalender-Kopf: klappt den Quellen-Umschalter darunter auf.
    inline-flex zentriert das SVG - deshalb braucht er auch die [hidden]-Zeile
    (bei nur einer Quelle gibt es nichts zu waehlen). */
@@ -2261,14 +2302,64 @@ html:not(.breit) .kal-tag.viele .kal-punkte::after { content: none; }
   /* Ohne gezogenen Wert bleibt es bei dieser Reservierung samt der Grenze bei
      780 px - wer nie zieht, merkt nichts. Mit gezogenem Wert entscheidet der
      Griff (siehe html.kal-eigene-teilung unten). */
-  .kal-liste { min-height: min(360px, 44vh); }
+  .kal-liste { min-height: min(360px, 44vh, var(--kal-liste-max, 360px)); }
 }
+/* Die Obergrenze kommt gemessen aus kalender.js (teilungMax): so hoch, dass
+   das Raster darunter seine Untergrenze behaelt. Seit 09.10.2026 - die
+   Untergrenze des Rasters waechst seitdem mit seinen Balkenspuren, und ohne
+   diesen Deckel lief es neben der Mindesthoehe hier unten aus dem Fenster. */
+.kal-liste { max-height: var(--kal-liste-max, none); }
 /* flex: none ist Pflicht: mit dem geerbten flex:1 dehnte sich die Liste ueber
    die eingestellte Hoehe hinaus und der Griff haette keine Wirkung. */
 html.kal-eigene-teilung .kal-liste {
   flex: none;
   height: var(--kal-teilung);
   min-height: 0;
+}
+
+/* ---------- Drei Spalten: Board | Heute | Kalender ---------- */
+/* Seit 09.10.2026, sobald neben Heute und dem Kalender noch zwei
+   Board-Spalten passen (istDrei() in kalender.js, Klasse html.dreispaltig).
+   Die Tagesliste zieht aus dem Streifen aus und steht als eigene Spalte
+   zwischen Board und Kalender; der Kalender bekommt die volle Hoehe.
+
+   Technisch bleibt es EIN Panel: es wird um --heute-breite breiter und teilt
+   sich innen per Grid. Oeffnen, Schliessen, Animation und Umschalter bleiben
+   damit unveraendert - 📅 und 📋 schalten Heute und Kalender gemeinsam.
+   --heute-breite ist die Spalte SAMT Abstand zum Kalender, der Kalender-Teil
+   behaelt so genau --kal-breite. Gehoert zu HEUTE_BREITE in kalender.js. */
+:root { --heute-breite: 300px; }
+html.dreispaltig.kal-split body { padding-right: calc(var(--kal-breite) + var(--heute-breite)); }
+html.dreispaltig.kal-split .kalender { width: calc(var(--kal-breite) + var(--heute-breite)); }
+html.dreispaltig.kal-split .snackbar { left: calc(50% - (var(--kal-breite) + var(--heute-breite)) / 2); }
+/* Zeilen: ✕ ueber beiden Spalten, dann die Reiterzeile (falls es Fokus gibt),
+   dann der Kalender- bzw. Fokus-Block. row-gap 0 und Abstaende an den Zeilen
+   selbst: eine ausgeblendete Reiterzeile liesse sonst eine doppelte Luecke. */
+html.dreispaltig .kalender {
+  display: grid;
+  grid-template-columns: calc(var(--heute-breite) - 14px) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  column-gap: 14px;
+  row-gap: 0;
+}
+html.dreispaltig .kal-ansicht-zeile { grid-column: 1 / -1; grid-row: 1; margin-bottom: 9px; }
+html.dreispaltig .fok-kopf { grid-column: 2; grid-row: 2; margin-bottom: 9px; }
+html.dreispaltig .kal-oben,
+html.dreispaltig .kal-unten { grid-column: 2; grid-row: 3; }
+/* Die Heute-Spalte sieht aus wie eine Spalte im Board: grauer Kasten bis
+   unten. Die Regeln fuer die gestapelte Liste (Mindesthoehe, gezogene Hoehe)
+   gelten hier nicht - deshalb die hoehere Spezifitaet. */
+html.dreispaltig .kalender .kal-liste {
+  grid-column: 1;
+  grid-row: 2 / -1;
+  flex: none;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  margin-bottom: max(14px, env(safe-area-inset-bottom));
+  padding: 10px 12px 14px;
+  border-radius: 12px;
+  background: var(--col-bg);
 }
 .kal-liste-kopf {
   display: flex; align-items: center; gap: 7px;
@@ -2474,22 +2565,37 @@ html.kal-eigene-teilung .kal-liste {
    wird; overflow:hidden schneidet den Titel am Ende des Termins ab, statt
    ihn in fremde Tage laufen zu lassen. position/z-index heben ihn ueber den
    Hintergrund der ueberdeckten Nachbarzellen (z. B. den gewaehlten Tag). */
+/* Getoent statt satt (seit 09.10.2026, Hendriks Wahl am Vorher-nachher-Bild):
+   heller Grund, farbige Kante links, dunkle Schrift - alles aus der EINEN
+   Farbe, die kalender.js als --balken-farbe setzt. Gemischt wird mit --row
+   bzw. --text, damit es im dunklen Modus von selbst umschlaegt (dunkler Grund,
+   helle Schrift). Vorher war es die volle Farbflaeche mit weisser Schrift:
+   jeder Termin gleich laut, und neben den ruhigen Karten des Boards wirkte
+   der Kalender wie eine Wand.
+   Die 40 % Farbe in der Schrift sind gemessen: damit liegt der Kontrast fuer
+   alle 22 Google-Farben (neue und alte Palette) in beiden Modi bei
+   mindestens 4,67:1. Mit 45 % fielen die hellen alten Toene (#e1e1e1,
+   #fbd75b, #7ae7bf) im hellen Modus unter 4,5. */
 .kal-balken {
+  --balken-farbe: var(--muted);
   position: relative;
   z-index: 1;
   flex: none;
   height: 15px;
   width: calc(var(--spanne, 1) * 100% + (var(--spanne, 1) - 1) * 10px);
   border-radius: 3px;
-  background: var(--muted);
-  color: #fff;
+  border-left: 3px solid var(--balken-farbe);
+  background: color-mix(in srgb, var(--balken-farbe) 22%, var(--row));
+  color: color-mix(in srgb, var(--balken-farbe) 40%, var(--text));
   overflow: hidden;
 }
+/* 3 px statt 4: links steht seit 09.10.2026 die farbige Kante, und der
+   gewonnene Pixel je Seite ist bei schmalen Zellen ein Buchstabe mehr. */
 .kal-balken-text {
   display: block;
   font-size: 10px;
   line-height: 15px;
-  padding: 0 4px;
+  padding: 0 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2497,15 +2603,18 @@ html.kal-eigene-teilung .kal-liste {
 }
 /* Laeuft der Termin ueber den Zeilenumbruch hinweg weiter, bleibt die
    angeschnittene Seite eckig - so sieht man, dass es weitergeht. */
-.kal-balken.weiter-links { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+/* Die Kante sitzt nur am ANFANG des Termins: in der Folgezeile ist es
+   derselbe Termin, keine neue Sache. */
+.kal-balken.weiter-links { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 0; }
 .kal-balken.weiter-rechts { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 /* Freie Spur: haelt nur den Platz, damit ein Balken in Spur 2 auf allen Tagen
    der Woche auf derselben Hoehe liegt. Ohne den Platzhalter ruecken tiefere
    Balken nach oben und die durchgezogene Linie versetzt sich. */
-.kal-balken-luecke { background: transparent; width: 100%; z-index: auto; }
+.kal-balken-luecke { background: transparent; border-left: 0; width: 100%; z-index: auto; }
 
-/* Dieselbe Form als Marke im Filter-Menue. */
-.kal-balken-marke { flex: none; width: 13px; height: 5px; border-radius: 3px; z-index: auto; }
+/* Dieselbe Form als Marke im Filter-Menue - dort bleibt sie satt (die Farbe
+   kommt inline aus kalender.js), eine 13-px-Marke braucht die volle Farbe. */
+.kal-balken-marke { flex: none; width: 13px; height: 5px; border-radius: 3px; border-left: 0; z-index: auto; }
 
 /* Zwischenueberschriften in der Tagesliste.
    Seit 21.08.2026 trennen sie sichtbar: Linie darueber, Symbol davor und die
