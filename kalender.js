@@ -78,40 +78,31 @@ const UHR_FORMAT   = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute:
 // liegt und sonst in irgendeinem Vormonat verschwinden wuerde.
 
 // Ab dieser Fensterbreite steht der Kalender NEBEN der Liste (Split) statt
-// darueber. Die Zahl kommt aus dem Platz: rund 440px Kalender lassen darunter
-// noch zwei Board-Spalten (min. 250px) uebrig - bei weniger bliebe eine
-// einzige Spalte, und dann ist Umschalten ehrlicher als Nebeneinander.
-// Gehoert zu --kal-breite und html.kal-split in style.css.
+// eine eigene Ansicht zu sein. Gehoert zu --kal-breite und html.kal-split in
+// style.css. Passt seit 09.10.2026 von selbst: der schmalste Kalender (560)
+// plus eine Board-Spalte (320) sind 880 px.
 const SPLIT_AB = 1000;
-// Was das Board neben dem Streifen mindestens braucht: zwei Spalten (je 250)
-// plus Raender. Erst damit laesst sich die Split-Grenze aus einer selbst
-// gezogenen Breite ausrechnen, statt fest bei SPLIT_AB zu stehen.
+// Was das Board neben Heute-Spalte und Kalender mindestens behalten soll:
+// zwei Spalten (je 250) plus Raender. Erst ab da gibt es die eigene
+// Heute-Spalte (istDrei), darunter steht die Tagesansicht ueber den ToDos.
 const BOARD_MINDEST = 520;
-// Grenzen der ziehbaren Breite. Darunter passt das Raster nicht mehr sinnvoll
-// in sieben Spalten, darueber bleibt vom Board zu wenig.
-const BREITE_MIN = 360;
+// Grenzen der ziehbaren Kalenderbreite. Unter 560 zeigt ein Balken in seiner
+// Zelle keine neun Zeichen mehr ("HNT Train..." statt "HNT Tr...") - gemessen
+// am 09.10.2026: Zelle = (Breite - 64) / 7, davon gehen 17 px an Rahmen,
+// Kante und Abstaende. Bis dahin lag die Untergrenze bei 360.
+const BREITE_MIN = 560;
 const BREITE_MAX = 720;
 const BREITE_KEY = "kalBreite";
-// Board | Heute | Kalender (seit 09.10.2026): die Tagesliste steht als eigene
-// Spalte zwischen Board und Kalender, der Kalender bekommt die volle Hoehe.
-// HEUTE_BREITE ist die Spalte samt Abstand zum Kalender und gehoert zu
-// --heute-breite in style.css. Der Kalender-Teil ist in diesem Aufbau nie
-// schmaler als BREITE_MIN_DREI - so zeigt ein Balken in seiner Zelle noch neun
-// Zeichen ("HNT Train..." statt "HNT Tr..."). Gemessen am 09.10.2026: Zelle
-// = (Breite - 64) / 7, davon gehen 17 px an Rahmen, Kante und Abstaende.
+// Breite der Heute-Spalte samt Abstand zum Kalender, gehoert zu --heute-breite
+// in style.css.
 const HEUTE_BREITE = 300;
-const BREITE_MIN_DREI = 560;
-// Was das Board im Drei-Spalten-Aufbau mindestens braucht: EINE Spalte (min.
-// 250) plus die Raender der App (2 x 26) plus 18 px fuer eine feste
-// Scrollleiste (Windows; am iPad liegt sie ueber dem Inhalt). Ohne die 18 px
-// liefe ein Windows-Fenster knapp ueber der Grenze in waagerechtes Scrollen.
-// Bis zum 09.10.2026 abends galten hier zwei Spalten (BOARD_MINDEST) - dann
-// begann der Aufbau erst bei 1380 px, und Hendriks iPad (quer 1180 px) blieb
-// beim gestapelten Streifen. Dort stand das Board ohnehin schon einspaltig.
+// Wie schmal das Board werden darf, wenn jemand den Kalender breit zieht:
+// EINE Spalte (min. 250) plus die Raender der App (2 x 26) plus 18 px fuer
+// eine feste Scrollleiste (Windows; am iPad liegt sie ueber dem Inhalt).
 const BOARD_EINSPALTIG = 320;
 // Darunter passt die Kopfzeile der App (Titel, ＋ToDo, ＋Bereich, Zahnrad,
 // Umschalter) nicht mehr in eine Zeile; sie bricht dann um wie am Handy
-// (html.board-schmal, siehe style.css). Betrifft vor allem das iPad quer.
+// (html.board-schmal, siehe style.css).
 const BOARD_SCHMAL = 600;
 // Jeder Balken traegt seinen Titel, auch der eintaegige. Vom 20. bis zum
 // 21.08.2026 war das anders (TITEL_AB_TAGEN = 2): bei rund 55 px
@@ -120,12 +111,12 @@ const BOARD_SCHMAL = 600;
 // abgeschnittener Name sagt mehr als ein namenloser Farbbalken - im Raster
 // steht sonst nur "da ist was", ohne zu verraten, was.
 
-// 0 = keine eigene Breite gezogen. Dann gilt weiter --kal-breite aus dem CSS
-// und die alte feste Grenze - wer nie zieht, merkt von der Aenderung nichts.
-// Steht hier oben, weil pflegeBreit() schon beim Laden istSplit() ruft.
+// 0 = keine eigene Breite gezogen. Geklemmt wird erst bei der Anwendung
+// (kalBreite): ein Wert von frueher, als die Untergrenze noch bei 360 lag,
+// gilt dann einfach als 560.
 function gemerkteBreite() {
   const roh = Number(localStorage.getItem(BREITE_KEY));
-  return roh >= BREITE_MIN && roh <= BREITE_MAX ? roh : 0;
+  return roh > 0 && roh <= BREITE_MAX ? roh : 0;
 }
 // Gemerkte Ansicht: "liste" (Streifen zu), "kalender" oder "fokus". EIN
 // Schluessel fuer beide Modi - wer den Streifen am Rechner zuklappt, will ihn
@@ -135,71 +126,64 @@ function gemerkteBreite() {
 const ANSICHT_KEY = "kalAnsicht";
 
 // Was steht im UNTEREN Teil des Streifens: "kalender" (Monatsraster) oder
-// "fokus" (Gewohnheiten bzw. Timer). Die Tagesliste DARUEBER steht immer da
-// und gehoert keinem der beiden - sie ist der Grund, warum es den Streifen
-// gibt. Bis zum 13.08.2026 teilten sich alle drei denselben Platz; ein Blick
-// auf die Gewohnheiten kostete damit genau die Antwort auf "was ist heute
-// faellig", fuer die man aufgemacht hatte.
+// "fokus" (Gewohnheiten bzw. Timer). Die Tagesliste steht seit 09.10.2026
+// nicht mehr darueber, sondern als eigene Spalte daneben bzw. ueber den ToDos.
 let kalUntenModus = "kalender";
 
-function istSplit() {
-  // Wo Board | Heute | Kalender passt, ist es immer ein Split - auch wenn eine
-  // gemerkte Breite allein die alte Grenze nicht erreichte (die wird dort
-  // ohnehin geklemmt, siehe breiteDrei).
-  if (istDrei()) return true;
-  const eigen = gemerkteBreite();
-  // Mit eigener Breite wandert die Grenze mit: ein schmal gezogener Streifen
-  // erlaubt den Split frueher, ein breiter spaeter. Bei der Standardbreite
-  // kommt rechnerisch dieselbe Grenze heraus wie vorher.
-  return eigen ? window.innerWidth >= eigen + BOARD_MINDEST
-               : window.innerWidth >= SPLIT_AB;
-}
-
 /**
- * Board | Heute | Kalender? Sobald neben Heute und dem schmalsten Kalender
- * noch eine Board-Spalte passt: 560 + 300 + 320 = 1180 px, also auch ein iPad
- * quer (genau 1180). Darunter bleibt es beim gestapelten Split (Tagesliste ueber dem
- * Raster), unterhalb der Split-Grenze bei der Handy-Ansicht. Haengt bewusst
- * NICHT an der gemerkten Breite: die wird in diesem Aufbau geklemmt (siehe
- * breiteDrei), sonst verhinderte ein einmal breit gezogener Kalender die
- * Heute-Spalte auf einem kleineren Bildschirm.
+ * Drei Aufbauten, entschieden allein an der Fensterbreite (seit 09.10.2026):
+ *
+ *   ab 1380 px  Board | Heute | Kalender   (istDrei)
+ *   ab 1000 px  Board (Tagesansicht oben) | Kalender   (istSplit)
+ *   darunter    Handy: Board ODER Kalender, Tagesansicht ueber den ToDos
+ *
+ * Der Kalender hat in beiden Split-Aufbauten die volle Hoehe. Den gestapelten
+ * Streifen (Tagesliste ueber dem Raster, mit Teilungs-Griff) und das
+ * Kalender-Vollbild gibt es nicht mehr: fuer beides war kein Platz mehr da,
+ * auf dem es einen Unterschied gemacht haette.
  */
+function istSplit() {
+  return window.innerWidth >= SPLIT_AB;
+}
+
+// Eigene Heute-Spalte nur, wenn neben ihr und dem schmalsten Kalender noch
+// ZWEI Board-Spalten passen (560 + 300 + 520). Eine Woche lang (bzw. einen
+// Abend) reichte eine - dann stand am iPad ein 270 px schmales Board neben
+// einer eigenen Heute-Spalte; Hendrik wollte die Tagesansicht dort lieber
+// ueber den ToDos.
 function istDrei() {
-  return window.innerWidth >= BREITE_MIN_DREI + HEUTE_BREITE + BOARD_EINSPALTIG;
+  return window.innerWidth >= BREITE_MIN + HEUTE_BREITE + BOARD_MINDEST;
 }
 
-// Wie breit der Kalender-Teil im Drei-Spalten-Aufbau hoechstens sein darf:
-// was neben Heute und einer Board-Spalte bleibt.
-function breiteDreiMax() {
-  return Math.max(BREITE_MIN_DREI, Math.min(BREITE_MAX, window.innerWidth - HEUTE_BREITE - BOARD_EINSPALTIG));
+// Steht die Tagesansicht ueber den ToDos? Ueberall, wo es keine eigene
+// Heute-Spalte gibt. Ob sie gerade zu SEHEN ist, entscheidet zeichneTagOben()
+// (das Board muss sichtbar sein).
+function tagOben() {
+  return !istDrei();
 }
 
-// Die Breite, mit der der Kalender-Teil dort tatsaechlich steht: die gemerkte,
-// sonst ein knappes Drittel des Fensters - geklemmt auf das, was passt.
-function breiteDrei() {
+// Wie breit der Kalender hoechstens sein darf: was neben der Heute-Spalte
+// (falls es sie gibt) und einer Board-Spalte bleibt.
+function breiteMax() {
+  const heute = istDrei() ? HEUTE_BREITE : 0;
+  return Math.max(BREITE_MIN, Math.min(BREITE_MAX, window.innerWidth - heute - BOARD_EINSPALTIG));
+}
+
+// Die Breite, mit der der Kalender tatsaechlich steht: die gemerkte, sonst ein
+// knappes Drittel des Fensters - geklemmt auf das, was passt.
+function kalBreite() {
   const wunsch = gemerkteBreite() || Math.round(window.innerWidth * 0.32);
-  return Math.round(klemme(wunsch, BREITE_MIN_DREI, breiteDreiMax()));
+  return Math.round(klemme(wunsch, BREITE_MIN, breiteMax()));
 }
 
-// --kal-breite am :root setzen. Im Drei-Spalten-Aufbau immer (geklemmt, und
-// ohne den gemerkten Wert zu ueberschreiben - dieselbe Regel wie bei der
-// Teilung), sonst nur mit gemerktem Wert; ohne gilt der Standard aus dem CSS.
+// --kal-breite am :root setzen: im Split immer (geklemmt, und ohne den
+// gemerkten Wert zu ueberschreiben - sonst waere eine am grossen Bildschirm
+// gezogene Breite nach einmaligem Oeffnen am iPad verloren), am Handy gar
+// nicht - dort fuellt der Kalender die Ansicht.
 function wendeBreiteAn() {
   const stil = document.documentElement.style;
-  if (istDrei()) stil.setProperty("--kal-breite", breiteDrei() + "px");
-  else if (gemerkteBreite()) stil.setProperty("--kal-breite", gemerkteBreite() + "px");
+  if (istSplit()) stil.setProperty("--kal-breite", kalBreite() + "px");
   else stil.removeProperty("--kal-breite");
-}
-
-/**
- * Fuellt das Raster die ganze Ansicht? Am Rechner im Vollbild und im
- * Drei-Spalten-Aufbau (dort hat das Raster die volle Hoehe, die Tagesliste
- * steht daneben), am Handy immer (seit 24.09.2026): dort steht keine
- * Tagesliste mehr neben dem Raster, ein Tag zeigt seinen Inhalt in der
- * Tages-Karte. Die Zellen tragen dann ihre ToDos im Klartext statt als Punkte.
- */
-function rasterVoll() {
-  return kalVollbild || !istSplit() || istDrei();
 }
 
 /**
@@ -210,10 +194,11 @@ function rasterVoll() {
  * Umschalter-Zeile im Panel ausblenden" gelten dann trotzdem.
  */
 function pflegeBreit() {
+  const panel = kalBreite() + (istDrei() ? HEUTE_BREITE : 0);
   document.documentElement.classList.toggle("breit", istSplit());
   document.documentElement.classList.toggle("dreispaltig", istDrei());
   document.documentElement.classList.toggle("board-schmal",
-    istDrei() && window.innerWidth - HEUTE_BREITE - breiteDrei() < BOARD_SCHMAL);
+    istSplit() && window.innerWidth - panel < BOARD_SCHMAL);
   wendeBreiteAn();
 }
 pflegeBreit();
@@ -223,13 +208,10 @@ let kalJahr = 0;         // angezeigter Monat
 let kalMonatNr = 0;      // 0-basiert, wie bei Date
 let kalAuswahl = null;   // ISO-Tag oder null (vor dem ersten Zeichnen)
 
-// Vollbild: Tagesliste weg, Raster ueber die ganze Hoehe. Absichtlich NICHT
-// gemerkt - beim naechsten Oeffnen saehe man eine App ohne Tagesliste und
-// wuesste nicht, warum.
-let kalVollbild = false;
-// Wie viele Zeilen (Balken oder ToDo) eine Tageszelle im Vollbild traegt.
-// 0 = noch nicht gemessen; gefuellt wird es aus der echten Zellenhoehe, weil
-// die von der Bildschirmhoehe und der Zahl der Wochen abhaengt.
+// Wie viele Zeilen (Balken oder ToDo) eine Tageszelle traegt. 0 = noch nicht
+// gemessen; gefuellt wird es aus der echten Zellenhoehe, weil die von der
+// Bildschirmhoehe und der Zahl der Wochen abhaengt. (Der Name stammt aus der
+// Zeit, als nur das Vollbild so zeichnete.)
 let vollbildPlaetze = 0;
 
 // Wie viele Balkenspuren jede Woche beim letzten Zeichnen brauchte, und fuer
@@ -473,15 +455,18 @@ async function ladeGoogle() {
   // NICHT von hier: ob geschrieben werden darf, entscheidet der Server, und
   // ein gemerktes schreiben:true boete ein Plus an, das in einen 403 liefe.
   const gemerkt = speicherLesen(speicherSchluessel(von, ids));
+  // VOR dem Sofort-Zeichnen: das Zeichnen ruft (ueber die Tagesansicht ueber
+  // den ToDos) selbst wieder ladeGoogle(), und ohne den Riegel ginge dieselbe
+  // Anfrage zweimal hinaus.
+  googleLaedt = true;
   if (gemerkt && !googleTermine.length) {
     googleZustand.verbunden = true;
     googleZustand.palette = gemerkt.palette || {};
     if (Array.isArray(gemerkt.kalender)) googleZustand.kalender = gemerkt.kalender;
     googleTermine = Array.isArray(gemerkt.termine) ? gemerkt.termine : [];
-    if (kalOffen) zeichneKalender();
+    zeichneAlles();
   }
 
-  googleLaedt = true;
   try {
     const adresse = `/api/google/termine?von=${von}&bis=${bis}`
       + (ids.length ? `&kalender=${encodeURIComponent(ids.join(","))}` : "");
@@ -525,10 +510,22 @@ async function ladeGoogle() {
     }
   } catch (e) {
     googleFehler = true;   // offline oder Server weg - ToDos bleiben sichtbar
+    // Als erledigt vermerken, sonst ruft das Neuzeichnen gleich darunter
+    // ladeGoogle() sofort wieder auf - offline lief das bis zum 09.10.2026 im
+    // Kreis (Anfrage scheitert, zeichnen, Anfrage ...). Neu versucht wird,
+    // sobald der Browser wieder online meldet (siehe unten).
+    googleGeladen = schluessel;
   }
   googleLaedt = false;
-  if (kalOffen) zeichneKalender();
+  zeichneAlles();
 }
+
+// Nach einer gescheiterten Anfrage (offline) erst wieder, wenn das Netz da ist.
+window.addEventListener("online", () => {
+  if (!googleFehler) return;
+  googleGeladen = null;
+  zeichneAlles();
+});
 
 // An welchen Tagen steht ein Termin? Ganztaegige koennen ueber mehrere Tage
 // gehen - Google liefert deren Ende als ersten Tag DANACH, deshalb der Tag
@@ -579,21 +576,17 @@ function termineNachTagen() {
   return tage;
 }
 
-// Wie viele Balken-Reihen ("Spuren") eine Tageszelle hoechstens zeigt. Zwei
-// statt drei, seit die Balken ihren Titel tragen und dadurch deutlich hoeher
-// sind - drei Reihen wuerden das Raster so weit aufblaehen, dass fuer die
-// Tagesliste darunter kaum Platz bliebe.
-//
-// Im Vollbild (und am Handy) gilt der gemessene Platz der Zelle - abzueglich
-// EINER Zeile.
+// Wie viele Balken-Reihen ("Spuren") eine Tageszelle hoechstens zeigt: der
+// gemessene Platz der Zelle - abzueglich EINER Zeile.
 // Die bleibt der Rest-Anzeige vorbehalten ("+3"): ohne sie fraessen an einem
 // vollen Tag die Termine alle Zeilen auf, und die ToDos verschwaenden
 // stillschweigend - ein Tag saehe erledigt aus, obwohl noch etwas ansteht.
 // Vor der ersten Messung ein grosszuegiger Wert: zu viele Spuren kosten nur
 // einen zweiten Zeichendurchgang, zu wenige zeigten beim ersten Bild zu wenig.
-const MAX_SPUREN = 2;
+// (Bis zum 09.10.2026 galten im gestapelten Streifen fest zwei Spuren - den
+// gibt es nicht mehr, das Raster hat ueberall die volle Hoehe.)
 function maxSpuren() {
-  return rasterVoll() ? Math.max(1, (vollbildPlaetze || 6) - 1) : MAX_SPUREN;
+  return Math.max(1, (vollbildPlaetze || 6) - 1);
 }
 
 /**
@@ -687,19 +680,23 @@ function zeichneKalender() {
   // Das Raster arbeitet mit dem Spurenplan (feste Reihen), die Tagesliste mit
   // der zeitlichen Sortierung - zwei verschiedene Fragen an dieselben Daten.
   zeichneRaster(tage, baueSpurenplan(), heute);
-  zeichneTagesliste(tage, tageTermine, ueberfaellige, heute);
+  // Die Liste im Panel nur als Heute-Spalte - sonst stuende eine offene
+  // Anlege-Zeile zweimal im Dokument (hier versteckt, oben sichtbar).
+  if (istDrei()) zeichneTagesliste(tage, tageTermine, ueberfaellige, heute);
+  else kalTagesliste.replaceChildren();
   zeichneTagKarte(tage, tageTermine, ueberfaellige, heute);
   zeichneUnten();
-  // Ein anderer Monat kann eine Rasterzeile mehr oder weniger haben - damit
-  // aendert sich, wie weit die Aufteilung geklemmt werden muss.
-  wendeTeilungAn();
+  // Die Tagesansicht ueber den ToDos folgt dem gewaehlten Tag (iPad, kleinere
+  // Fenster) - eigene Funktion, weil sie auch bei zugeklapptem Kalender
+  // gezeichnet wird.
+  zeichneTagOben();
 
-  // Im Vollbild haengt der Zelleninhalt an der Zellenhoehe. Direkt hier
+  // Der Zelleninhalt haengt an der Zellenhoehe. Direkt hier
   // nachmessen, nicht per requestAnimationFrame: clientHeight erzwingt den
   // Umbruch selbst, ein eventueller zweiter Durchgang laeuft dadurch noch vor
   // dem Zeichnen (kein Aufblitzen) - und in einem Hintergrund-Tab, wo rAF gar
   // nicht feuert, bliebe die Messung sonst liegen.
-  if (rasterVoll()) messeVollbild();
+  messeVollbild();
 
   // Laeuft nebenher und zeichnet bei neuen Daten selbst noch einmal; ist der
   // Zeitraum schon geladen (oder gar kein Google verknuepft), kostet der
@@ -707,22 +704,127 @@ function zeichneKalender() {
   ladeGoogle();
 }
 
-/* ---------- Vollbild ---------- */
+// Neu zeichnen, was gerade zu sehen ist: bei offenem Kalender alles, bei
+// zugeklapptem nur die Tagesansicht ueber den ToDos. Fuer Wege, die von beiden
+// Stellen aus angestossen werden koennen (Anlegen, Termin-Formular, Google).
+function zeichneAlles() {
+  if (kalOffen) zeichneKalender();
+  else zeichneTagOben();
+}
+
+/* ---------- Tagesansicht ueber den ToDos ---------- */
+/*
+ * Seit 09.10.2026: ueberall, wo es keine eigene Heute-Spalte gibt (Handy,
+ * iPad, Fenster unter 1380 px), steht der Tag ueber den ToDos. Bei offenem
+ * Kalender zeigt er den dort gewaehlten Tag, bei zugeklapptem immer heute -
+ * ein anderer Tag ohne sichtbaren Kalender daneben waere ein Raetsel. Am
+ * Rechner ab 1380 px gibt es ihn nicht: dort steht die Heute-Spalte im Panel,
+ * und mit dem Kalender geht auch sie (Hendriks Wahl: Handy und iPad ja,
+ * Rechner nein).
+ *
+ * Gezeichnet wird mit derselben zeichneTagesliste() wie Heute-Spalte und
+ * Tages-Karte - Abhaken, Ueberfaelliges, ＋ToDo und ＋Termin kommen damit
+ * von selbst mit.
+ *
+ * Einklappbar am Kopf (Hendriks Wahl gegen einen Schalter in den
+ * Einstellungen), gemerkt pro Geraet. Zugeklappt bleibt eine Zeile mit Datum
+ * und Anzahl, damit man auch dann sieht, ob etwas ansteht.
+ */
+const tagObenEl = document.getElementById("tagOben");
+const TAG_OBEN_ZU_KEY = "tagObenZu";
+let tagObenZu = false;
+try { tagObenZu = localStorage.getItem(TAG_OBEN_ZU_KEY) === "1"; }
+catch (e) { /* kein Speicher - dann eben aufgeklappt */ }
+
+function zeichneTagOben() {
+  if (!tagObenEl) return;
+  // Nur ohne Heute-Spalte, nur wenn das Board zu sehen ist (am Handy liegt es
+  // bei offenem Kalender gar nicht im Dokumentfluss) und erst mit einer Liste.
+  const zeigen = tagOben() && !(kalOffen && !istSplit()) && !!aktiveListe;
+  tagObenEl.hidden = !zeigen;
+  if (!zeigen) { tagObenEl.replaceChildren(); return; }
+
+  const heute = todayStr();
+  const tag = kalOffen && kalAuswahl ? kalAuswahl : heute;
+  if (!kalOffen) {
+    // Google laedt den angezeigten Monat. Zugeklappt zeigt nichts einen
+    // anderen als den heutigen - beim naechsten Oeffnen springt der Kalender
+    // ohnehin auf heute (frischOeffnen).
+    const jetzt = new Date();
+    kalJahr = jetzt.getFullYear();
+    kalMonatNr = jetzt.getMonth();
+    ladeGoogle();
+  }
+
+  const todos = kalenderTermine();
+  const tage = nachTagen(todos);
+  const tageTermine = termineNachTagen();
+  const ueberfaellige = todos.filter(t => t.due < heute);
+  zeichneTagesliste(tage, tageTermine, ueberfaellige, heute, tagObenEl, false, tag, true);
+
+  const kopf = tagObenEl.querySelector(".kal-liste-kopf");
+  tagObenEl.classList.toggle("zu", tagObenZu);
+  if (!kopf) return;
+  kopf.setAttribute("role", "button");
+  kopf.tabIndex = 0;
+  kopf.setAttribute("aria-expanded", String(!tagObenZu));
+  kopf.title = tagObenZu ? "Tag aufklappen" : "Tag zuklappen";
+  if (tagObenZu) {
+    const summe = document.createElement("span");
+    summe.className = "tag-oben-summe";
+    summe.textContent = tagObenSumme((tage[tag] || []).length
+      + (tag === heute ? ueberfaellige.length : 0), (tageTermine[tag] || []).length);
+    kopf.appendChild(summe);
+  }
+  const pfeil = document.createElement("span");
+  pfeil.className = "tag-oben-pfeil";
+  pfeil.setAttribute("aria-hidden", "true");
+  pfeil.textContent = "▾";
+  kopf.appendChild(pfeil);
+}
+
+function tagObenSumme(todos, termine) {
+  const teile = [todos === 0 ? "nichts fällig" : todos === 1 ? "1 ToDo" : `${todos} ToDos`];
+  if (googleZustand.verbunden) {
+    teile.push(termine === 0 ? "keine Termine" : termine === 1 ? "1 Termin" : `${termine} Termine`);
+  }
+  return "· " + teile.join(", ");
+}
+
+function schalteTagOben() {
+  tagObenZu = !tagObenZu;
+  try { localStorage.setItem(TAG_OBEN_ZU_KEY, tagObenZu ? "1" : "0"); }
+  catch (e) { /* voller Speicher - dann eben ungemerkt */ }
+  zeichneTagOben();
+  // Neu gezeichnet heisst neuer Kopf - der Fokus soll dort bleiben, wo die
+  // Tastatur gerade war.
+  tagObenEl.querySelector(".kal-liste-kopf")?.focus();
+}
+
+// Einmal am Container statt an jedem neu gezeichneten Kopf.
+if (tagObenEl) {
+  tagObenEl.addEventListener("click", e => {
+    if (e.target.closest(".kal-liste-kopf")) schalteTagOben();
+  });
+  tagObenEl.addEventListener("keydown", e => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.closest(".kal-liste-kopf")) {
+      e.preventDefault();
+      schalteTagOben();
+    }
+  });
+}
+
+/* ---------- Zellenhoehe messen ---------- */
 // Hoehe einer Zeile im Raster: 15px Balken bzw. ToDo-Zeile plus 1px Luecke
 // (siehe .kal-balken / .kal-tag-todo im CSS).
 const ZEILE_HOCH = 16;
-// Untergrenze einer Rasterzeile OHNE Balken im gestapelten Split: Tageszahl,
-// Punktreihe, Abstaende und Rahmen. Je Balkenspur kommt ZEILE_HOCH dazu
-// (fuelleRaster setzt das als --kal-zeile-min). Bis zum 09.10.2026 galten
-// pauschal 36 px - das Mass aus der Zeit, als in den Zellen nur Punkte
-// standen. Mit zwei Balkenspuren liefen die Titel dann bei weit
-// heruntergezogenem Griff ueber die Tageszahlen.
-const ZEILE_GRUND = 36;
 // Riegel gegen ein Hin und Her: waehrend des Nachlaufs wird nicht neu gemessen.
 let messLauf = false;
 
 /**
- * Wie viele Zeilen traegt eine Tageszelle im Vollbild?
+ * Wie viele Zeilen traegt eine Tageszelle? (Der Funktionsname stammt aus der
+ * Zeit, als nur das Vollbild so zeichnete; seit 09.10.2026 hat das Raster
+ * ueberall die volle Hoehe.)
  *
  * Gemessen statt geraten: die Zellenhoehe haengt am Bildschirm und daran, ob
  * der Monat vier, fuenf oder sechs Wochenzeilen hat. Ein fester Wert waere auf
@@ -735,7 +837,7 @@ let messLauf = false;
  * doch anders aussieht.
  */
 function messeVollbild() {
-  if (!rasterVoll() || !kalOffen || messLauf) return;
+  if (!kalOffen || messLauf) return;
   const zelle = kalRaster.querySelector(".kal-tag");
   // Ohne Hoehe (das Raster ist ausgeblendet, weil Gewohnheiten oder Timer
   // vorn stehen) gibt es nichts zu messen - es kaeme ein einziger Platz heraus.
@@ -751,17 +853,9 @@ function messeVollbild() {
   try { zeichneKalender(); } finally { messLauf = false; }
 }
 
-function setzeVollbild(an) {
-  if (kalVollbild === an) return;
-  // Board | Heute | Kalender: das Raster hat dort schon die volle Hoehe, und
-  // ein Vollbild raeumte nur die Heute-Spalte weg. Knopf und Geste sind dort
-  // ohnehin aus - das hier faengt den Rest (Tastatur, alte Zustaende) ab.
-  if (an && istDrei()) return;
-  kalVollbild = an;
-  vollbildPlaetze = 0;   // andere Hoehe, andere Zahl - neu messen
-  kalPanel.classList.toggle("vollbild", an);
-  zeichneKalender();   // zeichneUnten() raeumt den unteren Teil mit weg
-}
+// Das Kalender-Vollbild (⤢ bzw. senkrechter Wisch ueber dem Raster) ist am
+// 09.10.2026 entfallen: das Raster hat seitdem in jedem Aufbau die volle
+// Hoehe, ein Vollbild haette nur noch die Heute-Spalte weggeraeumt.
 
 // Eine Zeile je Quelle: ToDo-Listen zuerst, dann die Google-Kalender.
 // Erscheint erst ab zwei Quellen - bei einer Liste ohne Google gibt es nichts
@@ -1139,20 +1233,10 @@ function fuelleRaster(raster, jahr, monat, mitte, tage, spuren, heute, kwAn) {
     spurenVorherMonat = monatSchluessel;
   }
 
+  // Die Zeilen teilen sich die Hoehe des Rasters (grid-auto-rows im CSS). Eine
+  // Mindesthoehe je Zeile (--kal-zeilen) brauchte nur der gestapelte Streifen,
+  // den es seit 09.10.2026 nicht mehr gibt.
   const zeilen = Math.ceil((ersterWochentag + tageImMonat) / 7);
-  // Das CSS rechnet daraus die Wunsch- und die Mindesthoehe des Rasters (siehe
-  // --kal-zeilen in style.css). Ein Monat mit 5 Wochen soll nicht so hoch sein
-  // wie einer mit 6, und schrumpfen darf es nur bis zur Untergrenze.
-  raster.style.setProperty("--kal-zeilen", String(zeilen));
-  // Die Bahn traegt die Mindesthoehe (siehe .kal-raster-bahn) - nach dem
-  // angezeigten Monat, nicht nach seinen Nachbarn. Je Zeile die Grundhoehe
-  // plus eine Zeile je Balkenspur, die der Monat braucht: alle Zeilen sind
-  // gleich hoch (grid-auto-rows), also zaehlt die vollste Woche.
-  if (mitte) {
-    kalRasterBahn.style.setProperty("--kal-zeilen", String(zeilen));
-    const spurenMax = spurenJeWoche.reduce((m, s) => Math.max(m, s || 0), 0);
-    kalRasterBahn.style.setProperty("--kal-zeile-min", (ZEILE_GRUND + spurenMax * ZEILE_HOCH) + "px");
-  }
   for (let zeile = 0; zeile < zeilen; zeile++) {
     // Wochenzahl aus dem Montag der Zeile - der darf ruhig im Vor- oder
     // Folgemonat liegen, Date rechnet das von selbst um.
@@ -1185,9 +1269,6 @@ function baueTagesZelle(tag, spalte, ctx) {
   const todosDesTages = tage[iso] || [];
   const reihen = plan[iso] || [];
   const termineImRaster = reihen.filter(Boolean).length;
-  // "+" nur, wenn wirklich etwas WEGGELASSEN wurde - nicht schon, sobald an
-  // einem Tag vier Dinge stehen, die alle sichtbar sind.
-  const versteckt = Math.max(0, todosDesTages.length - 3) + (ueberzaehlig[iso] || 0);
   const zelle = document.createElement("button");
   zelle.type = "button";
   zelle.className = "kal-tag";
@@ -1198,24 +1279,15 @@ function baueTagesZelle(tag, spalte, ctx) {
   // zaehlt mit: was heute drankommt, ist genauso dringend wie Liegengebliebenes
   // - die Regel im Raster ist damit schlicht "rot = da liegt was an".
   if (todosDesTages.length && iso <= heute) zelle.classList.add("faellig");
-  if (versteckt > 0) zelle.classList.add("viele");
 
   const zahl = document.createElement("span");
   zahl.className = "kal-zahl";
   zahl.textContent = String(tag);
   zelle.appendChild(zahl);
 
-  // Punkt = ToDo, Balken = Termin. Zwei Formen statt zweier Farbtoene: die
-  // Farben gehoeren jetzt den Bereichen bzw. Google und koennen sich
-  // gleichen, die Form bleibt eindeutig.
-  const punkte = document.createElement("span");
-  punkte.className = "kal-punkte";
-  for (const t of todosDesTages.slice(0, 3)) {
-    const punkt = document.createElement("span");
-    punkt.className = "kal-punkt" + (t.farbe ? " farbe-" + t.farbe : "");
-    punkte.appendChild(punkt);
-  }
-  zelle.appendChild(punkte);
+  // Die Punktreihe unter der Tageszahl (ein Punkt je ToDo, "+" ab vier) ist
+  // am 09.10.2026 entfallen: sie stand nur im gestapelten Streifen, ueberall
+  // sonst tragen die Zellen ihre ToDos im Klartext (siehe unten).
 
   // Ein mehrtaegiger Termin bekommt EINEN Balken am Anfang seines Abschnitts
   // in dieser Zeile, der ueber alle seine Tage reicht und den Titel EINMAL
@@ -1266,11 +1338,11 @@ function baueTagesZelle(tag, spalte, ctx) {
   }
   zelle.appendChild(stapel);
 
-  // Im Vollbild und am Handy stehen die ToDos im Klartext unter den Terminen -
-  // das ist der eigentliche Gewinn der grossen Ansicht. Wie viele hineinpassen, sagt die
-  // gemessene Zellenhoehe abzueglich der Balken, die diese WOCHE braucht (je
-  // Woche, nicht je Tag - sonst staende jeder Tag auf anderer Hoehe).
-  if (rasterVoll() && (todosDesTages.length || ueberzaehlig[iso])) {
+  // Die ToDos stehen im Klartext unter den Terminen. Wie viele hineinpassen,
+  // sagt die gemessene Zellenhoehe abzueglich der Balken, die diese WOCHE
+  // braucht (je Woche, nicht je Tag - sonst staende jeder Tag auf anderer
+  // Hoehe).
+  if (todosDesTages.length || ueberzaehlig[iso]) {
     const frei = Math.max(0, (vollbildPlaetze || 0) - (spurenJeWoche[wocheVon(tag)] || 0));
     // Termine, die schon im Raster keine Spur mehr bekommen haben, zaehlen in
     // dieselbe Restzahl - es geht um die Frage "was steht hier noch?", nicht
@@ -1380,7 +1452,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
     ziel.appendChild(baueGruppenKopf("ToDos", aktiveListe && aktiv
       ? () => {
           todoEingabeOffen = true;
-          zeichneKalender();
+          zeichneAlles();
           // Direkt ins Feld: am Handy geht damit die Tastatur gleich mit auf.
           const feld = ziel.querySelector(".kal-anlegen-feld");
           if (feld) feld.focus();
@@ -1693,7 +1765,7 @@ function oeffneTerminFormular(tag, termin) {
   formularFelder.modus = !termin ? "neu"
     : (googleZustand.verbunden && googleZustand.schreiben ? "ansicht" : "lesen");
   todoEingabeOffen = false;
-  zeichneKalender();
+  zeichneAlles();
   zeichneTerminPopup();
   if (termin && termin.serieId) ladeRegel(formularFelder, termin.serieId);
   const feld = kalTerminBox.querySelector(".kal-form-titel");
@@ -1733,7 +1805,7 @@ function schliesseTerminFormular() {
   formularTag = null;
   formularFelder = null;
   zeichneTerminPopup();
-  zeichneKalender();
+  zeichneAlles();
 }
 
 // Baut den Dialog neu. Bewusst NICHT aus zeichneKalender() heraus: das laeuft
@@ -2561,7 +2633,7 @@ function baueAnlegeZeile(tag) {
 function schliesseAnlegeZeile() {
   todoEingabeOffen = false;
   anlegenText = "";
-  zeichneKalender();
+  zeichneAlles();
 }
 
 function legeToDoAn(tag, text) {
@@ -2807,15 +2879,6 @@ function springeZuToDo(boardId, todoId) {
 
 // ---------- Auswahl / Navigation ----------
 function waehleTag(iso) {
-  // Im Vollbild gibt es keine Tagesliste. Ein Tipp fuehrt deshalb aus dem
-  // Vollbild heraus zu genau diesem Tag - einen Tag nur zu markieren, dessen
-  // Inhalt man gar nicht sehen kann, waere eine Sackgasse.
-  if (kalVollbild) {
-    kalAuswahl = iso;
-    schliesseEingaben();
-    setzeVollbild(false);
-    return;
-  }
   // Am Handy oeffnet EIN Tipp den Tag als Karte - auch einen leeren (seit
   // 26.09.2026, Hendriks Wunsch). Zwei Tage lang markierte der erste Tipp
   // nur, und erst der zweite oeffnete; ein leerer Tag sprang dabei gleich in
@@ -2854,10 +2917,13 @@ function aktualisiereAuswahl() {
   for (const zelle of kalRaster.querySelectorAll(".kal-tag")) {
     zelle.classList.toggle("gewaehlt", zelle.dataset.tag === kalAuswahl);
   }
-  const todos = kalenderTermine();
-  const heute = todayStr();
-  zeichneTagesliste(nachTagen(todos), termineNachTagen(),
-                    todos.filter(t => t.due < heute), heute);
+  if (istDrei()) {
+    const todos = kalenderTermine();
+    const heute = todayStr();
+    zeichneTagesliste(nachTagen(todos), termineNachTagen(),
+                      todos.filter(t => t.due < heute), heute);
+  }
+  zeichneTagOben();
 }
 
 /* ---------- Tages-Karte (Handy) ---------- */
@@ -2946,24 +3012,21 @@ function schliesseEingaben() {
   kalTerminPopup.hidden = true;
 }
 
-// Beim Monatswechsel den ersten Tag MIT Terminen waehlen - ein leerer
-// Detailbereich unter einem vollen Raster sieht aus wie ein Fehler.
+// Beim Monatswechsel IMMER einen Tag waehlen: im aktuellen Monat heute, in
+// jedem anderen den Ersten (seit 09.10.2026, Hendriks Wahl). Vorher wurde der
+// erste Tag mit einem ToDo gewaehlt - Google-Termine zaehlten dabei nicht mit,
+// und in einem Monat ohne ToDos blieb der Tagesbereich leer, obwohl das
+// Raster voller Termine stand.
 function zeigeMonat(jahr, monat) {
   kalJahr = jahr;
   kalMonatNr = monat;
-  const tage = nachTagen(kalenderTermine());
-  const treffer = Object.keys(tage)
-    .filter(iso => iso.startsWith(`${jahr}-${String(monat + 1).padStart(2, "0")}`))
-    .sort();
-  // Am Handy gibt es keine Tagesliste, die leer aussehen koennte - ein von
-  // selbst gewaehlter Tag waere dort nur eine Markierung ohne Grund. Heute
-  // bleibt gewaehlt.
-  if (!istSplit()) {
-    const heute = todayStr();
-    kalAuswahl = heute.startsWith(`${jahr}-${String(monat + 1).padStart(2, "0")}`) ? heute : null;
-  } else {
-    kalAuswahl = treffer[0] || null;
-  }
+  const heute = todayStr();
+  const imMonat = heute.startsWith(`${jahr}-${String(monat + 1).padStart(2, "0")}`);
+  // Am Handy gibt es neben dem Raster keine Tagesliste, die leer aussehen
+  // koennte - ein von selbst gewaehlter Erster waere dort nur eine
+  // Markierung ohne Grund. Heute bleibt gewaehlt, wenn er im Monat liegt.
+  if (!istSplit()) kalAuswahl = imMonat ? heute : null;
+  else kalAuswahl = imMonat ? heute : isoTag(jahr, monat, 1);
   zeichneKalender();
 }
 
@@ -3050,6 +3113,10 @@ function setzePanel(offen, sofort) {
 
   try { localStorage.setItem(ANSICHT_KEY, offen ? kalUntenModus : "liste"); }
   catch (e) { /* voller Speicher - dann eben ungemerkt */ }
+
+  // Die Tagesansicht ueber den ToDos zeigt bei offenem Kalender den gewaehlten
+  // Tag, bei zugeklapptem heute - sie haengt also an genau diesem Zustand.
+  zeichneTagOben();
 }
 
 // Zurueck-Knopf des Browsers: eine Ansicht zurueck, nicht aus der App heraus.
@@ -3077,8 +3144,7 @@ window.addEventListener("popstate", () => {
 /**
  * Was steht unten: das Monatsraster oder Fokus. Die Sichtbarkeit haengt an
  * genau dieser Stelle, damit "immer genau eines" nicht an zwei Orten
- * entschieden wird. Die Tagesliste oben bleibt davon unberuehrt - nur das
- * Vollbild raeumt sie weg.
+ * entschieden wird. Die Tagesliste bleibt davon unberuehrt.
  *
  * Fokus gibt es nur mit Zugang UND eingeschaltetem Schalter in den
  * Einstellungen. Faellt eines der beiden weg, faellt ein gemerktes "fokus"
@@ -3091,9 +3157,7 @@ function fokusMoeglich() {
 function zeichneUnten() {
   const mitFokus = fokusMoeglich();
   if (kalUntenModus === "fokus" && !mitFokus) kalUntenModus = "kalender";
-  // Im Vollbild nimmt das Raster die ganze Hoehe - Fokus hat dort keinen Platz.
-  // Der Modus bleibt gemerkt und steht beim Verlassen wieder da.
-  const fokus = kalUntenModus === "fokus" && !kalVollbild;
+  const fokus = kalUntenModus === "fokus";
 
   // Zwei Bloecke, genau einer sichtbar. Was INNERHALB des Kalender-Blocks
   // erscheint (Filter ja/nein), entscheidet zeichneFilter() selbst - vorher
@@ -3104,15 +3168,15 @@ function zeichneUnten() {
   if (fokus) window.fokusZeigen?.();
   else window.fokusVerstecken?.();
 
-  // Die Tagesliste bleibt - nur im Vollbild nicht und am Handy nicht (dort
-  // zeigt die Tages-Karte den Tag). Im Drei-Spalten-Aufbau ist das Raster
-  // zwar "voll", die Liste steht aber als eigene Spalte daneben.
-  kalTagesliste.hidden = rasterVoll() && !istDrei();
+  // Die Tagesliste im Panel gibt es nur als eigene Heute-Spalte (ab 1380 px).
+  // Darunter steht der Tag ueber den ToDos (zeichneTagOben) bzw. am Handy
+  // in der Tages-Karte.
+  kalTagesliste.hidden = !istDrei();
 
   // Die Reiterzeile ueberlebt den Wechsel zum Kalender - sie ist der Weg
   // zurueck. Ohne Fokus (kein Zugang oder abgeschaltet) waere sie ein Reiter
   // allein.
-  window.fokusReiterzeile?.(mitFokus && !kalVollbild);
+  window.fokusReiterzeile?.(mitFokus);
   // Steht der Kalender vorn, markiert ihn niemand sonst: setzeReiter() in
   // fokus.js laeuft nur, wenn dort etwas gezeichnet wird.
   if (!fokus) {
@@ -3153,15 +3217,11 @@ function stelleAnsichtHer() {
   zeichneUnten();
 }
 
-// Jedes Oeffnen startet beim heutigen Tag UND in der normalen Ansicht. Ein
-// gemerktes Vollbild saehe beim naechsten Mal aus wie eine kaputte App - die
-// Tagesliste waere weg, ohne dass man wuesste, warum.
+// Jedes Oeffnen startet beim heutigen Tag.
 function frischOeffnen() {
-  kalVollbild = false;
   vollbildPlaetze = 0;
   // Auch das Quellen-Menue startet zu - offen laege es ueber dem Raster.
   filterOffen = false;
-  kalPanel.classList.remove("vollbild");
   springeZuHeute();
 }
 
@@ -3177,7 +3237,7 @@ function oeffneKalender(modus) {
 // Fuer fokus.js: ob der Fokus-Teil gerade ueberhaupt zu sehen ist. Der
 // Sekundentakt des Timers zeichnet sonst ins Verborgene.
 window.kalenderIstOffen = () => kalOffen;
-window.kalenderZeigtFokus = () => kalOffen && kalUntenModus === "fokus" && !kalVollbild;
+window.kalenderZeigtFokus = () => kalOffen && kalUntenModus === "fokus";
 
 function schliesseKalender() {
   if (!kalOffen) return;
@@ -3219,17 +3279,9 @@ function darfGeste() {
   return true;
 }
 
-// Senkrecht ueber dem Raster wischen schaltet das Vollbild: nach OBEN schiebt
-// das Raster die Tagesliste weg und wird gross, nach UNTEN laesst es sie wieder
-// herein. Die Richtung folgt dem, was WANDERT: das Raster sitzt unten, es muss
-// also nach oben, um den Bildschirm zu fuellen. (Bis zum 20.08.2026 war es
-// andersherum - "wie ein Rollo" gedacht, aber Rollos zieht niemand von unten.)
-// Vorher lag das auf einer Zwei-Finger-Zoomgeste - die war am Handy einhaendig
-// kaum zu treffen.
-//
-// Nur ueber dem Raster: die Tagesliste darunter muss senkrecht scrollbar
-// bleiben, und in der Kopfzeile wischt man zum Schliessen.
-const ZOOM_WEG = 60;   // px, ab denen wirklich umgeschaltet wird
+// Senkrecht ueber dem Raster zu wischen schaltete bis zum 09.10.2026 das
+// Vollbild. Das gibt es nicht mehr (das Raster hat ueberall die volle Hoehe),
+// eine senkrechte Bewegung ueber dem Raster verwirft die Geste jetzt einfach.
 
 function setzeVersatz(v) {
   geste.versatz = v;
@@ -3241,8 +3293,8 @@ function setzeVersatz(v) {
  *
  *   "monat" ueber dem Raster, "tag" ueber der Tagesliste, sonst "zu".
  *
- * Nur "monat" kennt beide Achsen: waagerecht blaettert den Monat, senkrecht
- * schaltet das Vollbild. Ueber der Tagesliste bleibt senkrecht das Scrollen.
+ * "monat" und "tag" blaettern waagerecht. Ueber der Tagesliste bleibt
+ * senkrecht das Scrollen.
  *
  * Aufgeteilt statt einheitlich, weil ein Wisch ueber dem Raster etwas anderes
  * bedeutet als einer ueber der Kopfzeile - und weil das Schliessen per Wisch
@@ -3252,9 +3304,9 @@ function gestenZone(ziel) {
   if (!ziel || !ziel.closest) return "zu";
   // In einem Eingabefeld zieht man Text, nicht den Kalender.
   if (ziel.closest("input, textarea, select")) return null;
-  // Auf einem Ziehgriff gehoert die Bewegung dem Griff. Ohne das koennte ein
-  // leicht schraeger Zug am Handy als Wisch durchgehen und das Panel zumachen,
-  // waehrend man die Aufteilung einstellt.
+  // Auf dem Ziehgriff gehoert die Bewegung dem Griff. Ohne das koennte ein
+  // leicht schraeger Zug als Wisch durchgehen und das Panel zumachen, waehrend
+  // man die Breite einstellt.
   if (ziel.closest(".kal-griff")) return null;
   // Die Tages-Karte blaettert den Tag, wie die Tagesliste am Rechner.
   if (ziel.closest("#kalTagPopup")) return "tag";
@@ -3265,10 +3317,11 @@ function gestenZone(ziel) {
   return istSplit() ? null : "zu";
 }
 
-// ---------- Ziehgriffe ----------
-// Zwei Griffe teilen sich diese Mechanik: die Breite des Streifens (nur im
-// Split) und die Aufteilung zwischen Tagesliste und unterem Teil. Pointer-
-// Ereignisse statt Maus UND Touch: ein Weg fuer beide Eingaben.
+// ---------- Ziehgriff ----------
+// Die Breite des Kalenders (nur im Split). Bis zum 09.10.2026 gab es einen
+// zweiten Griff fuer die Aufteilung zwischen Tagesliste und Raster - daher
+// die allgemeine Form mit `achse`. Pointer-Ereignisse statt Maus UND Touch:
+// ein Weg fuer beide Eingaben.
 //
 //   achse    "breite" waagerecht, "hoehe" senkrecht
 //   start    Wert beim Anfassen, in px
@@ -3484,11 +3537,10 @@ document.addEventListener("touchmove", e => {
   if (!geste.achse) {
     if (Math.abs(dx) < SCHWELLE && Math.abs(dy) < SCHWELLE) return;
     if (Math.abs(dx) <= Math.abs(dy)) {
-      // Ueberwiegend senkrecht. Ueber dem Raster ist das die Vollbild-Geste,
-      // ueberall sonst Scrollen - das gehoert dem Browser. Am Handy fuellt das
-      // Raster die Ansicht ohnehin, dort gibt es kein Vollbild zu schalten.
-      if (geste.modus !== "monat" || !istSplit() || istDrei()) { geste = null; return; }
-      geste.achse = "y";
+      // Ueberwiegend senkrecht: Scrollen, das gehoert dem Browser. (Ueber dem
+      // Raster schaltete das bis zum 09.10.2026 das Vollbild.)
+      geste = null;
+      return;
     } else {
       geste.achse = "x";
       kalPanel.classList.remove("animiert");
@@ -3505,15 +3557,6 @@ document.addEventListener("touchmove", e => {
   // Ab hier ist es ein Wisch und kein Tipp mehr - der nachgeschobene Klick
   // darf keinen Tag mehr waehlen (siehe klickSchlucken).
   if (geste.modus === "monat" || geste.modus === "tag") klickSchlucken = true;
-
-  if (geste.achse === "y") {
-    // Nach dem Umschalten ist die Geste erledigt (geste = null), sonst
-    // schaltete ein Weiterziehen ueber die Schwelle hinaus gleich wieder
-    // zurueck.
-    if (dy < -ZOOM_WEG) { geste = null; setzeVollbild(true); }
-    else if (dy > ZOOM_WEG) { geste = null; setzeVollbild(false); }
-    return;
-  }
 
   if (geste.modus === "monat" || geste.modus === "tag") {
     // Tempo fuer den kurzen Schnipser: wer schnell wischt, will umblaettern,
@@ -3532,10 +3575,6 @@ document.addEventListener("touchmove", e => {
 function gesteBeenden() {
   if (!geste) return;
   const g = geste;
-  // Senkrecht ueber dem Raster: entweder war der Weg lang genug und das
-  // Vollbild hat schon geschaltet (dann ist geste laengst null), oder es
-  // bleibt, wie es war. Nichts zurueckzusetzen.
-  if (g.achse === "y") { geste = null; return; }
   if (g.modus === "monat" || g.modus === "tag") {
     geste = null;
     loesseBlaettern(g);
@@ -3597,91 +3636,13 @@ function setzeBreite(px) {
   catch (e) { /* voller Speicher - dann eben ungemerkt */ }
 }
 
-const TEILUNG_MIN = 120;
-const TEILUNG_KEY = "kalTeilung";
-
-// Was das Raster selbst mindestens braucht: dieselbe Untergrenze wie im CSS
-// (siehe .kal-raster-bahn). Als Funktion, weil Zeilenzahl und Balkenspuren
-// mit dem Monat wechseln.
-function rasterMindest() {
-  const stil = getComputedStyle(kalRasterBahn);
-  const zeilen = Number(stil.getPropertyValue("--kal-zeilen")) || 6;
-  const jeZeile = parseFloat(stil.getPropertyValue("--kal-zeile-min")) || ZEILE_GRUND;
-  return zeilen * jeZeile + (zeilen - 1) * 2;
-}
-
-// Monatskopf und Wochentage samt Abstaenden: vom oberen Rand des
-// Kalender-Blocks bis zum Raster. Gemessen, sobald der Block sichtbar ist;
-// solange Gewohnheiten oder Timer vorn stehen, gilt der letzte Messwert.
-let kopfHoehe = 84;
-
-// Wie hoch die Tagesliste hoechstens werden darf, damit das Raster darunter
-// seine Untergrenze behaelt. Gerechnet wird ab der OBERKANTE der Liste bis zum
-// Panelboden, und alles dazwischen ist GEMESSEN: Griff, Reiterzeile,
-// Monatskopf, Wochentage. Bis zum 09.10.2026 stand hier ein Pauschalwert von
-// 84 px fuer Kopf und Wochentage - seit der Reiterzeile waren es aber rund
-// 130, und die unterste Rasterzeile lief bei weit heruntergezogenem Griff aus
-// dem Fenster.
-// Steht unten der Fokus statt des Rasters, wird trotzdem mit dem Raster
-// gerechnet: sonst sprange die Liste beim Wechsel der Reiter.
-function teilungMax() {
-  const panel = kalPanel.getBoundingClientRect();
-  const liste = kalTagesliste.getBoundingClientRect();
-  if (!kalOben.hidden) {
-    const gemessen = kalRasterBahn.getBoundingClientRect().top - kalOben.getBoundingClientRect().top;
-    if (gemessen > 0) kopfHoehe = gemessen;
-  }
-  const block = (kalOben.hidden ? document.getElementById("kalUnten") : kalOben).getBoundingClientRect();
-  const dazwischen = Math.max(0, block.top - liste.bottom);
-  return Math.max(TEILUNG_MIN, panel.bottom - liste.top - dazwischen - kopfHoehe - rasterMindest());
-}
-
-function setzeTeilung(px) {
-  document.documentElement.classList.add("kal-eigene-teilung");
-  document.documentElement.style.setProperty("--kal-teilung", Math.round(px) + "px");
-  try { localStorage.setItem(TEILUNG_KEY, String(Math.round(px))); }
-  catch (e) { /* voller Speicher - dann eben ungemerkt */ }
-}
-
-// Anwenden, OHNE den gemerkten Wert zu ueberschreiben. Auf einem niedrigen
-// Fenster greifen die Grenzen - wuerde das Ergebnis zurueckgeschrieben, waere
-// die am grossen Bildschirm eingestellte Aufteilung nach einmaligem Oeffnen am
-// Handy dauerhaft verloren.
-function wendeTeilungAn() {
-  // Auch OHNE gezogenen Wert: die Liste darf dem Raster seine Untergrenze
-  // nicht wegnehmen (siehe --kal-liste-max an .kal-liste im CSS). Nur messen,
-  // wenn es die Liste neben dem Raster gibt - sonst kaeme Unsinn heraus.
-  if (!kalTagesliste.hidden && !istDrei()) {
-    document.documentElement.style.setProperty("--kal-liste-max", Math.round(teilungMax()) + "px");
-  }
-  const roh = Number(localStorage.getItem(TEILUNG_KEY));
-  if (!roh) {
-    document.documentElement.classList.remove("kal-eigene-teilung");
-    document.documentElement.style.removeProperty("--kal-teilung");
-    return;
-  }
-  document.documentElement.classList.add("kal-eigene-teilung");
-  document.documentElement.style.setProperty(
-    "--kal-teilung", Math.round(klemme(roh, TEILUNG_MIN, teilungMax())) + "px");
-}
-
-zieheGriff(document.getElementById("kalGriffTeilung"), {
-  achse: "hoehe",
-  start: () => kalTagesliste.getBoundingClientRect().height,
-  setze: setzeTeilung,
-  zurueck: () => {
-    localStorage.removeItem(TEILUNG_KEY);
-    document.documentElement.classList.remove("kal-eigene-teilung");
-    document.documentElement.style.removeProperty("--kal-teilung");
-  },
-  min: () => TEILUNG_MIN,
-  max: teilungMax,
-});
-
-wendeTeilungAn();
+// Den Griff zwischen Tagesliste und Raster ("Aufteilung", gemerkt unter
+// kalTeilung) gibt es seit 09.10.2026 nicht mehr - mit ihm den gestapelten
+// Streifen, zu dem er gehoerte. Ein alter gemerkter Wert bleibt ungelesen
+// liegen und stoert nicht.
 
 // Im Drei-Spalten-Aufbau zieht der Griff nur den Kalender-Teil: die
-// Heute-Spalte bleibt fest, und Start, Unter- und Obergrenze rechnen ohne sie.
+// Heute-Spalte bleibt fest, Start und Obergrenze rechnen ohne sie.
 zieheGriff(document.getElementById("kalGriffBreite"), {
   achse: "breite",
   start: () => kalPanel.getBoundingClientRect().width - (istDrei() ? HEUTE_BREITE : 0),
@@ -3690,10 +3651,8 @@ zieheGriff(document.getElementById("kalGriffBreite"), {
     localStorage.removeItem(BREITE_KEY);
     pflegeSplit();
   },
-  min: () => istDrei() ? BREITE_MIN_DREI : BREITE_MIN,
-  max: () => istDrei()
-    ? breiteDreiMax()
-    : Math.max(BREITE_MIN, Math.min(BREITE_MAX, window.innerWidth - BOARD_MINDEST)),
+  min: () => BREITE_MIN,
+  max: breiteMax,
 });
 
 kalMonatName.addEventListener("click", schalteWahl);
@@ -3716,7 +3675,6 @@ document.addEventListener("click", e => {
   filterOffen = false;
   zeichneFilter();
 }, true);
-document.getElementById("kalVollbild").addEventListener("click", () => setzeVollbild(!kalVollbild));
 kalRaster.addEventListener("click", e => {
   if (klickSchlucken) { klickSchlucken = false; return; }
   const zelle = zelleUnter(e.clientX, e.clientY) || e.target.closest(".kal-tag");
@@ -3797,13 +3755,11 @@ function schliesseObersteEbene() {
   return false;
 }
 
-// Escape arbeitet sich von innen nach aussen: erst der offene Dialog, dann das
-// Vollbild, erst zuletzt das Panel. Sonst raeumte ein Tastendruck alles auf
-// einmal weg.
+// Escape arbeitet sich von innen nach aussen: erst der offene Dialog, erst
+// zuletzt das Panel. Sonst raeumte ein Tastendruck alles auf einmal weg.
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape" || !kalOffen) return;
   if (schliesseObersteEbene()) return;
-  if (kalVollbild) { setzeVollbild(false); return; }
   schliesseKalender();
 });
 
@@ -3815,41 +3771,39 @@ document.addEventListener("keydown", e => {
 // aus dem Panel wird dann eine Spalte oder umgekehrt. Ohne diesen Abgleich
 // bliebe ein am Handy geoeffneter Kalender nach dem Drehen ein Overlay, das
 // die halbe Liste verdeckt.
-// Auch nach dem Ziehen aufgerufen, nicht nur bei resize: mit einer eigenen
-// Breite verschiebt sich die Split-Grenze selbst, das Fenster muss sich dafuer
-// gar nicht aendern.
+// Auch nach dem Ziehen aufgerufen, nicht nur bei resize: die Kalenderbreite
+// entscheidet mit, ob die Kopfzeile umbricht (board-schmal).
 function pflegeSplit() {
-  // Vorher merken: pflegeBreit() schaltet die Klasse gleich um.
+  // Vorher merken: pflegeBreit() schaltet die Klassen gleich um.
+  const warBreit = document.documentElement.classList.contains("breit");
   const warDrei = document.documentElement.classList.contains("dreispaltig");
   // Vor dem Ausstieg: die Klasse gilt auch bei zugeklapptem Kalender, das
   // Fokus-Panel haengt ebenfalls daran.
   pflegeBreit();
-  // Die Fensterhoehe entscheidet mit, wie weit die Aufteilung geklemmt wird.
-  wendeTeilungAn();
-  if (!kalOffen) return;
-  if (istSplit() !== document.documentElement.classList.contains("kal-split")
-      || istDrei() !== warDrei) {
+  const anders = istSplit() !== warBreit || istDrei() !== warDrei;
+  // Zugeklappt kann sich trotzdem aendern, ob die Tagesansicht ueber den
+  // ToDos steht (z. B. Fenster ueber 1380 px gezogen).
+  if (!kalOffen) { if (anders) zeichneTagOben(); return; }
+  if (anders || istSplit() !== document.documentElement.classList.contains("kal-split")) {
+    // Handy <-> Rechner: die Tages-Karte gibt es nur am Handy, die Heute-
+    // Spalte nur ab 1380 px - also frisch zeichnen statt nur nachzumessen.
     setzePanel(true, true);
-    // Handy <-> Rechner: die Zellen tragen dort anderes (Klartext oder
-    // Punkte), die Tages-Karte gibt es nur am Handy und das Vollbild nur am
-    // Rechner - also frisch zeichnen statt nur nachzumessen. Dasselbe beim
-    // Wechsel zwischen gestapeltem und dreispaltigem Split.
     schliesseTagKarte();
-    if ((!istSplit() || istDrei()) && kalVollbild) { kalVollbild = false; kalPanel.classList.remove("vollbild"); }
     vollbildPlaetze = 0;
     zeichneKalender();
     return;
   }
-  if (rasterVoll()) messeVollbild();
+  messeVollbild();
 }
 
 window.addEventListener("resize", pflegeSplit);
 
 // Aus render() aufgerufen: haelt das offene Panel auf Stand, wenn sich am
-// Board etwas aendert (Abhaken, Sync vom Server). Zugeklappt kostet es nichts.
+// Board etwas aendert (Abhaken, Sync vom Server). Zugeklappt zeichnet es nur
+// die Tagesansicht ueber den ToDos (Handy, iPad).
 window.kalenderNeuZeichnen = function () {
   stelleAnsichtHer();
-  if (kalOffen) zeichneKalender();
+  zeichneAlles();
 };
 
 // Nach Verbinden/Trennen in den Einstellungen: alles zu Google vergessen und
@@ -3867,5 +3821,5 @@ window.kalenderGoogleVergessen = function () {
   // Ein offener Termin ist nach dem Trennen einer, den es nicht mehr gibt -
   // Speichern und Loeschen liefen ins Leere.
   if (formularOffen && formularTermin) schliesseTerminFormular();
-  if (kalOffen) zeichneKalender();
+  zeichneAlles();
 };

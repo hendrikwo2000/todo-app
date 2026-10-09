@@ -1686,30 +1686,8 @@ html.kal-split .kal-griff-breite {
 .kal-griff-breite.zieht,
 .kal-griff-breite:hover { background: var(--accent-soft); }
 
-/* Der waagerechte Griff wird auch mit dem Finger bedient: 24 px Trefferhoehe,
-   optisch bleiben davon 8 (negativer Aussenabstand). Der sichtbare Strich ist
-   ein ::before in der Mitte - so kostet die groessere Flaeche keinen Platz. */
-.kal-griff-teilung {
-  flex: none;
-  height: 24px;
-  margin: -8px 0;
-  cursor: row-resize;
-  position: relative;
-}
-.kal-griff-teilung::before {
-  content: "";
-  position: absolute;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
-  width: 36px; height: 3px;
-  border-radius: 2px;
-  background: var(--line);
-}
-.kal-griff-teilung.zieht::before,
-.kal-griff-teilung:hover::before { background: var(--accent); }
-/* Im Vollbild gibt es keine Tagesliste - ein Griff ohne etwas zu greifen
-   waere eine tote Flaeche. */
-.kalender.vollbild .kal-griff-teilung { display: none; }
+/* Den waagerechten Griff zwischen Tagesliste und Raster gibt es seit
+   09.10.2026 nicht mehr - mit ihm den gestapelten Streifen. */
 
 html.kal-split body { padding-right: var(--kal-breite); }
 html.kal-split .kalender {
@@ -1976,53 +1954,35 @@ html:not(.breit) #kalZu { display: none; }
 }
 .kal-wochentage { font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; }
 
-/* Das Raster gibt nach, wenn der Tagesbereich darueber Platz braucht.
-   --kal-zeilen setzt kalender.js beim Zeichnen (5 oder 6 Wochen).
-
-   height ist die WUNSCHhoehe (58 px je Zeile - das Mass, bei dem die Zellen
-   neben Googles Monatsansicht bestehen), min-height die Untergrenze (36 px:
-   darunter passen Tageszahl und Punktreihe nicht mehr uebereinander).
-   Dazwischen entscheidet flex-shrink. Die Zeilen teilen sich per
-   grid-auto-rows: minmax(0, 1fr) genau das, was dabei herauskommt - ohne das
-   blieben sie auf 58 px stehen und liefen unten aus dem Panel.
-
-   Am Handy greift das bei jedem Monat: 6 Zeilen a 58 px waren dort 358 px von
-   812, und der Tagesbereich musste ab drei Eintraegen scrollen. */
+/* Das Raster fuellt seinen Block (.kal-oben), die Zeilen teilen sich dessen
+   Hoehe gleichmaessig (grid-auto-rows) - ruhige Wochen werden so nicht flach,
+   und unten bleibt keine Luecke. Seit 09.10.2026 in JEDEM Aufbau: am Handy,
+   neben dem Board und neben der Heute-Spalte. Bis dahin gab es zusaetzlich
+   den gestapelten Streifen, in dem das Raster der Tagesliste darueber
+   nachgeben musste und dafuer eine Mindesthoehe je Zeile trug (--kal-zeilen,
+   --kal-zeile-min), und das Vollbild. Beides ist entfallen. Wie viel in eine
+   Zelle passt, misst kalender.js (messeVollbild). */
 .kal-raster {
-  /* Das Raster fuellt seinen Block (.kal-oben), statt eine eigene Wunschhoehe
-     zu behaupten. Frueher waren es feste 58 px je Zeile - damit war der
-     Kalender-Teil 50 px hoeher als der Fokus-Teil und die Tagesliste sprang
-     beim Umschalten der Reiter. Ein Monat mit nur vier Rasterzeilen bekommt
-     jetzt hoehere Zellen statt einer Luecke darunter; die 58 px waren ohnehin
-     als UNTERgrenze fuer die Optik gedacht, nicht als Deckel.
-
-     min-height bleibt: --kal-zeile-min ist das Mass, unter dem Tageszahl,
-     Punktreihe und Balken nicht mehr uebereinander passen (siehe
-     .kal-raster-bahn). Das Raster gibt bis dahin nach, wenn die Tagesliste
-     darueber Platz braucht. */
-  flex: 1 1 auto;
-  min-height: calc(var(--kal-zeilen, 6) * var(--kal-zeile-min, 36px) + (var(--kal-zeilen, 6) - 1) * 2px);
+  flex: 1;
+  min-height: 0;
   grid-auto-rows: minmax(0, 1fr);
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
 }
 /* Ueber dem Raster gehoert JEDE Wischrichtung dem Kalender: waagerecht
-   blaettert den Monat, senkrecht schaltet das Vollbild. Ohne touch-action:none
-   faengt der Browser die senkrechte Bewegung als Scrollen ab, bevor unser
-   preventDefault greift - die Vollbild-Geste liefe dann ins Leere. */
+   blaettert den Monat. Senkrecht schaltete das bis zum 09.10.2026 das
+   Vollbild; heute passiert dort nichts - ohne touch-action:none schoebe der
+   Browser am Handy aber die ganze Ansicht mit. */
 .kal-wochentage, .kal-raster, .kal-raster-bahn { touch-action: none; }
 
 /* Das Raster als Streifen aus drei Monaten (seit 25.09.2026): die Bahn ist das
    Fenster und traegt Hoehe und Mindesthoehe, die drei Raster liegen absolut
    darin - der Vormonat links daneben, der Folgemonat rechts. Beim Wischen
    verschiebt kalender.js nur den Streifen (siehe blaettere).
-   Die 16 px Luecke gehoeren zu RASTER_LUECKE in kalender.js.
-   --kal-zeile-min setzt kalender.js (fuelleRaster): 36 px Grundhoehe plus
-   16 px je Balkenspur, die der Monat braucht. Bis zum 09.10.2026 standen
-   hier pauschal 36 px, und die Balkentitel liefen bei weit heruntergezogenem
-   Griff ueber die Tageszahlen. rasterMindest() rechnet mit demselben Wert. */
+   Die 16 px Luecke gehoeren zu RASTER_LUECKE in kalender.js. */
 .kal-raster-bahn {
   position: relative;
   flex: 1 1 auto;
-  min-height: calc(var(--kal-zeilen, 6) * var(--kal-zeile-min, 36px) + (var(--kal-zeilen, 6) - 1) * 2px);
+  min-height: 0;
   overflow: hidden;
 }
 .kal-raster-bahn[hidden] { display: none; }
@@ -2062,13 +2022,18 @@ html:not(.breit) #kalZu { display: none; }
    Zeile auf gleicher Hoehe, die Balken haengen direkt darunter, und der freie
    Platz sammelt sich unten - dasselbe Bild wie in einem echten Kalenderblatt.
    Zentriert wanderte die Zahl je nach Anzahl der Balken auf und ab. */
+/* KEIN overflow: hidden auf der Zelle. Der Balken eines mehrtaegigen Termins
+   laeuft absichtlich ueber seine Zelle hinaus (siehe --spanne weiter unten) -
+   ein Deckel hier schneidet ihn an der Zellkante ab, und aus "Sommerferien"
+   ueber zwei Wochen wird ein Kaestchen an einem Tag. Abgeschnitten wird nur
+   die ToDo-Liste, und die schneidet sich selbst ab. */
 .kal-tag {
   /* KEIN min-height: die Zeilenhoehe kommt aus dem Raster (grid-auto-rows,
-     siehe oben). Stuende hier eine feste Zahl, zoege sie die Zeile wieder auf
-     und das Raster koennte nicht mehr nachgeben. */
+     siehe oben). Stuende hier eine feste Zahl, zoege sie die Zeile wieder auf. */
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-start;
   gap: 3px;
   padding: 5px 0 0;
@@ -2103,9 +2068,11 @@ html:not(.breit) #kalZu { display: none; }
    an". Die blaue Umrandung von .heute bleibt daneben stehen und trennt
    weiterhin heute von gestern. */
 .kal-tag.faellig .kal-zahl { color: var(--red); font-weight: 700; }
-.kal-zahl { line-height: 1; }
+.kal-zahl { line-height: 1; text-align: center; }
 
-.kal-punkte { display: flex; align-items: center; gap: 3px; height: 6px; }
+/* Punkt = ToDo-Marke in der Tageszeile im Raster und im Quellen-Filter. Die
+   Punktreihe unter der Tageszahl ist am 09.10.2026 entfallen (siehe
+   baueTagesZelle in kalender.js). */
 .kal-punkt {
   flex: none;
   width: 6px; height: 6px;
@@ -2118,71 +2085,12 @@ html:not(.breit) #kalZu { display: none; }
 .kal-punkt.farbe-lila    { background: var(--farbe-lila); }
 .kal-punkt.farbe-pink    { background: var(--farbe-pink); }
 .kal-punkt.farbe-grau    { background: var(--farbe-grau); }
-/* Mehr als drei ToDos an einem Tag: drei Punkte plus ein kleines Plus. */
-.kal-tag.viele .kal-punkte::after { content: "+"; font-size: 10px; line-height: 1; color: var(--muted); }
-
-/* ---------- Vollbild ---------- */
-/* Ueber dem Raster nach unten wischen (oder der ⤢-Knopf): die Tagesliste weicht, das
-   Raster nimmt die ganze Hoehe. Der Gewinn ist nicht die Groesse an sich,
-   sondern was hineinpasst - die Tage zeigen dann ihre ToDos im Klartext statt
-   als Punkte und mehr Termin-Balken. grid-auto-rows: 1fr verteilt die Hoehe
-   gleichmaessig auf die Wochenzeilen, sonst blieben ruhige Wochen flach und
-   unten stuende eine Luecke. */
-.kalender.vollbild .kal-liste { display: none; }
-.kalender.vollbild .kal-raster-bahn { min-height: 0; }
-.kalender.vollbild .kal-raster {
-  flex: 1;
-  /* Die Deckel der Grundregel zuruecknehmen: im Vollbild gibt es keine
-     Wunschhoehe, das Raster IST der Bildschirm. */
-  max-height: none;
-  min-height: 0;
-  grid-auto-rows: minmax(0, 1fr);
-  padding-bottom: max(10px, env(safe-area-inset-bottom));
-}
-/* KEIN overflow: hidden auf der Zelle. Der Balken eines mehrtaegigen Termins
-   laeuft absichtlich ueber seine Zelle hinaus (siehe --spanne weiter unten) -
-   ein Deckel hier schneidet ihn an der Zellkante ab, und aus "Sommerferien"
-   ueber zwei Wochen wird ein Kaestchen an einem Tag. Abgeschnitten wird nur
-   die ToDo-Liste, und die schneidet sich selbst ab. */
-.kalender.vollbild .kal-tag {
-  min-height: 0;
-  align-items: stretch;
-}
-.kalender.vollbild .kal-zahl { text-align: center; }
-.kalender.vollbild .kal-punkte { display: none; }
-.kalender.vollbild .kal-tag.viele .kal-punkte::after { content: none; }
 
 /* ---------- Handy: Raster ueber die ganze Ansicht ---------- */
 /* Unterhalb der Split-Grenze (kein html.breit) gibt es seit 24.09.2026 keine
-   Tagesliste neben dem Raster mehr - ein Tag oeffnet sich als Karte darueber
-   (.kal-tagkarte), wie im Samsung Kalender. Das Raster sieht deshalb aus wie
-   im Vollbild: ganze Hoehe, ToDos im Klartext statt als Punkte. Die Reiter
-   Kalender | Gewohnheiten | Timer bleiben stehen - anders als im Vollbild. */
-/* Dieselben Regeln gelten im Drei-Spalten-Aufbau am Rechner (html.dreispaltig,
-   seit 09.10.2026): das Raster hat dort die volle Hoehe, die Tagesliste steht
-   als eigene Spalte daneben. Griff und Vollbild-Knopf haetten nichts mehr zu
-   tun. */
-html:not(.breit) .kal-griff-teilung,
-html:not(.breit) .kal-vollbild-knopf,
-html.dreispaltig .kal-griff-teilung,
-html.dreispaltig .kal-vollbild-knopf { display: none; }
-html:not(.breit) .kal-raster-bahn,
-html.dreispaltig .kal-raster-bahn { min-height: 0; }
-html:not(.breit) .kal-raster,
-html.dreispaltig .kal-raster {
-  flex: 1;
-  min-height: 0;
-  grid-auto-rows: minmax(0, 1fr);
-  padding-bottom: max(10px, env(safe-area-inset-bottom));
-}
-html:not(.breit) .kal-tag,
-html.dreispaltig .kal-tag { min-height: 0; align-items: stretch; }
-html:not(.breit) .kal-zahl,
-html.dreispaltig .kal-zahl { text-align: center; }
-html:not(.breit) .kal-punkte,
-html.dreispaltig .kal-punkte { display: none; }
-html:not(.breit) .kal-tag.viele .kal-punkte::after,
-html.dreispaltig .kal-tag.viele .kal-punkte::after { content: none; }
+   Tagesliste neben dem Raster - ein Tag oeffnet sich als Karte darueber
+   (.kal-tagkarte), wie im Samsung Kalender. Die Raster-Regeln dafuer gelten
+   seit 09.10.2026 ueberall (siehe .kal-raster oben). */
 /* Trichter im Kalender-Kopf: klappt den Quellen-Umschalter darunter auf.
    inline-flex zentriert das SVG - deshalb braucht er auch die [hidden]-Zeile
    (bei nur einer Quelle gibt es nichts zu waehlen). */
@@ -2194,10 +2102,7 @@ html.dreispaltig .kal-tag.viele .kal-punkte::after { content: none; }
    sonst sucht man den Grund fuer fehlende Eintraege im Raster. */
 .kal-filter-knopf.aktiv { color: var(--accent); }
 
-.kal-vollbild-knopf { font-size: 15px; }
-.kalender.vollbild .kal-vollbild-knopf { color: var(--accent); background: var(--accent-soft); }
-
-/* ToDos im Vollbild: eine Zeile je ToDo, farbiger Punkt davor. Bewusst
+/* ToDos im Raster: eine Zeile je ToDo, farbiger Punkt davor. Bewusst
    dieselbe Zeilenhoehe wie ein Termin-Balken - so bleibt das Bild ruhig,
    egal was an einem Tag steht. */
 /* flex: 1 1 0 statt Inhaltshoehe: nur mit einer BEGRENZTEN Hoehe kann
@@ -2266,9 +2171,6 @@ html.dreispaltig .kal-tag.viele .kal-punkte::after { content: none; }
   container-type: size;
   container-name: unten;
 }
-/* Im Vollbild nimmt das Raster die ganze Hoehe - dann gibt es weder Fokus
-   noch Tagesliste. */
-.kalender.vollbild .kal-unten { display: none; }
 /* display:flex oben bzw. unten schluege sonst das eingebaute [hidden] des
    Browsers. Dieselbe Falle wie bei .offline-banner, und genau hier ist sie
    schon einmal zugeschnappt: die Gewohnheiten blieben neben dem Timer
@@ -2276,41 +2178,16 @@ html.dreispaltig .kal-tag.viele .kal-punkte::after { content: none; }
 .kal-unten[hidden] { display: none; }
 .kal-liste[hidden] { display: none; }
 
+/* Die Tagesliste im Panel gibt es seit 09.10.2026 nur noch als Heute-Spalte
+   (Lage und Aussehen siehe html.dreispaltig unten). Bis dahin stand sie
+   ueber dem Raster, mit Mindesthoehe, gemessener Obergrenze und einem
+   Teilungs-Griff - das ist alles entfallen. */
 .kal-liste {
-  flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 5px;
-  padding-bottom: max(14px, env(safe-area-inset-bottom));
-}
-/* Das ist der Ausloeser fuers Schrumpfen des Rasters: ohne eine Mindesthoehe
-   hier bekaeme die Liste nur den Rest, der nach dem Raster uebrig bleibt (am
-   Handy 197 px), und das Raster haette keinen Grund nachzugeben. Mit ihr wird
-   der Platz knapp, und das Raster gibt bis zu seiner eigenen Untergrenze nach.
-
-   Erst ab 780 px Fensterhoehe (jedes aktuelle Handy im Hochformat liegt
-   darueber): darunter reichen die beiden Mindestmasse zusammen nicht mehr,
-   und dann ist ein scrollender Tagesbereich besser als ein Raster, das unten
-   aus dem Panel laeuft. */
-@media (min-height: 780px) {
-  /* Ohne gezogenen Wert bleibt es bei dieser Reservierung samt der Grenze bei
-     780 px - wer nie zieht, merkt nichts. Mit gezogenem Wert entscheidet der
-     Griff (siehe html.kal-eigene-teilung unten). */
-  .kal-liste { min-height: min(360px, 44vh, var(--kal-liste-max, 360px)); }
-}
-/* Die Obergrenze kommt gemessen aus kalender.js (teilungMax): so hoch, dass
-   das Raster darunter seine Untergrenze behaelt. Seit 09.10.2026 - die
-   Untergrenze des Rasters waechst seitdem mit seinen Balkenspuren, und ohne
-   diesen Deckel lief es neben der Mindesthoehe hier unten aus dem Fenster. */
-.kal-liste { max-height: var(--kal-liste-max, none); }
-/* flex: none ist Pflicht: mit dem geerbten flex:1 dehnte sich die Liste ueber
-   die eingestellte Hoehe hinaus und der Griff haette keine Wirkung. */
-html.kal-eigene-teilung .kal-liste {
-  flex: none;
-  height: var(--kal-teilung);
-  min-height: 0;
 }
 
 /* ---------- Drei Spalten: Board | Heute | Kalender ---------- */
@@ -2343,20 +2220,44 @@ html.dreispaltig .fok-kopf { grid-column: 2; grid-row: 2; margin-bottom: 9px; }
 html.dreispaltig .kal-oben,
 html.dreispaltig .kal-unten { grid-column: 2; grid-row: 3; }
 /* Die Heute-Spalte sieht aus wie eine Spalte im Board: grauer Kasten bis
-   unten. Die Regeln fuer die gestapelte Liste (Mindesthoehe, gezogene Hoehe)
-   gelten hier nicht - deshalb die hoehere Spezifitaet. */
+   unten. */
 html.dreispaltig .kalender .kal-liste {
   grid-column: 1;
   grid-row: 2 / -1;
-  flex: none;
-  height: auto;
-  min-height: 0;
-  max-height: none;
   margin-bottom: max(14px, env(safe-area-inset-bottom));
   padding: 10px 12px 14px;
   border-radius: 12px;
   background: var(--col-bg);
 }
+/* ---------- Tagesansicht ueber den ToDos ---------- */
+/* Seit 09.10.2026 ueberall, wo es keine Heute-Spalte gibt (Handy, iPad,
+   Fenster unter 1380 px), siehe zeichneTagOben() in kalender.js. Derselbe
+   graue Kasten wie Heute-Spalte und Board-Spalten, ueber die volle Breite.
+   [hidden]-Zeile wegen display:flex - dieselbe Falle wie ueberall. */
+.tag-oben {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 16px;
+  padding: 10px 12px 14px;
+  border-radius: 12px;
+  background: var(--col-bg);
+}
+.tag-oben[hidden] { display: none; }
+/* Der Kopf ist der Schalter: ganze Zeile antippbar, Pfeil rechts. */
+.tag-oben .kal-liste-kopf { cursor: pointer; user-select: none; min-height: 24px; }
+.tag-oben .kal-liste-kopf:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.tag-oben-pfeil {
+  margin-left: auto;
+  font-size: 13px; color: var(--muted);
+  transition: transform .15s;
+}
+.tag-oben-summe { font-weight: 400; }
+/* Zugeklappt bleibt nur der Kopf mit Datum und Anzahl. */
+.tag-oben.zu { padding-bottom: 10px; }
+.tag-oben.zu > :not(.kal-liste-kopf) { display: none; }
+.tag-oben.zu .tag-oben-pfeil { transform: rotate(-90deg); }
+
 .kal-liste-kopf {
   display: flex; align-items: center; gap: 7px;
   margin: 0 0 2px;

@@ -102,3 +102,18 @@ selbst und gibt frei. So geschehen, live am 09.10.2026.
 * **Neuer Bereich:** beginnt die nächste Reihe links statt allein unten in
   der Mitte. Gewählt gegen „in die Lücke darunter“ und „alles in einer
   Reihe, waagerecht scrollen“.
+
+## Dritte Runde (09.10.2026 abends, nach seinem Test am iPad)
+
+* **iPad:** die eigene Heute-Spalte verschwindet dort wieder, die
+  Tagesansicht steht über den ToDos, der Kalender rechts in voller Höhe. Die
+  eigene Spalte gibt es erst ab 1380 px (Board behält zwei Spalten).
+* **1000–1380 px** (kleine Laptops) genauso wie das iPad. Damit entfallen der
+  gestapelte Streifen, sein Teilungs-Griff und das Kalender-Vollbild ganz.
+* **Handy:** in der ToDo-Übersicht steht oben die Tagesansicht (heute).
+  **Einklappbar am Kopf**, gemerkt pro Gerät (gewählt gegen einen Schalter in
+  den Einstellungen und gegen beides).
+* **Kalender zu:** die Tagesansicht oben bleibt an Handy und iPad (zeigt
+  heute), am Rechner ab 1380 px geht sie mit dem Kalender.
+* **Monatswechsel:** im aktuellen Monat heute, sonst der Erste. Vorher blieb
+  der Tagesbereich in Monaten ohne ToDos leer.

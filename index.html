@@ -85,6 +85,12 @@
          JS befuellt und blendet dauerhaft aus, sobald "✕" geklickt wurde. -->
     <div id="hinweisleiste" class="hinweisleiste"></div>
 
+    <!-- Tagesansicht ueber den ToDos (seit 09.10.2026): ueberall, wo es keine
+         eigene Heute-Spalte gibt - Handy, iPad, Fenster unter 1380 px. Zeigt
+         bei offenem Kalender den gewaehlten Tag, sonst heute; einklappbar am
+         Kopf. Inhalt aus kalender.js (zeichneTagOben). -->
+    <section id="tagOben" class="tag-oben" aria-label="Tagesansicht" hidden></section>
+
     <!-- Ablage, um ein ToDo wieder aus seinem Bereich zu loesen. Erscheint
          nur waehrend eines Zuges und nur, wenn das gezogene ToDo ueberhaupt
          in einem Bereich liegt. Neben den Spalten loslassen tut dasselbe -
@@ -133,19 +139,10 @@
       <button type="button" id="kalZu" class="kal-schliessen" aria-label="Kalender schließen">✕</button>
     </div>
 
-    <!-- Der gewaehlte Tag. Steht IMMER da, egal was unten gerade laeuft, und
-         seit dem 13.08.2026 ganz oben: er ist die Antwort, fuer die man den
-         Streifen aufmacht ("was ist heute faellig"), und die gehoert nicht ans
-         Ende. -->
+    <!-- Der gewaehlte Tag als eigene Heute-Spalte neben dem Raster - nur ab
+         1380 px (html.dreispaltig). Darunter steht der Tag ueber den ToDos
+         (#tagOben), am Handy zusaetzlich in der Tages-Karte. -->
     <div id="kalTagesliste" class="kal-liste"></div>
-
-    <!-- Teilt den Streifen zwischen Tagesliste und unterem Teil. Anders als
-         der Breiten-Griff wird dieser auch mit dem Finger bedient, daher die
-         groessere Trefferflaeche. -->
-    <div id="kalGriffTeilung" class="kal-griff kal-griff-teilung" role="separator"
-         tabindex="0" aria-orientation="horizontal"
-         aria-label="Aufteilung zwischen Tagesliste und Kalender"
-         title="Aufteilung ziehen, Doppelklick setzt zurück"></div>
 
     <!-- Die Reiterzeile schaltet den UNTEREN Teil um: Monatsraster,
          Gewohnheiten oder Timer. Die Tagesliste darueber bleibt dabei stehen.
@@ -200,10 +197,6 @@
            fuer die Position. -->
       <div id="kalFilter" class="kal-filter" role="menu" aria-label="Quellen" hidden></div>
       <button type="button" id="kalHeute" class="btn klein">Heute</button>
-      <!-- Vollbild: am Handy geht es auch per Wisch ueber dem Raster (nach
-           oben gross, nach unten klein), am Rechner gibt es nur den Knopf. -->
-      <button type="button" id="kalVollbild" class="kal-pfeil kal-vollbild-knopf"
-              aria-label="Kalender groß" title="Kalender groß – am Handy: über dem Raster nach oben wischen">⤢</button>
     </div>
 
     <div id="kalWochentage" class="kal-wochentage"></div>
