@@ -753,6 +753,10 @@ function zeichneTagOben() {
     const jetzt = new Date();
     kalJahr = jetzt.getFullYear();
     kalMonatNr = jetzt.getMonth();
+    // Auch die Auswahl: ein Termin oeffnet mit kalAuswahl als seinem Tag
+    // (baueTerminZeile), und die stuende sonst noch auf dem zuletzt im
+    // Kalender angetippten.
+    kalAuswahl = heute;
     ladeGoogle();
   }
 
@@ -770,6 +774,11 @@ function zeichneTagOben() {
   kopf.setAttribute("aria-expanded", String(!tagObenZu));
   kopf.title = tagObenZu ? "Tag aufklappen" : "Tag zuklappen";
   if (tagObenZu) {
+    // Zugeklappt sagt die Zusammenfassung alles; das leise "nichts fällig"
+    // stuende sonst doppelt da, und ein ＋ oeffnete eine Zeile, die man nicht
+    // sieht.
+    kopf.querySelector(".kal-liste-ruhig")?.remove();
+    kopf.querySelector(".kal-kopf-plus")?.remove();
     const summe = document.createElement("span");
     summe.className = "tag-oben-summe";
     summe.textContent = tagObenSumme((tage[tag] || []).length
@@ -803,10 +812,13 @@ function schalteTagOben() {
 
 // Einmal am Container statt an jedem neu gezeichneten Kopf.
 if (tagObenEl) {
+  // Knoepfe IM Kopf (das ＋ im ruhigen Zustand) klappen nicht mit.
   tagObenEl.addEventListener("click", e => {
+    if (e.target.closest("button")) return;
     if (e.target.closest(".kal-liste-kopf")) schalteTagOben();
   });
   tagObenEl.addEventListener("keydown", e => {
+    if (e.target.closest("button")) return;
     if ((e.key === "Enter" || e.key === " ") && e.target.closest(".kal-liste-kopf")) {
       e.preventDefault();
       schalteTagOben();
@@ -1414,6 +1426,27 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
     todosDesTages = [];
   }
 
+  // Das ＋ an den ToDos: oeffnet die Anlege-Zeile fuer diesen Tag.
+  const todoPlus = aktiveListe && aktiv
+    ? () => {
+        todoEingabeOffen = true;
+        zeichneAlles();
+        // Direkt ins Feld: am Handy geht damit die Tastatur gleich mit auf.
+        const feld = ziel.querySelector(".kal-anlegen-feld");
+        if (feld) feld.focus();
+      } : null;
+
+  // Ruhig (seit 10.10.2026): ist nichts faellig, gibt es keinen eigenen
+  // ToDo-Abschnitt, sondern ein leises "· nichts fällig" samt ＋ in der
+  // Datumszeile. Hendrik: die Tagesansicht soll dann "nicht so präsent" sein
+  // und weniger Platz nehmen - die Termine bleiben dabei, wie sie sind.
+  // Nicht in der Tages-Karte am Handy (dort ist das ＋ an "ToDos" DER Weg zum
+  // Anlegen) und nicht, solange die Anlege-Zeile offen ist: die gehoert in den
+  // ToDo-Abschnitt.
+  const ruhig = !karte && !!tag && !todosDesTages.length
+    && !(tag === heute && ueberfaellige.length)
+    && !(aktiv && todoEingabeOffen);
+
   if (titel && !karte) {
     const kopf = document.createElement("h3");
     kopf.className = "kal-liste-kopf";
@@ -1424,13 +1457,30 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
       heuteChip.textContent = "heute";
       kopf.appendChild(heuteChip);
     }
+    if (ruhig) {
+      const leise = document.createElement("span");
+      leise.className = "kal-liste-ruhig";
+      leise.textContent = "· nichts fällig";
+      kopf.appendChild(leise);
+      if (todoPlus) {
+        const plus = document.createElement("button");
+        plus.type = "button";
+        plus.className = "kal-gruppe-plus kal-kopf-plus";
+        plus.textContent = "＋";
+        plus.title = "ToDo für diesen Tag anlegen";
+        plus.setAttribute("aria-label", "ToDo für diesen Tag anlegen");
+        plus.addEventListener("click", todoPlus);
+        kopf.appendChild(plus);
+      }
+    }
     ziel.appendChild(kopf);
   }
 
   // Ein gewaehlter Tag hat feste Abschnitte, jeder mit eigener Ueberschrift -
-  // der ToDo-Abschnitt auch dann, wenn er leer ist. Ein leerer Abschnitt ist
-  // die ehrlichere Antwort auf "was ist an dem Tag?" als gar keiner, und das
-  // ＋ sitzt genau da, wo man es sucht.
+  // der ToDo-Abschnitt auch dann, wenn er leer ist. Ausnahme seit 10.10.2026:
+  // im ruhigen Zustand (siehe `ruhig` oben) steht "nichts fällig" samt ＋ in
+  // der Datumszeile, und der Abschnitt entfaellt. In der Tages-Karte am Handy
+  // bleibt er immer.
   if (tag) {
     // Faelliges ist ROT - Ueberschrift und Zeilenrand. Das ist die Regel aus
     // dem Raster ("rot = da liegt was an"), hier zu Ende gefuehrt: wer den
@@ -1449,20 +1499,15 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
       for (const t of ueberfaellige) ziel.appendChild(baueEintrag(t, true, true));
     }
 
-    ziel.appendChild(baueGruppenKopf("ToDos", aktiveListe && aktiv
-      ? () => {
-          todoEingabeOffen = true;
-          zeichneAlles();
-          // Direkt ins Feld: am Handy geht damit die Tastatur gleich mit auf.
-          const feld = ziel.querySelector(".kal-anlegen-feld");
-          if (feld) feld.focus();
-        } : null,
-      "ToDo", faelligHeute && todosDesTages.length > 0, "☑️"));
-    if (aktiv && todoEingabeOffen && aktiveListe) ziel.appendChild(baueAnlegeZeile(tag));
-    for (const t of todosDesTages) {
-      ziel.appendChild(baueEintrag(t, false, faelligHeute));
+    if (!ruhig) {
+      ziel.appendChild(baueGruppenKopf("ToDos", todoPlus,
+        "ToDo", faelligHeute && todosDesTages.length > 0, "☑️"));
+      if (aktiv && todoEingabeOffen && aktiveListe) ziel.appendChild(baueAnlegeZeile(tag));
+      for (const t of todosDesTages) {
+        ziel.appendChild(baueEintrag(t, false, faelligHeute));
+      }
+      if (!todosDesTages.length) ziel.appendChild(baueLeerZeile("Nichts fällig."));
     }
-    if (!todosDesTages.length) ziel.appendChild(baueLeerZeile("Nichts fällig."));
 
     // Termine stehen unter den ToDos: der Streifen beantwortet zuerst "was
     // muss ich heute tun", und die Termin-Ueberschrift samt Leerzeile schob

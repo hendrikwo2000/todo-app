@@ -1584,6 +1584,26 @@ Kalender nur sie) und `pflegeSplit()` bei einem Wechsel des Aufbaus.
 überall, wo die Tagesansicht der Auslöser sein kann: ＋ToDo, Abbrechen,
 Termin-Formular auf/zu, Ende von `ladeGoogle()`, Google trennen.
 
+**Ruhig, wenn nichts fällig ist** (10.10.2026): Heute-Spalte und Tagesansicht
+oben zeigen dann keinen eigenen ToDo-Abschnitt („ToDos“ + „Nichts fällig.“),
+sondern ein leises „· nichts fällig“ samt ＋ in der Datumszeile
+(`ruhig` in `zeichneTagesliste()`). Die Termine bleiben unverändert, mit
+Dauer — Hendrik: „Termine sollen so bleiben, nur ToDos nicht“; einzeilige
+Termine waren gefragt und sind verworfen. „Fällig“ heißt: ToDos an diesem Tag
+oder, am heutigen, Überfälliges. Nicht ruhig ist es in der Tages-Karte am
+Handy (dort ist das ＋ an „ToDos“ der Weg zum Anlegen) und solange die
+Anlege-Zeile offen ist — ein Tipp aufs ＋ holt den Abschnitt samt Feld
+zurück. Zugeklappt entfernt `zeichneTagOben()` das leise „nichts fällig“ und
+das ＋ wieder, sonst stünde es neben der Zusammenfassung doppelt. Knöpfe im
+Kopf klappen nicht mit (Klick- und Tastatur-Handler steigen bei `button` aus).
+
+**Bei zugeklapptem Kalender steht auch `kalAuswahl` auf heute**
+(`zeichneTagOben`): ein Tipp auf einen Termin öffnet ihn mit `kalAuswahl` als
+seinem Tag (`baueTerminZeile`), und die stand sonst noch auf dem zuletzt im
+Kalender angetippten Tag — die Tagesansicht zeigte heute, der Termin bekam
+einen anderen. Gefunden beim Lesen, Folgen (etwa bei „nur dieser Termin“
+einer Serie) nicht nachgestellt.
+
 **Falle, gleich mitgebaut:** das Sofort-Zeichnen aus dem Zwischenspeicher in
 `ladeGoogle()` ruft über die Tagesansicht wieder `ladeGoogle()`. Deshalb steht
 `googleLaedt = true` jetzt VOR diesem Zeichnen, sonst ging dieselbe Anfrage
