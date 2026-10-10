@@ -1586,15 +1586,20 @@ Termin-Formular auf/zu, Ende von `ladeGoogle()`, Google trennen.
 
 **Ruhig, wenn nichts fällig ist** (10.10.2026): Heute-Spalte und Tagesansicht
 oben zeigen dann keinen eigenen ToDo-Abschnitt („ToDos“ + „Nichts fällig.“),
-sondern ein leises „· nichts fällig“ samt ＋ in der Datumszeile
-(`ruhig` in `zeichneTagesliste()`). Die Termine bleiben unverändert, mit
+sondern nur das ＋ rechts in der Datumszeile (`ruhig` in
+`zeichneTagesliste()`). Einen Tag lang stand dort zusätzlich ein leises
+„· nichts fällig“ — in der schmalen Heute-Spalte brach die Zeile damit
+dreifach um (Hendrik: „sieht richtig schlecht aus“, Lösung „weglassen“).
+**Nicht wieder einbauen.** Aus demselben Grund nennt die Zusammenfassung im
+zugeklappten Zustand nur noch, was da ist („· 2 Termine“), ohne „nichts
+fällig“ und „keine Termine“. Die Termine bleiben unverändert, mit
 Dauer — Hendrik: „Termine sollen so bleiben, nur ToDos nicht“; einzeilige
 Termine waren gefragt und sind verworfen. „Fällig“ heißt: ToDos an diesem Tag
 oder, am heutigen, Überfälliges. Nicht ruhig ist es in der Tages-Karte am
 Handy (dort ist das ＋ an „ToDos“ der Weg zum Anlegen) und solange die
 Anlege-Zeile offen ist — ein Tipp aufs ＋ holt den Abschnitt samt Feld
-zurück. Zugeklappt entfernt `zeichneTagOben()` das leise „nichts fällig“ und
-das ＋ wieder, sonst stünde es neben der Zusammenfassung doppelt. Knöpfe im
+zurück. Zugeklappt entfernt `zeichneTagOben()` das ＋ wieder: es öffnete eine
+Zeile, die man nicht sieht. Knöpfe im
 Kopf klappen nicht mit (Klick- und Tastatur-Handler steigen bei `button` aus).
 
 **Bei zugeklapptem Kalender steht auch `kalAuswahl` auf heute**

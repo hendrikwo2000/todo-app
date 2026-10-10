@@ -2254,9 +2254,8 @@ html.dreispaltig .kalender .kal-liste {
 }
 .tag-oben-summe { font-weight: 400; }
 /* Ruhig (seit 10.10.2026, Heute-Spalte und Tagesansicht oben): ist nichts
-   faellig, steht statt des ToDo-Abschnitts ein leises "· nichts fällig" in der
-   Datumszeile, das ＋ zum Anlegen rechts daneben. */
-.kal-liste-ruhig { font-weight: 400; }
+   faellig, steht statt des ToDo-Abschnitts nur das ＋ rechts in der
+   Datumszeile. */
 .kal-kopf-plus { margin-left: auto; }
 .tag-oben .kal-kopf-plus + .tag-oben-pfeil { margin-left: 2px; }
 /* Zugeklappt bleibt nur der Kopf mit Datum und Anzahl. */

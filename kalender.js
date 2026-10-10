@@ -774,16 +774,14 @@ function zeichneTagOben() {
   kopf.setAttribute("aria-expanded", String(!tagObenZu));
   kopf.title = tagObenZu ? "Tag aufklappen" : "Tag zuklappen";
   if (tagObenZu) {
-    // Zugeklappt sagt die Zusammenfassung alles; das leise "nichts fällig"
-    // stuende sonst doppelt da, und ein ＋ oeffnete eine Zeile, die man nicht
-    // sieht.
-    kopf.querySelector(".kal-liste-ruhig")?.remove();
+    // Zugeklappt sagt die Zusammenfassung alles; ein ＋ oeffnete eine Zeile,
+    // die man nicht sieht.
     kopf.querySelector(".kal-kopf-plus")?.remove();
     const summe = document.createElement("span");
     summe.className = "tag-oben-summe";
     summe.textContent = tagObenSumme((tage[tag] || []).length
       + (tag === heute ? ueberfaellige.length : 0), (tageTermine[tag] || []).length);
-    kopf.appendChild(summe);
+    if (summe.textContent) kopf.appendChild(summe);
   }
   const pfeil = document.createElement("span");
   pfeil.className = "tag-oben-pfeil";
@@ -792,12 +790,14 @@ function zeichneTagOben() {
   kopf.appendChild(pfeil);
 }
 
+// Nur, was da IST: ohne faellige ToDos kein "nichts fällig" (Hendrik, 10.10.:
+// weglassen), ohne Termine kein "keine Termine". Ist beides leer, bleibt nur
+// das Datum.
 function tagObenSumme(todos, termine) {
-  const teile = [todos === 0 ? "nichts fällig" : todos === 1 ? "1 ToDo" : `${todos} ToDos`];
-  if (googleZustand.verbunden) {
-    teile.push(termine === 0 ? "keine Termine" : termine === 1 ? "1 Termin" : `${termine} Termine`);
-  }
-  return "· " + teile.join(", ");
+  const teile = [];
+  if (todos) teile.push(todos === 1 ? "1 ToDo" : `${todos} ToDos`);
+  if (termine) teile.push(termine === 1 ? "1 Termin" : `${termine} Termine`);
+  return teile.length ? "· " + teile.join(", ") : "";
 }
 
 function schalteTagOben() {
@@ -1437,9 +1437,12 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
       } : null;
 
   // Ruhig (seit 10.10.2026): ist nichts faellig, gibt es keinen eigenen
-  // ToDo-Abschnitt, sondern ein leises "· nichts fällig" samt ＋ in der
-  // Datumszeile. Hendrik: die Tagesansicht soll dann "nicht so präsent" sein
-  // und weniger Platz nehmen - die Termine bleiben dabei, wie sie sind.
+  // ToDo-Abschnitt, nur das ＋ rechts in der Datumszeile. Hendrik: die
+  // Tagesansicht soll dann "nicht so präsent" sein und weniger Platz nehmen -
+  // die Termine bleiben dabei, wie sie sind. Einen Tag lang stand dort noch
+  // ein leises "· nichts fällig"; in der schmalen Heute-Spalte brach die Zeile
+  // damit dreifach um (Hendrik: "sieht richtig schlecht aus") - nicht wieder
+  // einbauen.
   // Nicht in der Tages-Karte am Handy (dort ist das ＋ an "ToDos" DER Weg zum
   // Anlegen) und nicht, solange die Anlege-Zeile offen ist: die gehoert in den
   // ToDo-Abschnitt.
@@ -1457,29 +1460,23 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
       heuteChip.textContent = "heute";
       kopf.appendChild(heuteChip);
     }
-    if (ruhig) {
-      const leise = document.createElement("span");
-      leise.className = "kal-liste-ruhig";
-      leise.textContent = "· nichts fällig";
-      kopf.appendChild(leise);
-      if (todoPlus) {
-        const plus = document.createElement("button");
-        plus.type = "button";
-        plus.className = "kal-gruppe-plus kal-kopf-plus";
-        plus.textContent = "＋";
-        plus.title = "ToDo für diesen Tag anlegen";
-        plus.setAttribute("aria-label", "ToDo für diesen Tag anlegen");
-        plus.addEventListener("click", todoPlus);
-        kopf.appendChild(plus);
-      }
+    if (ruhig && todoPlus) {
+      const plus = document.createElement("button");
+      plus.type = "button";
+      plus.className = "kal-gruppe-plus kal-kopf-plus";
+      plus.textContent = "＋";
+      plus.title = "ToDo für diesen Tag anlegen";
+      plus.setAttribute("aria-label", "ToDo für diesen Tag anlegen");
+      plus.addEventListener("click", todoPlus);
+      kopf.appendChild(plus);
     }
     ziel.appendChild(kopf);
   }
 
   // Ein gewaehlter Tag hat feste Abschnitte, jeder mit eigener Ueberschrift -
   // der ToDo-Abschnitt auch dann, wenn er leer ist. Ausnahme seit 10.10.2026:
-  // im ruhigen Zustand (siehe `ruhig` oben) steht "nichts fällig" samt ＋ in
-  // der Datumszeile, und der Abschnitt entfaellt. In der Tages-Karte am Handy
+  // im ruhigen Zustand (siehe `ruhig` oben) steht nur das ＋ in der
+  // Datumszeile, und der Abschnitt entfaellt. In der Tages-Karte am Handy
   // bleibt er immer.
   if (tag) {
     // Faelliges ist ROT - Ueberschrift und Zeilenrand. Das ist die Regel aus
