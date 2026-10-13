@@ -497,6 +497,59 @@ Meldung ist bei iOS/Chrome nicht zuverlaessig erlaubt (beide zeigen sonst
 selbst eine generische Ersatzmeldung). Die Zahl stimmt spaetestens beim
 naechsten Oeffnen der App wieder.
 
+### WhatsApp-Morgenliste
+
+Seit 13.10.2026 geht beim ersten Pruefen des Tages zusaetzlich eine WhatsApp
+mit den **Namen** der faelligen und ueberfaelligen ToDos an Hendrik. Der Push
+bleibt unveraendert (3x taeglich, nur die Zahl).
+
+- **Gleiche Regel wie der Push:** nicht erledigt, `due` gesetzt, `due <= heute`
+  (Berlin), ueber alle Listen, in denen das Konto Mitglied ist, auch geteilte.
+  ToDos ohne Termin und erledigte kommen nie vor. Ueberfaellige tragen das
+  Datum ("seit 10.10."), hoechstens 8 Eintraege, danach "+ N weitere". Lange
+  Texte werden auf 80 Zeichen gekuerzt, Zeilenumbrueche zu Leerzeichen.
+  Ohne faellige ToDos geht nichts raus.
+- **Nur der Morgenlauf:** `istMorgenlauf()` prueft die Berliner Stunde (< 10).
+  Der Aufruf um 7 Uhr zaehlt, 12 und 17 Uhr nicht. Winterzeit ist egal, weil
+  cron-job.org in Europe/Berlin plant.
+- **Nur ein Konto:** `WHATSAPP_NUTZER` (E-Mail, ohne Beachtung der Gross- und
+  Kleinschreibung). CallMeBot schickt ohnehin nur an EINE Nummer. Andere
+  Nutzer der App merken nichts. Fehlt die Variable: Antwort
+  `"whatsapp":"nicht eingerichtet"`, sonst keine Wirkung.
+- **Secrets im Pages-Projekt `todo-app`:** `WHATSAPP_NUTZER`, `TELEFON`
+  (`+49...`, ohne Leerzeichen), `CALLMEBOT_KEY`. Hochladen aus einer Datei mit
+  `npx.cmd wrangler pages secret bulk <datei> --project-name todo-app` (aus
+  einem Terminal, in dem Wrangler angemeldet ist). **Danach einen leeren
+  Commit pushen**, sonst sieht die laufende Bereitstellung die Werte nicht
+  (siehe Falle bei den Benachrichtigungen oben).
+- **Antwort des Endpunkts** enthaelt jetzt `whatsapp`: `gesendet (N ToDos)`,
+  `nichts faellig`, `uebersprungen (nicht der Morgenlauf)`,
+  `nicht eingerichtet` oder `fehlgeschlagen: <Grund>`. Ein Fehler beim Senden
+  stoert den Push nie, der Aufruf bleibt HTTP 200 (cron-job.org meldet ihn
+  deshalb nicht als Fehlschlag, die Antwort muss man ansehen).
+- **Zum Ausloesen von Hand:** `...pruefen?whatsapp=jetzt` mit dem Geheimnis
+  (Header `X-Cron-Secret`) sendet auch ausserhalb des Morgenlaufs. Nuetzlich zum
+  Testen und wenn der Morgenlauf ausgefallen ist.
+- **CallMeBot** (`functions/_lib/whatsapp.js`): kostenlos, nur fuer
+  persoenlichen Gebrauch, sendet von SEINER Nummer an die eigene. Fehler
+  kommen mit Status 201 und "ERROR" im Text, deshalb prueft der Code auch den
+  Inhalt. Zwei Versuche, 3 s Pause. Bei Erfolg schickt der Dienst die Nummer
+  im Antworttext zurueck, die Antwort wird deshalb nie weitergereicht. Der
+  Dienst hatte im Januar 2026 eine laengere Pause (Forum: simon42); faellt er
+  aus, kommt die Liste nicht. Der Push bleibt dann der Rueckfall.
+- **Preis:** Die ToDo-Texte gehen im Klartext ueber CallMeBot, auch die in
+  geteilten Listen von anderen angelegten. Wird der Morgenlauf doppelt
+  ausgeloest (etwa durch einen Wiederholungsversuch von cron-job.org), kommt die
+  Nachricht doppelt; eine Sperre dagegen gibt es nicht (braeuchte eine Tabelle).
+- **Getestet** am 13.10.2026 lokal mit `wrangler pages dev`, Testnutzer in der
+  lokalen Datenbank und einem Fake statt CallMeBot: Auswahl (Ueberfaellige
+  zuerst, geteilte Liste dabei, erledigte/zukuenftige/termin-lose/fremde nicht),
+  403 ohne Geheimnis, Uebersprungen am Abend, Erzwingen, ohne Einstellung,
+  CallMeBot nicht erreichbar. Dazu 21 Einzeltests der Bibliothek (Text,
+  Morgenlauf-Grenzen in Sommer- und Winterzeit, Senden, Fehler, Maskierung).
+  Die Tests liegen nicht im Repo, weil Dateien im Wurzelverzeichnis oeffentlich
+  ausgeliefert werden.
+
 ## Offline
 
 Die App funktioniert auch ohne Internet — vorausgesetzt, sie wurde auf dem

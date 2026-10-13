@@ -15,10 +15,18 @@
  *
  * Ungueltige Abos (Geraet abgemeldet, Browser-Push widerrufen: 404/410 vom
  * Push-Dienst) werden dabei gleich aus der Datenbank entfernt.
+ *
+ * Zusaetzlich geht beim ersten Lauf des Tages (Berliner Zeit vor 10 Uhr) eine
+ * WhatsApp mit den NAMEN der faelligen und ueberfaelligen ToDos an das Konto
+ * in WHATSAPP_NUTZER (E-Mail). Gleiche Regel wie oben: nicht erledigt, mit
+ * Termin (due), heute oder frueher. Ohne WHATSAPP_NUTZER passiert nichts.
+ * Ein Fehler dabei stoert den Push nie. ?whatsapp=jetzt erzwingt den Versand
+ * auch ausserhalb des Morgenlaufs (braucht dasselbe Geheimnis wie der Rest).
  */
 
 import { json } from "../../_lib/listen.js";
 import { sendeWebPush } from "../../_lib/webpush.js";
+import { baueTodoNachricht, istMorgenlauf, sendeWhatsapp } from "../../_lib/whatsapp.js";
 
 // "Heute" bewusst in der Zeitzone Europe/Berlin, nicht UTC - sonst faellt der
 // Tageswechsel je nach Sommer-/Winterzeit bis zu zwei Stunden falsch, und ein
@@ -27,7 +35,31 @@ function heuteBerlin() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
 }
 
-async function pruefeUndSende(env) {
+// Gibt zurueck, was passiert ist (steht in der JSON-Antwort fuer cron-job.org).
+async function sendeMorgenliste(env, heute, erzwingen) {
+  if (!env.WHATSAPP_NUTZER) return "nicht eingerichtet";
+  if (!erzwingen && !istMorgenlauf()) return "uebersprungen (nicht der Morgenlauf)";
+
+  // DISTINCT, weil jemand ueber mehrere Wege in derselben Liste stehen kann.
+  const faellig = await env.DB.prepare(
+    `SELECT DISTINCT t.id, t.text, t.due, t.position
+       FROM users u
+       JOIN board_members m ON m.user_id = u.id
+       JOIN lists l ON l.board_id = m.board_id
+       JOIN todos t ON t.list_id = l.id
+      WHERE lower(u.email) = lower(?)
+        AND t.done = 0 AND t.due IS NOT NULL AND t.due <= ?
+      ORDER BY t.due, t.position, t.id`
+  ).bind(env.WHATSAPP_NUTZER, heute).all();
+
+  const text = baueTodoNachricht(faellig.results, heute);
+  if (!text) return "nichts faellig";
+
+  await sendeWhatsapp(env, text);
+  return `gesendet (${faellig.results.length} ToDos)`;
+}
+
+async function pruefeUndSende(env, erzwingeWhatsapp = false) {
   const heute = heuteBerlin();
 
   const zaehlung = await env.DB.prepare(
@@ -77,7 +109,14 @@ async function pruefeUndSende(env) {
     }
   }
 
-  return { nutzerBenachrichtigt: zaehlung.results.length, versendet, fehlgeschlagen, entfernt };
+  let whatsapp;
+  try {
+    whatsapp = await sendeMorgenliste(env, heute, erzwingeWhatsapp);
+  } catch (e) {
+    whatsapp = "fehlgeschlagen: " + e.message;
+  }
+
+  return { nutzerBenachrichtigt: zaehlung.results.length, versendet, fehlgeschlagen, entfernt, whatsapp };
 }
 
 async function behandeln({ request, env }) {
@@ -93,7 +132,8 @@ async function behandeln({ request, env }) {
   }
 
   try {
-    const ergebnis = await pruefeUndSende(env);
+    const erzwingen = new URL(request.url).searchParams.get("whatsapp") === "jetzt";
+    const ergebnis = await pruefeUndSende(env, erzwingen);
     return json({ ok: true, ...ergebnis });
   } catch (e) {
     return json({ error: "Fehler beim Pruefen: " + e.message }, 500);
