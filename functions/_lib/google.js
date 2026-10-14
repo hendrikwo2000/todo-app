@@ -261,6 +261,57 @@ export async function termineVon(token, kalenderId, vonIso, bisIso) {
     .filter(e => e.start);
 }
 
+// Google-Farbe "Tomate": das einzige Rot unter den elf Termin-Farben (Flamingo
+// ist rosa, Mandarine orange). Verglichen wird die colorId, nicht der Hexwert -
+// den kennt nur /colors, und er taugt nicht als Erkennungsmerkmal.
+export const FARBE_ROT = "11";
+
+const berlinTag = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" });
+
+// "2026-10-14" + 1 -> "2026-10-15". Reine Kalenderrechnung in UTC, damit die
+// Sommerzeit-Umstellung nirgends einen Tag verschluckt.
+function tagVerschoben(tag, tage) {
+  return new Date(Date.parse(tag + "T00:00:00Z") + tage * 86400000).toISOString().slice(0, 10);
+}
+
+/**
+ * Liegt der Termin ganz oder teilweise auf diesem Berliner Kalendertag?
+ *
+ * Ganztaegige Termine liefert Google als {date} mit dem Ende EXKLUSIV (ein
+ * Termin am 14.10. endet am 15.10.). Terminierte tragen einen Zeitpunkt mit
+ * Zeitzone; der wird in Berliner Tage umgerechnet. Eine Millisekunde vor dem
+ * Ende, damit ein Termin, der um Mitternacht aufhoert, nicht noch zum neuen
+ * Tag zaehlt.
+ */
+export function terminLiegtAmTag(termin, tag) {
+  if (termin.ganztags) {
+    const bis = termin.ende || tagVerschoben(termin.start, 1);
+    return termin.start <= tag && tag < bis;
+  }
+  const start = new Date(termin.start);
+  if (isNaN(start)) return false;
+  const ende = termin.ende ? new Date(termin.ende) : start;
+  const letzter = new Date(Math.max(start.getTime(), ende.getTime() - 1));
+  return berlinTag.format(start) <= tag && tag <= berlinTag.format(letzter);
+}
+
+/**
+ * Die roten Termine eines Berliner Kalendertags im Hauptkalender.
+ *
+ * "primary" ist Googles Kennung fuer den Hauptkalender - dieselbe Auswahl wie
+ * im Kalender-Panel (termine.js), nur ohne den Umweg ueber die Kalenderliste.
+ * Zeitfenster grosszuegig (der Berliner Tag liegt in UTC je nach Sommer-/
+ * Winterzeit um 1-2 Stunden verschoben), danach genau gefiltert.
+ */
+export async function roteTermineAm(token, tag, kalenderId = "primary") {
+  const termine = await termineVon(
+    token, kalenderId,
+    `${tagVerschoben(tag, -1)}T21:00:00Z`,
+    `${tagVerschoben(tag, 1)}T00:00:00Z`
+  );
+  return termine.filter(t => t.colorId === FARBE_ROT && terminLiegtAmTag(t, tag));
+}
+
 function tagPlusEins(iso) {
   const d = new Date(iso + "T00:00:00");
   d.setDate(d.getDate() + 1);

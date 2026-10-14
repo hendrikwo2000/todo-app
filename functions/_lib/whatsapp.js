@@ -1,5 +1,6 @@
 /**
- * WhatsApp-Morgenliste: faellige ToDos als Nachricht ueber CallMeBot.
+ * WhatsApp-Morgenliste: faellige ToDos und rote Google-Termine des Tages als
+ * Nachricht ueber CallMeBot.
  *
  * CallMeBot (https://www.callmebot.com/blog/free-api-whatsapp-messages/) ist
  * ein kostenloser Dienst fuer persoenlichen Gebrauch: er schickt von SEINER
@@ -31,26 +32,72 @@ function kuerzen(text) {
     : eins;
 }
 
+const berlinTag = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" });
+const berlinUhr = new Intl.DateTimeFormat("de-DE", {
+  timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+});
+
+// termin: { titel, ganztags, start } wie aus termineVon() in google.js.
+function terminZeile(termin, heute) {
+  const titel = kuerzen(termin.titel);
+  if (termin.ganztags) return `• ${titel} (ganztägig)`;
+  const start = new Date(termin.start);
+  // Mehrtaegiger Termin, der schon vor heute begann: eine Uhrzeit von
+  // gestern waere irrefuehrend.
+  if (berlinTag.format(start) < heute) return `• ${titel} (läuft)`;
+  return `• ${berlinUhr.format(start)} ${titel}`;
+}
+
+// Ganztaegige zuerst, dann nach Beginn. Google liefert nach Beginn sortiert,
+// mischt dabei aber Ganztaegige und Terminierte nach Datum.
+function nachBeginn(a, b) {
+  return (Number(b.ganztags) - Number(a.ganztags)) || (Date.parse(a.start) - Date.parse(b.start));
+}
+
 // todos: [{ text, due }], schon nach due aufsteigend sortiert (Ueberfaellige
-// zuerst). heute: "2026-10-15". Ohne faellige ToDos: null, es wird dann nichts
-// gesendet.
-export function baueTodoNachricht(todos, heute) {
-  if (!todos.length) return null;
+// zuerst). termine: die ROTEN Termine von heute (siehe roteTermineAm in
+// google.js). heute: "2026-10-15". kalenderFehler: der Kalender liess sich
+// nicht lesen - die Nachricht sagt das in einer Zeile, damit ein fehlender
+// roter Termin nicht als "heute nichts" missverstanden wird. Weder faellige
+// ToDos noch rote Termine: null, es wird dann nichts gesendet.
+export function baueMorgenNachricht(todos, termine, heute, { kalenderFehler = false } = {}) {
+  if (!todos.length && !termine.length) return null;
 
-  const sichtbar = todos.slice(0, MAX_EINTRAEGE);
-  const zeilen = sichtbar.map((todo) =>
-    todo.due < heute
-      ? `• ${kuerzen(todo.text)} (seit ${kurzDatum(todo.due)})`
-      : `• ${kuerzen(todo.text)}`
-  );
-  const rest = todos.length - sichtbar.length;
-  if (rest > 0) zeilen.push(`+ ${rest} weitere`);
+  const bloecke = [];
 
-  const kopf = todos.length === 1
-    ? `📋 1 ToDo fällig (${kurzDatum(heute)})`
-    : `📋 ${todos.length} ToDos fällig (${kurzDatum(heute)})`;
+  if (todos.length) {
+    const sichtbar = todos.slice(0, MAX_EINTRAEGE);
+    const zeilen = sichtbar.map((todo) =>
+      todo.due < heute
+        ? `• ${kuerzen(todo.text)} (seit ${kurzDatum(todo.due)})`
+        : `• ${kuerzen(todo.text)}`
+    );
+    const rest = todos.length - sichtbar.length;
+    if (rest > 0) zeilen.push(`+ ${rest} weitere`);
 
-  return [kopf, ...zeilen].join("\n");
+    const kopf = todos.length === 1
+      ? `📋 1 ToDo fällig (${kurzDatum(heute)})`
+      : `📋 ${todos.length} ToDos fällig (${kurzDatum(heute)})`;
+    bloecke.push([kopf, ...zeilen]);
+  }
+
+  if (termine.length) {
+    const sichtbar = [...termine].sort(nachBeginn).slice(0, MAX_EINTRAEGE);
+    const zeilen = sichtbar.map((termin) => terminZeile(termin, heute));
+    const rest = termine.length - sichtbar.length;
+    if (rest > 0) zeilen.push(`+ ${rest} weitere`);
+
+    const anzahl = termine.length === 1 ? "1 roter Termin" : `${termine.length} rote Termine`;
+    // Das Datum steht nur in der ersten Kopfzeile der Nachricht.
+    const kopf = todos.length
+      ? `🔴 ${anzahl} heute`
+      : `🔴 ${anzahl} heute (${kurzDatum(heute)})`;
+    bloecke.push([kopf, ...zeilen]);
+  }
+
+  if (kalenderFehler) bloecke.push(["⚠️ Kalender nicht lesbar"]);
+
+  return bloecke.map((zeilen) => zeilen.join("\n")).join("\n\n");
 }
 
 // Die Pruefung laeuft 3x taeglich (7, 12, 17 Uhr Berliner Zeit, siehe
