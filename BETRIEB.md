@@ -2288,6 +2288,14 @@ Daten lagen schon immer in derselben D1 - es gab keine Migration, nur der Code
 ist umgezogen. Schema der Tabellen: `schema-fokus.sql` (gewohnheiten,
 gewohnheit_logs, fokus_sitzungen, fokus_einstellungen).
 
+**`fokus.it-wolf.org` leitet weiter** (seit 17.10.2026, Repo `fokus-app`,
+eine einzige Function `functions/[[pfad]].js`): Seiten per 302 hierher, alte
+Anmeldelinks samt `?t=` auf `/api/auth/link` hier (dieselbe Tabelle
+`login_codes`), alte `/api/*`-Aufrufe bekommen 410 mit Hinweis, `/sw.js` baut
+den Service Worker der alten App ab. Bewusst keine `_redirects`-Datei: die
+greift nicht bei Functions und kennt keine Ausnahmen je Pfad. Der cron-job
+der alten App (cron-job.org) bekommt seitdem 410 und kann weg.
+
 **Wo was liegt:**
 
 | Teil | Datei |
