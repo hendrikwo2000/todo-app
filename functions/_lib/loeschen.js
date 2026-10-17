@@ -7,8 +7,8 @@ import { sendeMail, huelle, absatz, fussnote } from "./mail.js";
 
 /**
  * Loescht Nutzer, seine Listen (mit Bereichen und ToDos), seine
- * Mitgliedschaften in fremden Listen, Sitzungen und offene Codes in EINER
- * Transaktion.
+ * Mitgliedschaften in fremden Listen, Gewohnheiten samt Verlauf,
+ * Timer-Sitzungen, Sitzungen und offene Codes in EINER Transaktion.
  *
  * Zwei Seiten der Listen: EIGENE Listen (owner_id = ich) verschwinden ganz,
  * auch fuer alle, mit denen ich sie geteilt hatte - dafuer erst deren
@@ -39,6 +39,17 @@ export async function loescheKonto(env, nutzer) {
     env.DB.prepare("DELETE FROM boards WHERE owner_id = ?").bind(nutzer.id),
     // Meine Mitgliedschaften in fremden Listen loesen (die Listen bleiben).
     env.DB.prepare("DELETE FROM board_members WHERE user_id = ?").bind(nutzer.id),
+    // Gewohnheiten und Timer - seit Oktober 2026 Teil dieser App statt der
+    // eigenen Fokus-App. fokus_push_subscriptions fehlt hier bewusst: die
+    // Tabelle ist seit der Fusion ungenutzt und steht nicht in schema-fokus.sql,
+    // ein DELETE darauf liesse in einer frischen Datenbank den ganzen Batch
+    // scheitern. Ihre Zeilen raeumt der Fremdschluessel auf users mit ab.
+    env.DB.prepare(
+      "DELETE FROM gewohnheit_logs WHERE gewohnheit_id IN (SELECT id FROM gewohnheiten WHERE user_id = ?)"
+    ).bind(nutzer.id),
+    env.DB.prepare("DELETE FROM fokus_sitzungen WHERE user_id = ?").bind(nutzer.id),
+    env.DB.prepare("DELETE FROM gewohnheiten WHERE user_id = ?").bind(nutzer.id),
+    env.DB.prepare("DELETE FROM fokus_einstellungen WHERE user_id = ?").bind(nutzer.id),
     // Der Rest wie gehabt.
     env.DB.prepare("DELETE FROM push_subscriptions WHERE user_id = ?").bind(nutzer.id),
     env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(nutzer.id),
@@ -72,17 +83,17 @@ export async function meldeLoeschung(env, nutzer, durchAdmin) {
     // nicht zu einer endgueltigen Loeschung.
     html: huelle(durchAdmin ? "Zugang entfernt" : "Konto gelöscht",
       absatz(durchAdmin
-        ? `${anrede}dein Zugang zur ToDo-Liste wurde entfernt. Deine Bereiche
-           und ToDos sind damit gelöscht.`
-        : `${anrede}dein Konto bei der ToDo-Liste ist gelöscht. Deine Bereiche
-           und ToDos wurden dabei mit entfernt.`) +
+        ? `${anrede}dein Zugang zur ToDo-Liste wurde entfernt. Deine Bereiche,
+           ToDos und Gewohnheiten sind damit gelöscht.`
+        : `${anrede}dein Konto bei der ToDo-Liste ist gelöscht. Deine Bereiche,
+           ToDos und Gewohnheiten wurden dabei mit entfernt.`) +
       absatz("Wiederherstellen lässt sich das nicht. Du kannst dich aber jederzeit neu auf die Warteliste eintragen.") +
       fussnote(durchAdmin
         ? "Fragen? Antworte einfach auf diese Mail."
         : "Warst du das nicht? Dann antworte auf diese Mail — dann schauen wir uns das an."),
       "#6b7280"),
     text: durchAdmin
-      ? `${anrede}dein Zugang zur ToDo-Liste wurde entfernt. Deine Bereiche und ToDos sind damit geloescht.\n\nWiederherstellen laesst sich das nicht. Du kannst dich aber jederzeit neu auf die Warteliste eintragen.`
-      : `${anrede}dein Konto bei der ToDo-Liste ist geloescht. Deine Bereiche und ToDos wurden dabei mit entfernt.\n\nWiederherstellen laesst sich das nicht. Warst du das nicht? Dann antworte auf diese Mail.`,
+      ? `${anrede}dein Zugang zur ToDo-Liste wurde entfernt. Deine Bereiche, ToDos und Gewohnheiten sind damit geloescht.\n\nWiederherstellen laesst sich das nicht. Du kannst dich aber jederzeit neu auf die Warteliste eintragen.`
+      : `${anrede}dein Konto bei der ToDo-Liste ist geloescht. Deine Bereiche, ToDos und Gewohnheiten wurden dabei mit entfernt.\n\nWiederherstellen laesst sich das nicht. Warst du das nicht? Dann antworte auf diese Mail.`,
   });
 }
