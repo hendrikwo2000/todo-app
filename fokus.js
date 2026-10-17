@@ -3,18 +3,21 @@
 /* ====================================================================
    Fokus-Panel – Gewohnheiten von heute und der Fokus-Timer
 
-   Zeigt in der ToDo-Liste, was der Fokus-Tracker (fokus.it-wolf.org) fuer
-   heute vorsieht: die Gewohnheiten der Tagesansicht zum Abhaken und den
-   Timer zum Starten, Pausieren und Beenden. Alles Weitere - anlegen,
-   aendern, Verlauf, Statistik, Dauer einstellen - bleibt drueben.
+   Zeigt im Kalender-Streifen die Gewohnheiten der Tagesansicht zum Abhaken
+   und den Timer zum Starten, Pausieren und Beenden. Alles Weitere - Verlauf,
+   Statistik, Fokuszeit pro Woche, anlegen, aendern, ordnen, archivieren -
+   steht im Fenster "Gewohnheiten" (gewohnheiten.js). Der Knopf "Verlauf &
+   mehr" am Ende der Liste oeffnet es, der Stift an einer Karte gleich den
+   Bearbeiten-Dialog.
 
    WOHER DIE DATEN KOMMEN
-   Nicht aus der Datenbank direkt, obwohl beide Apps dieselbe benutzen:
-   ueber /api/fokus/ (functions/api/fokus/[[pfad]].js) fragt der Worker die
-   Fokus-App und reicht ihre Antwort durch. Damit liegen Flammen-, Rhythmus-
-   und Obergrenzen-Regeln weiter an genau einem Ort. Die Heute-Liste kommt
-   fertig gerechnet an (gewohnheiten/heute) - dieses Panel entscheidet
-   nichts selbst, es zeichnet nur.
+   Seit Oktober 2026 aus dieser App selbst (functions/api/gewohnheiten/* und
+   functions/api/fokus/*). Bis dahin reichte ein Durchreicher die Anfragen an
+   die eigene Fokus-App (fokus.it-wolf.org) weiter - die ist in der ToDo-App
+   aufgegangen. Die Heute-Liste kommt weiter fertig gerechnet an
+   (gewohnheiten/heute); dieses Panel entscheidet nichts selbst, es zeichnet
+   nur. Geschrieben wird ueber gewSchreibeTag() in gewohnheiten-daten.js,
+   denselben Weg, den das Fenster benutzt - samt Offline-Warteschlange.
 
    WO ES STEHT
    Kein eigenes Panel: Fokus fuellt #kalUnten und tritt damit an die Stelle des
@@ -33,10 +36,9 @@
    gehoert aber dem Streifen: sie schaltet auch das Raster ein und aus. Ihre
    Klick-Handler liegen deshalb geschlossen in kalender.js und rufen von dort
    window.fokusReiter(); ihre Sichtbarkeit steuert window.fokusReiterzeile().
-   Seit dem 13.08.2026 gibt es dafuer kein 🔥 mehr in der Kopfzeile - drei
-   Knoepfe waren dort einer zu viel, und ob es den Fokus im Streifen ueberhaupt
-   gibt, steht jetzt als Schalter in den Einstellungen (window.fokusImStreifen
-   in app.js).
+   Ob es die beiden Fokus-Reiter gibt, steht seit Oktober 2026 als zwei
+   Schalter in den Einstellungen ("Bereiche", window.fokusBereiche in app.js)
+   - jeder Reiter fuer sich. Davor war es ein Schalter fuer beide.
 
    Frueher war das ein zweites Panel unter dem Kalender, mit eigener
    Hoehenmessung und eigenem Umschalter. Beide Teile stritten sich um denselben
@@ -57,13 +59,13 @@ const fokRing        = document.getElementById("fokRingFuellung");
 // wird daraus der gefuellte Anteil.
 const RING_UMFANG = 2 * Math.PI * 52;
 
-// Wie in Fokus' _lib/tag.js - Deckel gegen Vertipper im Zahlenfeld.
-const FOK_MAX_MENGE = 99999;
-
 // Ob der Fokus-Teil gerade sichtbar ist. Der gemerkte Zustand liegt nicht mehr
 // hier, sondern in kalAnsicht (kalender.js) - es ist eine Ansicht von dreien.
 let fokSichtbar = false;
-let fokZugang = false;
+// Ob die App angemeldet und geladen ist. Bis Oktober 2026 hing hier der
+// Fokus-Zugang des Kontos; seit der Fusion bekommt jedes Konto Gewohnheiten
+// und Timer. Gesetzt beim ersten render() (window.fokusNeuZeichnen).
+let fokBereit = false;
 // Welcher Reiter gilt: "gewohnheiten" oder "timer".
 let fokReiter = "gewohnheiten";
 // Hat der Nutzer den Reiter selbst gewaehlt? Dann bleibt seine Wahl stehen -
@@ -77,28 +79,28 @@ let fokGemeldet = false;    // Sitzungsende schon gemeldet?
 let fokLaedt = false;
 let fokFehler = "";
 
-// ---------- Zugriff auf die Fokus-API ----------
-async function fokApi(pfad, optionen = {}) {
-  try {
-    const antwort = await fetch("/api/fokus/" + pfad, {
-      credentials: "same-origin",
-      ...optionen,
-    });
-    let daten = {};
-    try { daten = await antwort.json(); } catch (e) { /* leere Antwort */ }
-    return { ok: antwort.ok, status: antwort.status, daten };
-  } catch (e) {
-    // Offline oder Server weg. Das Panel sagt es, die ToDo-Liste laeuft weiter.
-    return { ok: false, status: 0, daten: { error: "Keine Verbindung zum Fokus-Tracker." } };
-  }
+// ---------- Bereiche ----------
+// Welche der beiden Fokus-Reiter es gibt - zwei Schalter in den Einstellungen
+// (app.js). Ohne Antwort von dort: beide.
+function fokErlaubt(reiter) {
+  const b = window.fokusBereiche?.() || { gewohnheiten: true, timer: true };
+  return reiter === "timer" ? b.timer !== false : b.gewohnheiten !== false;
+}
+
+// Der gewuenschte Reiter, wenn es ihn gibt - sonst der andere.
+function fokPassenderReiter(wunsch) {
+  if (fokErlaubt(wunsch)) return wunsch;
+  return wunsch === "timer" ? "gewohnheiten" : "timer";
+}
+
+// ---------- Zugriff auf die API ----------
+// Ueber gewApi() aus gewohnheiten-daten.js: eine Anfrage, die nie wirft.
+function fokApi(pfad, optionen) {
+  return gewApi("/api/" + pfad, optionen);
 }
 
 function fokSchreibe(pfad, koerper, methode = "POST") {
-  return fokApi(pfad, {
-    method: methode,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(koerper || {}),
-  });
+  return fokApi(pfad, { method: methode, body: JSON.stringify(koerper || {}) });
 }
 
 // ---------- Laden ----------
@@ -128,33 +130,67 @@ async function ladeFokus() {
   const heute = todayStr();
   const [g, t] = await Promise.all([
     fokApi("gewohnheiten/heute?heute=" + heute),
-    fokApi("timer?heute=" + heute),
+    fokApi("fokus?heute=" + heute),
   ]);
   fokLaedt = false;
 
-  if (!g.ok) {
-    fokFehler = g.daten.error || "Der Fokus-Tracker antwortet nicht.";
-  } else {
-    fokFehler = "";
-    fokListe = g.daten;
-  }
+  uebernimmListe(g);
   if (t.ok) {
     uebernimmSitzung(t.daten.offen);
     fokStandardMin = t.daten.einstellungen?.arbeitMin || 25;
     // Laeuft gerade etwas, ist der Timer das, weswegen man aufmacht - solange
     // man nicht selbst schon auf einen Reiter getippt hat.
-    if (fokSitzung && !fokReiterGewaehlt) fokReiter = "timer";
+    if (fokSitzung && !fokReiterGewaehlt && fokErlaubt("timer")) fokReiter = "timer";
   }
   zeichneFokus();
 }
 
+/**
+ * Die Antwort von gewohnheiten/heute uebernehmen. Ohne Netz gilt die zuletzt
+ * gesehene Liste von HEUTE - eine von gestern waere falsch (anderer Rhythmus,
+ * andere Haken) -, mit dem obendrauf, was seitdem offline abgehakt wurde.
+ */
+function uebernimmListe(antwort) {
+  if (antwort.ok) {
+    fokFehler = "";
+    fokListe = antwort.daten;
+    gewMerke(GEW_HEUTE_SCHLUESSEL, antwort.daten);
+    legeWartendesUeber();
+    return;
+  }
+  const gemerkt = antwort.status === 0 ? gewLies(GEW_HEUTE_SCHLUESSEL) : null;
+  if (gemerkt && gemerkt.heute === todayStr()) {
+    fokFehler = "";
+    fokListe = gemerkt;
+    legeWartendesUeber();
+    return;
+  }
+  fokFehler = antwort.daten.error || "Die Gewohnheiten lassen sich gerade nicht laden.";
+}
+
+// Offline Abgehaktes auf die Karten legen - sonst spraenge eine Karte beim
+// naechsten Laden zurueck, solange ihr Eintrag noch nicht beim Server ist.
+function legeWartendesUeber() {
+  if (!fokListe) return;
+  for (const g of fokListe.gewohnheiten) {
+    const e = gewWartetHeute(g.id);
+    if (e) setzeKarteOertlich(g, e.menge, e.loeschen);
+  }
+}
+
+// Eine Karte ohne Server umstellen - dieselbe Rechnung wie log.js. "ruht" ist
+// eine Obergrenze ohne Eintrag (siehe ruhtHeute in functions/_lib/heute.js).
+function setzeKarteOertlich(g, menge, loeschen) {
+  if (loeschen) { g.menge = 0; g.zustand = g.obergrenze ? "ruht" : "offen"; return; }
+  g.menge = g.typ === "binaer" ? (menge >= 1 ? 1 : 0) : menge;
+  g.zustand = gewStatusVon(g, g.menge, g.ziel);
+}
+
 // Nur die Liste, nach einem Haken. Die Antwort von log.js hat den neuen Stand
-// schon geliefert - hier geht es um das Drumherum: die Tagesbilanz, und bei
-// "X Mal die Woche" verschwindet die Gewohnheit mit dem erreichten Ziel ganz
-// aus der Liste.
+// schon geliefert - hier geht es um das Drumherum: bei "X Mal die Woche"
+// verschwindet die Gewohnheit mit dem erreichten Ziel ganz aus der Liste.
 async function ladeListe() {
-  const antwort = await fokApi("gewohnheiten/heute?heute=" + todayStr());
-  if (antwort.ok) { fokListe = antwort.daten; fokFehler = ""; }
+  uebernimmListe(await fokApi("gewohnheiten/heute?heute=" + todayStr()));
   zeichneFokus();
 }
 
@@ -173,6 +209,17 @@ function fokKnopf(text, klasse, aufruf) {
   return k;
 }
 
+// Der leise Weg ins Fenster "Gewohnheiten" - am Ende der Liste und unter dem
+// Timer, jeweils mit dem passenden Reiter vorn.
+function fokMehrKnopf(text, reiter) {
+  const k = document.createElement("button");
+  k.type = "button";
+  k.className = "fok-mehr-knopf";
+  k.textContent = text;
+  k.onclick = () => window.gewFensterOeffnen?.(reiter);
+  return k;
+}
+
 /**
  * Zeit, Ring und Knopfreihe des Timers.
  *
@@ -187,7 +234,8 @@ function zeichneTimer() {
   fokZeitText.textContent = laeuft
     ? fokZeit(restSek())
     : `${fokStandardMin}:00`;
-  // Die Dauer stellt man drueben ein - hier steht nur, welche gerade gilt.
+  // Die Dauer stellt man in den Einstellungen ein - hier steht nur, welche
+  // gerade gilt.
   fokGeplantText.textContent = laeuft
     ? `von ${fokSitzung.geplanteMin} Min` + (fokSitzung.pausiert ? " · pausiert" : "")
     : "Standarddauer";
@@ -216,12 +264,12 @@ function zeichneTimer() {
  * Wahl beim Oeffnen - nur der Klick friert die Entscheidung ein.
  */
 function setzeReiter(welcher, vomNutzer) {
-  fokReiter = welcher;
+  fokReiter = fokPassenderReiter(welcher);
   if (vomNutzer) fokReiterGewaehlt = true;
   for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
-    seg.setAttribute("aria-selected", String(seg.dataset.fokReiter === welcher));
+    seg.setAttribute("aria-selected", String(seg.dataset.fokReiter === fokReiter));
   }
-  const timerVorn = welcher === "timer";
+  const timerVorn = fokReiter === "timer";
   fokTimerBox.hidden = !fokSichtbar || !timerVorn || !!fokFehler;
   fokInhalt.hidden = !fokSichtbar || timerVorn;
   // Die Tagesbilanz gehoert zu den Gewohnheiten - im Timer stuende sie ohne
@@ -235,28 +283,35 @@ function minutenText(n) {
 }
 
 /**
- * "3 Mal" hinter der Flamme.
- *
- * Die Einheit kommt vom Server (`straehneEinheit`), statt dass hier geraten
- * wird. Seit dem 14.08.2026 ist sie immer "Mal": die Flamme zaehlt alle
- * erledigten Tage zusammen, nicht die am Stueck (flammenZahl in Fokus'
- * _lib/tag.js).
- *
- * Die beiden alten Werte bleiben als Rueckfall stehen, weil die zwei Apps
- * GETRENNT deployen - zwischen den beiden Pushes antwortet der Fokus-Worker
- * kurz noch mit "Tage"/"Wochen", und "1 Wochen" waere ein haesslicher
- * Uebergang fuer ein paar Minuten.
+ * "3 Tage" hinter der Flamme. Die Einheit kommt vom Server
+ * (`straehneEinheit`), statt dass hier geraten wird: fast immer "Tage", nur
+ * "X Mal die Woche" im Reihen-Modus zaehlt Wochen (flammenEinheit in
+ * functions/_lib/tag.js).
  */
 function flammenText(n, einheit) {
-  if (einheit === "Wochen") return `${n} ${n === 1 ? "Woche" : "Wochen"}`;
-  if (einheit === "Tage") return `${n} ${n === 1 ? "Tag" : "Tage"}`;
-  return `${n} ${einheit || "Mal"}`;
+  return gewMitEinheit(n, einheit || "Tage");
 }
 
 function mengeText(g) {
   const einheit = g.einheit ? " " + g.einheit : "";
   if (g.obergrenze) return `${g.menge} von höchstens ${g.ziel}${einheit}`;
   return `${g.menge} von ${g.ziel}${einheit}`;
+}
+
+/**
+ * Der Stift, der eine Gewohnheit zum Bearbeiten oeffnet. Sitzt direkt hinter
+ * dem Namen und nicht am rechten Rand: dort waere er der Nachbar des Hakens,
+ * und der wird jeden Tag getroffen. Dieselbe Form wie im Fenster.
+ */
+function fokStift(g) {
+  const k = document.createElement("button");
+  k.type = "button";
+  k.className = "fok-stift";
+  k.textContent = "✎";
+  k.title = "Bearbeiten";
+  k.setAttribute("aria-label", `${g.name} bearbeiten`);
+  k.onclick = () => window.gewOeffneBearbeiten?.(g.id);
+  return k;
 }
 
 function zeichneKarte(g) {
@@ -268,7 +323,9 @@ function zeichneKarte(g) {
 
   const name = document.createElement("div");
   name.className = "fok-gew-name";
-  name.textContent = g.name;
+  const nameText = document.createElement("span");
+  nameText.textContent = g.name;
+  name.append(nameText, fokStift(g));
   haupt.appendChild(name);
 
   const zeile = document.createElement("div");
@@ -292,6 +349,15 @@ function zeichneKarte(g) {
     : "keine Flamme";
   zeile.appendChild(flamme);
 
+  // Offline abgehakt und noch nicht beim Server. Die Karte zeigt schon den
+  // neuen Stand - ohne diesen Hinweis saehe sie aus, als waere alles im Kasten.
+  if (gewWartetHeute(g.id)) {
+    const wartet = document.createElement("span");
+    wartet.className = "fok-wartet";
+    wartet.textContent = "↻ nicht gespeichert";
+    zeile.appendChild(wartet);
+  }
+
   haupt.appendChild(zeile);
   karte.appendChild(haupt);
 
@@ -311,7 +377,7 @@ function zeichneKarte(g) {
     const eingabe = document.createElement("input");
     eingabe.type = "number";
     eingabe.min = "0";
-    eingabe.max = String(FOK_MAX_MENGE);
+    eingabe.max = String(GEW_MAX_MENGE);
     eingabe.step = "1";
     eingabe.value = String(g.menge);
     eingabe.setAttribute("aria-label", `${g.name}: Menge für heute`);
@@ -340,14 +406,19 @@ function zeichneKarte(g) {
     : g.obergrenze ? "Heute nichts davon"
     : "Als erledigt markieren";
   haken.setAttribute("aria-label", `${g.name}: ${haken.title}`);
-  haken.onclick = () => {
+  haken.onclick = async () => {
     if (g.zustand !== "erledigt") {
       setzeTag(g, g.typ !== "menge" ? 1 : (g.obergrenze ? 0 : g.ziel));
-    } else {
-      // Weil die 0 bei einer Obergrenze selbst schon gruen ist, braucht das
-      // Wiederoeffnen dort das ausdrueckliche Loeschen.
-      setzeTag(g, 0, g.obergrenze);
+      return;
     }
+    // Der einzige Tipp hier, der etwas wegnimmt: aus "50 von 60" wird eine 0.
+    // Statt einer Rueckfrage, die den haeufigen Fall (versehentlich abgehakt)
+    // mit einem zweiten Tipp belastet, gibt es den Weg zurueck hinterher -
+    // wie bisher in der Fokus-App. Weil die 0 bei einer Obergrenze selbst
+    // schon gruen ist, braucht das Wiederoeffnen dort das Loeschen.
+    const vorher = g.menge;
+    if (!await setzeTag(g, 0, g.obergrenze)) return;
+    showUndo(`„${g.name}“ wieder offen`, () => setzeTag(g, vorher));
   };
   karte.appendChild(haken);
 
@@ -385,11 +456,25 @@ function zeichneFokus() {
     return;
   }
 
-  fokBilanzText.textContent = fokListe.gesamt
-    ? (fokListe.erledigt === fokListe.gesamt
-        ? "alles erledigt"
-        : `${fokListe.erledigt} von ${fokListe.gesamt}`)
+  // Selbst gerechnet statt erledigt/gesamt vom Server: nach einem Haken ohne
+  // Netz stimmen die Serverzahlen nicht mehr. Ruhende Obergrenzen zaehlen
+  // nicht mit - dieselbe Regel wie in heute.js.
+  const zaehlend = fokListe.gewohnheiten.filter(g => g.zustand !== "ruht");
+  const erledigt = zaehlend.filter(g => g.zustand === "erledigt").length;
+  fokBilanzText.textContent = zaehlend.length
+    ? (erledigt === zaehlend.length ? "alles erledigt" : `${erledigt} von ${zaehlend.length}`)
     : "";
+
+  // Noch gar keine Gewohnheit - der Fall fuer jedes neue Konto. Statt einer
+  // leeren Flaeche gleich der Weg zur ersten.
+  if (fokListe.aktive === 0) {
+    const p = document.createElement("p");
+    p.className = "fok-hinweis";
+    p.textContent = "Noch keine Gewohnheit. Leg deine erste an – zum Abhaken oder mit Zielmenge.";
+    const neu = fokKnopf("＋ Gewohnheit anlegen", "klein", () => window.gewOeffneNeu?.());
+    fokInhalt.append(p, neu);
+    return;
+  }
 
   if (!fokListe.gewohnheiten.length) {
     const p = document.createElement("p");
@@ -409,36 +494,36 @@ function zeichneFokus() {
     p.textContent = `Diese Woche schon geschafft: ${fokListe.wochenFertig.join(", ")}`;
     fokInhalt.appendChild(p);
   }
+
+  fokInhalt.appendChild(fokMehrKnopf("Verlauf & mehr ›", "verlauf"));
 }
 
 // ---------- Schreiben ----------
+// Gibt zurueck, ob es geklappt hat - der Haken braucht das fuer "Rueckgaengig".
 async function setzeTag(g, menge, loeschen) {
-  const antwort = await fokSchreibe("gewohnheiten/log", {
-    gewohnheitId: g.id,
-    datum: todayStr(),
-    heute: todayStr(),
-    menge,
-    loeschen: loeschen === true,
-  }, "PUT");
-
-  if (!antwort.ok) {
-    snackInfo(antwort.daten.error || "Konnte nicht gespeichert werden.");
-    return;
+  const r = await gewSchreibeTag(g, todayStr(), menge, loeschen === true);
+  if (!r.ok) return false;
+  // Sofort sichtbar aus der Antwort; die frische Liste holt der Hoerer unten.
+  if (r.offline) {
+    setzeKarteOertlich(g, menge, loeschen === true);
+  } else {
+    g.menge = r.menge;
+    g.ziel = r.ziel ?? g.ziel;
+    // Eine geloeschte Obergrenze ist im Streifen "ruht", nicht "offen" -
+    // dieselbe Unterscheidung wie in heute.js.
+    g.zustand = r.status === "offen" && g.obergrenze ? "ruht" : r.status;
+    g.straehne = r.straehne;
   }
-  // Sofort sichtbar aus der Antwort, danach die Liste frisch - siehe ladeListe.
-  g.menge = antwort.daten.menge;
-  g.ziel = antwort.daten.ziel;
-  g.zustand = antwort.daten.status;
-  g.straehne = antwort.daten.straehne;
   zeichneFokus();
-  ladeListe();
+  return true;
 }
 
 async function starteSitzung() {
   // Der Klick ist die Geste, die Browser fuer Tonausgabe verlangen - beim
   // Ablauf des Timers gibt es keine mehr. Deshalb hier schon aufwecken.
   weckeTon();
-  const antwort = await fokSchreibe("timer/start", { heute: todayStr() });
+  document.title = FOK_TITEL;
+  const antwort = await fokSchreibe("fokus/start", { heute: todayStr() });
   if (!antwort.ok) { snackInfo(antwort.daten.error || "Start fehlgeschlagen."); return; }
   if (antwort.daten.vorherBeendet) {
     snackInfo(`Vorherige Sitzung mit ${antwort.daten.vorherBeendet.echteMin} Min. abgeschlossen`);
@@ -448,7 +533,7 @@ async function starteSitzung() {
 }
 
 async function schaltePause() {
-  const antwort = await fokSchreibe("timer/pause", {});
+  const antwort = await fokSchreibe("fokus/pause", {});
   if (!antwort.ok) { snackInfo(antwort.daten.error || "Hat nicht geklappt."); return; }
   uebernimmSitzung(antwort.daten.offen);
   zeichneFokus();
@@ -460,11 +545,13 @@ async function schaltePause() {
  * Die Rueckfrage gibt es nur beim Abbruch von Hand und erst ab einer Minute:
  * eine geloggte Sitzung laesst sich nachtraeglich nicht mehr aendern, ein
  * Fehlgriff neben "Pause" bliebe also fuer immer in der Wochenstatistik.
- * Darunter gibt es nichts zu verlieren. Dieselbe Regel wie in der Fokus-App.
+ * Darunter gibt es nichts zu verlieren.
  */
 async function beendeSitzung(automatisch) {
   if (!automatisch && verstrichenSek() >= 60) {
-    const min = Math.round(verstrichenSek() / 60);
+    // Dieselbe Deckelung wie in beendeSitzung() (functions/_lib/fokus.js): eine
+    // 45-Minuten-Sitzung kann keine 70 Minuten ins Log schreiben.
+    const min = Math.min(Math.round(verstrichenSek() / 60), fokSitzung.geplanteMin);
     const weiter = await bestaetigen({
       icon: "⏹",
       titel: "Sitzung beenden?",
@@ -475,20 +562,22 @@ async function beendeSitzung(automatisch) {
     if (!weiter) return;
   }
   const geplant = fokSitzung ? fokSitzung.geplanteMin : 0;
-  const antwort = await fokSchreibe("timer/stop", {});
+  const antwort = await fokSchreibe("fokus/stop", {});
   uebernimmSitzung(null);
   if (!antwort.ok) { snackInfo(antwort.daten.error || "Beenden fehlgeschlagen."); return; }
   const minuten = antwort.daten.sitzung ? antwort.daten.sitzung.echteMin : geplant;
   if (automatisch) meldeFertig(minuten);
   else snackInfo(`Sitzung beendet — ${minutenText(minuten)}`);
   zeichneFokus();
+  // Die Wochenstatistik im Fenster hat jetzt eine Sitzung mehr.
+  gewMeldeAenderung("timer");
 }
 
 // ---------- Signal am Sitzungsende ----------
-// Zwei Wege, weil jeder einzelne ausfallen kann: der Tab-Titel geht immer, der
-// Ton nur, wenn der Browser Audio erlaubt. Eine Browser-Benachrichtigung gibt
-// es hier bewusst NICHT - die schickt die Fokus-App schon, und bei zwei
-// offenen Tabs meldete sich dasselbe Sitzungsende sonst doppelt.
+// Drei Wege, weil jeder einzelne ausfallen kann: der Tab-Titel geht immer, der
+// Ton nur, wenn der Browser Audio erlaubt, die Benachrichtigung nur mit
+// Erlaubnis. Die Benachrichtigung kam bis Oktober 2026 aus der Fokus-App -
+// mit deren Wegfall sitzt sie hier.
 let fokTon = null;
 function weckeTon() {
   try {
@@ -523,20 +612,30 @@ function meldeFertig(minuten) {
   // Der Titel ist der Weg zu jemandem, der gerade in einem anderen Tab ist.
   if (document.hidden) document.title = "✓ Fokus fertig";
   piep();
+  // badgeErlaubt (app.js) ist der App-eigene An/Aus-Zustand der
+  // Benachrichtigungen. Notification.permission allein reicht nicht: die
+  // bleibt "granted", auch wenn der Schalter in den Einstellungen aus steht.
+  if (typeof badgeErlaubt !== "undefined" && badgeErlaubt === true
+      && "Notification" in window && Notification.permission === "granted") {
+    try {
+      new Notification("Fokus-Sitzung fertig", { body: `${minutenText(minuten)} geschafft.`, icon: "icon-192.png" });
+    } catch (e) { /* manche Browser erlauben das nur aus einem Service Worker */ }
+  }
   snackInfo(`Fokus-Sitzung fertig — ${minutenText(minuten)}`);
 }
 
 // ---------- Zeigen / Verstecken ----------
 /**
  * Von kalender.js gerufen, wenn der untere Teil des Streifens auf Fokus
- * umschaltet. Jedes Zeigen beginnt bei den Gewohnheiten; ob eine laufende
- * Sitzung den Timer nach vorn holt, entscheidet ladeFokus() gleich danach.
+ * umschaltet. Jedes Zeigen beginnt bei den Gewohnheiten (oder beim Timer,
+ * wenn es nur den gibt); ob eine laufende Sitzung den Timer nach vorn holt,
+ * entscheidet ladeFokus() gleich danach.
  */
 window.fokusZeigen = function () {
   if (fokSichtbar) { zeichneFokus(); return; }
   fokSichtbar = true;
   fokReiterGewaehlt = false;
-  fokReiter = "gewohnheiten";
+  fokReiter = fokPassenderReiter("gewohnheiten");
   zeichneFokus();
   ladeFokus();
 };
@@ -548,20 +647,28 @@ window.fokusVerstecken = function () {
 };
 
 /**
- * Die Reiterzeile steht auch dann da, wenn unten gerade der TAG vorn ist -
- * sie ist der Weg zwischen allen dreien. Ueber ihre Sichtbarkeit entscheidet
- * deshalb der Streifen (zeichneUnten in kalender.js) und nicht das
- * Zeigen/Verstecken des Fokus-Inhalts.
+ * Die Reiterzeile steht auch dann da, wenn unten gerade der KALENDER vorn
+ * ist - sie ist der Weg zwischen allen dreien. Ueber ihre Sichtbarkeit
+ * entscheidet deshalb der Streifen (zeichneUnten in kalender.js) und nicht das
+ * Zeigen/Verstecken des Fokus-Inhalts. Welche der beiden Fokus-Reiter darin
+ * stehen, sagen die Schalter in den Einstellungen.
  */
 window.fokusReiterzeile = function (sichtbar) {
   fokKopf.hidden = !sichtbar;
+  for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
+    const welcher = seg.dataset.fokReiter;
+    if (welcher !== "kalender") seg.hidden = !fokErlaubt(welcher);
+  }
+  // Ein gerade abgeschalteter Reiter darf nicht vorn stehen bleiben.
+  if (fokSichtbar && !fokErlaubt(fokReiter)) setzeReiter(fokReiter);
 };
 
-// Fuer kalender.js: ohne Zugang gibt es die Fokus-Reiter gar nicht.
-window.fokusHatZugang = () => fokZugang;
+// Fuer kalender.js: ohne Anmeldung gibt es die Fokus-Reiter gar nicht.
+window.fokusHatZugang = () => fokBereit;
 
-// Die Reiter-Klicks liegen in kalender.js, weil "Tag" dort hingehoert und ein
-// halb geteilter Umschalter zwei Wahrheiten haette. Von dort kommt der Aufruf.
+// Die Reiter-Klicks liegen in kalender.js, weil "Kalender" dort hingehoert und
+// ein halb geteilter Umschalter zwei Wahrheiten haette. Von dort kommt der
+// Aufruf.
 window.fokusReiter = setzeReiter;
 
 /**
@@ -591,38 +698,49 @@ setInterval(() => {
   if (fokSichtbar && fokReiter === "timer" && window.kalenderZeigtFokus?.()) zeichneTimer();
 }, 1000);
 
-// Zurueck im Tab: der Fertig-Hinweis im Titel hat seinen Zweck erfuellt. Und
-// eine Sitzung, die waehrenddessen ablief, wird jetzt nachtraeglich beendet -
+// Zurueck im Tab: der Fertig-Hinweis im Titel hat seinen Zweck erfuellt. Eine
+// Sitzung, die waehrenddessen ablief, wird jetzt nachtraeglich beendet -
 // gedrosselte Hintergrund-Timer koennen den Schlag oben verschlafen haben.
-document.addEventListener("visibilitychange", () => {
+// Und zurueck in der App ist der wahrscheinlichste Moment, in dem wieder Netz
+// da ist - das "online"-Ereignis kommt nicht in jedem Browser zuverlaessig.
+document.addEventListener("visibilitychange", async () => {
   if (document.hidden) return;
   document.title = FOK_TITEL;
-  if (fokZugang && fokSichtbar) ladeFokus();
+  if (!fokBereit) return;
+  await gewLiefereNach();
+  if (fokSichtbar) ladeFokus();
 });
 
 // ---------- Verdrahtung ----------
-// Hier gar keine mehr: die Reiter schalten seit dem Wegfall der Flamme auch
-// den Tag ein und aus, und diese Entscheidung gehoert dem Streifen. Die
-// Klick-Handler stehen deshalb geschlossen in kalender.js und rufen von dort
-// window.fokusReiter() - genauso wie Escape und die Wischgeste schon immer.
+// Die Reiter schalten auch den Kalender ein und aus, und diese Entscheidung
+// gehoert dem Streifen. Die Klick-Handler stehen deshalb geschlossen in
+// kalender.js und rufen von dort window.fokusReiter() - genauso wie Escape
+// und die Wischgeste.
+
+// Unter dem Timer: der Weg zu seiner Wochenstatistik im Fenster.
+document.getElementById("fokTimerMehr")
+  .addEventListener("click", () => window.gewFensterOeffnen?.("fokuszeit"));
+
+// Aenderungen von anderswo (Fenster, Dialoge, nachgelieferte Offline-Eintraege,
+// Einstellungen): die Liste frisch holen, solange sie zu sehen ist. Verborgen
+// genuegt es nicht - beim naechsten Zeigen laedt fokusZeigen() ohnehin neu.
+gewBeiAenderung(was => {
+  if (!fokBereit || !fokSichtbar) return;
+  if (was === "einstellungen") ladeFokus();
+  else if (was !== "timer") ladeListe();
+});
 
 /**
- * Aus render() in app.js, wie window.kalenderNeuZeichnen.
- *
- * Hier faellt die Entscheidung, ob es das Panel ueberhaupt gibt: `fokusZugang`
- * steht erst nach dem Bootstrap fest (/api/todos), vorher weiss niemand, ob
- * dieses Konto den Fokus-Tracker benutzen darf.
+ * Aus render() in app.js, wie window.kalenderNeuZeichnen. Der erste Aufruf
+ * heisst: angemeldet, Daten da - ab jetzt gibt es die Fokus-Reiter. Der
+ * Anstoss an den Streifen laeuft nicht in eine Schleife: beim naechsten Mal
+ * steigt die Funktion oben aus.
  */
 window.fokusNeuZeichnen = function () {
-  const vorher = fokZugang;
-  fokZugang = window.hatFokusZugang?.() === true;
-  if (fokZugang === vorher) return;
+  if (fokBereit) return;
+  fokBereit = true;
   aktualisiereSegmente();
-  // Am Zugang haengt jetzt die ganze Reiterzeile, nicht mehr nur ein Segment:
-  // frisch geholt muss sie erscheinen, aufgegeben verschwinden - und im
-  // zweiten Fall faellt ein offener Fokus-Reiter auf den Tag zurueck. Beides
-  // entscheidet zeichneUnten() in kalender.js. Der Aufruf laeuft nicht in eine
-  // Schleife: beim naechsten Mal ist fokZugang unveraendert und die Funktion
-  // steigt oben aus.
+  // Was beim letzten Mal ohne Netz liegen geblieben ist, geht jetzt raus.
+  gewLiefereNach();
   window.kalenderNeuZeichnen?.();
 };

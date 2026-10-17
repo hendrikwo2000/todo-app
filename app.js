@@ -86,9 +86,10 @@ const pushHinweis      = document.getElementById("pushHinweis");
 const zoomZeile        = document.getElementById("zoomZeile");
 const zoomSwitch       = document.getElementById("zoomSwitch");
 const zoomSwitchLabel  = document.getElementById("zoomSwitchLabel");
-const fokusPanelZeile       = document.getElementById("fokusPanelZeile");
-const fokusPanelSwitch      = document.getElementById("fokusPanelSwitch");
-const fokusPanelSwitchLabel = document.getElementById("fokusPanelSwitchLabel");
+const streifenGewohnheitenSwitch = document.getElementById("streifenGewohnheitenSwitch");
+const streifenGewohnheitenLabel  = document.getElementById("streifenGewohnheitenLabel");
+const streifenTimerSwitch        = document.getElementById("streifenTimerSwitch");
+const streifenTimerLabel         = document.getElementById("streifenTimerLabel");
 // Das Zahnrad steckt DREIMAL im Dokument: in der Kopfzeile der App und in den
 // beiden Panels (Kalender, Fokus), die die Kopfzeile am Handy verdecken. Alle
 // tragen .ein-knopf, alle starten versteckt und erscheinen mit der Anmeldung.
@@ -117,10 +118,11 @@ const VAPID_PUBLIC_KEY = "BGDQTQDoRHFvbkqBEc5t_-A_Xa-QyUIzzN56qZigMR5jSCU8wF7HNv
 let istAdmin = false;
 let eigeneEmail = "";
 let eigenerName = "";
-// Ob das Konto zusaetzlich Zugang zum Fokus-Tracker hat - fuer den
-// Abschnitt "Fokus-Tracker" in den Einstellungen und fuer das Fokus-Panel
-// (fokus.js liest den Wert ueber window.hatFokusZugang, weil es eine eigene
-// Datei ist und hier nichts importieren kann).
+// Ob das Konto zusaetzlich Zugang zum Fokus-Tracker hat. Seit der Fusion mit
+// der Fokus-App (Oktober 2026) liest das niemand mehr - Gewohnheiten und Timer
+// gibt es fuer jedes Konto. Bleibt nur stehen, bis die alte Fokus-App
+// abgeschaltet ist (dann faellt auch die Spalte users.fokus_zugang aus dem
+// Code).
 let fokusZugang = false;
 window.hatFokusZugang = () => fokusZugang;
 
@@ -699,6 +701,8 @@ async function logout() {
   // Neustart unten wirft nur den Speicher im Arbeitsspeicher weg, nicht den
   // localStorage.
   window.kalenderSpeicherLeeren?.();
+  // Ebenso Gewohnheiten und offline gemerkte Haken (gewohnheiten-daten.js).
+  window.gewVergiss?.();
   try {
     await fetch("/api/auth/logout", { method: "POST" });
   } catch (e) {
@@ -817,27 +821,45 @@ async function aktualisiereGoogleAbschnitt() {
   document.getElementById("subGoogle").textContent = googleVerbunden ? "verbunden" : "nicht verbunden";
 }
 
-function aktualisiereFokusLink() {
-  document.getElementById("subFokus").textContent = fokusZugang ? "aktiv" : "nicht aktiv";
-  document.getElementById("fokusLink").classList.toggle("aktiv", fokusZugang);
-  // Der Schalter darunter ergibt nur mit Zugang Sinn - ohne ihn gaebe es
-  // nichts einzublenden.
-  fokusPanelZeile.hidden = !fokusZugang;
+// ---------- Kalender-Streifen: Gewohnheiten und Timer ----------
+// Ob die beiden Fokus-Reiter im Streifen stehen - zwei Schalter, jeder fuer
+// sich (seit der Fusion mit der Fokus-App, Oktober 2026; davor war es EIN
+// Schalter "Fokus im Kalender" fuer beide). Reine Anzeige-Entscheidung, deshalb
+// pro Geraet in localStorage und nicht in der Datenbank: wer am Rechner die
+// Gewohnheiten mitlaufen laesst, will sie am Handy nicht zwangslaeufig auch.
+// Standard ist AN. Wer den alten Schalter aus hatte, startet mit beiden aus.
+const STREIFEN_KEYS = { gewohnheiten: "streifenGewohnheiten", timer: "streifenTimer" };
+const altesFokusPanelAus = localStorage.getItem("fokusPanel") === "aus";
+function liesStreifenSchalter(key) {
+  const wert = localStorage.getItem(key);
+  return wert ? wert !== "aus" : !altesFokusPanelAus;
+}
+const streifenAn = {
+  gewohnheiten: liesStreifenSchalter(STREIFEN_KEYS.gewohnheiten),
+  timer: liesStreifenSchalter(STREIFEN_KEYS.timer),
+};
+// fokus.js fragt hier nach, welche Reiter es gibt; kalender.js, ob es die
+// Reiterzeile ueberhaupt zeichnen soll.
+window.fokusBereiche = () => ({ ...streifenAn });
+window.fokusImStreifen = () => streifenAn.gewohnheiten || streifenAn.timer;
+
+function zeigeStreifenSchalter() {
+  streifenGewohnheitenSwitch.checked = streifenAn.gewohnheiten;
+  streifenGewohnheitenLabel.textContent = streifenAn.gewohnheiten ? "An" : "Aus";
+  streifenTimerSwitch.checked = streifenAn.timer;
+  streifenTimerLabel.textContent = streifenAn.timer ? "An" : "Aus";
+  const an = [streifenAn.gewohnheiten && "Gewohnheiten", streifenAn.timer && "Timer"].filter(Boolean);
+  document.getElementById("subStreifen").textContent = an.length ? an.join(" · ") : "nur Kalender";
 }
 
-// ---------- Fokus im Kalender-Streifen ----------
-// Reine Anzeige-Entscheidung, deshalb pro Geraet in localStorage und nicht in
-// der Datenbank: wer am Rechner die Gewohnheiten mitlaufen laesst, will sie am
-// Handy nicht zwangslaeufig auch. Standard ist AN - wer den Zugang geholt hat,
-// will die Reiter in aller Regel sehen.
-const FOKUS_PANEL_KEY = "fokusPanel";
-let fokusPanelAn = localStorage.getItem(FOKUS_PANEL_KEY) !== "aus";
-// kalender.js fragt hier nach, ob es die Reiterzeile ueberhaupt zeichnen soll.
-window.fokusImStreifen = () => fokusPanelAn;
-
-function zeigeFokusPanelSchalter() {
-  fokusPanelSwitch.checked = fokusPanelAn;
-  fokusPanelSwitchLabel.textContent = fokusPanelAn ? "An" : "Aus";
+function schalteStreifen(welcher, an) {
+  streifenAn[welcher] = an;
+  localStorage.setItem(STREIFEN_KEYS[welcher], an ? "an" : "aus");
+  zeigeStreifenSchalter();
+  // Der Streifen raeumt selbst um: ausgeschaltet faellt ein offener Reiter auf
+  // den anderen bzw. auf den Kalender zurueck (zeichneUnten in kalender.js,
+  // fokusReiterzeile in fokus.js).
+  window.kalenderNeuZeichnen?.();
 }
 
 // ---------- Zoom mit zwei Fingern ----------
@@ -894,7 +916,7 @@ function aktualisiereEinSubtexte() {
   const geteiltZahl = listen.filter(b => !b.istEigen).length;
   document.getElementById("subGeteilt").textContent = geteiltZahl === 1 ? "1 Liste" : `${geteiltZahl} Listen`;
 
-  aktualisiereFokusLink();
+  zeigeStreifenSchalter();
   document.getElementById("subKonto").textContent = eigeneEmail;
 }
 
@@ -917,6 +939,8 @@ function oeffneEinstellungen() {
   einstellungenPopup.hidden = false;
   aktualisierePushSchalter();
   aktualisiereGoogleAbschnitt();
+  // Gewohnheiten und Fokus-Timer (gewohnheiten-dialoge.js).
+  window.gewEinstellungenZeigen?.();
 }
 
 /** Eine Liste aus den Einstellungen heraus zur aktiven machen. */
@@ -3523,15 +3547,11 @@ themeSwitch.addEventListener("change", () => {
   applyTheme(next);
 });
 
-zeigeFokusPanelSchalter();
-fokusPanelSwitch.addEventListener("change", () => {
-  fokusPanelAn = fokusPanelSwitch.checked;
-  localStorage.setItem(FOKUS_PANEL_KEY, fokusPanelAn ? "an" : "aus");
-  zeigeFokusPanelSchalter();
-  // Der Streifen raeumt selbst um: ausgeschaltet faellt ein offener
-  // Fokus-Reiter auf den Tag zurueck (zeichneUnten in kalender.js).
-  window.kalenderNeuZeichnen?.();
-});
+zeigeStreifenSchalter();
+streifenGewohnheitenSwitch.addEventListener("change",
+  () => schalteStreifen("gewohnheiten", streifenGewohnheitenSwitch.checked));
+streifenTimerSwitch.addEventListener("change",
+  () => schalteStreifen("timer", streifenTimerSwitch.checked));
 
 // Titel ist Umschalter und Umbenenn-Griff in einem: kurzer Klick oeffnet ab
 // zwei Listen das Menue, Doppelklick benennt die aktive eigene Liste um. Der
@@ -3585,26 +3605,6 @@ document.getElementById("kontoLoeschenZurueck")
   .addEventListener("click", () => zeigeEinAnsicht("haupt"));
 document.getElementById("kontoLoeschenEmail").addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); kontoLoeschen(); }
-});
-
-// Vor der Freischaltung: Klick holt den Zugang (wie frueher der Knopf), der
-// Link fuehrt noch nirgends hin. Danach ist es ein ganz normaler Link zur
-// anderen App - der Browser uebernimmt, kein weiterer Klick-Handler noetig.
-document.getElementById("fokusLink").addEventListener("click", async e => {
-  if (fokusZugang) return;
-  e.preventDefault();
-  try {
-    const res = await fetch("/api/auth/fokus-zugang", { method: "POST" });
-    if (!res.ok) { snackInfo("Hat nicht geklappt - bitte nochmal versuchen."); return; }
-    fokusZugang = true;
-    aktualisiereFokusLink();
-    // Ab jetzt gibt es auch das Fokus-Panel - ohne diesen Anstoss taucht der
-    // 🔥-Knopf erst beim naechsten render() auf.
-    window.fokusNeuZeichnen?.();
-    snackInfo("Zugang zum Fokus-Tracker freigeschaltet.");
-  } catch (e) {
-    snackInfo("Hat nicht geklappt - bitte nochmal versuchen.");
-  }
 });
 
 document.getElementById("todoZugangAufgebenStart")

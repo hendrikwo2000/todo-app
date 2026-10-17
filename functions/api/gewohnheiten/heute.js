@@ -40,7 +40,7 @@ export async function onRequestGet({ request, env }) {
     ).bind(nutzerId).all()).results;
 
     if (!gewohnheiten.length) {
-      return json({ heute, gewohnheiten: [], wochenFertig: [], erledigt: 0, gesamt: 0 });
+      return json({ heute, gewohnheiten: [], wochenFertig: [], erledigt: 0, gesamt: 0, aktive: 0 });
     }
 
     // Ohne Datumsgrenze, wie im Bootstrap (index.js): die Flamme zaehlt alle
@@ -126,6 +126,10 @@ export async function onRequestGet({ request, env }) {
       wochenFertig,
       erledigt: zaehlend.filter(g => g.zustand === "erledigt").length,
       gesamt: zaehlend.length,
+      // Wie viele es ueberhaupt gibt (nicht archiviert). Nur so unterscheidet
+      // der Streifen "heute ist nichts dran" von "noch gar keine angelegt" -
+      // und zeigt im zweiten Fall den Knopf zum Anlegen.
+      aktive: gewohnheiten.length,
     });
   } catch (e) {
     return json({ error: "Datenbankfehler beim Lesen" }, 500);

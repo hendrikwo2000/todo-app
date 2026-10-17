@@ -146,11 +146,15 @@
 
     <!-- Die Reiterzeile schaltet den UNTEREN Teil um: Monatsraster,
          Gewohnheiten oder Timer. Die Tagesliste darueber bleibt dabei stehen.
-         Steht nur da, wenn es beim Fokus etwas umzuschalten gibt: mit
-         Fokus-Zugang UND eingeschaltetem Schalter in den Einstellungen. Ohne
-         das zeigt der Streifen still nur den Kalender - eine Reiterleiste mit
-         genau einem Reiter waere Zierrat.
-         Sichtbarkeit steuert zeichneUnten() in kalender.js. -->
+         Steht nur da, wenn es beim Fokus etwas umzuschalten gibt: mindestens
+         einer der beiden Schalter im Abschnitt "Kalender-Streifen" der
+         Einstellungen ist an. Ohne das zeigt der Streifen still nur den
+         Kalender - eine Reiterleiste mit genau einem Reiter waere Zierrat.
+         Jeder der beiden Fokus-Reiter blendet sich fuer sich aus (fokus.js).
+         Sichtbarkeit steuert zeichneUnten() in kalender.js.
+         Bis Oktober 2026 stand rechts ein ↗ zur eigenen Fokus-App - die ist
+         in dieser App aufgegangen, ihr Inhalt steht im Fenster
+         "Gewohnheiten" (Knopf am Ende der Liste). -->
     <div id="fokKopf" class="fok-kopf" hidden>
       <div class="fok-reiter" role="tablist" aria-label="Ansicht oben">
         <button type="button" class="fok-reiter-seg" data-fok-reiter="kalender"
@@ -161,8 +165,6 @@
                 role="tab" aria-selected="false">Timer</button>
       </div>
       <span id="fokBilanz" class="fok-bilanz"></span>
-      <a class="fok-mehr" href="https://fokus.it-wolf.org" target="_blank" rel="noopener"
-         title="Fokus-Tracker öffnen">↗</a>
     </div>
 
     <!-- Der Kalender-Block. Ein eigener Container, damit er GENAU so hoch ist
@@ -231,7 +233,13 @@
             <span id="fokGeplant" class="fok-geplant"></span>
           </div>
         </div>
-        <div id="fokKnoepfe" class="fok-knoepfe"></div>
+        <!-- Knoepfe und der Weg zur Wochenstatistik als eine Spalte: im
+             flachen Streifen stellt sich der Timer quer (Ring links), und
+             dann stehen beide zusammen rechts statt nebeneinander. -->
+        <div class="fok-steuerung">
+          <div id="fokKnoepfe" class="fok-knoepfe"></div>
+          <button type="button" id="fokTimerMehr" class="fok-mehr-knopf">Fokuszeit pro Woche ›</button>
+        </div>
       </div>
 
       <!-- Gewohnheiten-Reiter, gefuellt aus fokus.js. -->
@@ -301,7 +309,7 @@
        (<details>/<summary>, echtes Ein-Abschnitt-offen erzwingt
        resetAkkordeon()/JS beim Oeffnen bzw. beim Aufklappen eines anderen) -
        Ziel: nicht alles auf einen Blick, nur was gerade gebraucht wird.
-       "Darstellung" (Toggle-Switch) und "Fokus-Tracker" (Link) sind bewusst
+       "Darstellung" (Toggle-Switch) und "Verwaltung" (Link) sind bewusst
        keine Akkordeons, sondern einzeilig, weil sie nur einen einzigen
        Zustand zeigen statt mehrerer Unter-Elemente. Der Kurztext je
        Kopfzeile (ein-kopf-sub) fuellt JS, damit man auch zugeklappt sieht,
@@ -418,33 +426,91 @@
           </div>
         </details>
 
-        <!-- Fokus-Zugang ist eine eigene Berechtigung, unabhaengig vom
-             ToDo-Konto (siehe schema.sql). "Holen" braucht keine Rueckfrage -
-             rein additiv, jederzeit in Fokus' eigenen Einstellungen wieder
-             aufgebbar. -->
-        <a href="https://fokus.it-wolf.org" target="_blank" rel="noopener"
-           id="fokusLink" class="ein-abschnitt ein-zeile ein-link" data-abschnitt="fokus">
-          <span class="ein-kopf-icon">⏱️</span>
-          <span class="ein-kopf-text">Fokus-Tracker</span>
-          <span class="ein-kopf-sub" id="subFokus">nicht aktiv</span>
-        </a>
+        <!-- Seit Oktober 2026 gibt es hier keinen Link mehr zur eigenen
+             Fokus-App: Gewohnheiten und Timer sind Teil dieser App, fuer
+             jedes Konto. Die drei Abschnitte unten ersetzen ihn und den
+             frueheren Schalter "Fokus im Kalender". -->
 
-        <!-- Ob Gewohnheiten und Timer im Kalender-Streifen auftauchen. Frueher
-             sass diese Entscheidung als drittes Symbol (🔥) in der Kopfzeile -
-             drei Knoepfe dort waren einer zu viel, und die Frage "will ich das
-             ueberhaupt sehen" gehoert ohnehin hierher und nicht in eine Ecke,
-             an der man taeglich vorbeitippt.
-             Erscheint nur mit Fokus-Zugang: ohne ihn gibt es nichts zu
-             schalten. Gilt pro Geraet (localStorage), wie die Darstellung. -->
-        <div class="ein-abschnitt ein-zeile" id="fokusPanelZeile" data-abschnitt="fokuspanel" hidden>
-          <span class="ein-kopf-icon">🔥</span>
-          <span class="ein-kopf-text">Fokus im Kalender</span>
-          <label class="switch" id="fokusPanelSwitchWrap">
-            <input type="checkbox" id="fokusPanelSwitch">
-            <span class="switch-label" id="fokusPanelSwitchLabel">Aus</span>
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-          </label>
-        </div>
+        <!-- Was der Kalender-Streifen neben dem Kalender als Reiter zeigt.
+             Zwei Schalter statt einem: wer nur den Timer will, soll die
+             Gewohnheiten nicht mitnehmen muessen - und umgekehrt. Bewusst
+             "Kalender-Streifen" und nicht "Bereiche": Bereiche heissen in
+             dieser App die Spalten des Boards.
+             Gilt pro Geraet (localStorage), wie die Darstellung: wer am
+             Rechner die Gewohnheiten mitlaufen laesst, will sie am Handy nicht
+             zwangslaeufig auch. -->
+        <details class="ein-abschnitt" data-abschnitt="streifen">
+          <summary class="ein-kopf">
+            <span class="ein-kopf-icon">🧩</span>
+            <span class="ein-kopf-text">Kalender-Streifen</span>
+            <span class="ein-kopf-sub" id="subStreifen"></span>
+            <span class="ein-kopf-pfeil">▾</span>
+          </summary>
+          <div class="ein-inhalt">
+            <p class="ein-hinweis">Was der Streifen neben dem Kalender als Reiter zeigt. Gilt für dieses Gerät.</p>
+            <div class="gw-ein-zeile">
+              <span class="ein-kopf-text">Gewohnheiten</span>
+              <label class="switch">
+                <input type="checkbox" id="streifenGewohnheitenSwitch">
+                <span class="switch-label" id="streifenGewohnheitenLabel">An</span>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <div class="gw-ein-zeile">
+              <span class="ein-kopf-text">Timer</span>
+              <label class="switch">
+                <input type="checkbox" id="streifenTimerSwitch">
+                <span class="switch-label" id="streifenTimerLabel">An</span>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <!-- Gilt pro KONTO (Tabelle fokus_einstellungen). Gefuellt aus
+             gewohnheiten-dialoge.js. -->
+        <details class="ein-abschnitt" data-abschnitt="gewohnheiten">
+          <summary class="ein-kopf">
+            <span class="ein-kopf-icon">🔥</span>
+            <span class="ein-kopf-text">Gewohnheiten</span>
+            <span class="ein-kopf-sub" id="subGewohnheiten"></span>
+            <span class="ein-kopf-pfeil">▾</span>
+          </summary>
+          <div class="ein-inhalt">
+            <div class="gw-ein-zeile">
+              <span class="ein-kopf-text">Flamme zählt</span>
+              <label class="switch">
+                <input type="checkbox" id="gewFlammenSwitch">
+                <span class="switch-label" id="gewFlammenLabel">Insgesamt</span>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <p id="gewFlammenHinweis" class="ein-hinweis"></p>
+            <button type="button" id="gewVerwaltenOeffnen" class="btn klein">Verlauf, Statistik &amp; Verwalten</button>
+            <!-- Ein normaler Link, kein JS: der Server setzt
+                 Content-Disposition, der Browser laedt herunter. Zurueckspielen
+                 gibt es bewusst nicht, siehe functions/api/export.js. -->
+            <a href="/api/export" download class="btn klein">⬇️ Gewohnheiten exportieren (JSON)</a>
+          </div>
+        </details>
+
+        <details class="ein-abschnitt" data-abschnitt="timer">
+          <summary class="ein-kopf">
+            <span class="ein-kopf-icon">⏱️</span>
+            <span class="ein-kopf-text">Fokus-Timer</span>
+            <span class="ein-kopf-sub" id="subGewTimer"></span>
+            <span class="ein-kopf-pfeil">▾</span>
+          </summary>
+          <div class="ein-inhalt">
+            <label for="gewDauer" class="gw-label">Standarddauer</label>
+            <div class="gw-slider-zeile">
+              <input type="range" id="gewDauer" min="5" max="180" step="5">
+              <span class="gw-slider-wert" id="gewDauerWert">25 Min</span>
+              <button type="button" class="btn klein" id="gewDauerSpeichern">Speichern</button>
+            </div>
+            <p class="ein-hinweis">Gilt ab der nächsten Sitzung.</p>
+          </div>
+        </details>
 
         <details class="ein-abschnitt" data-abschnitt="konto">
           <summary class="ein-kopf">
@@ -544,6 +610,176 @@
     </div>
   </div>
 
+  <!-- Das Fenster "Gewohnheiten": Verlauf, Statistik, Fokuszeit, Verwalten.
+       Seit Oktober 2026 hier statt in der eigenen Fokus-App. Steht AUSSERHALB
+       des Kalender-Panels, aus demselben Grund wie die Kalender-Dialoge oben
+       (dessen transform verbiegt position:fixed). Gefuellt aus
+       gewohnheiten.js; die Dialoge danach stehen im DOM dahinter und legen
+       sich bei gleichem z-index darueber. -->
+  <div id="gewFenster" class="admin-popup gw-fenster" hidden>
+    <div class="admin-popup-box einstellungen gw-box" role="dialog" aria-labelledby="gewFensterTitel">
+      <header class="ein-kopfzeile gw-kopfzeile">
+        <h2 id="gewFensterTitel" class="gw-titel">Gewohnheiten</h2>
+        <button type="button" id="gewFensterZu" class="ein-schliessen"
+                aria-label="Gewohnheiten schließen" title="Schließen">✕</button>
+      </header>
+      <div class="gw-reiter" role="tablist" aria-label="Ansicht">
+        <button type="button" class="gw-reiter-seg" data-gw-reiter="verlauf" role="tab" aria-selected="true">Verlauf</button>
+        <button type="button" class="gw-reiter-seg" data-gw-reiter="statistik" role="tab" aria-selected="false">Statistik</button>
+        <button type="button" class="gw-reiter-seg" data-gw-reiter="fokuszeit" role="tab" aria-selected="false">Fokuszeit</button>
+        <button type="button" class="gw-reiter-seg" data-gw-reiter="verwalten" role="tab" aria-selected="false">Verwalten</button>
+      </div>
+      <div class="ein-blaettern gw-blaettern">
+
+        <section id="gewVerlauf" class="gw-ansicht">
+          <div id="gewKalWahl" class="gw-pillen" aria-label="Gewohnheit"></div>
+          <div class="gw-kal-kopf">
+            <button type="button" id="gewKalZurueck" class="gw-pfeil" aria-label="Vorheriger Monat">‹</button>
+            <div id="gewKalMonat" class="gw-kal-monat"></div>
+            <button type="button" id="gewKalVor" class="gw-pfeil" aria-label="Nächster Monat">›</button>
+          </div>
+          <div id="gewKalRaster" class="gw-kal-raster"></div>
+          <div class="gw-legende">
+            <span><i class="gw-farbe-offen"></i>offen</span>
+            <span id="gewLegendeTeilweise"><i class="gw-farbe-teilweise"></i>teilweise</span>
+            <span><i class="gw-farbe-erledigt"></i>erledigt</span>
+            <span id="gewLegendeUeberschritten" hidden><i class="gw-farbe-ueberschritten"></i>überschritten</span>
+            <span id="gewLegendeGeplant" hidden><i class="gw-farbe-nicht-geplant"></i>nicht geplant</span>
+          </div>
+          <p class="ein-hinweis gw-mitte">Tippe auf einen Tag, um ihn nachzutragen. Wischen wechselt den Monat.</p>
+        </section>
+
+        <section id="gewStatistik" class="gw-ansicht" hidden>
+          <div id="gewStatZeitraum" class="gw-pillen">
+            <button type="button" data-tage="7" aria-selected="false">7 Tage</button>
+            <button type="button" data-tage="30" aria-selected="true">30 Tage</button>
+            <button type="button" data-tage="90" aria-selected="false">90 Tage</button>
+          </div>
+          <div id="gewStatListe" class="gw-liste"></div>
+        </section>
+
+        <section id="gewFokuszeit" class="gw-ansicht" hidden>
+          <div class="gw-kacheln">
+            <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinHeute">0</div><div class="gw-kachel-name">Min. heute</div></div>
+            <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinWoche">0</div><div class="gw-kachel-name">Min. diese Woche</div></div>
+            <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinSchnitt">0</div><div class="gw-kachel-name">Schnitt/Woche</div></div>
+          </div>
+          <div class="gw-abschnitt-titel">Fokusminuten pro Woche</div>
+          <div id="gewDiagramm" class="gw-diagramm"></div>
+          <div id="gewDiagrammNamen" class="gw-diagramm-namen"></div>
+          <p id="gewFokuszeitHinweis" class="ein-hinweis gw-mitte" hidden></p>
+          <p class="ein-hinweis gw-mitte">Den Timer startest du im Kalender-Streifen, Reiter „Timer“. Die Standarddauer steht in den Einstellungen.</p>
+        </section>
+
+        <section id="gewVerwalten" class="gw-ansicht" hidden>
+          <div id="gewVerwaltenListe" class="gw-liste"></div>
+          <button type="button" id="gewNeuKnopf" class="btn primary">＋ Neue Gewohnheit</button>
+          <div class="gw-abschnitt-titel">Archiv</div>
+          <div id="gewArchivListe" class="gw-liste"></div>
+          <p id="gewArchivLeer" class="ein-hinweis">Noch nichts archiviert. Archivieren geht über den Stift einer Gewohnheit.</p>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <div id="gewDialog" class="admin-popup gw-dialog" hidden>
+    <div class="admin-popup-box gw-dialog-box" role="dialog" aria-labelledby="gewDialogTitel">
+      <div class="admin-popup-icon" id="gewDialogIcon">✨</div>
+      <h2 id="gewDialogTitel">Neue Gewohnheit</h2>
+      <div class="gw-feld">
+        <label for="gewName">Name</label>
+        <input type="text" id="gewName" class="eingabe-feld" maxlength="60" placeholder="z. B. Lesen" autocomplete="off">
+      </div>
+      <div class="gw-feld">
+        <span class="gw-label">Art</span>
+        <div class="gw-wahl" id="gewTyp">
+          <button type="button" data-typ="binaer" aria-pressed="true">Abhaken</button>
+          <button type="button" data-typ="menge" aria-pressed="false">Mit Zielmenge</button>
+        </div>
+        <p id="gewTypHinweis" class="ein-hinweis" hidden>Sobald ein Tag erfasst ist, lässt sich die Art nicht mehr ändern.</p>
+      </div>
+      <div class="gw-reihe" id="gewZielFeld" hidden>
+        <div class="gw-feld">
+          <!-- Beschriftung und min wechseln mit der Ziel-Art: bei einer
+               Obergrenze ist 0 erlaubt (gewSetzeRichtungWahl). -->
+          <label for="gewZiel" id="gewZielLabel">Ziel pro Tag</label>
+          <input type="number" id="gewZiel" class="eingabe-feld" min="1" max="99999" step="1" value="30" inputmode="numeric">
+        </div>
+        <div class="gw-feld">
+          <label for="gewEinheit">Einheit (optional)</label>
+          <input type="text" id="gewEinheit" class="eingabe-feld" maxlength="12" placeholder="z. B. Min" autocomplete="off">
+        </div>
+      </div>
+      <div class="gw-feld" id="gewRichtungFeld" hidden>
+        <span class="gw-label">Ziel-Art</span>
+        <div class="gw-wahl" id="gewRichtung">
+          <button type="button" data-richtung="mindestens" aria-pressed="true">Mindestens</button>
+          <button type="button" data-richtung="hoechstens" aria-pressed="false">Höchstens</button>
+        </div>
+        <p id="gewRichtungHinweis" class="ein-hinweis" hidden>Sobald ein Tag erfasst ist, lässt sich die Ziel-Art nicht mehr ändern.</p>
+      </div>
+      <div class="gw-feld">
+        <span class="gw-label">Rhythmus</span>
+        <div class="gw-wahl" id="gewRhythmus">
+          <button type="button" data-rhythmus="taeglich" aria-pressed="true">Täglich</button>
+          <button type="button" data-rhythmus="wochentage" aria-pressed="false">Feste Wochentage</button>
+          <button type="button" data-rhythmus="x_pro_woche" aria-pressed="false">X Mal die Woche</button>
+        </div>
+      </div>
+      <div class="gw-feld" id="gewWochentageFeld" hidden>
+        <span class="gw-label">Welche Wochentage</span>
+        <div class="gw-wahl gw-wahl-wochentage" id="gewWochentage">
+          <button type="button" data-tag="0" aria-pressed="false">Mo</button>
+          <button type="button" data-tag="1" aria-pressed="false">Di</button>
+          <button type="button" data-tag="2" aria-pressed="false">Mi</button>
+          <button type="button" data-tag="3" aria-pressed="false">Do</button>
+          <button type="button" data-tag="4" aria-pressed="false">Fr</button>
+          <button type="button" data-tag="5" aria-pressed="false">Sa</button>
+          <button type="button" data-tag="6" aria-pressed="false">So</button>
+        </div>
+      </div>
+      <div class="gw-feld" id="gewWochenzielFeld" hidden>
+        <label for="gewWochenziel">Wie oft pro Woche</label>
+        <input type="number" id="gewWochenziel" class="eingabe-feld" min="1" max="7" step="1" value="3" inputmode="numeric">
+      </div>
+      <p class="lock-msg" id="gewDialogMsg" aria-live="polite"></p>
+      <div class="gw-knoepfe">
+        <button type="button" class="btn" id="gewAbbrechen">Abbrechen</button>
+        <button type="button" class="btn primary" id="gewSpeichern">Speichern</button>
+      </div>
+      <button type="button" class="lock-link" id="gewArchivieren" hidden>Archivieren</button>
+    </div>
+  </div>
+
+  <div id="gewTagDialog" class="admin-popup gw-dialog" hidden>
+    <div class="admin-popup-box gw-dialog-box" role="dialog" aria-labelledby="gewTagTitel">
+      <div class="admin-popup-icon">📅</div>
+      <h2 id="gewTagTitel">Tag nachtragen</h2>
+      <p id="gewTagDatum" class="gw-mitte"></p>
+      <div class="gw-feld">
+        <label for="gewTagMenge" id="gewTagLabel">Menge</label>
+        <div class="gw-menge" id="gewTagMengeFeld">
+          <button type="button" id="gewTagMinus" aria-label="Um 1 verringern">−</button>
+          <input type="number" id="gewTagMenge" min="0" max="99999" step="1" inputmode="numeric">
+          <button type="button" id="gewTagPlus" aria-label="Um 1 erhöhen">+</button>
+        </div>
+        <div class="gw-wahl" id="gewTagStatus" hidden>
+          <button type="button" data-wert="0" aria-pressed="false">Offen</button>
+          <button type="button" data-wert="1" aria-pressed="false">Erledigt</button>
+        </div>
+      </div>
+      <p class="lock-msg" id="gewTagMsg" aria-live="polite"></p>
+      <div class="gw-knoepfe">
+        <button type="button" class="btn" id="gewTagAbbrechen">Abbrechen</button>
+        <button type="button" class="btn primary" id="gewTagSpeichern">Speichern</button>
+      </div>
+      <!-- Nur bei einer Obergrenze noetig: dort ist die Menge 0 ein erledigter
+           Tag, "wieder auf offen" laesst sich also nicht ueber die Zahl sagen. -->
+      <button type="button" class="lock-link" id="gewTagLoeschen" hidden>Eintrag löschen</button>
+    </div>
+  </div>
+
   <div id="lock" class="lock hidden">
     <form id="lockForm" class="lock-box">
       <div class="lock-icon">🔒</div>
@@ -587,8 +823,14 @@
        (daten, listen, aktiveListe) und muss danach laufen. -->
   <script src="app.js"></script>
   <script src="kalender.js"></script>
+  <!-- Gewohnheiten (seit der Fusion mit der Fokus-App, Oktober 2026):
+       erst der gemeinsame Datenteil, dann der Streifen, dann Fenster und
+       Dialoge - jede Datei braucht die davor. -->
+  <script src="gewohnheiten-daten.js"></script>
   <!-- Nach kalender.js: fokus.js benutzt dessen istSplit()/schliesseKalender()
        und haengt sich in denselben Umschalter. -->
   <script src="fokus.js"></script>
+  <script src="gewohnheiten.js"></script>
+  <script src="gewohnheiten-dialoge.js"></script>
 </body>
 </html>
