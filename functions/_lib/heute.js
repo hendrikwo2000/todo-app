@@ -8,10 +8,11 @@
  * zeigt (api/gewohnheiten/heute.js), braeuchte es die Logik ein drittes Mal -
  * deshalb steht sie jetzt hier, und pruefen.js holt sie sich von hier.
  *
- * Die Client-Fassung in app.js bleibt bestehen: sie rechnet auf `state.logs`
- * und muss ohne Netz auskommen. Aendert sich hier eine Regel, gehoert sie
- * dort mitgezogen - die beiden sind bewusst nicht zusammengelegt, weil der
- * Client seine Daten anders haelt als der Server.
+ * Die Client-Fassung bleibt bestehen - seit der Fusion mit der Fokus-App
+ * (Oktober 2026) in gewohnheiten-daten.js der ToDo-App: sie rechnet auf dem
+ * geladenen Bestand und muss ohne Netz auskommen. Aendert sich hier eine
+ * Regel, gehoert sie dort mitgezogen - die beiden sind bewusst nicht
+ * zusammengelegt, weil der Client seine Daten anders haelt als der Server.
  *
  * Datenform `tage` ueberall gleich: { "YYYY-MM-DD": { menge, ziel } } fuer
  * EINE Gewohnheit. Fehlt ein Tag, gibt es dazu keine Zeile in der Datenbank.
@@ -83,8 +84,8 @@ export function istHeuteDran(gewohnheit, tage, heute) {
 }
 
 /**
- * Heute dran UND noch nicht erledigt - die Zaehlweise hinter der Zahl am
- * App-Icon und der Abenderinnerung (api/push/pruefen.js).
+ * Heute dran UND noch nicht erledigt - die Zaehlweise der Abenderinnerung
+ * (api/push/pruefen.js ueber _lib/erinnerung.js).
  */
 export function nochOffen(gewohnheit, tage, heute) {
   if (!istHeuteDran(gewohnheit, tage, heute)) return false;

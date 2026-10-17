@@ -593,6 +593,34 @@ unveraendert (3x taeglich, nur die Zahl, nur ToDos).
   ebenso). Erste echte Nachricht mit roten Terminen: Donnerstag 15.10.2026,
   7 Uhr ("Regel KA" 11:45).
 
+### Abendlauf: offene Gewohnheiten (seit Oktober 2026)
+
+Im Lauf ab 15 Uhr Berliner Zeit (praktisch der 17-Uhr-Anpinger) nennt die
+Push-Meldung zusaetzlich die heute noch offenen Gewohnheiten - "2 ToDos sind
+fällig oder überfällig, 1 Gewohnheit ist heute noch offen." Wer nur offene
+Gewohnheiten hat, bekommt die Meldung trotzdem. Rechnung in
+`functions/_lib/erinnerung.js` (`istAbendlauf`, `offeneGewohnheitenJeNutzer`,
+`erinnerungsText`), "offen" wie im Streifen ueber `nochOffen()` aus
+`_lib/heute.js`: eine Obergrenze ohne Eintrag ruht und zaehlt nicht mit.
+
+- **Die Badge-Zahl bleibt die der ToDos** (Hendriks Entscheidung, gefragt).
+  Kommt die Meldung nur wegen Gewohnheiten, steht `badge: 0` im Payload - der
+  Service Worker setzt das Icon damit auf null, was zu "keine ToDos faellig"
+  passt.
+- **Nicht morgens und mittags:** um 7 Uhr waeren alle Gewohnheiten offen, das
+  waere Rauschen. Die verworfene Alternative war "in jedem Lauf und im Badge".
+- Vorher hatte die eigene Fokus-App einen zweiten Push-Weg (Tabelle
+  `fokus_push_subscriptions`, eigener cron-job auf fokus.it-wolf.org). Null
+  Abos am 17.10.2026 - er faellt mit der Fokus-App weg, die Tabelle bleibt
+  ungenutzt stehen.
+- **Zum Testen:** `?abend=jetzt` erzwingt den Abendteil, `?trocken=1` rechnet
+  nur und schickt nichts (weder Push noch WhatsApp); die Antwort enthaelt dann
+  `vorschau` mit Text und Badge je Nutzer. Beides braucht das Geheimnis.
+- **Getestet am 17.10.2026** lokal: Trockenlauf mit Test-Abo (ToDos +
+  Gewohnheiten in einer Zeile, Badge = ToDos), 403 ohne Geheimnis, Grenze 7/12
+  Uhr nein, 17 Uhr ja (auch Sommerzeit). **Ungeprueft:** die echte Zustellung -
+  die zeigt erst der 17-Uhr-Lauf live.
+
 ## Offline
 
 Die App funktioniert auch ohne Internet — vorausgesetzt, sie wurde auf dem
@@ -2277,76 +2305,89 @@ Anzeige gegen eine nachgebaute Google-Antwort (Uhrzeiten, mehrtägige
 Ganztages-Termine, Details, Umschalter, Ring-Punkte, hell/dunkel). Der
 `invalid_grant`-Zweig (Zugriff bei Google widerrufen) ist ungetestet.
 
-## Fokus-Panel
+## Gewohnheiten und Timer (Fokus-Panel)
 
-Zweites Panel im rechten Streifen, unter dem Kalender: die Gewohnheiten von
-heute zum Abhaken und der Fokus-Timer. Die Daten kommen aus dem
-Fokus-Tracker (`fokus.it-wolf.org`), nicht aus der eigenen Datenbank.
-Markup in `index.html`, Verhalten in `fokus.js`, CSS-Block „Fokus-Panel".
+**Seit Oktober 2026 Teil dieser App.** Die eigene Fokus-App
+(`fokus.it-wolf.org`, Repo `fokus-app`) ist hier aufgegangen - Hendriks
+Auftrag: "Fusion aus ToDo App und Fokus, damit die Fokus App weg kann". Alles,
+was sie konnte, steht jetzt hier (seine Entscheidung: alles uebernehmen). Die
+Daten lagen schon immer in derselben D1 - es gab keine Migration, nur der Code
+ist umgezogen. Schema der Tabellen: `schema-fokus.sql` (gewohnheiten,
+gewohnheit_logs, fokus_sitzungen, fokus_einstellungen).
 
-**Sichtbar nur mit Fokus-Zugang.** `fokusZugang` steht im Bootstrap von
-`/api/todos` und wird über `window.hatFokusZugang()` gelesen — vorher weiß
-niemand, ob dieses Konto den Tracker überhaupt benutzen darf. Ohne Zugang gibt
-es die Fokus-Reiter nicht, und ein gemerktes `"fokus"` fällt in `zeichneUnten()`
-still auf den Kalender zurück (etwa wenn jemand den Zugang wieder aufgibt). Holt man
-ihn sich in den Einstellungen, sind sie sofort da (`window.fokusNeuZeichnen()`
-am Ende des Klick-Handlers, sonst erst beim nächsten `render()`).
+**Wo was liegt:**
 
-**Und mit dem Schalter „Fokus im Kalender"** (Einstellungen, `#fokusPanelSwitch`,
-seit 13.08.2026). Er sitzt unter dem Fokus-Tracker-Link und erscheint nur mit
-Zugang — ohne den gäbe es nichts zu schalten. Gemerkt wird er pro Gerät in
-`localStorage.fokusPanel` (`"an"` / `"aus"`, Standard an) und **nicht** in der
-Datenbank: wer am Rechner die Gewohnheiten mitlaufen lässt, will sie am Handy
-nicht zwangsläufig auch. Ausgeschaltet verschwindet die ganze Reiterzeile und
-der Streifen zeigt still nur den Kalender. Gelesen wird er über
-`window.fokusImStreifen()` in `fokusMoeglich()` (kalender.js).
+| Teil | Datei |
+|---|---|
+| Daten, Regel-Spiegel, Offline-Warteschlange, einziger Schreibweg fuer Tage (`gewSchreibeTag`) | `gewohnheiten-daten.js` |
+| Streifen: Reiter Gewohnheiten und Timer | `fokus.js` |
+| Fenster "Gewohnheiten": Verlauf, Statistik, Fokuszeit, Verwalten | `gewohnheiten.js` |
+| Dialoge anlegen/bearbeiten und Tag nachtragen, Einstellungsabschnitte | `gewohnheiten-dialoge.js` |
+| Endpunkte | `functions/api/gewohnheiten/*`, `functions/api/fokus/*`, `functions/api/export.js` |
+| Regeln (Status, Flamme, heute dran/ruht/offen) | `functions/_lib/tag.js`, `heute.js`, `fokus.js` |
+| Abend-Erinnerung | `functions/_lib/erinnerung.js` (siehe "Benachrichtigungen") |
 
-### Warum die Daten über einen Durchreicher kommen
+Die Skripte laden in dieser Reihenfolge: `app.js`, `kalender.js`,
+`gewohnheiten-daten.js`, `fokus.js`, `gewohnheiten.js`,
+`gewohnheiten-dialoge.js`. Alle neuen Namen auf oberster Ebene beginnen mit
+`gew`, alle neuen CSS-Klassen mit `gw-` - die Fokus-App hatte eigene
+`.kal-*`, `.hinweis`, `.popup-*`, die hier etwas anderes meinen. Wer sich
+aendert, meldet es ueber `gewMeldeAenderung()`; Streifen und Fenster hoeren
+zu (`gewBeiAenderung`) und zeichnen sich neu.
 
-`functions/api/fokus/[[pfad]].js` nimmt die Anfrage an, prüft Sitzung und
-`fokus_zugang`, und stellt sie der Fokus-App. Beide Apps benutzen dieselbe
-D1-Datenbank, dieser Worker könnte die Tabellen also direkt lesen — und genau
-das wäre der Fehler: Flammen, Rhythmus und Obergrenzen-Regeln sind dort rund
-1200 Zeilen, als zweite Kopie hier wären sie irgendwann eine zweite Wahrheit.
+**Jedes Konto bekommt Gewohnheiten und Timer** (Hendriks Entscheidung,
+gefragt). Die Endpunkte pruefen `todo_zugang` ueber `_lib/zugang.js` wie alles
+hier, `users.fokus_zugang` liest keiner von ihnen mehr. Ein neues Konto sieht
+im Reiter einen Leerzustand mit "＋ Gewohnheit anlegen" (`aktive: 0` in der
+Antwort von `gewohnheiten/heute`).
 
-Die Fokus-App liefert die Tagesliste deshalb **fertig gerechnet**
-(`GET /api/gewohnheiten/heute`, dort neu gebaut). Dieses Panel entscheidet
-nichts selbst — welche Gewohnheit heute erscheint, ob sie ruht, wie hoch die
-Flamme steht, kommt alles in der Antwort.
+**Fenster statt eigener Seite.** Verlauf (Monatskalender je Gewohnheit,
+Nachtragen per Tipp, Wischen wechselt den Monat), Statistik (7/30/90 Tage),
+Fokuszeit (Minuten pro Woche) und Verwalten (anlegen, bearbeiten,
+Reihenfolge, Archiv, loeschen) stehen in `#gewFenster` - geoeffnet ueber
+"Verlauf & mehr ›" am Ende der Liste, "Fokuszeit pro Woche ›" unter dem Timer,
+den Stift an einer Karte oder die Einstellungen. Hendriks Entscheidung,
+gefragt; verworfen: eine eigene Seite (wirkte wie eine zweite App) und mehr
+Reiter im Streifen (kein Platz). Die Ansicht-Pille bleibt bei zwei Segmenten.
+Das Fenster steht ausserhalb des Kalender-Panels (transform-Falle), Escape und
+die Zurueck-Taste schliessen es von innen nach aussen (`gewSchliesseOberste`,
+eingehaengt in `schliesseObersteEbene` in kalender.js); solange es offen ist,
+gibt es keine Rand-Wischgeste (`darfGeste`).
 
-**Was die Flamme zählt, entscheidet ein Schalter in den Einstellungen der
-Fokus-App** — seit dem 15.08.2026, kontoweit gespeichert: entweder alle
-erledigten Tage zusammen (Standard) oder Tage am Stück. Dieses Panel merkt
-davon nichts und braucht auch nichts zu merken: `heute.js` drüben liefert Zahl
-und Einheit fertig, bei jedem Laden neu. **Umstellen lässt sich der Modus hier
-bewusst nicht** — der Durchreicher lässt `/api/fokus/einstellungen` nicht durch,
-der Schalter gehört in die Fokus-App.
+**Einstellungen, drei Abschnitte:**
+- **Kalender-Streifen** - zwei Schalter, Gewohnheiten und Timer je fuer sich,
+  pro Geraet in `localStorage.streifenGewohnheiten` / `streifenTimer`
+  (Standard an; wer den alten gemeinsamen Schalter `fokusPanel` aus hatte,
+  startet mit beiden aus). Bewusst nicht "Bereiche" genannt: so heissen hier
+  die Spalten des Boards. Gelesen ueber `window.fokusBereiche()` (fokus.js)
+  und `window.fokusImStreifen()` (kalender.js, `fokusMoeglich`). Bis Oktober
+  2026 war das EIN Schalter "Fokus im Kalender", davor ein 🔥 in der
+  Kopfzeile.
+- **Gewohnheiten** - Zaehlweise der Flamme (insgesamt / in Reihe), Weg ins
+  Fenster, Export als JSON (`/api/export`, nur Gewohnheiten und Sitzungen).
+- **Fokus-Timer** - Standarddauer.
 
-`flammenText()` in `fokus.js` beugt `Tage`/`Wochen` und hat einen generischen
-Rückfall für alles andere: Die beiden Apps deployen getrennt, und zwischen zwei
-Pushes kann drüben kurz eine Einheit herkommen, die es hier noch nicht gibt.
+Zaehlweise und Dauer gelten pro KONTO (`fokus_einstellungen`), anders als die
+Streifen-Schalter. `GET /api/fokus` liefert beide in `einstellungen`.
 
-**Nicht direkt aus dem Browser**, obwohl beide Apps auf `it-wolf.org` liegen:
-das Sitzungscookie ist `SameSite=Lax`. Ein `fetch` von `todo.it-wolf.org` nach
-`fokus.it-wolf.org` bekäme es nicht mit, die Fokus-App sähe einen Fremden. Von
-Worker zu Worker geht der Cookie-Kopf dagegen mit.
+### Bis Oktober 2026: der Durchreicher
 
-**Nur sechs Routen sind freigeschaltet** (Tabelle `ROUTEN` im Durchreicher),
-je mit fester Methode. Ohne diese Liste hinge an `/api/fokus/` die ganze
-Fokus-API, auch `DELETE /api/gewohnheiten` und der Export. Alles, was nicht
-in der Tabelle steht, bekommt 404 — auch bei falscher Methode, denn was es
-hier nicht gibt, muss auch nicht verraten, dass es das woanders gäbe.
+Vor der Fusion holte der Streifen seine Daten ueber
+`functions/api/fokus/[[pfad]].js` aus der Fokus-App (sechs freigeschaltete
+Routen, Sitzungscookie von Worker zu Worker durchgereicht, `FOKUS_BASIS`).
+Grund damals: die Regeln (Flamme, Rhythmus, Obergrenze) sollten an genau
+einem Ort liegen. Das tun sie weiter - nur ist dieser Ort jetzt
+`functions/_lib/` dieser App. Der Durchreicher ist geloescht, und damit auch
+die Testfalle mit zwei Dev-Servern und zwei lokalen Datenbanken: **lokal
+reicht ein Server**, nur muss `schema-fokus.sql` einmal per Python-sqlite3 in
+die lokale D1 (`wrangler d1 execute --local` stuerzt unter Windows ab).
 
-**Preis:** Ist die Fokus-App nicht erreichbar (Deploy, Störung), antwortet der
-Durchreicher mit 502 und das Panel zeigt „Der Fokus-Tracker ist gerade nicht
-erreichbar." samt Knopf zum erneuten Versuchen. Der Timer bleibt dann ganz
-weg — er zeigte sonst eine Dauer und einen Start-Knopf, der nur in die nächste
-Fehlermeldung laufen kann. Die ToDo-Liste selbst merkt davon nichts.
-
-Lokal zeigt `FOKUS_BASIS` (in `.dev.vars`) auf den Fokus-Dev-Server nebenan,
-live gilt der Standardwert `https://fokus.it-wolf.org`. Zum Testen müssen
-**beide** Dev-Server laufen und in **beiden** lokalen D1-Dateien dieselbe
-Sitzungszeile stehen — die Datenbanken sind lokal getrennt, anders als live.
+Die Heute-Liste kommt weiterhin **fertig gerechnet**
+(`GET /api/gewohnheiten/heute`): der Streifen entscheidet nichts selbst.
+Das Fenster braucht dagegen den ganzen Bestand (`GET /api/gewohnheiten`) und
+rechnet Kalenderfarben mit den Spiegeln in `gewohnheiten-daten.js`
+(`gewStatusVon`, `gewStillerTagZaehlt`, ...). Aendert sich eine Regel in
+`_lib/tag.js` oder `heute.js`, muss sie dort mit.
 
 ### Oben bleibt, unten wechselt
 
@@ -2544,10 +2585,15 @@ Die Zahl in der Mitte skaliert mit dem Ring statt mit dem Fenster
 
 ### Was der Fokus-Teil kann — und was nicht
 
-Abhaken (einfach oder mit Menge über −/Zahl/+), Flammen sehen, Timer starten,
-pausieren, beenden. Sonst nichts: Gewohnheiten anlegen, ändern, archivieren,
-Verlauf, Statistik, Standarddauer und Export bleiben in der Fokus-App, dorthin
-führt das ↗ in der Kopfzeile des Bereichs.
+Im Streifen: abhaken (einfach oder mit Menge über −/Zahl/+), Flammen sehen,
+Timer starten, pausieren, beenden, und ueber den Stift an der Karte gleich
+bearbeiten. Alles andere - anlegen, Verlauf, Statistik, Fokuszeit,
+Reihenfolge, Archiv - steht seit Oktober 2026 im Fenster "Gewohnheiten" (siehe
+oben), Zaehlweise, Dauer und Export in den Einstellungen. Bis dahin fuehrte ein
+↗ in der Kopfzeile des Bereichs zur Fokus-App.
+
+**Wiederoeffnen hat ein Rueckgaengig** (Snackbar, wie in der Fokus-App): aus
+"50 von 60" wird beim Tipp auf den Haken eine 0, ohne Rueckfrage.
 
 Nach jedem Haken wird **zweimal** aktualisiert: sofort aus der Antwort von
 `log` (Menge, Ziel, Zustand, Flamme stehen dort drin) und gleich danach die
@@ -2556,9 +2602,9 @@ die Tagesbilanz, und bei „X Mal die Woche" verschwindet die Gewohnheit mit dem
 erreichten Ziel ganz aus der Liste.
 
 **Der Timer ist reine Anzeige**, gerechnet wird aus dem Startzeitpunkt vom
-Server (siehe `BETRIEB.md` der Fokus-App). Die Dauer kommt aus der dortigen
-Standardeinstellung und lässt sich hier nicht ändern. Beenden fragt ab einer
-Minute nach — eine geloggte Sitzung ist nachträglich nicht mehr änderbar.
+Server (`functions/_lib/fokus.js`). Die Dauer ist die Standarddauer aus den
+Einstellungen (Abschnitt "Fokus-Timer"). Beenden fragt ab einer Minute nach
+— eine geloggte Sitzung ist nachträglich nicht mehr änderbar.
 
 **Bei laufender Sitzung trägt der Timer-REITER die Restzeit** („Timer 44:52",
 `.fok-reiter-seg.laeuft` in der Akzentfarbe), auch wenn gerade ein anderer
@@ -2572,9 +2618,17 @@ alles weg. **Der Preis, bewusst:** bei zugeklapptem Streifen sieht man die
 Restzeit nirgends mehr. Das Sitzungsende meldet sich weiterhin über den
 Tab-Titel und den Ton, nur der laufende Countdown ist dann unsichtbar.
 
-Am Sitzungsende gibt es **Ton und Tab-Titel**, aber bewusst **keine
-Browser-Benachrichtigung**: die schickt die Fokus-App schon, und bei zwei
-offenen Tabs meldete sich dasselbe Sitzungsende sonst doppelt.
+Am Sitzungsende gibt es **Ton, Tab-Titel und - bei eingeschalteten
+Benachrichtigungen (`badgeErlaubt`) - eine Browser-Benachrichtigung**. Die
+kam bis Oktober 2026 aus der Fokus-App und fehlte hier deshalb bewusst.
 
-**Offline funktioniert das Panel nicht.** Die Warteschlange der ToDo-Liste
-gilt nur für ToDos; hier erscheint die Fehlermeldung von oben.
+**Offline geht Abhaken trotzdem** (seit Oktober 2026, aus der Fokus-App
+uebernommen): der Haken landet in einer Warteschlange im localStorage
+(`gew_warteschlange`, ein Eintrag je Gewohnheit und Tag), die Karte springt
+sofort um und traegt "↻ nicht gespeichert". Nachgeliefert wird bei `online`,
+beim Zurueckkehren in die App und nach dem Start. Die Heute-Liste des letzten
+Ladens liegt unter `gew_heute` (gilt nur am selben Tag), der Bestand des
+Fensters unter `gew_stand`; beides faellt beim Abmelden weg (`gewVergiss`).
+Flamme und "x von 3 diese Woche" stimmen erst nach dem Nachliefern wieder.
+Anlegen, Bearbeiten und der Timer brauchen Netz - beim Timer mit Absicht: er
+rechnet aus dem Startzeitpunkt, nachgereicht waere die Sitzung gelogen.

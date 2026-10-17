@@ -25,12 +25,20 @@
  * und ein nicht lesbarer Kalender haelt die ToDo-Liste nicht auf.
  * ?whatsapp=jetzt erzwingt den Versand auch ausserhalb des Morgenlaufs
  * (braucht dasselbe Geheimnis wie der Rest).
+ *
+ * Im Abendlauf (ab 15 Uhr Berliner Zeit, also der 17-Uhr-Anpinger) nennt die
+ * Nachricht zusaetzlich die heute noch offenen Gewohnheiten - seit der Fusion
+ * mit der Fokus-App (Oktober 2026), siehe _lib/erinnerung.js. Die Zahl am
+ * App-Icon bleibt die der ToDos; wer nur offene Gewohnheiten hat, bekommt die
+ * Meldung mit Badge 0. ?abend=jetzt erzwingt den Abendteil, ?trocken=1 rechnet
+ * nur und schickt nichts (Push wie WhatsApp) - beides zum Testen.
  */
 
 import { json } from "../../_lib/listen.js";
 import { sendeWebPush } from "../../_lib/webpush.js";
 import { fehltEinrichtung, kontoFuer, frischesZugriffToken, roteTermineAm } from "../../_lib/google.js";
 import { baueMorgenNachricht, istMorgenlauf, sendeWhatsapp } from "../../_lib/whatsapp.js";
+import { istAbendlauf, offeneGewohnheitenJeNutzer, erinnerungsText } from "../../_lib/erinnerung.js";
 
 // "Heute" bewusst in der Zeitzone Europe/Berlin, nicht UTC - sonst faellt der
 // Tageswechsel je nach Sommer-/Winterzeit bis zu zwei Stunden falsch, und ein
@@ -86,8 +94,9 @@ async function sendeMorgenliste(env, heute, erzwingen) {
   return `gesendet (${faellig.results.length} ToDos, ${rot.termine.length} rote Termine)` + hinweis;
 }
 
-async function pruefeUndSende(env, erzwingeWhatsapp = false) {
+async function pruefeUndSende(env, { erzwingeWhatsapp = false, erzwingeAbend = false, trocken = false } = {}) {
   const heute = heuteBerlin();
+  const abend = erzwingeAbend || istAbendlauf();
 
   const zaehlung = await env.DB.prepare(
     `SELECT u.id AS user_id, COUNT(DISTINCT t.id) AS n
@@ -101,21 +110,31 @@ async function pruefeUndSende(env, erzwingeWhatsapp = false) {
      HAVING n > 0`
   ).bind(heute).all();
 
-  let versendet = 0, fehlgeschlagen = 0, entfernt = 0;
+  const todosVon = new Map(zaehlung.results.map(z => [z.user_id, z.n]));
+  // Nur abends - morgens waeren alle Gewohnheiten offen, das waere Rauschen.
+  const gewohnheitenVon = abend ? await offeneGewohnheitenJeNutzer(env, heute) : new Map();
+  const nutzerIds = new Set([...todosVon.keys(), ...gewohnheitenVon.keys()]);
 
-  for (const zeile of zaehlung.results) {
-    const abos = await env.DB.prepare(
-      "SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?"
-    ).bind(zeile.user_id).all();
+  let versendet = 0, fehlgeschlagen = 0, entfernt = 0;
+  const vorschau = [];
+
+  for (const userId of nutzerIds) {
+    const n = todosVon.get(userId) || 0;
+    const g = gewohnheitenVon.get(userId) || 0;
 
     const payload = {
       title: "ToDo-Liste",
-      body: zeile.n === 1
-        ? "1 ToDo ist fällig oder überfällig."
-        : `${zeile.n} ToDos sind fällig oder überfällig.`,
-      badge: zeile.n,
+      body: erinnerungsText(n, g),
+      // Die Zahl am App-Icon zaehlt nur ToDos (Hendriks Entscheidung) - auch
+      // dann, wenn die Meldung nur wegen offener Gewohnheiten kommt.
+      badge: n,
       url: "/",
     };
+    if (trocken) { vorschau.push({ userId, ...payload }); continue; }
+
+    const abos = await env.DB.prepare(
+      "SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?"
+    ).bind(userId).all();
 
     for (const abo of abos.results) {
       let ergebnis;
@@ -137,13 +156,23 @@ async function pruefeUndSende(env, erzwingeWhatsapp = false) {
   }
 
   let whatsapp;
-  try {
-    whatsapp = await sendeMorgenliste(env, heute, erzwingeWhatsapp);
-  } catch (e) {
-    whatsapp = "fehlgeschlagen: " + e.message;
+  if (trocken) {
+    whatsapp = "uebersprungen (trocken)";
+  } else {
+    try {
+      whatsapp = await sendeMorgenliste(env, heute, erzwingeWhatsapp);
+    } catch (e) {
+      whatsapp = "fehlgeschlagen: " + e.message;
+    }
   }
 
-  return { nutzerBenachrichtigt: zaehlung.results.length, versendet, fehlgeschlagen, entfernt, whatsapp };
+  return {
+    nutzerBenachrichtigt: nutzerIds.size,
+    abendlauf: abend,
+    mitOffenenGewohnheiten: gewohnheitenVon.size,
+    versendet, fehlgeschlagen, entfernt, whatsapp,
+    ...(trocken ? { vorschau } : {}),
+  };
 }
 
 async function behandeln({ request, env }) {
@@ -159,8 +188,12 @@ async function behandeln({ request, env }) {
   }
 
   try {
-    const erzwingen = new URL(request.url).searchParams.get("whatsapp") === "jetzt";
-    const ergebnis = await pruefeUndSende(env, erzwingen);
+    const parameter = new URL(request.url).searchParams;
+    const ergebnis = await pruefeUndSende(env, {
+      erzwingeWhatsapp: parameter.get("whatsapp") === "jetzt",
+      erzwingeAbend: parameter.get("abend") === "jetzt",
+      trocken: parameter.get("trocken") === "1",
+    });
     return json({ ok: true, ...ergebnis });
   } catch (e) {
     return json({ error: "Fehler beim Pruefen: " + e.message }, 500);
