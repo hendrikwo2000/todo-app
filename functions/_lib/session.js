@@ -9,7 +9,8 @@ export const COOKIE_NAME = "todo_session";
 
 // Das Sitzungs-Cookie gilt fuer die ganze Domain, nicht nur fuer
 // todo.it-wolf.org. Nur so sieht eine zweite App auf einer eigenen Subdomain
-// (fokus.it-wolf.org) dieselbe Anmeldung - der geteilte Login haengt allein an
+// (heute das Schul-Dashboard auf schule.it-wolf.org, bis Oktober 2026 auch die
+// eigene Fokus-App) dieselbe Anmeldung - der geteilte Login haengt allein an
 // diesem Attribut, nicht am Hosting-Ort.
 const COOKIE_DOMAIN = ".it-wolf.org";
 
@@ -102,7 +103,7 @@ export function setzeSessionCookies(request, token) {
  * Wird bei jedem GET /api/todos mitgeschickt: derselbe Token, nur mit
  * Domain-Attribut, plus die Loeschung der alten Zeile. Kein Datenbankzugriff,
  * kein Abmelden - beim naechsten Oeffnen der Liste ist das Cookie migriert und
- * die zweite App auf fokus.it-wolf.org sieht die Anmeldung.
+ * eine zweite App auf einer anderen Subdomain sieht die Anmeldung.
  *
  * Leeres Array auf allen Hosts ohne Domain-Attribut (lokal, *.pages.dev) -
  * dort wuerde das alte Cookie sonst geloescht, ohne dass ein neues ankommt.
