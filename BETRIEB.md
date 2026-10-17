@@ -49,10 +49,10 @@ abgegriffenes Token wird damit ebenfalls ungültig.
 ### Cookie gilt für die ganze Domain
 
 Das Sitzungscookie ist auf `Domain=.it-wolf.org` gesetzt, nicht auf
-`todo.it-wolf.org`. Nur dadurch sieht **fokus.it-wolf.org** dieselbe Anmeldung —
-der geteilte Login hängt allein an diesem Attribut, nicht am Hosting-Ort. Beide
-Pages-Projekte binden dieselbe D1-Datenbank `todo`, weil ein Cookie ohne
-Nachschlagen in `sessions` nichts wert ist.
+`todo.it-wolf.org`. Nur dadurch sieht das **Schul-Dashboard** (eigenes
+Pages-Projekt, gleiche D1) dieselbe Anmeldung — der geteilte Login hängt allein
+an diesem Attribut, nicht am Hosting-Ort. Bis Oktober 2026 galt dasselbe für
+die eigene Fokus-App (fokus.it-wolf.org); die ist in dieser App aufgegangen.
 
 Die Domain wird **nur auf it-wolf.org-Hosts** gesetzt (`domainFlag` in
 `_lib/session.js`). Auf `127.0.0.1` und den `*.pages.dev`-Vorschauadressen würde
@@ -672,53 +672,30 @@ Unter **[/admin](https://todo.it-wolf.org/admin)** stehen offene Anfragen und
 die Nutzerliste. Freischalten legt das Konto an und verschickt eine
 Willkommensmail; Ablehnen setzt nur den Status — bewusst ohne Mail.
 
-**Zwei unabhängige Zugangsspalten, EINE Warteliste.** `users.todo_zugang` und
-`users.fokus_zugang` steuern je eine App (fokus.it-wolf.org: eigenes
-Cloudflare-Pages-Projekt, gleiche D1-Datenbank), unabhängig von `role` und
-voneinander — siehe Kommentar in `schema.sql`. Beide Apps schreiben in
-dieselbe `waitlist`-Tabelle, `quelle` hält fest, über welche Maske sich jemand
-eingetragen hat, und steuert beim Freischalten, welche der beiden Spalten
-gesetzt wird. Ein frisch freigeschaltetes Konto hat also immer GENAU EINE der
-beiden Berechtigungen, nie automatisch beide.
+**Eine Zugangsspalte: `users.todo_zugang`.** Sie gilt für die ganze App,
+seit Oktober 2026 also auch für Gewohnheiten und Timer. Freischalten setzt sie
+immer (`admin/waitlist.js`, `admin/genehmigen.js`).
 
-**Seit 08.08.2026 symmetrisch selbstbedienbar: nur die ERSTE Freischaltung
-braucht einen Admin.** Danach holt sich der Nutzer die jeweils andere App
-selbst, zwei gleichwertige Wege:
-- Ein Knopf in den Einstellungen der App, die er schon hat („Zugang zum
-  Fokus-Tracker holen", drüben spiegelbildlich „Zugang zur ToDo-Liste holen")
-  — setzt die Spalte sofort, ohne Rückfrage (rein additiv, in der jeweils
-  ANDEREN App jederzeit wieder aufgebbar).
-- Einfach ein Login-Versuch auf der anderen App: `request-code.js` und
-  `link.js` setzen die fehlende Spalte still mit, bevor sie den Code
-  verschicken bzw. die Sitzung anlegen — keine eigene Meldung, sieht wie ein
-  ganz normaler Login aus.
+Bis zur Fusion gab es daneben `users.fokus_zugang` für die eigene Fokus-App,
+beide Apps schrieben in dieselbe `waitlist`, und `waitlist.quelle` entschied,
+welche Spalte das Freischalten setzte; dazu kamen Selbstbedienungs-Knöpfe in
+beiden Apps und ein Fokus-Schalter in der Nutzerliste. Das ist alles raus.
+**Beide Spalten stehen weiter in der Datenbank** (nie DROP) — `fokus_zugang`
+liest nur niemand mehr, `quelle` ist für neue Einträge immer `'todo'`.
 
-In der Nutzerliste lässt sich jede Spalte trotzdem jederzeit einzeln umlegen
-(„ToDo-/Fokus-Zugang geben/entziehen"), unabhängig von Adminrechten. Der
-Fokus-Schalter hat kein Selbstsperr-Risiko, deshalb keine Sperre gegen das
-eigene Konto; der ToDo-Schalter blendet sich beim eigenen Konto trotzdem aus
-(kein hartes Aussperr-Risiko — `/admin` hängt an `role`, nicht an
-`todo_zugang` —, aber eine unnötig verwirrende Zwischenlage).
-
-Jeder Nutzer kann seinen Zugang zu EINER App auch selbst wieder aufgeben (in
-deren eigenen Einstellungen, „ToDo-/Fokus-Zugang aufgeben", je eigenes
-`auth/zugang-aufgeben.js`) — die Daten bleiben, nur der Zugang ist weg, ein
-erneuter Login-Versuch holt ihn sich selbst zurück. Für `role='admin'` ist das
-beim ToDo-Zugang gesperrt, gleiche Vorsicht wie beim Rollen-Schalter im
-Dashboard.
-
-`functions/api/waitlist.js` auf der Fokus-Seite verlinkt Freischalten- und
-Verwaltungslink fest auf `todo.it-wolf.org`, weil `/admin` und `/freischalten`
-nur hier existieren.
+**Selbstbedienung bleibt für den ToDo-Zugang:** Ein Konto ohne `todo_zugang`
+(etwa nach „ToDo-Zugang aufgeben") holt ihn sich mit dem nächsten
+Login-Versuch still zurück — `request-code.js` und `link.js` setzen die Spalte,
+bevor sie den Code verschicken bzw. die Sitzung anlegen. In der Nutzerliste
+lässt sich `todo_zugang` jederzeit umlegen; beim eigenen Konto ist der
+Schalter gesperrt (kein hartes Aussperr-Risiko — `/admin` hängt an `role`, nicht
+an `todo_zugang` —, aber eine unnötig verwirrende Zwischenlage). Für
+`role='admin'` ist auch das Aufgeben in den Einstellungen gesperrt.
 
 **Die Willkommensmail meldet direkt an.** Sie enthält einen Anmeldelink, der
 sieben Tage gilt (`functions/_lib/willkommen.js`). Er liegt als normaler
-Eintrag in `login_codes` und wird vom selben `/api/auth/link` eingelöst —
-gebaut mit dem Origin der App, für die freigeschaltet wurde (`quelle`), NICHT
-zwingend `todo.it-wolf.org`: bei `quelle='fokus'` zeigt der Knopf fest auf
-`fokus.it-wolf.org` (ToDo's eigener request.url-Origin passt dort nicht,
-lokal ist dieser eine Link deshalb nicht testbar — Kommentar in
-`willkommen.js`). Sieben Tage statt zehn Minuten, weil so eine Mail auch mal
+Eintrag in `login_codes` und wird vom selben `/api/auth/link` eingelöst,
+gebaut mit dem Origin dieser Anfrage. Sieben Tage statt zehn Minuten, weil so eine Mail auch mal
 ein Wochenende liegen bleibt; wer Zugriff aufs Postfach hat, könnte sich
 ohnehin jederzeit selbst einen Anmeldelink schicken lassen.
 
@@ -745,8 +722,8 @@ per `hidden` ausgeblendet.
 Ein Nutzer lässt sich auch direkt anlegen, ohne Warteliste:
 
 ```sql
-INSERT INTO users (email, name, role, todo_zugang, fokus_zugang)
-VALUES ('adresse@example.com', 'Name', 'user', 1, 0);
+INSERT INTO users (email, name, role, todo_zugang)
+VALUES ('adresse@example.com', 'Name', 'user', 1);
 ```
 
 ## Bot-Schutz
@@ -773,12 +750,8 @@ Der Sitekey erlaubt nur `todo.it-wolf.org`; lokal kommt deshalb nie ein Token
 zustande. Zusätzlich zur Bot-Prüfung gilt höchstens ein Eintrag pro Minute
 über alle Adressen.
 
-**Die Fokus-Warteliste (`fokus.it-wolf.org`) hat KEIN Turnstile** — der
-Sitekey ließe sich dort ohnehin nicht verwenden (an `todo.it-wolf.org`
-gebunden), und ein zweites Widget wäre für die zu erwartende Handvoll
-Anfragen nicht im Verhältnis. Die Minuten-Bremse gilt app-übergreifend
-(dieselbe `waitlist`-Tabelle), das war schon bei ToDo am Anfang der einzige
-Schutz.
+Bis Oktober 2026 gab es eine zweite Warteliste in der Fokus-App, ohne
+Turnstile. Mit der Fusion ist sie weg — eintragen geht nur noch hier.
 
 ## Konten löschen
 
@@ -2483,10 +2456,12 @@ dann `window.fokusReiter(welcher, true)`. `fokusZeigen()` setzt beim ersten
 Tipp auf „Timer" still überschrieben.
 
 **Ob es die Reiter gibt**, entscheidet `fokusMoeglich()` aus zwei Teilen:
-Fokus-Zugang (`window.fokusHatZugang()`) UND dem Schalter „Fokus im Kalender"
-in den Einstellungen (`window.fokusImStreifen()`, `localStorage.fokusPanel`,
-Standard an). Fällt eines weg, fällt ein gemerktes `"fokus"` still auf den Tag
-zurück — eine Reiterleiste mit genau einem Reiter wäre Zierrat.
+angemeldet und geladen (`window.fokusHatZugang()`, seit Oktober 2026 kein
+eigener Zugang mehr) UND mindestens einer der beiden Schalter im Abschnitt
+„Kalender-Streifen" der Einstellungen (`window.fokusImStreifen()`). Fällt eines
+weg, fällt ein gemerktes `"fokus"` still auf den Kalender zurück — eine
+Reiterleiste mit genau einem Reiter wäre Zierrat. Welcher der beiden
+Fokus-Reiter erscheint, entscheidet `window.fokusBereiche()` je Reiter.
 
 **Falle, hier zweimal zugeschnappt:** `.kal-liste` und `.fok-inhalt` haben
 `display: flex`, das schlägt das eingebaute `[hidden]` des Browsers. Ohne

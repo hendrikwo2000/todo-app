@@ -25,6 +25,12 @@
 -- keine fest verdrahtete Adresse im Code: ein zweiter Admin oder eine neue
 -- Mailadresse ist damit ein UPDATE statt eines Deployments.
 --
+-- SEIT OKTOBER 2026: fokus_zugang wird nicht mehr gelesen. Die Fokus-App ist
+-- in der ToDo-App aufgegangen, Gewohnheiten und Timer haengen an todo_zugang
+-- (siehe BETRIEB.md, "Gewohnheiten und Timer"). Spalte und waitlist.quelle
+-- bleiben stehen, damit bestehende Datenbanken nichts umbauen muessen. Der
+-- Rest dieses Kommentars beschreibt den Stand davor.
+--
 -- todo_zugang und fokus_zugang sind ZWEI EIGENE, von role unabhaengige
 -- Berechtigungen fuer je eine App auf dieser gemeinsamen Datenbank
 -- (todo.it-wolf.org / fokus.it-wolf.org). Ein Konto in dieser Tabelle heisst

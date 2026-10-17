@@ -82,8 +82,7 @@ und die App von dort starten.
   angetippten Tages
 - **⚠ Überfällig** zeigt alles, was liegengeblieben ist — auch aus Vormonaten
 - Ein Tipp auf ein ToDo bringt dich zu ihm auf die Liste, samt Listenwechsel
-- Ein Tipp auf denselben Tag klappt die Liste darunter wieder zu — oder
-  wechselt zu Fokus, wenn du ihn freigeschaltet hast
+- Ein Tipp auf denselben Tag klappt die Liste darunter wieder zu
 - Darunter zwei Abschnitte, **Termine** und **ToDos**, jeder mit einem **＋**
 - **＋ bei ToDos:** Titel tippen, Enter — fertig, mit dem Datum des Tages, in
   deiner aktuellen Liste (ohne Bereich)
@@ -100,32 +99,44 @@ Kalender dahinter zieht mit.
 Zurück geht es mit einem Wisch in der Kopfzeile, einem Tipp daneben, ✕ oder
 Escape. Auf dem Handy füllt der Kalender den ganzen Bildschirm.
 
-## Fokus
+## Gewohnheiten und Timer
 
-Nur wenn dein Konto auch für den [Fokus-Tracker](https://fokus.it-wolf.org)
-freigeschaltet ist — sonst gibt es den Knopf gar nicht.
+Gehören seit Oktober 2026 fest zur App, für jedes Konto. Der frühere
+Fokus-Tracker (fokus.it-wolf.org) ist hier aufgegangen — die Adresse leitet
+hierher weiter, deine Gewohnheiten und Sitzungen sind dieselben.
 
-- **🔥** oben rechts zeigt statt der Tagesliste die Gewohnheiten von heute
-  bzw. den Fokus-Timer — im selben Bereich, unter dem Monatsraster
-- **Abhaken** mit dem Haken rechts, bei Gewohnheiten mit Menge über **− Zahl +**
-- Neben jedem Namen steht die **Flamme**, also wie viele Tage (oder Wochen) die
-  Kette schon hält
-- Oben zwei Reiter: **Gewohnheiten** und **Timer**. Läuft gerade eine Sitzung,
-  ist der Timer schon vorne
-- **▶ Start** beginnt eine Sitzung mit deiner Standarddauer, **⏸** hält sie an,
-  **⏹** beendet sie (ab einer Minute mit Rückfrage — geloggte Zeit lässt sich
-  nicht mehr ändern). Der Ring zeigt, wie weit die Sitzung ist
-- Läuft eine Sitzung, steht die **Restzeit am 🔥-Knopf**; du kannst das Panel
-  also zumachen. Am Handy ist es ein kleiner Punkt, die Zeit steht dann im
-  Tab-Titel. Am Ende gibt es einen Ton.
+**Im Kalender-Streifen** stehen neben **Kalender** zwei Reiter:
 
-Unter dem Monatsraster steht immer genau **eines**: der Tag, die Gewohnheiten
-oder der Timer. Ein Tipp auf einen Tag holt den Tag nach vorn, ein zweiter Tipp
-auf denselben Tag geht zurück zu Fokus — 📅 und 🔥 tun dasselbe.
+- **Gewohnheiten:** die von heute zum Abhaken (Haken rechts, bei Mengen
+  **− Zahl +**). Daneben die **Flamme** — wie viele Tage erledigt sind. Der
+  **✎** hinter dem Namen öffnet die Gewohnheit zum Bearbeiten. Abhaken geht
+  auch ohne Netz; es wird nachgetragen, sobald du wieder online bist.
+- **Timer:** **▶ Start** beginnt eine Sitzung mit deiner Standarddauer,
+  **⏸** hält sie an, **⏹** beendet sie (ab einer Minute mit Rückfrage —
+  geloggte Zeit lässt sich nicht mehr ändern). Läuft eine Sitzung, steht die
+  Restzeit am Reiter. Am Ende gibt es einen Ton.
 
-Alles andere — Gewohnheiten anlegen und ändern, Verlauf, Statistik, Dauer
-einstellen — machst du weiter im Fokus-Tracker selbst; der Link dazu steht
-unten im Panel.
+**„Verlauf & mehr ›“** unter den Gewohnheiten öffnet das Fenster
+**Gewohnheiten**:
+
+- **Verlauf:** ein Monatskalender je Gewohnheit. Ein Tipp auf einen Tag
+  trägt ihn nach, Wischen wechselt den Monat
+- **Statistik:** wie oft geschafft, über 7, 30 oder 90 Tage
+- **Fokuszeit:** Fokusminuten pro Woche
+- **Verwalten:** neue Gewohnheit anlegen (abhaken oder mit Zielmenge,
+  mindestens oder höchstens, täglich / feste Wochentage / X Mal die Woche),
+  bearbeiten, Reihenfolge ändern, archivieren und löschen
+
+**In den Einstellungen (⚙️):**
+
+- **Kalender-Streifen:** Gewohnheiten und Timer einzeln ein- oder ausblenden
+  (gilt für dieses Gerät)
+- **Gewohnheiten:** ob die Flamme alle erledigten Tage zählt oder nur die am
+  Stück; Export als Datei
+- **Fokus-Timer:** die Standarddauer
+
+Mit eingeschalteten Benachrichtigungen erinnert dich die App um 17 Uhr auch
+an Gewohnheiten, die heute noch offen sind.
 
 ## Google Kalender
 

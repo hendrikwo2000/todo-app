@@ -9,11 +9,11 @@
  * Code, der nie kommt. Sollte es hier je eine offene Registrierung geben,
  * gehoert die generische Antwort zurueck.
  *
- * Ein Konto OHNE todo_zugang (z. B. ein reines Fokus-Konto) bekommt hier
+ * Ein Konto OHNE todo_zugang (z. B. nach "Zugang aufgeben") bekommt hier
  * KEINE Absage mehr: der Login-Versuch selbst gilt als Freischaltung fuer
  * diese App - still, ohne eigene Meldung, genau wie ein ganz normaler Login.
- * Einmal wurde jemand ueber die Warteliste freigeschaltet, jede weitere App
- * braucht keinen Admin mehr (siehe Kommentar bei todo_zugang in schema.sql).
+ * Einmal wurde jemand ueber die Warteliste freigeschaltet, danach braucht
+ * es keinen Admin mehr (siehe Kommentar bei todo_zugang in schema.sql).
  */
 
 import { hashHex, neuesToken } from "../../_lib/session.js";

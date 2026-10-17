@@ -36,7 +36,7 @@ const FARBEN_ERLAUBT = new Set(["blau", "tuerkis", "gruen", "lila", "pink", "gra
 const WIEDERHOLUNG_ERLAUBT = new Set(["taeglich", "woechentlich", "monatlich", "jaehrlich"]);
 
 export async function onRequestGet({ request, env }) {
-  const { nutzerId, nutzer, fokusZugang, fehler } = await nutzerOderFehler(request, env);
+  const { nutzerId, nutzer, fehler } = await nutzerOderFehler(request, env);
   if (fehler) return fehler;
 
   try {
@@ -135,10 +135,6 @@ export async function onRequestGet({ request, env }) {
       email: nutzer.email,
       name: nutzer.name,
       nutzerId: nutzerId,
-      // Fuer den Abschnitt "Fokus-Tracker" in den Einstellungen - ob die
-      // andere App schon freigeschaltet ist oder sich der Nutzer den Zugang
-      // erst noch selbst holen kann.
-      fokusZugang,
       // Reine Metadaten je Liste; der Inhalt steht in daten[id].
       listen: listen.map(b => ({
         id: b.id,

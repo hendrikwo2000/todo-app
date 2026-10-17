@@ -35,10 +35,10 @@ export async function onRequestGet({ request, env }) {
 
   try {
     const warteliste = await env.DB.prepare(
-      "SELECT id, name, email, status, quelle, created_at FROM waitlist ORDER BY created_at DESC"
+      "SELECT id, name, email, status, created_at FROM waitlist ORDER BY created_at DESC"
     ).all();
     const nutzer = await env.DB.prepare(
-      "SELECT id, email, name, role, todo_zugang, fokus_zugang, created_at FROM users ORDER BY created_at"
+      "SELECT id, email, name, role, todo_zugang, created_at FROM users ORDER BY created_at"
     ).all();
     // ichSelbst, damit die Oberflaeche den eigenen Rollen-Knopf ausgraut
     // statt in den Fehler oben zu laufen.
@@ -107,30 +107,12 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: true });
   }
 
-  // ---- Fokus-Zugang geben/entziehen (betrifft users, nicht die Warteliste) ----
-  // Eigene, von role unabhaengige Berechtigung fuer den Fokus-Tracker - siehe
-  // Kommentar in schema.sql. Anders als bei der Admin-Rolle keine Sperre gegen
-  // das eigene Konto: wer sich hier selbst den Zugang entzieht, kommt jederzeit
-  // ueber dieses Dashboard wieder rein, es gibt kein Aussperr-Risiko.
-  if (aktion === "fokus") {
-    const fokusZugang = body?.fokusZugang ? 1 : 0;
-    if (!Number.isInteger(id)) return json({ error: "Ungueltige Anfrage" }, 400);
-    try {
-      const treffer = await env.DB.prepare("UPDATE users SET fokus_zugang = ? WHERE id = ?")
-        .bind(fokusZugang, id).run();
-      if (!treffer.meta.changes) return json({ error: "Nutzer nicht gefunden" }, 404);
-    } catch (e) {
-      return json({ error: "Datenbankfehler" }, 500);
-    }
-    return json({ ok: true });
-  }
-
   // ---- ToDo-Zugang geben/entziehen (betrifft users, nicht die Warteliste) ----
-  // Symmetrisch zu "fokus" oben, seit ToDo-Zugang auch ueber die Fokus-
-  // Warteliste ausbleiben kann (quelle='fokus'). Eigenes Konto trotzdem
-  // gesperrt, wie bei der Rolle: kein hartes Aussperr-Risiko (/admin haengt
-  // an role, nicht an todo_zugang), aber eine unnoetige verwirrende
-  // Zwischenlage, die dieselbe Vorsicht verdient.
+  // Eigenes Konto gesperrt, wie bei der Rolle: kein hartes Aussperr-Risiko
+  // (/admin haengt an role, nicht an todo_zugang), aber eine unnoetige
+  // verwirrende Zwischenlage, die dieselbe Vorsicht verdient.
+  // Einen eigenen Schalter fuer den Fokus-Zugang gab es hier bis Oktober
+  // 2026 - seit der Fusion gehoeren Gewohnheiten und Timer zum ToDo-Zugang.
   if (aktion === "todo") {
     const todoZugang = body?.todoZugang ? 1 : 0;
     if (!Number.isInteger(id)) return json({ error: "Ungueltige Anfrage" }, 400);
@@ -154,7 +136,7 @@ export async function onRequestPost({ request, env }) {
   let eintrag;
   try {
     eintrag = await env.DB.prepare(
-      "SELECT id, name, email, status, quelle FROM waitlist WHERE id = ?"
+      "SELECT id, name, email, status FROM waitlist WHERE id = ?"
     ).bind(id).first();
   } catch (e) {
     return json({ error: "Datenbankfehler" }, 500);
@@ -180,16 +162,13 @@ export async function onRequestPost({ request, env }) {
   // Abbruch dazwischen ein Konto ohne erledigten Eintrag hinterlassen, das
   // beim naechsten Klick am UNIQUE-Index scheitert.
   //
-  // quelle bestimmt, WELCHE der beiden Zugangsspalten gesetzt wird - wer sich
-  // ueber die Fokus-Maske eintraegt, will erkennbar Fokus, nicht ein
-  // ToDo-Konto, und umgekehrt. Die jeweils andere App holt sich der Nutzer
-  // seither selbst (Einstellungen oder Login-Versuch dort).
-  const fokusZugang = eintrag.quelle === "fokus" ? 1 : 0;
-  const todoZugang = eintrag.quelle === "fokus" ? 0 : 1;
+  // Immer mit ToDo-Zugang - der umfasst seit der Fusion mit der Fokus-App
+  // (Oktober 2026) auch Gewohnheiten und Timer. Bis dahin entschied
+  // waitlist.quelle, welche der beiden Apps freigeschaltet wurde.
   try {
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO users (email, name, role, todo_zugang, fokus_zugang) VALUES (?, ?, 'user', ?, ?)")
-        .bind(eintrag.email, eintrag.name, todoZugang, fokusZugang),
+      env.DB.prepare("INSERT INTO users (email, name, role, todo_zugang) VALUES (?, ?, 'user', 1)")
+        .bind(eintrag.email, eintrag.name),
       env.DB.prepare("UPDATE waitlist SET status = 'freigeschaltet' WHERE id = ?").bind(id),
     ]);
   } catch (e) {
@@ -203,7 +182,6 @@ export async function onRequestPost({ request, env }) {
     name: eintrag.name,
     email: eintrag.email,
     url: new URL(request.url).origin,
-    quelle: eintrag.quelle,
   });
 
   return json({ ok: true, mailVerschickt: versand.ok });

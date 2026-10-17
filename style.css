@@ -278,15 +278,14 @@ html.ohne-zoom { touch-action: pan-x pan-y; }
   .ansicht-schalter { border-radius: 8px; }
   .ansicht-seg { padding: 2px 8px; font-size: 14px; border-radius: 6px; }
 }
-/* Gleiche Falle wie oben: display:inline-flex/flex schlaegt [hidden]. Das
-   Fokus-Segment wird per Attribut versteckt, solange kein Zugang besteht. */
+/* Gleiche Falle wie oben: display:inline-flex/flex schlaegt [hidden]. */
 .ansicht-seg[hidden] { display: none; }
 
 /* Die Pille beantwortet nur noch "Streifen auf oder zu": 📋 = zu, 📅 = auf.
    Sie hatte einmal ein drittes Segment (🔥 fuer den Fokus) - drei Knoepfe in
    der Kopfzeile waren einer zu viel, und der Streifen sagt mit seinen eigenen
-   Reitern ohnehin selbst, was unten steht. Wer den Fokus gar nicht sehen will,
-   schaltet ihn in den Einstellungen ab. */
+   Reitern ohnehin selbst, was unten steht. Wer Gewohnheiten oder Timer gar
+   nicht sehen will, schaltet sie in den Einstellungen ab (Kalender-Streifen). */
 /* Gleiche Falle wie oben: display:flex auf .btn schlaegt [hidden]. */
 #todoZugangAufgebenStart[hidden] { display: none; }
 /* Schmale Screens: der Titel teilt sich die erste Zeile mit Zahnrad und
@@ -1228,9 +1227,8 @@ input[type="date"]:focus {
   border-radius: 20px;
   padding: 3px 10px;
 }
-.admin-marke.fokus    { background: var(--accent-soft); color: var(--green); }
 
-/* Rechte-Gruppe (Admin/ToDo/Fokus): reines Flex-Layout fuer die drei
+/* Rechte-Gruppe (Admin/ToDo): reines Flex-Layout fuer die
    Schalter - die Abgrenzung sitzt an jedem Schalter selbst (siehe
    .admin-rechte .switch unten), nicht an einer gemeinsamen Box drumherum,
    sonst bleibt unklar, welches Label zu welchem Schalter gehoert. */
@@ -1245,7 +1243,7 @@ input[type="date"]:focus {
   padding: 4px 10px 4px 12px;
 }
 
-/* Rechte-Schalter (Admin/ToDo/Fokus) in der Nutzerliste: Status und Aktion in
+/* Rechte-Schalter (Admin/ToDo) in der Nutzerliste: Status und Aktion in
    einem Element, statt Badge + separatem Button. */
 .switch { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
 .switch.ist-gesperrt { cursor: not-allowed; opacity: .55; }
@@ -1446,7 +1444,7 @@ input[type="date"]:focus {
    Icon-<div> ist selbst ein <div> und kommt zuerst). */
 .ein-abschnitt-erste { border-top: 0; padding-top: 0; }
 
-/* Nicht-aufklappbare Zeile (Darstellung, Fokus-Tracker) - gleicher Rhythmus
+/* Nicht-aufklappbare Zeile (Darstellung, Zoom, Benachrichtigungen) - gleicher Rhythmus
    wie ein .ein-kopf, aber ohne Akkordeon-Pfeil und ohne Aufklapp-Inhalt. */
 .ein-zeile {
   flex-direction: row; align-items: center; gap: 8px;
@@ -1454,7 +1452,7 @@ input[type="date"]:focus {
 }
 .ein-zeile .switch { margin-left: auto; }
 
-/* Fokus-Tracker/ToDo-Liste als einfacher Link statt Akkordeon+Knopf. */
+/* Verwaltung als einfacher Link statt Akkordeon+Knopf. */
 .ein-link, .ein-link:visited { color: inherit; text-decoration: none; }
 .ein-link:hover .ein-kopf-text { color: var(--accent); }
 .ein-link.aktiv .ein-kopf-sub { color: var(--green); }

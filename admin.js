@@ -139,8 +139,6 @@ async function bearbeite(id, aktion, steuerEl, extra = {}) {
         : "Freigeschaltet, Willkommensmail verschickt.");
     } else if (aktion === "rolle") {
       melde(extra.rolle === "admin" ? "Adminrechte vergeben." : "Adminrechte entzogen.");
-    } else if (aktion === "fokus") {
-      melde(extra.fokusZugang ? "Fokus-Zugang gegeben." : "Fokus-Zugang entzogen.");
     } else if (aktion === "todo") {
       melde(extra.todoZugang ? "ToDo-Zugang gegeben." : "ToDo-Zugang entzogen.");
     } else if (aktion === "nutzerLoeschen") {
@@ -174,10 +172,9 @@ function zeichne(daten) {
   for (const w of offen) {
     const frei = knopf("Freischalten", "primaer", () => bearbeite(w.id, "freischalten", frei));
     const ab = knopf("Ablehnen", "still", () => bearbeite(w.id, "ablehnen", ab));
-    // Herkunft nur zeigen, wenn sie vom Normalfall abweicht - die Mehrheit
-    // kommt ueber ToDo, ein Badge dafuer waere nur Rauschen.
-    const knoepfe = w.quelle === "fokus" ? [marke("via Fokus", "fokus"), frei, ab] : [frei, ab];
-    offenEl.append(zeile(w, knoepfe));
+    // Bis Oktober 2026 stand hier "via Fokus", wenn sich jemand ueber die
+    // eigene Fokus-App eingetragen hatte. Die ist in dieser App aufgegangen.
+    offenEl.append(zeile(w, [frei, ab]));
   }
 
   nutzerEl.replaceChildren();
@@ -188,21 +185,19 @@ function zeichne(daten) {
     // erkennen, dass die Knoepfe fehlen, und das ist kein Hinweis.
     if (istIch) aktionen.push(marke("Du", "du"));
 
-    // Die drei Rechte-Schalter als eigene, optisch abgesetzte Gruppe - vorher
+    // Die Rechte-Schalter als eigene, optisch abgesetzte Gruppe - vorher
     // standen sie lose zwischen Name und Loeschen-Knopf, kaum als
     // zusammengehoerige Einheit erkennbar. Adminrechte und ToDo-Zugang sperren
     // sich selbst zu entziehen serverseitig (Aussperr-Risiko) - der Schalter
     // zeigt beim eigenen Konto nur noch den Stand, laesst sich aber nicht
-    // anfassen. Fokus-Zugang hat kein Aussperr-Risiko und bleibt auch beim
-    // eigenen Konto bedienbar.
+    // anfassen. Einen dritten Schalter "Fokus" gab es bis Oktober 2026 - seit
+    // der Fusion gehoeren Gewohnheiten und Timer zum ToDo-Zugang.
     const rechte = document.createElement("div");
     rechte.className = "admin-rechte";
     rechte.appendChild(schalter("Admin", n.role === "admin", !istIch,
       input => bearbeite(n.id, "rolle", input, { rolle: input.checked ? "admin" : "user" })));
     rechte.appendChild(schalter("ToDo", !!n.todo_zugang, !istIch,
       input => bearbeite(n.id, "todo", input, { todoZugang: input.checked })));
-    rechte.appendChild(schalter("Fokus", !!n.fokus_zugang, true,
-      input => bearbeite(n.id, "fokus", input, { fokusZugang: input.checked })));
     aktionen.push(rechte);
 
     // Loeschen jetzt immer sichtbar, beim eigenen Konto nur deaktiviert -

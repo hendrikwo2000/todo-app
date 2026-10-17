@@ -8,10 +8,10 @@
  * Antwortet mit einer Weiterleitung statt JSON: der Aufruf kommt aus einem
  * Mailprogramm, nicht aus der App.
  *
- * login_codes ist mit dem Fokus-Tracker geteilt - ein dort angeforderter oder
- * per Willkommensmail verschickter Link kann also auch hier landen (z. B. ein
- * reines Fokus-Konto, dessen Willkommensmail ueber diese App verschickt
- * wurde). Genau wie beim Anfordern eines Codes (request-code.js) gilt: ein
+ * Bis Oktober 2026 teilte sich login_codes mit der eigenen Fokus-App; deren
+ * Adresse leitet seitdem hierher weiter, auch mit einem alten Anmeldelink
+ * (/api/auth/link?t=...). Genau wie beim Anfordern eines Codes
+ * (request-code.js) gilt: ein
  * gueltiger Link IST der Login-Versuch, der todo_zugang gleich mit setzt -
  * kein separater "gesperrt"-Fall mehr noetig.
  */

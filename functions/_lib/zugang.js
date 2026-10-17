@@ -1,27 +1,24 @@
 /**
  * Wer darf die ToDo-Liste benutzen?
  *
- * Gespiegelt aus Fokus/web/functions/_lib/zugang.js - dort zuerst entstanden,
- * weil Fokus von Anfang an eine eigene Berechtigung neben dem blossen Konto
- * brauchte. Seit die Warteliste auch ueber fokus.it-wolf.org Konten anlegen
- * kann (quelle='fokus'), braucht ToDo dieselbe Trennung: ein Konto in `users`
- * heisst nicht mehr automatisch "hat ToDo-Zugang".
+ * Erlaubt ist, wer in der users-Tabelle mit todo_zugang=1 steht - ein Konto
+ * allein reicht nicht (es kann den Zugang selbst aufgegeben haben, siehe
+ * api/auth/zugang-aufgeben.js).
  *
- * Erlaubt ist, wer in der GETEILTEN users-Tabelle mit todo_zugang=1 steht.
+ * Bis Oktober 2026 gab es daneben fokus_zugang fuer die eigene Fokus-App,
+ * und diese Datei war deren Spiegelung. Seit der Fusion gehoeren Gewohnheiten
+ * und Timer zu dieser App und haengen an genau dieser Pruefung - die Spalte
+ * fokus_zugang steht noch in der Datenbank, gelesen wird sie nicht mehr.
  */
 
 import { angemeldeterNutzer } from "./session.js";
 import { json } from "./listen.js";
 
-// Liest beide Zugangsspalten in einem Rutsch: todo_zugang fuer die eigentliche
-// Pruefung, fokus_zugang nur zum Weiterreichen (Einstellungen zeigen, ob die
-// andere App schon freigeschaltet ist, ohne dafuer eine zweite Abfrage zu
-// brauchen).
 async function zeile(env, email) {
   const adresse = String(email || "").trim().toLowerCase();
   if (!adresse) return null;
   return await env.DB.prepare(
-    "SELECT todo_zugang, fokus_zugang FROM users WHERE email = ?"
+    "SELECT todo_zugang FROM users WHERE email = ?"
   ).bind(adresse).first();
 }
 
@@ -34,8 +31,8 @@ export async function darfRein(env, email) {
  * Angemeldet UND freigeschaltet - oder eine fertige Fehlerantwort in `fehler`.
  *
  * Die Pruefung sitzt in JEDEM Daten-Endpunkt, nicht nur an der Anmeldemaske.
- * Sonst kaeme jemand mit einer gueltigen Fokus-Sitzung per curl direkt an die
- * ToDo-API, ohne die Maske je gesehen zu haben.
+ * Sonst kaeme jemand mit einer gueltigen Sitzung per curl direkt an die API,
+ * ohne die Maske je gesehen zu haben.
  */
 export async function nutzerOderFehler(request, env) {
   if (!env.DB) return { fehler: json({ error: "D1-Bindung DB fehlt im Pages-Projekt" }, 500) };
@@ -54,5 +51,5 @@ export async function nutzerOderFehler(request, env) {
   if (!z || !z.todo_zugang) {
     return { fehler: json({ error: "Dieses Konto ist für die ToDo-Liste nicht freigeschaltet." }, 403) };
   }
-  return { nutzer, nutzerId: nutzer.id, fokusZugang: !!z.fokus_zugang };
+  return { nutzer, nutzerId: nutzer.id };
 }

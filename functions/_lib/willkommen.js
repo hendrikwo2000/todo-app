@@ -26,31 +26,20 @@ import { sendeMail, huelle, absatz, knopf, fussnote } from "./mail.js";
 // verschenkt also nichts, was nicht sowieso offen laege.
 const GUELTIG_TAGE = 7;
 
-// Fest verdrahtet, weil ToDo's eigener request.url-Ursprung fuer eine
-// Fokus-Freischaltung nicht passt (diese Function laeuft immer auf der
-// ToDo-Seite, auch wenn ueber die Fokus-Warteliste freigeschaltet wurde).
-// Gleiche Abwaegung wie TODO_URL in Fokus/web/functions/api/waitlist.js:
-// lokal ist dieser eine Link (fuer quelle='fokus') dadurch nicht testbar,
-// production schon.
-const FOKUS_URL = "https://fokus.it-wolf.org";
-
 /**
  * Legt einen Anmeldelink an und verschickt die Willkommensmail.
  * Liefert das Ergebnis von sendeMail ({ ok, grund }).
  *
  * `url` ist der Ursprung DIESER Anfrage (https://todo.it-wolf.org, lokal
- * auch mal 127.0.0.1:PORT) - nur fuer quelle='todo' tatsaechlich verwendet.
- * `quelle`: 'todo' oder 'fokus', woher die Wartelisten-Anfrage kam (siehe
- * waitlist.quelle in schema.sql) - bestimmt, auf welche App der Anmeldelink
- * zeigt. Ein frisch freigeschaltetes Konto hat immer GENAU EINE der beiden
- * Berechtigungen, nie beide (die zweite App holt sich der Nutzer seither
- * selbst, siehe Kommentar bei todo_zugang) - deshalb kein Fall fuer "beide".
+ * auch mal 127.0.0.1:PORT).
+ *
+ * Bis Oktober 2026 zeigte der Link je nach waitlist.quelle auch auf die
+ * eigene Fokus-App. Seit der Fusion gibt es nur noch diese App.
  */
-export async function sendeWillkommen(env, { name, email, url, quelle = "todo" }) {
-  const istFokus = quelle === "fokus";
-  const zielUrl = istFokus ? FOKUS_URL : url;
-  const zugangText = istFokus ? "zum Fokus-Tracker" : "zur ToDo-Liste";
-  const knopfText = istFokus ? "Zum Fokus-Tracker" : "Zur ToDo-Liste";
+export async function sendeWillkommen(env, { name, email, url }) {
+  const zielUrl = url;
+  const zugangText = "zur ToDo-Liste";
+  const knopfText = "Zur ToDo-Liste";
 
   // Schlaegt das Anlegen fehl, geht die Mail trotzdem raus - nur eben ohne
   // Direktanmeldung. Eine Freischaltung ohne jede Nachricht waere schlimmer

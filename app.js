@@ -118,13 +118,6 @@ const VAPID_PUBLIC_KEY = "BGDQTQDoRHFvbkqBEc5t_-A_Xa-QyUIzzN56qZigMR5jSCU8wF7HNv
 let istAdmin = false;
 let eigeneEmail = "";
 let eigenerName = "";
-// Ob das Konto zusaetzlich Zugang zum Fokus-Tracker hat. Seit der Fusion mit
-// der Fokus-App (Oktober 2026) liest das niemand mehr - Gewohnheiten und Timer
-// gibt es fuer jedes Konto. Bleibt nur stehen, bis die alte Fokus-App
-// abgeschaltet ist (dann faellt auch die Spalte users.fokus_zugang aus dem
-// Code).
-let fokusZugang = false;
-window.hatFokusZugang = () => fokusZugang;
 
 // ---------- Hilfsfunktionen ----------
 function uid() {
@@ -789,9 +782,6 @@ function resetAkkordeon() {
   });
 }
 
-// Fokus-Tracker-Zeile: Status-Text und "aktiv"-Farbe. Eigene Funktion statt
-// Teil von aktualisiereEinSubtexte(), weil sie auch direkt nach dem Freischalten
-// (ohne Akkordeon-Kontext) aufgerufen wird.
 // ---------- Google-Kalender ----------
 // Nur der Verbindungs-Zustand; die Termine selbst holt kalender.js. Der
 // ganze Abschnitt bleibt unsichtbar, solange im Pages-Projekt keine
@@ -1696,7 +1686,7 @@ function ladeCacheLokal() {
 function speichereCacheLokal() {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({
-      listen, daten, eigeneEmail, eigenerName, istAdmin, fokusZugang,
+      listen, daten, eigeneEmail, eigenerName, istAdmin,
     }));
   } catch (e) { /* z. B. voller Speicher - der Cache ist nur ein Fallback */ }
 }
@@ -1808,7 +1798,6 @@ function wiederherstellenAusCache() {
   eigeneEmail = cache.eigeneEmail || "";
   eigenerName = cache.eigenerName || "";
   istAdmin = !!cache.istAdmin;
-  fokusZugang = !!cache.fokusZugang;
   canSave = true;
   document.getElementById("kontoName").textContent = eigenerName || "Konto";
   document.getElementById("kontoAdresse").textContent = eigeneEmail;
@@ -1834,8 +1823,8 @@ async function loadState() {
     }
     if (res.status === 401) { await login(); continue; }
     if (res.status === 403) {
-      // Angemeldet, aber kein todo_zugang (z. B. ein reines Fokus-Konto, oder
-      // gerade selbst aufgegeben) - ein zweiter Anmeldeversuch mit derselben
+      // Angemeldet, aber kein todo_zugang (z. B. gerade selbst aufgegeben) -
+      // ein zweiter Anmeldeversuch mit derselben
       // Sitzung wuerde daran nichts aendern, deshalb eigener Kasten statt
       // der Anmeldemaske.
       const daten = await res.json().catch(() => ({}));
@@ -1854,7 +1843,6 @@ async function loadState() {
     const antwort = (await res.json()) || {};
     canSave = true;
     istAdmin = antwort.admin === true;
-    fokusZugang = antwort.fokusZugang === true;
     eigeneEmail = antwort.email || "";
     eigenerName = antwort.name || "";
     // Name als Ueberschrift im Konto-Abschnitt, Adresse darunter.
@@ -2548,9 +2536,8 @@ function render() {
   // Offenes Kalender-Panel mitziehen (siehe kalender.js). Zugeklappt und
   // solange die Datei noch nicht geladen ist, kostet der Aufruf nichts.
   if (window.kalenderNeuZeichnen) window.kalenderNeuZeichnen();
-  // Dasselbe fuers Fokus-Panel (fokus.js): hier faellt auch die Entscheidung,
-  // ob es den 🔥-Knopf ueberhaupt gibt - fokusZugang steht erst nach dem
-  // Bootstrap fest.
+  // Dasselbe fuers Fokus-Panel (fokus.js): der erste Aufruf heisst
+  // "angemeldet, Daten da" - erst ab dann gibt es die Fokus-Reiter.
   if (window.fokusNeuZeichnen) window.fokusNeuZeichnen();
   synchronisiereOhneBereich();
   if (addingCat && !state.categories.some(c => c.id === addingCat)) { addingCat = null; addingThema = null; }
