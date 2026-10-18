@@ -763,9 +763,8 @@ function zeigeEinAnsicht(name) {
 // Akkordeon der Hauptansicht: je Oeffnen klappen die anderen Abschnitte zu -
 // die <details> werden nie neu gerendert, darum reicht eine einmalige
 // Verdrahtung auf das native "toggle"-Event (deckt auch Tastaturbedienung
-// ab, nicht nur Klicks). Das Konto oben und die Abschnitte im Reiter "ToDo"
-// bilden EIN Akkordeon (darum kein ">" im Selektor); der Reiter
-// "Gewohnheiten" hat keine <details>.
+// ab, nicht nur Klicks). Das Konto oben und die Abschnitte beider Reiter
+// bilden EIN Akkordeon (darum kein ">" im Selektor).
 document.querySelectorAll("#einstellungenHaupt details.ein-abschnitt").forEach(det => {
   det.addEventListener("toggle", () => {
     if (det.open) {
@@ -776,18 +775,19 @@ document.querySelectorAll("#einstellungenHaupt details.ein-abschnitt").forEach(d
   });
 });
 
-// Bei jedem Oeffnen auf denselben Ausschnitt zurueck - "Meine Listen" ist
-// laut Erst-Hinweis der haeufigste Grund fuers Zahnrad, der Rest faengt zu.
+// Bei jedem Oeffnen ist alles zu (Hendriks Wunsch vom 18.10.2026: kein
+// Abschnitt soll von sich aus offenstehen). Davor startete "Meine Listen"
+// offen, weil es laut Erst-Hinweis der haeufigste Grund fuers Zahnrad war.
 function resetAkkordeon() {
   document.querySelectorAll("#einstellungenHaupt details.ein-abschnitt").forEach(det => {
-    det.open = det.dataset.abschnitt === "listen";
+    det.open = false;
   });
 }
 
 // Die zwei Reiter unter den globalen Einstellungen: "ToDo" (Google, Listen)
 // und "Gewohnheiten" (Timer, Kalender-Streifen, Flamme). Die Reiterzeile
 // steht im HTML, hier wird nur umgeschaltet. Beim Oeffnen immer "ToDo": dort
-// liegt "Meine Listen", laut Erst-Hinweis der haeufigste Grund fuers Zahnrad.
+// liegen die Listen, der haeufigste Grund fuers Zahnrad.
 const EIN_REITER = { todo: "einReiterTodo", gewohnheiten: "einReiterGewohnheiten" };
 function zeigeEinReiter(name) {
   if (!EIN_REITER[name]) name = "todo";
@@ -858,6 +858,8 @@ function zeigeStreifenSchalter() {
   streifenGewohnheitenLabel.textContent = streifenAn.gewohnheiten ? "An" : "Aus";
   streifenTimerSwitch.checked = streifenAn.timer;
   streifenTimerLabel.textContent = streifenAn.timer ? "An" : "Aus";
+  const an = [streifenAn.gewohnheiten && "Gewohnheiten", streifenAn.timer && "Timer"].filter(Boolean);
+  document.getElementById("subStreifen").textContent = an.length ? an.join(" · ") : "nur Kalender";
 }
 
 function schalteStreifen(welcher, an) {

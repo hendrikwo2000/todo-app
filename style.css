@@ -1382,6 +1382,20 @@ input[type="date"]:focus {
   gap: 0;
   padding: 14px 24px 20px;
 }
+/* Oben festgenagelt statt mittig: klappt man einen Abschnitt auf oder wechselt
+   den Reiter, waechst der Kasten nach unten, und seine Oberkante bleibt, wo sie
+   ist. Mittig zentriert wanderte sie bei jeder Hoehenaenderung nach oben. Die
+   Hoehe bekommt den Rest bis 20px (Polster des Dialogs) vor dem unteren Rand;
+   ist der Inhalt hoeher, blaettert .ein-blaettern. Am Handy fuellt der Dialog
+   den Bildschirm, dort greift der Block darunter. */
+#einstellungenPopup {
+  --ein-abstand-oben: 8vh;
+  align-items: flex-start;
+  padding-top: var(--ein-abstand-oben);
+}
+#einstellungenPopup .admin-popup-box.einstellungen {
+  max-height: min(calc(100vh - var(--ein-abstand-oben) - 20px), 900px);
+}
 /* Das ✕ rechts - die linke Ecke gehoert dem Inhalt. */
 .ein-kopfzeile { display: flex; flex: none; justify-content: flex-end; padding-bottom: 4px; }
 /* Randlos in der Ecke: der Knopf traegt sein eigenes Polster, das soll nicht
@@ -3502,8 +3516,7 @@ html.kal-split .fok-ring { max-height: 190px; }
 /* ---------- Rahmen ---------- */
 .gw-kopfzeile { justify-content: space-between; align-items: center; }
 .gw-box .gw-kopfzeile h2.gw-titel { margin: 0; font-size: 18px; text-align: left; }
-.gw-reiter,
-.ein-reiter {
+.gw-reiter {
   display: flex;
   flex: none;
   gap: 2px;
@@ -3513,8 +3526,7 @@ html.kal-split .fok-ring { max-height: 190px; }
   border-radius: 10px;
   background: var(--col-bg);
 }
-.gw-reiter-seg,
-.ein-reiter-seg {
+.gw-reiter-seg {
   flex: 1;
   min-width: 0;
   border: 0;
@@ -3527,8 +3539,7 @@ html.kal-split .fok-ring { max-height: 190px; }
   cursor: pointer;
   transition: background .15s, color .15s;
 }
-.gw-reiter-seg[aria-selected="true"],
-.ein-reiter-seg[aria-selected="true"] {
+.gw-reiter-seg[aria-selected="true"] {
   background: var(--row);
   box-shadow: 0 1px 2px rgba(0, 0, 0, .10);
   color: var(--text);
@@ -3812,12 +3823,41 @@ html.kal-split .fok-ring { max-height: 190px; }
 }
 
 /* ---------- Einstellungen: Reiter "ToDo" und "Gewohnheiten" ---------- */
-/* Das Aussehen der Reiterzeile kommt aus .gw-reiter / .gw-reiter-seg weiter
-   oben (geteilt mit dem Fenster "Gewohnheiten"). Nur der Abstand ist hier
-   ein anderer: die Hauptansicht ist ein Flex mit gap, den unteren Abstand
-   liefert der gap. */
-.ein-reiter { margin: 6px 0 0; }
-.ein-reiterinhalt { display: flex; flex-direction: column; gap: 12px; }
+/* Reiterzeile und Inhalt in EINER Karte: so sieht man, dass die Abschnitte
+   darunter zum gewaehlten Reiter gehoeren. Der gewaehlte Reiter hat eine
+   Unterstreichung in der Akzentfarbe; sie liegt ueber der Trennlinie der
+   Zeile (margin-bottom: -1px). */
+.ein-reiterbox {
+  margin-top: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ein-reiter {
+  display: flex;
+  background: var(--col-bg);
+  border-bottom: 1px solid var(--line);
+}
+.ein-reiter-seg {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: -1px;
+  padding: 11px 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ein-reiter-seg[aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  cursor: default;
+}
+.ein-reiterinhalt { display: flex; flex-direction: column; gap: 6px; padding: 6px 14px 4px; }
 /* Eigene display-Regel schlaegt das hidden-Attribut - siehe .ein-abschnitt[hidden]. */
 .ein-reiterinhalt[hidden] { display: none; }
 /* Die Trennlinie steht ZWISCHEN zwei sichtbaren Abschnitten, nicht direkt unter
@@ -3827,7 +3867,3 @@ html.kal-split .fok-ring { max-height: 190px; }
 .ein-reiterinhalt > .ein-abschnitt:not([hidden]) ~ .ein-abschnitt {
   border-top: 1px solid var(--line); padding-top: 6px; margin-top: 2px;
 }
-/* Feste Ueberschrift statt Klappzeile (Reiter "Gewohnheiten"): .ein-kopf
-   bringt Cursor und Hover-Farbe einer Klappzeile mit, beides passt hier nicht. */
-.ein-kopf-fest { margin: 0; font: inherit; cursor: default; }
-.ein-kopf-fest:hover .ein-kopf-text { color: var(--text); }

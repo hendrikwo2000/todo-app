@@ -330,27 +330,38 @@ Ansichten nach ihrer ID ein- und ausblendet.
 Einstellungen als Zeilen — Darstellung, Zoom (nur Touch), Benachrichtigungen,
 Konto, Verwaltung (nur Admin). Darunter **zwei Reiter**, `ToDo` und
 `Gewohnheiten` (`.ein-reiter`, umgeschaltet von `zeigeEinReiter()` in
-`app.js`; beim Öffnen immer `ToDo`):
+`app.js`; beim Öffnen immer `ToDo`), zusammen mit ihrem Inhalt in **einer
+Karte** (`.ein-reiterbox`, Reiter mit Akzent-Unterstreichung):
 - **ToDo**: Google Kalender, Meine Listen, Geteilt mit mir.
 - **Gewohnheiten**: Fokus-Timer, Kalender-Streifen, Gewohnheiten.
 
 Hendriks Vorgabe (gefragt): „Einstellungen öffnen, dann sieht man alle
 globalen Einstellungen … und dann ein Reiter zum Öffnen, damit es
 übersichtlicher wird". Mein erster Entwurf (Reiter ganz oben, alles andere im
-ToDo-Reiter) war nicht gemeint und wurde verworfen. Die Reiterzeile sieht aus
-wie die im Fenster „Gewohnheiten" (gleiche CSS-Regel), hat aber eigene
-Klassen, weil `gewohnheiten.js` sich `.gw-reiter-seg` im Fenster greift.
+ToDo-Reiter) war nicht gemeint und wurde verworfen. Die Reiterzeile hat eigene
+Klassen (`.ein-reiter-seg`), weil `gewohnheiten.js` sich `.gw-reiter-seg` im
+Fenster „Gewohnheiten" greift.
 
-**Akkordeon nur noch dort, wo es hilft.** Konto (oben) und die drei Abschnitte
-im Reiter ToDo bilden *ein* Akkordeon: immer nur einer offen, beim Öffnen
-„Meine Listen" (`resetAkkordeon()`; die Selektoren haben bewusst kein `>`,
-sonst fielen die Abschnitte im Reiter heraus). Der Reiter Gewohnheiten hat
-bewusst keine `<details>`: drei kurze Abschnitte, offen untereinander
-(Hendriks Wahl), mit festen Überschriften (`.ein-kopf-fest`) statt
-Klappzeilen — darum dort auch keine Kurztexte in der Kopfzeile mehr. Die
-Trennlinie zwischen Abschnitten setzt CSS nur *zwischen* zwei sichtbare (`~`):
-„Google Kalender" ist ohne Zugangsdaten ausgeblendet, mit `:first-child` stünde
-dann eine Linie direkt unter der Reiterzeile.
+**Die Karte gibt es, weil eine lose Reiterzeile nicht als Teil des Inhalts
+darunter gelesen wurde** (Hendrik nach dem ersten Stand am 18.10.2026: „nicht
+direkt ersichtlich, dass die Reiter zu den Einstellungen darunter gehören").
+Reiterzeile und Abschnitte stehen deshalb in einem gemeinsamen Rahmen.
+
+**Ein Akkordeon über alles, beim Öffnen alles zu.** Konto (oben) und die
+Abschnitte beider Reiter bilden *ein* Akkordeon: immer nur einer offen
+(`resetAkkordeon()`; die Selektoren haben bewusst kein `>`, sonst fielen die
+Abschnitte in den Reitern heraus). Beim Öffnen steht keiner offen — Hendriks
+Wunsch am 18.10.2026. Zwischendurch waren die drei Gewohnheiten-Abschnitte
+offen untereinander (seine erste Wahl); nach dem Ausprobieren wollte er sie
+doch eingeklappt. Die Trennlinie zwischen Abschnitten setzt CSS nur *zwischen*
+zwei sichtbare (`~`): „Google Kalender" ist ohne Zugangsdaten ausgeblendet, mit
+`:first-child` stünde dann eine Linie direkt unter der Reiterzeile.
+
+**Der Dialog sitzt oben fest, nicht mittig** (`#einstellungenPopup`,
+`--ein-abstand-oben: 8vh`). Mittig zentriert wanderte seine Oberkante bei jedem
+Aufklappen und Reiterwechsel nach oben; jetzt wächst er nur nach unten, bis
+zum Rand (dann blättert `.ein-blaettern`). Am Handy gilt weiter Vollbild. Das
+Fenster „Gewohnheiten" (`#gewFenster`) ist davon nicht betroffen.
 
 **Das Zahnrad gibt es zweimal.** Einmal in der Kopfzeile der App
 (`#einstellungenBtn`), einmal im Kalender (`.kal-ansicht-zeile`) — am Handy
@@ -2361,7 +2372,7 @@ eingehaengt in `schliesseObersteEbene` in kalender.js); solange es offen ist,
 gibt es keine Rand-Wischgeste (`darfGeste`).
 
 **Einstellungen, drei Abschnitte** (seit 18.10.2026 im Reiter „Gewohnheiten",
-in der Oberfläche in der Reihenfolge Timer, Streifen, Gewohnheiten; Aufbau siehe
+eingeklappt, in der Reihenfolge Timer, Streifen, Gewohnheiten; Aufbau siehe
 Kapitel „Einstellungen"):
 - **Kalender-Streifen** - zwei Schalter, Gewohnheiten und Timer je fuer sich,
   pro Geraet in `localStorage.streifenGewohnheiten` / `streifenTimer`

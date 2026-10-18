@@ -5,7 +5,7 @@
 
    - "Neue Gewohnheit" / "Gewohnheit bearbeiten" (#gewDialog)
    - "Tag nachtragen" aus dem Verlauf (#gewTagDialog)
-   - der Reiter "Gewohnheiten" in den Einstellungen (Timer, Flamme)
+   - die Abschnitte "Gewohnheiten" und "Fokus-Timer" in den Einstellungen
 
    Uebernommen aus der Fokus-App (Oktober 2026), mit denselben Regeln: die
    Art (Abhaken/Menge) und die Ziel-Art (Mindestens/Hoechstens) lassen sich
@@ -296,11 +296,10 @@ for (const dialog of [gewDialog, gewTagDialog]) {
 }
 
 /* --------------------------------------------------------- Einstellungen */
-/* Zwei Abschnitte im Reiter "Gewohnheiten" der Einstellungen: "Gewohnheiten"
-   (Zaehlweise der Flamme, Weg ins Fenster, Export) und "Fokus-Timer"
-   (Standarddauer). Beide Werte gelten pro KONTO (Tabelle fokus_einstellungen),
-   anders als die Schalter im Abschnitt "Kalender-Streifen", die pro Geraet
-   gelten. */
+/* Zwei Abschnitte im Akkordeon der Einstellungen: "Gewohnheiten" (Zaehlweise
+   der Flamme, Weg ins Fenster, Export) und "Fokus-Timer" (Standarddauer).
+   Beide Werte gelten pro KONTO (Tabelle fokus_einstellungen), anders als die
+   Schalter im Abschnitt "Kalender-Streifen", die pro Geraet gelten. */
 
 let gewEinstellungen = { arbeitMin: 25, flammenModus: "absolut" };
 
@@ -323,6 +322,14 @@ function gewZeichneDauer() {
   gewFeld("gewDauerWert").textContent = `${gewFeld("gewDauer").value} Min`;
 }
 
+function gewZeichneEinstellungsSubtexte() {
+  gewFeld("subGewTimer").textContent = `${gewEinstellungen.arbeitMin} Min`;
+  if (gewBestand.geladen) {
+    const n = gewBestand.gewohnheiten.filter(g => !g.archiviert).length;
+    gewFeld("subGewohnheiten").textContent = n === 1 ? "1 Gewohnheit" : `${n} Gewohnheiten`;
+  }
+}
+
 /**
  * Aus oeffneEinstellungen() in app.js. Zeigt erst den gemerkten Stand und
  * holt dann den echten - die Werte koennen an einem anderen Geraet geaendert
@@ -332,9 +339,8 @@ window.gewEinstellungenZeigen = async function () {
   gewZeichneFlammenSchalter();
   gewFeld("gewDauer").value = String(gewEinstellungen.arbeitMin);
   gewZeichneDauer();
+  gewZeichneEinstellungsSubtexte();
 
-  // Der Bestand wird gleich mitgeladen, damit das Fenster "Verlauf, Statistik
-  // & Verwalten" beim Antippen sofort steht statt erst "Lädt …" zu zeigen.
   const [fokus] = await Promise.all([
     gewApi(`/api/fokus?heute=${todayStr()}`),
     gewBestand.geladen ? Promise.resolve() : gewLadeBestand(),
@@ -348,6 +354,7 @@ window.gewEinstellungenZeigen = async function () {
     gewFeld("gewDauer").value = String(gewEinstellungen.arbeitMin);
     gewZeichneDauer();
   }
+  gewZeichneEinstellungsSubtexte();
 };
 
 gewFeld("gewFlammenSwitch").addEventListener("change", async () => {
@@ -381,6 +388,7 @@ gewFeld("gewDauerSpeichern").addEventListener("click", async () => {
   });
   if (!antwort.ok) { snackInfo(antwort.daten.error || "Speichern fehlgeschlagen."); return; }
   gewEinstellungen.arbeitMin = antwort.daten.arbeitMin;
+  gewZeichneEinstellungsSubtexte();
   gewMeldeAenderung("einstellungen");
   snackInfo(`Standarddauer: ${gewEinstellungen.arbeitMin} Minuten`);
 });
