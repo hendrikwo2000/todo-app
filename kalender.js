@@ -258,8 +258,12 @@ function speichereMenge(schluessel, menge) {
 // Zwei Mengen statt einer: ein NEU auftauchender Google-Kalender soll
 // ausgeschaltet starten (ausser dem Hauptkalender), eine spaetere eigene
 // Entscheidung darf davon aber nie wieder ueberschrieben werden.
-let quellenAus = ladeMenge("kalQuellenAus");
-let quellenBekannt = ladeMenge("kalQuellenBekannt");
+// Je Konto (konto.js): welche Google-Kalender aus sind, gehoert zum Konto,
+// nicht zum Browser.
+const QUELLEN_AUS_KEY = kontoSchluessel("kalQuellenAus");
+const QUELLEN_BEKANNT_KEY = kontoSchluessel("kalQuellenBekannt");
+let quellenAus = ladeMenge(QUELLEN_AUS_KEY);
+let quellenBekannt = ladeMenge(QUELLEN_BEKANNT_KEY);
 
 // Halb getippter Titel im Anlege-Feld. Das Panel zeichnet sich bei jeder
 // Aenderung neu; ohne diesen Zwischenspeicher waere der Text dann weg.
@@ -299,7 +303,7 @@ function kalenderName(kal) {
 function schalteQuelle(schluessel) {
   if (quellenAus.has(schluessel)) quellenAus.delete(schluessel);
   else quellenAus.add(schluessel);
-  speichereMenge("kalQuellenAus", quellenAus);
+  speichereMenge(QUELLEN_AUS_KEY, quellenAus);
   zeichneKalender();
 }
 
@@ -381,8 +385,8 @@ function merkeNeueKalender(kalender) {
     neu = true;
   }
   if (neu) {
-    speichereMenge("kalQuellenBekannt", quellenBekannt);
-    speichereMenge("kalQuellenAus", quellenAus);
+    speichereMenge(QUELLEN_BEKANNT_KEY, quellenBekannt);
+    speichereMenge(QUELLEN_AUS_KEY, quellenAus);
   }
 }
 
@@ -391,7 +395,9 @@ function merkeNeueKalender(kalender) {
 // ein, bekamen die Wochen ihre Balkenspuren und der ganze Streifen sprang.
 // Der letzte Stand liegt deshalb im Browser und wird sofort gezeichnet, die
 // Anfrage an Google laeuft parallel und ersetzt ihn still.
-const SPEICHER_KEY = "kalTermineSpeicher";
+// Je Konto (konto.js) - zwei Tabs mit zwei Konten zeigten sonst die Termine
+// des jeweils anderen.
+const SPEICHER_KEY = kontoSchluessel("kalTermineSpeicher");
 const SPEICHER_EINTRAEGE = 6;   // sechs, nicht drei: der erste Abruf eines
 // Monats geht OHNE Kalender-IDs raus (die Liste kennt die App da noch
 // nicht), der zweite mit - pro Monat entstehen also zwei Eintraege.
@@ -2754,7 +2760,7 @@ function baueGoogleVerbinden() {
   k.type = "button";
   k.className = "btn klein google-btn kal-google-verbinden";
   k.innerHTML = `<span class="google-g" aria-hidden="true">${GOOGLE_G_SVG}</span>Mit Google verbinden`;
-  k.addEventListener("click", () => { location.href = "/api/google/start"; });
+  k.addEventListener("click", () => { location.href = kontoAdresse("/api/google/start"); });
   return k;
 }
 

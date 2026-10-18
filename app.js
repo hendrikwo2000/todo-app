@@ -442,7 +442,9 @@ function turnstileToken() {
   return window.turnstile.getResponse(turnstileId) || "";
 }
 
-function login() {
+// `zusaetzlich`: ueber "+ Weiteres Konto" geoeffnet - die bisherigen Konten
+// bleiben angemeldet, und "Zurueck" fuehrt ohne Anmeldung wieder raus.
+function login({ zusaetzlich = false } = {}) {
   return new Promise(resolve => {
     const overlay  = document.getElementById("lock");
     const form     = document.getElementById("lockForm");
@@ -453,6 +455,7 @@ function login() {
     const umschalt = document.getElementById("lockSwitch");
     const erfolg   = document.getElementById("lockErfolg");
     const button   = form.querySelector("button[type=submit]");
+    const zurueck  = document.getElementById("lockZurueck");
     let schritt = "email";
     let aktuelleEmail = "";
     let wartetAufLink = null;
@@ -472,16 +475,40 @@ function login() {
       wartetAufLink = null;
     };
 
+    // Angemeldet - per Code hier oder per Link in einem anderen Tab. Kam das
+    // Konto zu anderen dazu (Mehrkonten, konto.js), zeigt dieser Tab ab jetzt
+    // das neue; das geht nur ueber Neuladen, weil Speicherschluessel und
+    // App-Zustand am Konto haengen. Sonst wie immer: Maske zu, weiter.
+    const fertig = (daten) => {
+      hoerAufZuWarten();
+      if (daten && daten.mehrere && daten.konto) {
+        kontoWaehlen(daten.konto);
+        location.reload();
+        return;
+      }
+      // Tab meinte ein Konto, das es nicht mehr gibt, und jetzt ist nur noch
+      // eins da: zurueck zum Normalfall, sonst fragte er weiter nach dem alten.
+      if (kontoDesTabs()) {
+        kontoVergessen();
+        location.reload();
+        return;
+      }
+      overlay.classList.add("hidden");
+      resolve();
+    };
+
+    // Nach genau der Adresse fragen, auf deren Mail die Maske wartet: mit
+    // mehreren Konten ist ja schon jemand angemeldet, ein blosses "gilt eine
+    // Sitzung?" waere sofort wahr.
     const warteAufLink = () => {
       hoerAufZuWarten();
       wartetAufLink = setInterval(async () => {
         try {
-          const res = await fetch("/api/auth/status", { cache: "no-store" });
+          const res = await fetch("/api/auth/status?email=" + encodeURIComponent(aktuelleEmail),
+            { cache: "no-store" });
           const daten = await res.json();
           if (!daten.angemeldet) return;
-          hoerAufZuWarten();
-          overlay.classList.add("hidden");
-          resolve();
+          fertig(daten);
         } catch (e) { /* offline oder kurz gestoert - beim naechsten Mal wieder */ }
       }, 3000);
     };
@@ -491,13 +518,17 @@ function login() {
       hoerAufZuWarten();
       erfolg.hidden = true;
       form.hidden = false;
-      document.getElementById("lockHint").textContent = "Mit deiner E-Mail-Adresse anmelden.";
+      document.getElementById("lockHint").textContent = zusaetzlich
+        ? "Weiteres Konto anmelden – die anderen bleiben angemeldet."
+        : "Mit deiner E-Mail-Adresse anmelden.";
       name.hidden = true;
       email.hidden = false;
       code.hidden = true;
       zeigeTurnstile(false);
       button.textContent = "Anmeldelink anfordern";
-      umschalt.hidden = false;
+      // Wer ein weiteres Konto anmeldet, hat schon Zugang - die Warteliste
+      // waere hier nur ein Abzweig ins Leere.
+      umschalt.hidden = zusaetzlich;
       umschalt.textContent = "Noch keinen Zugang? Eintragen";
       setzeMeldung("");
       overlay.classList.remove("hidden");
@@ -518,6 +549,7 @@ function login() {
       name.hidden = false;
       email.hidden = false;
       code.hidden = true;
+      document.getElementById("lockKonten").hidden = true;
       button.textContent = "Eintragen";
       zeigeTurnstile(true);
       umschalt.hidden = false;
@@ -535,6 +567,7 @@ function login() {
       document.getElementById("lockHint").textContent =
         `Mail an ${aktuelleEmail} geschickt — kann eine halbe Minute dauern. ` +
         `Klick dort auf „Jetzt anmelden“, dann geht es hier von selbst weiter.`;
+      document.getElementById("lockKonten").hidden = true;
       warteAufLink();
       name.hidden = true;
       email.hidden = true;
@@ -650,14 +683,17 @@ function login() {
             body: JSON.stringify({ email: aktuelleEmail, code: eingegeben }),
           });
           if (!res.ok) {
-            setzeMeldung("Falscher oder abgelaufener Code.");
+            // 409: Browser hat schon die Hoechstzahl an Konten - das sagt der
+            // Server genauer als jeder Text hier.
+            setzeMeldung(res.status === 409
+              ? await serverMeldung(res, "Zu viele Konten angemeldet.")
+              : "Falscher oder abgelaufener Code.");
             code.value = "";
             code.focus();
             return;
           }
-          hoerAufZuWarten();
-          overlay.classList.add("hidden");
-          resolve();
+          const daten = await res.json().catch(() => ({}));
+          fertig({ mehrere: daten.zusaetzlich, konto: daten.konto });
         }
       } finally {
         button.disabled = false;
@@ -669,7 +705,16 @@ function login() {
       }
     };
 
+    zurueck.hidden = !zusaetzlich;
+    zurueck.onclick = () => {
+      hoerAufZuWarten();
+      overlay.classList.add("hidden");
+      resolve();
+    };
+    if (zusaetzlich) email.value = "";
+
     zeigeEmailSchritt();
+    zeigeAngemeldeteKonten();
 
     // /api/auth/link leitet bei einem abgelaufenen oder schon benutzten Link
     // hierher zurueck. Ohne Hinweis stuende man wieder vor der Maske und
@@ -678,7 +723,9 @@ function login() {
     if (grund) {
       setzeMeldung(grund === "abgelaufen"
         ? "Der Link ist abgelaufen oder wurde schon benutzt. Fordere einen neuen an."
-        : "Die Anmeldung über den Link hat nicht geklappt.");
+        : grund === "zuviele"
+          ? "In diesem Browser sind schon zu viele Konten angemeldet – melde erst eins ab."
+          : "Die Anmeldung über den Link hat nicht geklappt.");
       // Aus der Adresszeile nehmen, damit ein Neuladen den Hinweis nicht
       // wiederholt.
       history.replaceState(null, "", location.pathname);
@@ -697,12 +744,124 @@ async function logout() {
   // Ebenso Gewohnheiten und offline gemerkte Haken (gewohnheiten-daten.js).
   window.gewVergiss?.();
   try {
-    await fetch("/api/auth/logout", { method: "POST" });
+    const res = await fetch("/api/auth/logout", { method: "POST" });
+    nachKontoWeg(await res.json().catch(() => ({})));
   } catch (e) {
     // Auch wenn der Aufruf scheitert, neu laden - dann greift spaetestens
     // die Sitzungspruefung beim naechsten Abruf.
   }
   location.reload();
+}
+
+// ---------- Mehrere Konten im Browser (konto.js) ----------
+// Nach Abmelden oder Loeschen: welches Konto der Tab beim Neuladen zeigt. Der
+// Server meldet, wie viele uebrig sind und welches vorne steht. Bleibt
+// hoechstens eins, ist es wieder der Normalfall ohne Kontowahl.
+function nachKontoWeg(antwort) {
+  if (antwort && antwort.uebrig > 1 && antwort.naechstes) kontoWaehlen(antwort.naechstes);
+  else kontoVergessen();
+}
+
+// Dieser Tab zeigt ab jetzt ein anderes, schon angemeldetes Konto. Andere
+// Tabs bleiben, wie sie sind - nur neue Tabs starten mit diesem.
+function wechsleKonto(id, anzahlKonten) {
+  if (anzahlKonten > 1) kontoWaehlen(id);
+  else kontoVergessen();
+  location.reload();
+}
+
+async function ladeBrowserKonten() {
+  try {
+    const res = await fetch("/api/auth/konten", { cache: "no-store" });
+    const d = await res.json();
+    return { konten: Array.isArray(d.konten) ? d.konten : [], mehrkonten: !!d.mehrkonten };
+  } catch (e) {
+    return { konten: [], mehrkonten: false };
+  }
+}
+
+// Eine Zeile je Konto, im Stil der Listen-Zeilen. Das Konto dieses Tabs ist
+// markiert und nicht anklickbar - es ist ja schon da.
+function baueKontoZeile(k, anzahl) {
+  const row = document.createElement("div");
+  row.className = "listen-zeile";
+  const kopf = document.createElement("div");
+  kopf.className = "lz-kopf";
+  const name = document.createElement(k.aktiv ? "span" : "button");
+  name.className = "lz-name" + (k.aktiv ? " dieser-tab" : "");
+  name.textContent = k.name || k.email;
+  kopf.appendChild(name);
+  const mail = document.createElement("span");
+  mail.className = "lz-von";
+  mail.textContent = k.email;
+  kopf.appendChild(mail);
+  row.appendChild(kopf);
+  if (!k.aktiv) {
+    const wechsel = () => wechsleKonto(k.id, anzahl);
+    name.type = "button";
+    name.title = `Zu ${k.name || k.email} wechseln`;
+    name.addEventListener("click", wechsel);
+    row.classList.add("waehlbar");
+    row.addEventListener("click", e => { if (!e.target.closest("button")) wechsel(); });
+  }
+  return row;
+}
+
+// Einstellungen -> Konto: Liste und "+ Weiteres Konto", nur wenn ein Admin
+// im Browser angemeldet ist (dieselbe Bedingung prueft der Server beim
+// Anmelden). Die Liste erst ab zwei Konten - eins steht ja schon darueber.
+async function zeigeKontenInEinstellungen() {
+  const box = document.getElementById("kontoMehrere");
+  const liste = document.getElementById("kontoListe");
+  const abmelden = document.getElementById("kontoAbmelden");
+  const { konten, mehrkonten } = await ladeBrowserKonten();
+  box.hidden = !mehrkonten;
+  liste.innerHTML = "";
+  const mehrere = mehrkonten && konten.length > 1;
+  document.getElementById("kontoListeBox").hidden = !mehrere;
+  if (mehrere) for (const k of konten) liste.appendChild(baueKontoZeile(k, konten.length));
+  abmelden.textContent = mehrere ? "Dieses Konto abmelden" : "Abmelden";
+  document.getElementById("kontoAbmeldenText").textContent = mehrere
+    ? "Nur dieses Konto – die anderen in diesem Browser bleiben angemeldet."
+    : "Du bekommst beim nächsten Mal wieder einen Anmeldelink per Mail.";
+}
+
+// Anmeldemaske: "Schon angemeldet" ueber dem Adressfeld - beim Hinzufuegen
+// eines Kontos, oder wenn das Konto dieses Tabs inzwischen woanders
+// abgemeldet wurde. Das Konto, das der Tab gerade zeigt, fehlt darin: dahin
+// fuehrt "Zurueck".
+async function zeigeAngemeldeteKonten() {
+  const box = document.getElementById("lockKonten");
+  const liste = document.getElementById("lockKontenListe");
+  box.hidden = true;
+  const { konten, mehrkonten } = await ladeBrowserKonten();
+  const andere = konten.filter(k => !k.aktiv);
+  if (!mehrkonten || !andere.length) return;
+  liste.innerHTML = "";
+  for (const k of andere) {
+    const knopf = document.createElement("button");
+    knopf.type = "button";
+    knopf.className = "lock-konto";
+    const n = document.createElement("span");
+    n.className = "lock-konto-name";
+    n.textContent = k.name || k.email;
+    const m = document.createElement("span");
+    m.className = "lock-konto-mail";
+    m.textContent = k.email;
+    knopf.append(n, m);
+    knopf.addEventListener("click", () => wechsleKonto(k.id, konten.length));
+    liste.appendChild(knopf);
+  }
+  box.hidden = false;
+}
+
+// Tab-Titel mit Kontoname, sobald mehrere Konten im Spiel sind - der Name
+// vorne, weil schmale Tabs hinten abschneiden. fokus.js setzt den Titel nach
+// dem Timer auf window.seitenTitel zurueck.
+function setzeSeitentitel() {
+  if (!kontoDesTabs()) return;
+  window.seitenTitel = `${eigenerName || eigeneEmail} · ToDo-Liste`;
+  document.title = window.seitenTitel;
 }
 
 // Angemeldet, aber kein todo_zugang. Hier hilft kein zweiter Versuch,
@@ -951,6 +1110,7 @@ function oeffneEinstellungen() {
 
   zeigeEinAnsicht("haupt");
   einstellungenPopup.hidden = false;
+  zeigeKontenInEinstellungen();
   aktualisierePushSchalter();
   aktualisiereGoogleAbschnitt();
   // Gewohnheiten und Fokus-Timer (gewohnheiten-dialoge.js).
@@ -1202,8 +1362,8 @@ function entferneListeLokal(id) {
   delete daten[id];
   if (aktiveListe === id) {
     aktiveListe = listen.length ? listen[0].id : null;
-    if (aktiveListe) localStorage.setItem("aktiveListe", aktiveListe);
-    else localStorage.removeItem("aktiveListe");
+    if (aktiveListe) localStorage.setItem(AKTIVE_LISTE_KEY, aktiveListe);
+    else localStorage.removeItem(AKTIVE_LISTE_KEY);
     editingId = editingCat = addingCat = null;
   }
   zeigeAktiveListe();
@@ -1231,7 +1391,7 @@ async function neueListeAnlegen() {
     listen.push(d);
     daten[d.id] = { categories: [], themen: [], todos: [] };
     aktiveListe = d.id;
-    localStorage.setItem("aktiveListe", d.id);
+    localStorage.setItem(AKTIVE_LISTE_KEY, d.id);
     editingId = editingCat = addingCat = null;
     zeigeAktiveListe();
     zeichneListen();
@@ -1392,7 +1552,7 @@ async function evtlBeitreten() {
     await loadState();
     if (d.id && daten[d.id]) {
       aktiveListe = d.id;
-      localStorage.setItem("aktiveListe", d.id);
+      localStorage.setItem(AKTIVE_LISTE_KEY, d.id);
       zeigeAktiveListe();
     }
     snackInfo(d.schon ? "Diese Liste hattest du schon." : `„${d.name}“ hinzugefügt.`);
@@ -1431,6 +1591,7 @@ async function kontoLoeschen() {
     const pendingAlle = pendingLesen();
     delete pendingAlle[eigeneEmail];
     pendingSchreiben(pendingAlle);
+    nachKontoWeg(await res.json().catch(() => ({})));
     location.reload();
   } catch (e) {
     msg.textContent = "Server nicht erreichbar.";
@@ -1682,7 +1843,7 @@ function zeichneTitel() {
 function wechsleListe(id) {
   if (!daten[id]) return;
   aktiveListe = id;
-  localStorage.setItem("aktiveListe", id);
+  localStorage.setItem(AKTIVE_LISTE_KEY, id);
   editingId = editingCat = addingCat = null;
   schliesseMenue();
   zeigeAktiveListe();
@@ -1696,8 +1857,13 @@ function wechsleListe(id) {
 // verschachtelt pro Konto (eigeneEmail), damit auf einem gemeinsam
 // genutzten Geraet ein Kontowechsel keine fremden, ungesicherten
 // Aenderungen verwirft oder verliert.
-const CACHE_KEY = "todoCache";
+//
+// CACHE_KEY und die aktive Liste haengen am Konto des Tabs (konto.js) - mit
+// zwei Konten in zwei Tabs ueberschrieben sich sonst die Spiegel gegenseitig.
+// PENDING_KEY braucht das nicht, der ist schon nach Adresse verschachtelt.
+const CACHE_KEY = kontoSchluessel("todoCache");
 const PENDING_KEY = "todoPending";
+const AKTIVE_LISTE_KEY = kontoSchluessel("aktiveListe");
 
 function ladeCacheLokal() {
   try {
@@ -1825,9 +1991,10 @@ function wiederherstellenAusCache() {
   canSave = true;
   document.getElementById("kontoName").textContent = eigenerName || "Konto";
   document.getElementById("kontoAdresse").textContent = eigeneEmail;
+  setzeSeitentitel();
   zeigeEinstellungenKnopf();
   mischePendingEin();
-  const gemerkt = localStorage.getItem("aktiveListe");
+  const gemerkt = localStorage.getItem(AKTIVE_LISTE_KEY);
   aktiveListe = (gemerkt && listen.some(b => b.id === gemerkt))
     ? gemerkt
     : (listen.length ? listen[0].id : null);
@@ -1872,6 +2039,7 @@ async function loadState() {
     // Name als Ueberschrift im Konto-Abschnitt, Adresse darunter.
     document.getElementById("kontoName").textContent = eigenerName || "Konto";
     document.getElementById("kontoAdresse").textContent = eigeneEmail;
+    setzeSeitentitel();
     // Erst jetzt anzeigen: vorher stuenden die Knoepfe auch auf dem
     // Sperrbildschirm.
     zeigeEinstellungenKnopf();
@@ -1898,7 +2066,7 @@ async function loadState() {
     speichereCacheLokal();
 
     // Aktive Liste: die gemerkte, sonst die erste, sonst keine.
-    const gemerkt = localStorage.getItem("aktiveListe");
+    const gemerkt = localStorage.getItem(AKTIVE_LISTE_KEY);
     aktiveListe = (gemerkt && listen.some(b => b.id === gemerkt))
       ? gemerkt
       : (listen.length ? listen[0].id : null);
@@ -3601,6 +3769,10 @@ document.getElementById("neueListe").addEventListener("click", neueListeAnlegen)
 document.getElementById("kontoAbmelden")
   .addEventListener("click", () => zeigeEinAnsicht("abmelden"));
 document.getElementById("kontoAbmeldenJa").addEventListener("click", logout);
+document.getElementById("kontoHinzufuegen").addEventListener("click", () => {
+  einstellungenPopup.hidden = true;
+  login({ zusaetzlich: true });
+});
 document.getElementById("kontoAbmeldenZurueck")
   .addEventListener("click", () => zeigeEinAnsicht("haupt"));
 
@@ -4126,7 +4298,7 @@ if (pushSwitch) pushSwitch.addEventListener("change", schaltePushUm);
 // Zustimmungsdialog braucht einen echten Seitenwechsel). Zurueck kommt der
 // Browser auf "/?google=...", siehe unten.
 document.getElementById("googleVerbinden").addEventListener("click", () => {
-  location.href = "/api/google/start";
+  location.href = kontoAdresse("/api/google/start");
 });
 
 // Trennen erst nach Rueckfrage: der Klick liegt direkt unter dem
@@ -4250,8 +4422,20 @@ function evtlWeiterleiten() {
   return true;
 }
 
+// /api/auth/link bei vollem Browser (Mehrkonten): man ist ja angemeldet, die
+// Anmeldemaske mit ihrem Hinweis kommt also gar nicht - ohne diese Zeile
+// passierte nach dem Klick auf den Link scheinbar einfach nichts.
+function meldeZuvieleKonten() {
+  const url = new URL(location.href);
+  if (url.searchParams.get("login") !== "zuviele") return;
+  url.searchParams.delete("login");
+  history.replaceState(null, "", url.pathname + url.search + url.hash);
+  snackInfo("In diesem Browser sind schon zu viele Konten angemeldet – melde erst eins ab.");
+}
+
 (async function init() {
   await loadState();
+  meldeZuvieleKonten();
   if (evtlWeiterleiten()) return;   // ?weiter=<url> aus dem Dashboard
   await evtlBeitreten();   // ?beitreten=<token> aus dem Teilen-Link einloesen
   aktualisiereMenue();

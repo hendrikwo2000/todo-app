@@ -551,7 +551,7 @@ async function starteSitzung() {
   // Der Klick ist die Geste, die Browser fuer Tonausgabe verlangen - beim
   // Ablauf des Timers gibt es keine mehr. Deshalb hier schon aufwecken.
   weckeTon();
-  document.title = FOK_TITEL;
+  document.title = window.seitenTitel || FOK_TITEL;
   const antwort = await fokSchreibe("fokus/start", { heute: todayStr() });
   if (!antwort.ok) { snackInfo(antwort.daten.error || "Start fehlgeschlagen."); return; }
   if (antwort.daten.vorherBeendet) {
@@ -769,7 +769,7 @@ setInterval(() => {
 // dauernd da und soll keine laengst beendete Sitzung anzeigen.
 document.addEventListener("visibilitychange", async () => {
   if (document.hidden) return;
-  document.title = FOK_TITEL;
+  document.title = window.seitenTitel || FOK_TITEL;
   if (!fokBereit) return;
   await gewLiefereNach();
   ladeFokus();

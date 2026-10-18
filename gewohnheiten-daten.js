@@ -133,10 +133,13 @@ const gewBestand = {
 
 // Der zuletzt geladene Bestand im localStorage: ohne ihn stuende das Fenster
 // ohne Netz leer da, und ohne Liste laesst sich nichts nachtragen.
-const GEW_STAND_SCHLUESSEL = "gew_stand";
+//
+// Alle drei Schluessel je Konto (konto.js): mit zwei Konten in zwei Tabs
+// lieferte sonst der eine Tab die offline gemerkten Haken des anderen nach.
+const GEW_STAND_SCHLUESSEL = kontoSchluessel("gew_stand");
 // Die Heute-Liste des Streifens, aus demselben Grund (App unterwegs neu
 // oeffnen ist der haeufigste Offline-Moment).
-const GEW_HEUTE_SCHLUESSEL = "gew_heute";
+const GEW_HEUTE_SCHLUESSEL = kontoSchluessel("gew_heute");
 
 function gewMerke(schluessel, wert) {
   try { localStorage.setItem(schluessel, JSON.stringify(wert)); }
@@ -254,7 +257,7 @@ function gewFlammenEinheitVon(g) {
  * Die Flamme rechnet die Warteschlange nicht mit - sie haengt an der ganzen
  * Historie. Sie bleibt stehen und stimmt nach dem Nachliefern wieder.
  */
-const GEW_WARTE_SCHLUESSEL = "gew_warteschlange";
+const GEW_WARTE_SCHLUESSEL = kontoSchluessel("gew_warteschlange");
 
 let gewWarteschlange = gewLies(GEW_WARTE_SCHLUESSEL) || [];
 

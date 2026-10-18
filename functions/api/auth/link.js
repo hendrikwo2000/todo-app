@@ -16,7 +16,7 @@
  * kein separater "gesperrt"-Fall mehr noetig.
  */
 
-import { hashHex, neuesToken, setzeSessionCookies, mitCookies, SESSION_ABLAUF_SQL } from "../../_lib/session.js";
+import { hashHex, neuesToken, mitCookies, anmeldungVorbereiten, SESSION_ABLAUF_SQL } from "../../_lib/session.js";
 
 function weiter(ziel, cookies = []) {
   return new Response(null, {
@@ -44,6 +44,10 @@ export async function onRequestGet({ request, env }) {
     const nutzer = await env.DB.prepare("SELECT id, todo_zugang FROM users WHERE email = ?")
       .bind(eintrag.email).first();
     if (!nutzer) return weiter("/?login=fehler");
+    // Vor dem Verbrauchen pruefen: ist der Browser schon voll, bleibt der Link
+    // gueltig, und man kann erst ein Konto abmelden.
+    const plan = await anmeldungVorbereiten(request, env, nutzer.id);
+    if (plan.zuviele) return weiter("/?login=zuviele");
     if (!nutzer.todo_zugang) {
       await env.DB.prepare("UPDATE users SET todo_zugang = 1 WHERE id = ?").bind(nutzer.id).run();
     }
@@ -57,7 +61,10 @@ export async function onRequestGet({ request, env }) {
       ).bind(await hashHex(sitzung), nutzer.id),
     ]);
 
-    return weiter("/", setzeSessionCookies(request, sitzung));
+    // Kam das Konto zu den schon angemeldeten dazu, soll der Tab, in dem der
+    // Link aufgeht, genau dieses Konto zeigen - konto.js liest ?konto=.
+    const { cookies, zusaetzlich } = plan.cookies(sitzung);
+    return weiter(zusaetzlich ? `/?konto=${nutzer.id}` : "/", cookies);
   } catch (e) {
     return weiter("/?login=fehler");
   }

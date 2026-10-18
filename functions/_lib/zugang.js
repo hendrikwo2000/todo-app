@@ -34,12 +34,14 @@ export async function darfRein(env, email) {
  * Sonst kaeme jemand mit einer gueltigen Sitzung per curl direkt an die API,
  * ohne die Maske je gesehen zu haben.
  */
-export async function nutzerOderFehler(request, env) {
+// `kontoId` nur, wo der Tab sein Konto nicht selbst mitschicken kann (die
+// Rueckleitung von Google) - sonst gilt, was angemeldeterNutzer liest.
+export async function nutzerOderFehler(request, env, kontoId) {
   if (!env.DB) return { fehler: json({ error: "D1-Bindung DB fehlt im Pages-Projekt" }, 500) };
 
   let nutzer, z;
   try {
-    nutzer = await angemeldeterNutzer(request, env);
+    nutzer = await angemeldeterNutzer(request, env, kontoId);
     if (nutzer) z = await zeile(env, nutzer.email);
   } catch (e) {
     return { fehler: json({ error: "Datenbankfehler" }, 500) };

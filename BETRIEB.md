@@ -147,6 +147,76 @@ Der Merker wird beim ersten Blick darauf gelöscht, auch wenn nicht
 weitergeleitet wird — sonst hinge der Wunsch an der Sitzung und schöbe einen
 später aus dem Nichts von der ToDo-Liste weg.
 
+### Mehrere Konten im selben Browser (seit 18.10.2026)
+
+Zum Testen: Admin in Tab 1, Testkonto in Tab 2, und keiner meldet den
+anderen ab. **Nur freigeschaltet, wenn im Browser ein Admin angemeldet ist** —
+normale Nutzer sehen nichts davon und melden sich wie immer um (die neue
+Sitzung ersetzt die alte).
+
+Bedienung: Einstellungen → Konto → „+ Weiteres Konto“ öffnet die
+Anmeldemaske, ohne abzumelden. Danach steht dort die Liste der angemeldeten
+Konten; ein Klick wechselt **diesen** Tab. Ein neuer Tab startet mit dem
+zuletzt gewählten Konto. Die Anmeldemaske zeigt dieselben Konten unter
+„Schon angemeldet“, wenn sie über „+ Weiteres Konto“ aufgeht oder das Konto
+des Tabs woanders abgemeldet wurde. Höchstens `MAX_KONTEN` = 5.
+
+**Server** (`functions/_lib/session.js`):
+
+- Das erste Konto bleibt in `todo_session` (domainweit — das Schul-Dashboard
+  sieht nur dieses). Alle weiteren Token stehen mit Punkt getrennt in
+  `todo_weitere` (HttpOnly, host-only).
+- Welches Konto ein Tab meint, kommt als Header `X-Konto: <user_id>`, bei
+  echten Seitenaufrufen als `?konto=` (Gewohnheiten-Export,
+  `/api/google/start`). `angemeldeterNutzer` nimmt dann **nur** die Sitzung
+  genau dieses Kontos — ist sie weg, gibt es 401 statt still das erste Konto.
+  Ohne Header alles wie vorher.
+- `anmeldungVorbereiten` (in `verify-code.js` und `link.js`, VOR dem
+  Verbrauchen des Codes): Ist ein Admin unter den Sitzungen des Browsers,
+  kommt ein anderes Konto dazu statt zu ersetzen. Der Link leitet dann auf
+  `/?konto=<id>`, der Code antwortet mit `zusaetzlich: true`. Bei vollem
+  Browser: `/?login=zuviele` bzw. 409, Code und Link bleiben gültig.
+- Abmelden und Konto löschen treffen nur das Konto des Tabs;
+  `cookiesNachAbmelden` stutzt die Cookies auf das, was in `sessions` noch
+  gilt. Fällt das erste Konto weg, rückt das nächste in `todo_session` nach.
+  Die Antwort sagt `uebrig` und `naechstes`, danach richtet sich der Tab.
+- Neu: `GET /api/auth/konten` (Liste für die Oberfläche, `mehrkonten` = ein
+  Admin ist dabei). `GET /api/auth/status?email=` fragt nach genau der
+  Adresse, auf deren Mail die Maske wartet — sonst ginge sie mit einem schon
+  angemeldeten Admin sofort wieder zu.
+- Google verbinden: `start.js` merkt sich das Konto in `google_konto`
+  (Pfad `/api/google`, 10 Minuten), weil Google bei der Rückleitung nur
+  `state` durchreicht.
+
+**Browser** (`konto.js`, lädt als ERSTES Skript in `index.html` und
+`admin.html`):
+
+- `sessionStorage.konto` = Konto dieses Tabs, `localStorage.kontoZuletzt` =
+  Startwert für neue Tabs. Gesetzt nur, solange mehr als ein Konto angemeldet
+  ist; sonst läuft alles ohne Header wie früher.
+- Eine Hülle um `fetch` hängt den Header an jede `/api/`-Anfrage — keine
+  Stelle kann es vergessen. Links auf `/api/` bekommen `?konto=` beim Klick.
+- `kontoSchluessel(name)` trennt den Offline-Speicher je Konto (`todoCache`,
+  aktive Liste, Kalender-Termine und -Quellen, `gew_stand`/`gew_heute`/
+  `gew_warteschlange`). Ohne die Trennung lieferte ein Tab die offline
+  gemerkten Haken des anderen Kontos nach. `todoPending` brauchte das nicht,
+  das ist schon nach Adresse verschachtelt.
+- Kontowechsel = Neuladen, weil Schlüssel und App-Zustand nur beim Laden
+  bestimmt werden. Tab-Titel dann „Name · ToDo-Liste“ (Name vorn, schmale
+  Tabs schneiden hinten ab); `fokus.js` setzt nach dem Timer auf
+  `window.seitenTitel` zurück.
+
+**Bewusst nicht:** Push gibt es weiter nur einmal pro Browser — das Abo hängt
+am Endpunkt des Browsers (`push_subscriptions.endpoint` ist eindeutig) und
+geht an das Konto, das den Schalter zuletzt eingeschaltet hat. Der Schalter
+steht dann in allen Tabs auf „An“.
+
+**Lokal testen:** Cookies von Hand setzen geht auch hier
+(`todo_session=<token>`, `todo_weitere=<token>.<token>`, siehe
+„Lokal testen“); die Server-Fälle lassen sich bequem mit `curl` und
+`-H "Cookie: …" -H "X-Konto: <id>"` durchspielen, inklusive der
+`Set-Cookie`-Zeilen.
+
 ## Listen und Teilen
 
 Eine **Liste** (`boards`) ist die teilbare Einheit über den Bereichen. Wer sie

@@ -8,11 +8,11 @@
  */
 
 import { nutzerOderFehler } from "../../_lib/zugang.js";
-import { liesCookie } from "../../_lib/session.js";
+import { liesCookie, mitCookies } from "../../_lib/session.js";
 import {
   fehltEinrichtung, tauscheCode, emailAusIdToken, speichereKonto,
 } from "../../_lib/google.js";
-import { STATE_COOKIE } from "./start.js";
+import { STATE_COOKIE, KONTO_COOKIE } from "./start.js";
 
 function zurueck(request, ergebnis) {
   const ziel = new URL("/", request.url);
@@ -20,16 +20,21 @@ function zurueck(request, ergebnis) {
   const sicher = ziel.protocol === "https:" ? " Secure;" : "";
   return new Response(null, {
     status: 302,
-    headers: {
+    headers: mitCookies({
       Location: ziel.toString(),
-      "Set-Cookie": `${STATE_COOKIE}=; Path=/api/google; HttpOnly;${sicher} SameSite=Lax; Max-Age=0`,
       "Cache-Control": "no-store",
-    },
+    }, [
+      `${STATE_COOKIE}=; Path=/api/google; HttpOnly;${sicher} SameSite=Lax; Max-Age=0`,
+      `${KONTO_COOKIE}=; Path=/api/google; HttpOnly;${sicher} SameSite=Lax; Max-Age=0`,
+    ]),
   });
 }
 
 export async function onRequestGet({ request, env }) {
-  const { nutzerId, fehler } = await nutzerOderFehler(request, env);
+  // Das Konto des Tabs, der "Verbinden" geklickt hat (start.js) - ohne
+  // Cookie wie immer das erste Konto.
+  const konto = Number(liesCookie(request, KONTO_COOKIE)) || undefined;
+  const { nutzerId, fehler } = await nutzerOderFehler(request, env, konto);
   // Wer hier ohne gueltige Sitzung ankommt (z. B. weil die Anmeldung
   // zwischendurch ablief), soll die Anmeldemaske sehen, keinen 401-Text.
   if (fehler) return zurueck(request, "keine-sitzung");

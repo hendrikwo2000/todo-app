@@ -5,7 +5,7 @@
  * Browser unsichtbar, anders als das fruehere Passwort in localStorage).
  */
 
-import { hashHex, zeitgleich, neuesToken, setzeSessionCookies, mitCookies, SESSION_ABLAUF_SQL } from "../../_lib/session.js";
+import { hashHex, zeitgleich, neuesToken, mitCookies, anmeldungVorbereiten, MAX_KONTEN, SESSION_ABLAUF_SQL } from "../../_lib/session.js";
 import { darfRein } from "../../_lib/zugang.js";
 
 function json(body, status = 200, cookies = []) {
@@ -65,6 +65,13 @@ export async function onRequestPost({ request, env }) {
       return json({ error: "Falscher oder abgelaufener Code" }, 401);
     }
 
+    // Erst nach dem richtigen Code (sonst verriete die Meldung beim Raten
+    // etwas), aber vor dem Verbrauchen: der Code bleibt dann gueltig.
+    const plan = await anmeldungVorbereiten(request, env, nutzer.id);
+    if (plan.zuviele) {
+      return json({ error: `Höchstens ${MAX_KONTEN} Konten gleichzeitig – melde erst eins ab.` }, 409);
+    }
+
     // Verbraucht - loeschen, damit derselbe Code nicht zweimal funktioniert.
     await env.DB.prepare("DELETE FROM login_codes WHERE id = ?").bind(eintrag.id).run();
 
@@ -74,7 +81,10 @@ export async function onRequestPost({ request, env }) {
        VALUES (?, ?, ${SESSION_ABLAUF_SQL})`
     ).bind(await hashHex(token), nutzer.id).run();
 
-    return json({ ok: true }, 200, setzeSessionCookies(request, token));
+    // `konto` + `zusaetzlich` braucht nur die Anmeldemaske eines Browsers mit
+    // mehreren Konten: dann zeigt der Tab ab jetzt das neue.
+    const { cookies, zusaetzlich } = plan.cookies(token);
+    return json({ ok: true, konto: nutzer.id, zusaetzlich }, 200, cookies);
   } catch (e) {
     return json({ error: "Datenbankfehler" }, 500);
   }

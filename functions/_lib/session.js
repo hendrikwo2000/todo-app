@@ -7,6 +7,19 @@
 
 export const COOKIE_NAME = "todo_session";
 
+// Mehrere Konten im selben Browser, je Tab eines (gedacht fuer Admin +
+// Testkonto). Das erste Konto bleibt in COOKIE_NAME - das sehen auch das
+// Schul-Dashboard und alles, was von Mehrkonten nichts weiss. Alle weiteren
+// Sitzungstoken stehen mit Punkt getrennt in diesem zweiten Cookie (base64url
+// kennt keinen Punkt). Host-only, weil nur die ToDo-Liste sie lesen muss.
+export const WEITERE_COOKIE = "todo_weitere";
+export const MAX_KONTEN = 5;
+
+// Welches der angemeldeten Konten ein Tab meint, schickt konto.js bei jeder
+// API-Anfrage als Header mit. Echte Seitenaufrufe (Google verbinden, Export)
+// koennen keinen Header setzen, die haengen ?konto= an die Adresse.
+const KONTO_HEADER = "X-Konto";
+
 // Das Sitzungs-Cookie gilt fuer die ganze Domain, nicht nur fuer
 // todo.it-wolf.org. Nur so sieht eine zweite App auf einer eigenen Subdomain
 // (heute das Schul-Dashboard auf schule.it-wolf.org, bis Oktober 2026 auch die
@@ -136,14 +149,137 @@ export function mitCookies(basis, cookies = []) {
   return headers;
 }
 
+// ---------- Mehrere Konten im selben Browser ----------
+
+/** Konto-ID, die der Tab ausdruecklich meint - oder null (= erstes Konto). */
+export function gewaehltesKonto(request) {
+  const roh = request.headers.get(KONTO_HEADER) || new URL(request.url).searchParams.get("konto");
+  const id = Number(roh);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function alleTokens(request) {
+  const haupt = liesCookie(request, COOKIE_NAME);
+  const weitere = (liesCookie(request, WEITERE_COOKIE) || "").split(".").filter(Boolean);
+  return [haupt, ...weitere].filter(Boolean).slice(0, MAX_KONTEN);
+}
+
+/**
+ * Alle gueltigen Sitzungen dieses Browsers, in Cookie-Reihenfolge:
+ * [{ token, haupt, nutzer: { id, email, name, role } }].
+ *
+ * Abgelaufene oder geloeschte Token fallen still heraus. Taucht ein Konto
+ * doppelt auf (zweimal angemeldet), zaehlt nur der erste Eintrag.
+ */
+export async function browserSitzungen(request, env) {
+  const tokens = alleTokens(request);
+  if (!tokens.length) return [];
+  const hashes = await Promise.all(tokens.map(hashHex));
+  const { results } = await env.DB.prepare(
+    `SELECT s.token_hash, u.id, u.email, u.name, u.role
+       FROM sessions s JOIN users u ON u.id = s.user_id
+      WHERE s.token_hash IN (${hashes.map(() => "?").join(",")})
+        AND s.expires_at > datetime('now')`
+  ).bind(...hashes).all();
+  const zuHash = new Map((results || []).map(z => [z.token_hash, z]));
+  const gesehen = new Set();
+  const sitzungen = [];
+  tokens.forEach((token, i) => {
+    const z = zuHash.get(hashes[i]);
+    if (!z || gesehen.has(z.id)) return;
+    gesehen.add(z.id);
+    sitzungen.push({
+      token,
+      haupt: i === 0,
+      nutzer: { id: z.id, email: z.email, name: z.name, role: z.role },
+    });
+  });
+  return sitzungen;
+}
+
+function weitereCookie(request, tokens) {
+  if (!tokens.length) {
+    return `${WEITERE_COOKIE}=; Path=/; HttpOnly;${secureFlag(request)} SameSite=Lax; Max-Age=0`;
+  }
+  const maxAge = COOKIE_TAGE * 24 * 60 * 60;
+  return `${WEITERE_COOKIE}=${tokens.join(".")}; Path=/; HttpOnly;${secureFlag(request)} SameSite=Lax; Max-Age=${maxAge}`;
+}
+
+/**
+ * Set-Cookie-Zeilen, damit der Browser genau diese Token haelt - das erste
+ * als Hauptsitzung, der Rest als weitere. Schreibt nur, was sich aendert.
+ */
+function kontenCookies(request, tokens) {
+  if (!tokens.length) return loescheAlleKontenCookies(request);
+  const hatteWeitere = !!liesCookie(request, WEITERE_COOKIE);
+  const cookies = [];
+  if (tokens[0] !== liesCookie(request, COOKIE_NAME)) cookies.push(...setzeSessionCookies(request, tokens[0]));
+  if (tokens.length > 1 || hatteWeitere) cookies.push(weitereCookie(request, tokens.slice(1)));
+  return cookies;
+}
+
+/** Alles weg: Hauptsitzung samt weiteren Konten (Abmelden ohne Datenbank). */
+export function loescheAlleKontenCookies(request) {
+  const weg = loescheSessionCookies(request);
+  if (liesCookie(request, WEITERE_COOKIE)) weg.push(weitereCookie(request, []));
+  return weg;
+}
+
+/**
+ * Vor einer frischen Anmeldung klaeren, welche Cookies sie setzt.
+ *
+ * Normalfall wie immer: die neue Sitzung ersetzt die alte. Ist in diesem
+ * Browser aber schon ein Admin angemeldet, kommt ein anderes Konto DAZU, statt
+ * die bisherigen abzumelden - das ist die ganze Freischaltung fuer Mehrkonten,
+ * normale Nutzer kommen nie in diesen Zweig. Meldet sich ein Konto an, das
+ * schon dabei ist, bekommt es nur sein Token erneuert.
+ *
+ * Vor dem Verbrauchen des Codes aufrufen: bei vollem Browser (`zuviele`) soll
+ * der Link gueltig bleiben.
+ */
+export async function anmeldungVorbereiten(request, env, nutzerId) {
+  const sitzungen = await browserSitzungen(request, env);
+  const mehrkonten = sitzungen.some(s => s.nutzer.role === "admin");
+  const schonDa = sitzungen.some(s => s.nutzer.id === nutzerId);
+  if (mehrkonten && !schonDa && sitzungen.length >= MAX_KONTEN) return { zuviele: true };
+  return {
+    zuviele: false,
+    cookies(token) {
+      if (!mehrkonten) return { cookies: setzeSessionCookies(request, token), zusaetzlich: false };
+      const tokens = sitzungen.map(s => (s.nutzer.id === nutzerId ? token : s.token));
+      if (!schonDa) tokens.push(token);
+      return { cookies: kontenCookies(request, tokens), zusaetzlich: tokens.length > 1 };
+    },
+  };
+}
+
+/**
+ * Nach Abmelden oder Kontoloeschung: die Cookies auf die Sitzungen
+ * zurechtstutzen, die in der Datenbank noch gelten. Faellt das erste Konto
+ * weg, rueckt das naechste nach - der Browser bleibt angemeldet, nur eben mit
+ * einem Konto weniger.
+ */
+export async function cookiesNachAbmelden(request, env) {
+  const rest = await browserSitzungen(request, env);
+  return { cookies: kontenCookies(request, rest.map(s => s.token)), rest };
+}
+
 /**
  * Liefert { id, email, name, role } der aktuellen Sitzung, oder null.
  *
  * Die Rolle kommt bei JEDER Anfrage frisch aus der Datenbank statt aus dem
  * Cookie. Sonst behielte jemand, dem man Adminrechte entzogen hat, sie bis
  * zum Ablauf seiner Sitzung - bis zu 30 Tage.
+ *
+ * Meint der Tab ein bestimmtes Konto (`kontoId`), zaehlt nur die Sitzung
+ * genau dieses Kontos. Ist sie weg, gibt es null statt still das erste Konto -
+ * sonst speicherte ein Tab, der sich fuer "Test" haelt, ins Admin-Konto.
  */
-export async function angemeldeterNutzer(request, env) {
+export async function angemeldeterNutzer(request, env, kontoId = gewaehltesKonto(request)) {
+  if (kontoId != null) {
+    const treffer = (await browserSitzungen(request, env)).find(s => s.nutzer.id === kontoId);
+    return treffer ? treffer.nutzer : null;
+  }
   const token = liesCookie(request, COOKIE_NAME);
   if (!token) return null;
   const hash = await hashHex(token);

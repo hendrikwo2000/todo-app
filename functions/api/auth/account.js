@@ -6,7 +6,7 @@
  * einen unbedachten Klick: der Vorgang loescht alle ToDos unwiderruflich.
  */
 
-import { loescheSessionCookies, mitCookies } from "../../_lib/session.js";
+import { loescheAlleKontenCookies, cookiesNachAbmelden, mitCookies } from "../../_lib/session.js";
 import { nutzerOderFehler } from "../../_lib/zugang.js";
 import { loescheKonto, istLetzterAdmin, meldeLoeschung } from "../../_lib/loeschen.js";
 
@@ -53,5 +53,18 @@ export async function onRequestDelete({ request, env }) {
   // ruecknehmen, das Konto ist ohnehin weg.
   await meldeLoeschung(env, nutzer, false);
 
-  return json({ ok: true }, 200, loescheSessionCookies(request));
+  // Die Sitzungen des Kontos sind mit ihm weg. Waren im Browser weitere
+  // Konten angemeldet, bleiben die - frueher entwertete das Loeschen immer das
+  // erste Cookie, egal welches Konto weg war.
+  let cookies, rest = [];
+  try {
+    ({ cookies, rest } = await cookiesNachAbmelden(request, env));
+  } catch (e) {
+    cookies = loescheAlleKontenCookies(request);
+  }
+  return json({
+    ok: true,
+    uebrig: rest.length,
+    naechstes: rest.length ? rest[0].nutzer.id : null,
+  }, 200, cookies);
 }
