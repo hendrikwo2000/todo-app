@@ -123,17 +123,18 @@ hierher weiter, deine Gewohnheiten und Sitzungen sind dieselben.
   trägt ihn nach, Wischen wechselt den Monat
 - **Statistik:** wie oft geschafft, über 7, 30 oder 90 Tage
 - **Fokuszeit:** Fokusminuten pro Woche
-- **Verwalten:** neue Gewohnheit anlegen (abhaken oder mit Zielmenge,
-  mindestens oder höchstens, täglich / feste Wochentage / X Mal die Woche),
-  bearbeiten, Reihenfolge ändern, archivieren und löschen
 
-**In den Einstellungen (⚙️):**
+**In den Einstellungen (⚙️), Reiter „Gewohnheiten":**
 
+- **Fokus-Timer:** die Standarddauer
 - **Kalender-Streifen:** Gewohnheiten und Timer einzeln ein- oder ausblenden
   (gilt für dieses Gerät)
 - **Gewohnheiten:** ob die Flamme alle erledigten Tage zählt oder nur die am
-  Stück; Export als Datei
-- **Fokus-Timer:** die Standarddauer
+  Stück; Export als Datei; Knopf zum Fenster mit Verlauf, Statistik und
+  Fokuszeit
+- **Verwalten:** neue Gewohnheit anlegen (abhaken oder mit Zielmenge,
+  mindestens oder höchstens, täglich / feste Wochentage / X Mal die Woche),
+  bearbeiten, Reihenfolge ändern, archivieren und löschen
 
 Mit eingeschalteten Benachrichtigungen erinnert dich die App um 17 Uhr auch
 an Gewohnheiten, die heute noch offen sind.

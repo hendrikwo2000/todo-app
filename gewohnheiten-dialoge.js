@@ -6,6 +6,7 @@
    - "Neue Gewohnheit" / "Gewohnheit bearbeiten" (#gewDialog)
    - "Tag nachtragen" aus dem Verlauf (#gewTagDialog)
    - die Abschnitte "Gewohnheiten" und "Fokus-Timer" in den Einstellungen
+     (der Abschnitt "Verwalten" daneben wird in gewohnheiten.js gezeichnet)
 
    Uebernommen aus der Fokus-App (Oktober 2026), mit denselben Regeln: die
    Art (Abhaken/Menge) und die Ziel-Art (Mindestens/Hoechstens) lassen sich
@@ -163,7 +164,7 @@ gewFeld("gewSpeichern").onclick = async () => {
   }
   gewDialog.hidden = true;
   await gewLadeBestand();
-  if (gewIstOffen()) gewZeichneAktuell();
+  gewZeichneAktuell();
   gewMeldeAenderung("bestand");
   snackInfo(warNeu ? "Gewohnheit angelegt" : "Gespeichert");
 };
@@ -326,7 +327,9 @@ function gewZeichneEinstellungsSubtexte() {
   gewFeld("subGewTimer").textContent = `${gewEinstellungen.arbeitMin} Min`;
   if (gewBestand.geladen) {
     const n = gewBestand.gewohnheiten.filter(g => !g.archiviert).length;
+    const archiv = gewBestand.gewohnheiten.length - n;
     gewFeld("subGewohnheiten").textContent = n === 1 ? "1 Gewohnheit" : `${n} Gewohnheiten`;
+    gewFeld("subGewVerwalten").textContent = archiv ? `${n} aktiv · ${archiv} im Archiv` : `${n} aktiv`;
   }
 }
 
@@ -340,11 +343,19 @@ window.gewEinstellungenZeigen = async function () {
   gewFeld("gewDauer").value = String(gewEinstellungen.arbeitMin);
   gewZeichneDauer();
   gewZeichneEinstellungsSubtexte();
+  // Die Verwalten-Liste zeigt erst den gemerkten Stand (oder "Lädt …") und
+  // wird nach dem Laden neu gezeichnet - sie kann an einem anderen Geraet
+  // geaendert worden sein, darum wird der Bestand bei jedem Oeffnen geholt.
+  gewLaedt = !gewBestand.geladen;
+  gewLadeFehler = "";
+  gewZeichneVerwalten();
 
-  const [fokus] = await Promise.all([
+  const [fokus, bestand] = await Promise.all([
     gewApi(`/api/fokus?heute=${todayStr()}`),
-    gewBestand.geladen ? Promise.resolve() : gewLadeBestand(),
+    gewLadeBestand(),
   ]);
+  gewLaedt = false;
+  gewLadeFehler = bestand.ok ? "" : (bestand.fehler || "");
   if (fokus.ok && fokus.daten.einstellungen) {
     gewEinstellungen = {
       arbeitMin: fokus.daten.einstellungen.arbeitMin || 25,
@@ -355,6 +366,7 @@ window.gewEinstellungenZeigen = async function () {
     gewZeichneDauer();
   }
   gewZeichneEinstellungsSubtexte();
+  gewZeichneVerwalten();
 };
 
 gewFeld("gewFlammenSwitch").addEventListener("change", async () => {
@@ -393,4 +405,4 @@ gewFeld("gewDauerSpeichern").addEventListener("click", async () => {
   snackInfo(`Standarddauer: ${gewEinstellungen.arbeitMin} Minuten`);
 });
 
-gewFeld("gewVerwaltenOeffnen").addEventListener("click", () => gewFensterOeffnen("verwalten"));
+gewFeld("gewVerlaufOeffnen").addEventListener("click", () => gewFensterOeffnen("verlauf"));

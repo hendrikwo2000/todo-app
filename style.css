@@ -3520,35 +3520,22 @@ html.kal-split .fok-ring { max-height: 190px; }
 /* ---------- Rahmen ---------- */
 .gw-kopfzeile { justify-content: space-between; align-items: center; }
 .gw-box .gw-kopfzeile h2.gw-titel { margin: 0; font-size: 18px; text-align: left; }
-.gw-reiter {
-  display: flex;
-  flex: none;
-  gap: 2px;
-  padding: 2px;
-  margin: 6px 0 12px;
+/* Die Reiterzeile des Fensters ist die der Einstellungen (.ein-reiter, weiter
+   unten): Karteikarten, der vordere geht in den Rahmen um den Inhalt
+   (.gw-blaettern) ueber. Unter dem vorderen Reiter ist dessen Ecke eckig -
+   gewZeigeReiter setzt dafuer data-reiter am Fenster. Mit drei gleich breiten
+   Reitern sitzt der erste links, der letzte rechts, der mittlere in der Mitte
+   (beide Ecken rund). */
+.gw-fenster .ein-reiter { margin-top: 10px; }
+.gw-blaettern {
+  padding: 14px;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--col-bg);
+  border-radius: 12px;
 }
-.gw-reiter-seg {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  border-radius: 8px;
-  padding: 7px 4px;
-  background: none;
-  font: inherit;
-  font-size: 13px;
-  color: var(--muted);
-  cursor: pointer;
-  transition: background .15s, color .15s;
-}
-.gw-reiter-seg[aria-selected="true"] {
-  background: var(--row);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .10);
-  color: var(--text);
-  font-weight: 600;
-  cursor: default;
+#gewFenster[data-reiter="verlauf"] .gw-blaettern { border-top-left-radius: 0; }
+#gewFenster[data-reiter="fokuszeit"] .gw-blaettern { border-top-right-radius: 0; }
+@media (max-width: 560px) {
+  .gw-blaettern { padding: 12px; }
 }
 .gw-ansicht { display: flex; flex-direction: column; gap: 12px; padding-bottom: 6px; }
 .gw-ansicht[hidden] { display: none; }
@@ -3593,13 +3580,11 @@ html.kal-split .fok-ring { max-height: 190px; }
   border-color: var(--accent); background: var(--accent-soft); color: var(--accent);
 }
 
-/* Der Stift. In der Pillenreihe MUSS die Regel spezifischer sein als
-   ".gw-pillen button" (Klasse+Typ) - eine reine Klassenregel verliert dagegen,
-   und der Stift saehe wie eine zweite gewaehlte Gewohnheit aus. Deshalb steht
-   er dort ausdruecklich noch einmal. */
-.gw-stift,
-.gw-pillen button.gw-stift {
+/* Der Stift an den Zeilen der Verwalten-Liste. Im Verlauf sitzt der Stift in der
+   gewaehlten Pille, siehe .gw-pille-gewaehlt unten. */
+.gw-stift {
   flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
   width: 36px; height: 36px;
   padding: 0;
   border: 1px solid transparent;
@@ -3610,8 +3595,43 @@ html.kal-split .fok-ring { max-height: 190px; }
   cursor: pointer;
 }
 @media (hover: hover) {
-  .gw-stift:hover,
-  .gw-pillen button.gw-stift:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .gw-stift:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+}
+
+/* Die gewaehlte Pille mit dem Stift darin: EINE Pille, in der zwei Knoepfe sitzen,
+   getrennt durch einen feinen Strich. Die Regeln stehen mit ".gw-pillen" davor,
+   weil ".gw-pillen button" sonst jedem der beiden Knoepfe wieder einen eigenen
+   Rahmen und Hintergrund gaebe; sie muessen NACH den Pillen-Regeln stehen. */
+.gw-pillen .gw-pille-gewaehlt {
+  flex: 0 0 auto;
+  display: inline-flex;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+.gw-pillen .gw-pille-gewaehlt button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent);
+}
+.gw-pillen .gw-pille-gewaehlt .gw-pille-stift {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 13px 0 11px;
+}
+.gw-pillen .gw-pille-gewaehlt .gw-pille-stift::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 8px; bottom: 8px;
+  width: 1px;
+  background: var(--accent);
+  opacity: .35;
+}
+@media (hover: hover) {
+  .gw-pillen .gw-pille-gewaehlt button:hover { color: var(--text); }
 }
 
 /* ---------- Verlauf: Monatskalender ---------- */

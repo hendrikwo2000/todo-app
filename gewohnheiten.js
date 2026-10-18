@@ -1,12 +1,15 @@
 "use strict";
 
 /* ====================================================================
-   Fenster "Gewohnheiten" – Verlauf, Statistik, Fokuszeit, Verwalten
+   Fenster "Gewohnheiten" – Verlauf, Statistik, Fokuszeit
 
    Seit Oktober 2026 steht hier, was bis dahin die eigene Fokus-App
    (fokus.it-wolf.org) konnte und der Streifen nicht: der Monatskalender je
-   Gewohnheit samt Nachtragen, die Erfuellungsquote, die Fokusminuten pro
-   Woche und das Verwalten (anlegen, aendern, ordnen, archivieren, loeschen).
+   Gewohnheit samt Nachtragen, die Erfuellungsquote und die Fokusminuten pro
+   Woche. Das Verwalten (anlegen, aendern, ordnen, archivieren, loeschen) war
+   bis 18.10.2026 ein vierter Reiter hier; es steht jetzt als Abschnitt
+   "Verwalten" direkt in den Einstellungen (Reiter "Gewohnheiten"), wird aber
+   weiter in dieser Datei gezeichnet (gewZeichneVerwalten).
 
    Hendriks Entscheidung (gefragt): ein EIGENES Fenster, geoeffnet aus dem
    Streifen ("Verlauf & mehr", Stift an der Karte) oder aus den
@@ -28,7 +31,6 @@ const gewAnsichten = {
   verlauf: document.getElementById("gewVerlauf"),
   statistik: document.getElementById("gewStatistik"),
   fokuszeit: document.getElementById("gewFokuszeit"),
-  verwalten: document.getElementById("gewVerwalten"),
 };
 const gewKalRaster = document.getElementById("gewKalRaster");
 
@@ -86,9 +88,11 @@ function gewFensterSchliessen() {
 function gewZeigeReiter(name) {
   gewReiter = gewAnsichten[name] ? name : "verlauf";
   for (const [k, el] of Object.entries(gewAnsichten)) el.hidden = k !== gewReiter;
-  for (const seg of gewFenster.querySelectorAll(".gw-reiter-seg")) {
+  for (const seg of gewFenster.querySelectorAll(".ein-reiter-seg")) {
     seg.setAttribute("aria-selected", String(seg.dataset.gwReiter === gewReiter));
   }
+  // Fuer das CSS: unter dem vorderen Reiter ist die Ecke des Rahmens eckig.
+  gewFenster.dataset.reiter = gewReiter;
   // Jeder Reiter beginnt oben - sonst stuende die Statistik halb gescrollt da,
   // weil man im Verlauf nach unten gewischt hatte.
   gewFenster.querySelector(".gw-blaettern").scrollTop = 0;
@@ -96,10 +100,13 @@ function gewZeigeReiter(name) {
 }
 
 function gewZeichneAktuell() {
-  if (gewReiter === "verlauf") gewZeichneVerlauf();
-  else if (gewReiter === "statistik") gewZeichneStatistik();
+  // Die Verwalten-Liste steht in den Einstellungen, immer im DOM - sie wird bei
+  // jeder Aenderung mitgezeichnet, auch wenn das Fenster zu ist.
+  gewZeichneVerwalten();
+  if (!gewIstOffen()) return;
+  if (gewReiter === "statistik") gewZeichneStatistik();
   else if (gewReiter === "fokuszeit") gewZeichneFokuszeit();
-  else gewZeichneVerwalten();
+  else gewZeichneVerlauf();
 }
 
 // Waehrend des ersten Ladens bzw. nach einem Fehler: statt des Inhalts ein
@@ -112,12 +119,33 @@ function gewOhneBestand(behaelter) {
 
 /* -------------------------------------------------------------- Stift */
 
-// Derselbe Stift wie an den Karten im Streifen - es ist dieselbe Handlung.
+// Derselbe Stift, aber gezeichnet statt als Schriftzeichen: das ✎ sah im Verlauf
+// klein und fremd zwischen den Pillen aus (Hendrik, 18.10.2026). Er sitzt jetzt
+// IN der gewaehlten Pille (siehe gewZeichneKalWahl).
+const GEW_STIFT_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" '
+  + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+  + 'aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>'
+  + '<path d="m15 5 4 4"/></svg>';
+
+// Der Stift an den Zeilen der Verwalten-Liste, gezeichnet wie der in der Pille
+// im Verlauf (GEW_STIFT_SVG). Die Karten im Streifen (fokus.js) haben weiter das
+// Schriftzeichen ✎ - es ist dieselbe Handlung.
 function gewStiftKnopf(g) {
   const k = document.createElement("button");
   k.type = "button";
   k.className = "gw-stift";
-  k.textContent = "✎";
+  k.innerHTML = GEW_STIFT_SVG;
+  k.title = "Bearbeiten";
+  k.setAttribute("aria-label", `${g.name} bearbeiten`);
+  k.onclick = () => gewOeffneDialog(g);
+  return k;
+}
+
+function gewStiftInPille(g) {
+  const k = document.createElement("button");
+  k.type = "button";
+  k.className = "gw-pille-stift";
+  k.innerHTML = GEW_STIFT_SVG;
   k.title = "Bearbeiten";
   k.setAttribute("aria-label", `${g.name} bearbeiten`);
   k.onclick = () => gewOeffneDialog(g);
@@ -149,7 +177,7 @@ function gewZeichneVerlauf() {
     document.getElementById("gewKalVor").disabled = true;
     document.getElementById("gewLegendeGeplant").hidden = true;
     document.getElementById("gewLegendeUeberschritten").hidden = true;
-    gewKalRaster.replaceChildren(gewHinweis("Noch keine Gewohnheit angelegt – unter „Verwalten“ geht es los."));
+    gewKalRaster.replaceChildren(gewHinweis("Noch keine Gewohnheit angelegt – in den Einstellungen unter „Verwalten“ geht es los."));
     return;
   }
 
@@ -176,12 +204,18 @@ function gewZeichneKalWahl() {
       gewZeichneKalWahl();
       gewZeichneKalender();
     };
-    wahl.appendChild(knopf);
-    // Der Stift gehoert zur gewaehlten Gewohnheit und steht direkt neben ihr.
+    // Der Stift gehoert zur gewaehlten Gewohnheit und sitzt in ihrer Pille.
     // Hier muss er sein: Gewohnheiten, die heute nicht dran sind, tauchen im
     // Streifen gar nicht auf - ohne diesen Knopf kaeme man an sie nur noch
-    // ueber "Verwalten".
-    if (gewaehlt) wahl.appendChild(gewStiftKnopf(g));
+    // ueber "Verwalten" in den Einstellungen.
+    if (gewaehlt) {
+      const huelle = document.createElement("span");
+      huelle.className = "gw-pille-gewaehlt";
+      huelle.append(knopf, gewStiftInPille(g));
+      wahl.appendChild(huelle);
+    } else {
+      wahl.appendChild(knopf);
+    }
   }
 }
 
@@ -439,9 +473,10 @@ async function gewZeichneFokuszeit() {
 }
 
 /* ------------------------------------------------------------ Verwalten */
-/* Reihenfolge, Bearbeiten und Archiv an einem Ort. In der Fokus-App standen
-   Reihenfolge und Archiv in den Einstellungen - hier gehoeren sie zu den
-   Gewohnheiten selbst, die Einstellungen der ToDo-App sind schon voll genug.
+/* Reihenfolge, Bearbeiten und Archiv an einem Ort: dem Abschnitt "Verwalten" in
+   den Einstellungen (Reiter "Gewohnheiten"). Zwischen Oktober und dem
+   18.10.2026 war das ein Reiter im Fenster, weil die Einstellungen "schon voll
+   genug" waren - seit sie Reiter haben, wollte Hendrik es direkt dort.
    Hoch/Runter statt Ziehen: Ziehen braucht am Handy eigene Pointer-Behandlung
    und kollidiert mit dem Scrollen - zwei Pfeile treffen immer. */
 
@@ -452,6 +487,7 @@ function gewZeichneVerwalten() {
 
   const aktive = gewBestand.gewohnheiten.filter(g => !g.archiviert);
   const archiviert = gewBestand.gewohnheiten.filter(g => g.archiviert);
+  gewZeichneEinstellungsSubtexte();
 
   liste.replaceChildren();
   if (!aktive.length) liste.appendChild(gewHinweis("Noch keine Gewohnheit. Leg deine erste an – zum Abhaken oder mit Zielmenge."));
@@ -562,7 +598,7 @@ async function gewArchivieren(g, archivieren) {
   await gewLadeBestand();
   gewZeichneAktuell();
   gewMeldeAenderung("bestand");
-  snackInfo(archivieren ? "Archiviert — unter „Verwalten“ wieder zu holen" : "Wieder aktiv");
+  snackInfo(archivieren ? "Archiviert — in den Einstellungen unter „Verwalten“ wieder zu holen" : "Wieder aktiv");
   return true;
 }
 
@@ -590,7 +626,7 @@ async function gewLoeschen(g) {
 
 /* ----------------------------------------------------------- Verdrahtung */
 
-for (const seg of gewFenster.querySelectorAll(".gw-reiter-seg")) {
+for (const seg of gewFenster.querySelectorAll(".ein-reiter-seg")) {
   seg.addEventListener("click", () => gewZeigeReiter(seg.dataset.gwReiter));
 }
 document.getElementById("gewFensterZu").addEventListener("click", gewFensterSchliessen);
@@ -638,9 +674,11 @@ window.gewFensterOeffnen = gewFensterOeffnen;
  * Flamme brauchen den Bestand frisch vom Server.
  */
 gewBeiAenderung(async was => {
-  if (!gewIstOffen()) return;
+  // Das Fenster ODER die Einstellungen (mit der Verwalten-Liste) offen?
+  const einstellungenOffen = !einstellungenPopup.hidden;
+  if (!gewIstOffen() && !einstellungenOffen) return;
   if (was === "timer") {
-    if (gewReiter === "fokuszeit") gewZeichneFokuszeit();
+    if (gewIstOffen() && gewReiter === "fokuszeit") gewZeichneFokuszeit();
     return;
   }
   if (was === "nachgeliefert" || was === "einstellungen") await gewLadeBestand();

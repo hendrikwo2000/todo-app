@@ -415,8 +415,9 @@
              man die Abschnitte darunter nicht als zum Reiter gehoerig. Die
              Reihenfolge der Knoepfe ist die der Inhalte; welcher offen ist,
              setzt zeigeEinReiter() in app.js (beim Oeffnen immer "ToDo").
-             Eigene Klassen statt gw-reiter-*: gewohnheiten.js greift sich
-             .gw-reiter-seg im Fenster "Gewohnheiten". -->
+             Dieselben Klassen hat die Reiterzeile im Fenster "Gewohnheiten"
+             (style.css), darum greift sich app.js seine Reiter nur in
+             #einstellungenHaupt. -->
         <div class="ein-reiterbox">
           <div class="ein-reiter" role="tablist" aria-label="Einstellungen">
             <button type="button" class="ein-reiter-seg" id="einReiterKnopfTodo" role="tab" data-ein-reiter="todo" aria-selected="true" aria-controls="einReiterTodo">ToDo</button>
@@ -560,11 +561,31 @@
                   </label>
                 </div>
                 <p id="gewFlammenHinweis" class="ein-hinweis"></p>
-                <button type="button" id="gewVerwaltenOeffnen" class="btn klein">Verlauf, Statistik &amp; Verwalten</button>
+                <button type="button" id="gewVerlaufOeffnen" class="btn klein">Verlauf, Statistik &amp; Fokuszeit</button>
                 <!-- Ein normaler Link, kein JS: der Server setzt
                      Content-Disposition, der Browser laedt herunter. Zurueckspielen
                      gibt es bewusst nicht, siehe functions/api/export.js. -->
                 <a href="/api/export" download class="btn klein">⬇️ Gewohnheiten exportieren (JSON)</a>
+              </div>
+            </details>
+
+            <!-- Anlegen, bearbeiten, ordnen, archivieren, loeschen. Stand bis
+                 18.10.2026: vierter Reiter im Fenster "Gewohnheiten", hinter dem
+                 Knopf oben - Hendrik wollte es direkt hier haben. Gefuellt aus
+                 gewohnheiten.js (gewZeichneVerwalten). -->
+            <details class="ein-abschnitt" data-abschnitt="verwalten">
+              <summary class="ein-kopf">
+                <span class="ein-kopf-icon">🛠️</span>
+                <span class="ein-kopf-text">Verwalten</span>
+                <span class="ein-kopf-sub" id="subGewVerwalten"></span>
+                <span class="ein-kopf-pfeil">▾</span>
+              </summary>
+              <div class="ein-inhalt">
+                <div id="gewVerwaltenListe" class="gw-liste"></div>
+                <button type="button" id="gewNeuKnopf" class="btn primary">＋ Neue Gewohnheit</button>
+                <div class="gw-abschnitt-titel">Archiv</div>
+                <div id="gewArchivListe" class="gw-liste"></div>
+                <p id="gewArchivLeer" class="ein-hinweis">Noch nichts archiviert. Archivieren geht über den Stift einer Gewohnheit.</p>
               </div>
             </details>
 
@@ -636,7 +657,7 @@
     </div>
   </div>
 
-  <!-- Das Fenster "Gewohnheiten": Verlauf, Statistik, Fokuszeit, Verwalten.
+  <!-- Das Fenster "Gewohnheiten": Verlauf, Statistik, Fokuszeit.
        Seit Oktober 2026 hier statt in der eigenen Fokus-App. Steht AUSSERHALB
        des Kalender-Panels, aus demselben Grund wie die Kalender-Dialoge oben
        (dessen transform verbiegt position:fixed). Gefuellt aus
@@ -649,11 +670,13 @@
         <button type="button" id="gewFensterZu" class="ein-schliessen"
                 aria-label="Gewohnheiten schließen" title="Schließen">✕</button>
       </header>
-      <div class="gw-reiter" role="tablist" aria-label="Ansicht">
-        <button type="button" class="gw-reiter-seg" data-gw-reiter="verlauf" role="tab" aria-selected="true">Verlauf</button>
-        <button type="button" class="gw-reiter-seg" data-gw-reiter="statistik" role="tab" aria-selected="false">Statistik</button>
-        <button type="button" class="gw-reiter-seg" data-gw-reiter="fokuszeit" role="tab" aria-selected="false">Fokuszeit</button>
-        <button type="button" class="gw-reiter-seg" data-gw-reiter="verwalten" role="tab" aria-selected="false">Verwalten</button>
+      <!-- Dieselben Karteikarten-Reiter wie in den Einstellungen (.ein-reiter);
+           der Rahmen um den Inhalt ist .gw-blaettern, welcher Reiter vorn ist,
+           steht als data-reiter am Fenster (gewZeigeReiter). -->
+      <div class="ein-reiter" role="tablist" aria-label="Ansicht">
+        <button type="button" class="ein-reiter-seg" data-gw-reiter="verlauf" role="tab" aria-selected="true">Verlauf</button>
+        <button type="button" class="ein-reiter-seg" data-gw-reiter="statistik" role="tab" aria-selected="false">Statistik</button>
+        <button type="button" class="ein-reiter-seg" data-gw-reiter="fokuszeit" role="tab" aria-selected="false">Fokuszeit</button>
       </div>
       <div class="ein-blaettern gw-blaettern">
 
@@ -695,14 +718,6 @@
           <div id="gewDiagrammNamen" class="gw-diagramm-namen"></div>
           <p id="gewFokuszeitHinweis" class="ein-hinweis gw-mitte" hidden></p>
           <p class="ein-hinweis gw-mitte">Den Timer startest du im Kalender-Streifen, Reiter „Timer“. Die Standarddauer steht in den Einstellungen.</p>
-        </section>
-
-        <section id="gewVerwalten" class="gw-ansicht" hidden>
-          <div id="gewVerwaltenListe" class="gw-liste"></div>
-          <button type="button" id="gewNeuKnopf" class="btn primary">＋ Neue Gewohnheit</button>
-          <div class="gw-abschnitt-titel">Archiv</div>
-          <div id="gewArchivListe" class="gw-liste"></div>
-          <p id="gewArchivLeer" class="ein-hinweis">Noch nichts archiviert. Archivieren geht über den Stift einer Gewohnheit.</p>
         </section>
 
       </div>

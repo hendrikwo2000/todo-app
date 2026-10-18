@@ -794,11 +794,13 @@ function zeigeEinReiter(name) {
   for (const [k, id] of Object.entries(EIN_REITER)) {
     document.getElementById(id).hidden = k !== name;
   }
-  for (const seg of document.querySelectorAll(".ein-reiter-seg")) {
+  for (const seg of document.querySelectorAll("#einstellungenHaupt .ein-reiter-seg")) {
     seg.setAttribute("aria-selected", String(seg.dataset.einReiter === name));
   }
 }
-for (const seg of document.querySelectorAll(".ein-reiter-seg")) {
+// Nur die Reiter der Einstellungen: dieselbe Klasse hat die Reiterzeile im
+// Fenster "Gewohnheiten", und die gehoert gewohnheiten.js.
+for (const seg of document.querySelectorAll("#einstellungenHaupt .ein-reiter-seg")) {
   seg.addEventListener("click", () => zeigeEinReiter(seg.dataset.einReiter));
 }
 
