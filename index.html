@@ -374,21 +374,21 @@
           <div class="ein-inhalt">
             <p id="kontoName" class="ein-konto-name">Konto</p>
             <p id="kontoAdresse" class="ein-konto-mail"></p>
-            <!-- Klein und nebeneinander (seit 18.10.2026, vorher je ein Knopf
-                 ueber die volle Breite). "Konto wechseln" nur, wenn ein Admin
-                 im Browser angemeldet ist (konto.js) - die Auswahl steckt in
-                 der Anmeldemaske. -->
-            <div class="ein-reihe">
-              <button type="button" id="kontoWechseln" class="btn klein" hidden>Konto wechseln</button>
-              <button type="button" id="kontoAbmelden" class="btn klein">Abmelden</button>
+            <!-- Drei Knoepfe in einer Reihe (seit 18.10.2026, vorher je einer
+                 ueber die volle Breite):
+                 - "Konto wechseln" nur, wenn ein Admin im Browser angemeldet
+                   ist (konto.js) - die Auswahl steckt in der Anmeldemaske.
+                 - "Konto loeschen" immer rechts, rote Schrift statt des
+                   frueheren roten Kastens "Unwiderruflich": die Rueckfrage
+                   verlangt ohnehin die abgetippte Adresse. Fuer Admins
+                   ausgeblendet (app.js) - der einzige Admin darf sich nicht
+                   loeschen, der Server sperrt das zusaetzlich.
+                 Bis Oktober 2026 stand hier auch "ToDo-Zugang aufgeben". -->
+            <div class="ein-konto-knoepfe">
+              <button type="button" id="kontoWechseln" class="btn" hidden>Konto wechseln</button>
+              <button type="button" id="kontoAbmelden" class="btn">Abmelden</button>
+              <button type="button" id="kontoLoeschenStart" class="btn gefahr">Konto löschen</button>
             </div>
-            <!-- Loeschen fuer sich darunter, rote Schrift statt des frueheren
-                 roten Kastens "Unwiderruflich": die Rueckfrage verlangt ohnehin
-                 die abgetippte Adresse. Fuer Admins ausgeblendet (app.js) -
-                 der einzige Admin darf sich nicht loeschen, der Server sperrt
-                 das zusaetzlich. Bis Oktober 2026 stand hier auch
-                 "ToDo-Zugang aufgeben". -->
-            <button type="button" id="kontoLoeschenStart" class="btn klein gefahr">Konto löschen</button>
           </div>
         </details>
 

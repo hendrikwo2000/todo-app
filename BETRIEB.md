@@ -912,7 +912,7 @@ Turnstile. Mit der Fusion ist sie weg — eintragen geht nur noch hier.
 ## Konten löschen
 
 Nutzer löschen ihr eigenes Konto in der App unter Einstellungen → Konto →
-„Konto löschen" (kleiner roter Knopf unter Abmelden); zur Bestätigung muss die
+„Konto löschen" (roter Knopf rechts neben Abmelden); zur Bestätigung muss die
 eigene Adresse abgetippt werden. **Admins sehen den Knopf nicht** (seit
 18.10.2026): der einzige Admin darf sich ohnehin nicht löschen, und ein
 weiterer Admin wird erst im Dashboard herabgestuft.

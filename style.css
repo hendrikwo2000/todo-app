@@ -1531,10 +1531,19 @@ input[type="date"]:focus {
 .ein-hinweis { font-size: 12px; color: var(--muted); margin: 0; }
 .ein-konto-name { font-size: 15px; font-weight: 600; margin: 0; }
 .ein-konto-mail { font-size: 12.5px; color: var(--muted); margin: 0; word-break: break-all; }
-/* Konto loeschen: klein, rote Schrift, eine Zeile unter Wechseln/Abmelden
-   und nur so breit wie der Text - die Spalte zoege es sonst auf volle
-   Breite. */
-#kontoLoeschenStart { align-self: flex-start; margin-top: 4px; }
+/* Konto: drei gleich breite Spalten - Wechseln, Abmelden, Loeschen. Loeschen
+   steht immer in der rechten, auch wenn links "Konto wechseln" fehlt
+   (normale Nutzer); bei Admins fehlt Loeschen, die Spalte bleibt leer.
+   Versteckte Knoepfe fallen ueber .admin-popup-box .btn[hidden] ganz aus dem
+   Raster. Kleinere Polster als sonst im Dialog, damit "Konto wechseln" auch
+   am Handy in ein Drittel passt. */
+.ein-konto-knoepfe {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.ein-konto-knoepfe .btn { padding: 8px 6px; font-size: 13px; }
+#kontoLoeschenStart { grid-column: 3; }
 .ein-reihe { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 #neueListe:disabled { opacity: .5; cursor: not-allowed; }
 #neueListe:disabled:hover { color: var(--text); border-color: var(--line); }
