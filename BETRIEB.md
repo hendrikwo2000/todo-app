@@ -1989,7 +1989,7 @@ Breiten-Griff mit der Maus.
 ## Google Kalender
 
 Verknüpftes Google-Konto je Nutzer, **ausschließlich lesend**
-(Scope `calendar.readonly`). Die Termine erscheinen im Kalender-Panel neben
+(bis 18.10.2026 `calendar.readonly`, jetzt `calendar.calendarlist.readonly` und `calendar.events`, siehe unten). Die Termine erscheinen im Kalender-Panel neben
 den ToDos; die App schreibt bei Google nichts und fragt auch keine
 Schreibrechte an. Serverteil in `functions/api/google/` plus
 `functions/_lib/google.js`, Anzeige in `kalender.js`.
@@ -2033,9 +2033,22 @@ nicht ausdrücklich erneut fragt. `callback.js` bricht deshalb hart ab, wenn
 kein `refresh_token` dabei ist, statt eine Verbindung anzubieten, die morgen
 tot ist.
 
+**Verifizierung bei Google (vorbereitet am 18.10.2026).** Hendrik hat sich im August
+dagegen entschieden und am 18.10. umentschieden, weil die App inzwischen mehrere Konten
+hat und die Warnung die Adresse des Betreibers zeigt. Vorbereitet und live: die
+Datenschutzerklärung `datenschutz.html` (Adresse `/datenschutz`, deutsch mit englischer
+Zusammenfassung und dem Limited-Use-Satz), der Link dorthin auf der Anmeldemaske
+(`.lock-fuss`) und im Seitenfuß (`.rechtsfuss`), und die **schmalere Berechtigung**:
+`calendar.calendarlist.readonly` statt `calendar.readonly` (Kalenderliste und Farbpalette),
+dazu `calendar.events` für Termine. Gegen die Berechtigungslisten der Google-Methoden
+geprüft, **nicht** gegen ein echtes Konto durchgespielt. Die Schritte für Hendrik, die
+englischen Begründungen und das Video-Drehbuch stehen in `ToDo/Google-Verifizierung.md`
+(außerhalb des Repos, weil `web/` komplett öffentlich ausgeliefert wird). Kein Impressum:
+Hendrik will seine Anschrift nicht veröffentlichen.
+
 **Einrichtung (einmalig, in der Google Cloud Console).** Projekt anlegen →
 Calendar API aktivieren → OAuth-Zustimmungsbildschirm (Extern, Bereiche
-`openid`, `email`, `calendar.readonly`) → Status „In Produktion" →
+`openid`, `email`, `calendar.calendarlist.readonly`, `calendar.events`) → Status „In Produktion" →
 Anmeldedaten → OAuth-Client-ID (Webanwendung) mit den Weiterleitungs-URIs
 `https://todo.it-wolf.org/api/google/callback` und
 `http://localhost:8790/api/google/callback`. Client-ID und -Schlüssel dann als

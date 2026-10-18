@@ -123,6 +123,14 @@
     </div>
 
     <main id="board" class="board"><!-- Spalten werden per JS eingefuegt --></main>
+
+    <!-- Datenschutz und Kontakt: fuer Angemeldete dezent am Seitenende, und
+         auch fuer Besucher ohne JavaScript lesbar (Google prueft die Startseite
+         auf einen Link zur Datenschutzerklaerung). Gegenstueck auf der
+         Anmeldemaske: .lock-fuss. -->
+    <footer class="rechtsfuss">
+      <a href="/datenschutz">Datenschutz</a> · <a href="mailto:kontakt@it-wolf.org">Kontakt</a>
+    </footer>
   </div>
 
   <div id="snackbar" class="snackbar" aria-live="polite"></div>
@@ -974,6 +982,15 @@
       <p class="lock-hint" id="lockGesperrtText"></p>
       <button type="button" class="lock-link" id="lockAbmelden">Abmelden</button>
     </div>
+
+    <!-- Startseite fuer Besucher: was die App ist, und der Weg zur
+         Datenschutzerklaerung. Google verlangt beides auf der Startseite
+         (Verifizierung der Kalender-Anbindung, siehe BETRIEB.md). -->
+    <p class="lock-fuss">
+      Kostenlose ToDo-Liste von IT Wolf: Aufgaben in Bereichen organisieren, Listen teilen,
+      auf Wunsch den Google Kalender verbinden. Zugang nur auf Einladung.<br>
+      <a href="/datenschutz">Datenschutz</a> · <a href="mailto:kontakt@it-wolf.org">Kontakt</a>
+    </p>
   </div>
 
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"

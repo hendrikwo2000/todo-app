@@ -23,10 +23,17 @@ const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const API_BASE   = "https://www.googleapis.com/calendar/v3";
 
 // openid+email nur, um die verknuepfte Adresse anzeigen zu koennen ("verbunden
-// als ..."). calendar.readonly liest Kalenderliste und Termine,
-// calendar.events erlaubt zusaetzlich das ANLEGEN eines Termins aus dem
-// Kalender-Panel heraus. Beide zusammen, weil calendar.events allein die
-// Kalenderliste nicht sicher abdeckt.
+// als ..."). calendar.events liest und schreibt die Termine (auch das ANLEGEN
+// aus dem Kalender-Panel heraus); calendar.calendarlist.readonly liest die
+// Kalenderliste (calendarList.list) und die Farbpalette (colors.get). Das ist
+// bewusst NICHT calendar.readonly: der gibt Lesezugriff auf alles am Kalender
+// und ist fuer Googles Verifizierung breiter als noetig. Geprueft gegen die
+// Berechtigungslisten der Methoden calendarList.list, colors.get, events.list,
+// events.instances und events.get/patch/delete (18.10.2026); gegen ein echtes
+// Konto NICHT durchgespielt.
+//
+// Wer vor der Umstellung verknuepft hat, hat calendar.readonly im Token - das
+// ist eine Obermenge und funktioniert weiter.
 //
 // Wer vor der Erweiterung verknuepft hat, hat calendar.events NICHT im Token -
 // deshalb merkt sich `google_konten.scopes`, was tatsaechlich erteilt wurde,
@@ -36,7 +43,7 @@ export const SCOPE_SCHREIBEN = "https://www.googleapis.com/auth/calendar.events"
 export const SCOPES = [
   "openid",
   "email",
-  "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
   SCOPE_SCHREIBEN,
 ].join(" ");
 

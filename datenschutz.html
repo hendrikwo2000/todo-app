@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Datenschutzerklärung - ToDo-Liste - IT Wolf</title>
+  <meta name="description" content="Datenschutzerklärung der ToDo-Liste von IT Wolf (todo.it-wolf.org): welche Daten verarbeitet werden, wie der Google Kalender genutzt wird und wie du alles wieder löschst.">
+  <meta name="author" content="Hendrik Wolf">
+  <link rel="canonical" href="https://todo.it-wolf.org/datenschutz">
+  <link rel="icon" href="icon-192.png">
+  <style>
+    /* Eigenstaendige Seite ohne die App-Stylesheets: sie soll auch ohne
+       JavaScript und ohne Anmeldung lesbar sein (Google prueft sie vor der
+       Freigabe). Farben wie die App, Hell/Dunkel nach dem System. */
+    :root {
+      --bg: #f4f5f7; --row: #ffffff; --text: #1f2430; --muted: #5b6477;
+      --line: #e3e6ee; --accent: #4f63d2;
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #15171c; --row: #262a31; --text: #e6e8ee; --muted: #9aa3b5;
+        --line: #333842; --accent: #8c9bf5;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.6 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    }
+    main {
+      max-width: 760px; margin: 0 auto; padding: 28px 18px 60px;
+    }
+    a { color: var(--accent); }
+    .zurueck { display: inline-block; margin-bottom: 18px; font-size: 14px; }
+    h1 { font-size: 26px; line-height: 1.25; margin: 0 0 4px; }
+    .stand { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
+    h2 {
+      font-size: 19px; margin: 34px 0 6px; padding-top: 6px;
+      border-top: 1px solid var(--line);
+    }
+    h3 { font-size: 16px; margin: 20px 0 2px; }
+    p, ul { margin: 8px 0; }
+    ul { padding-left: 22px; }
+    li { margin: 4px 0; }
+    .kasten {
+      background: var(--row); border: 1px solid var(--line);
+      border-radius: 12px; padding: 4px 16px 10px; margin: 14px 0;
+    }
+    code {
+      font: 13.5px/1.4 ui-monospace, "Cascadia Mono", Consolas, monospace;
+      background: var(--row); border: 1px solid var(--line);
+      border-radius: 5px; padding: 0 5px; overflow-wrap: anywhere;
+    }
+    .klein { color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+<main>
+  <a class="zurueck" href="/">← Zur ToDo-Liste</a>
+  <h1>Datenschutzerklärung</h1>
+  <p class="stand">ToDo-Liste von IT Wolf · todo.it-wolf.org · Stand: 18. Oktober 2026</p>
+
+  <p>
+    Die ToDo-Liste ist ein privat betriebenes, kostenloses Angebot ohne Werbung. Hier steht,
+    welche Daten dabei anfallen, wofür sie gebraucht werden und wie du sie wieder loswirst.
+    Wer die App nicht nutzt, hinterlässt hier nichts außer den üblichen Zugriffsdaten des
+    Hosters (Abschnitt 5).
+  </p>
+
+  <h2>1. Wer ist verantwortlich?</h2>
+  <p>
+    Hendrik Wolf (IT Wolf), privat und nicht kommerziell.<br>
+    Kontakt für alle Fragen zum Datenschutz:
+    <a href="mailto:kontakt@it-wolf.org">kontakt@it-wolf.org</a>
+  </p>
+
+  <h2>2. Was die App ist</h2>
+  <p>
+    Mit der ToDo-Liste organisierst du Aufgaben in Listen, Bereichen und Themen, teilst Listen
+    mit anderen, trägst Gewohnheiten und Arbeitszeiten ein und siehst alles in einem Kalender.
+    Auf Wunsch kannst du deinen <b>Google Kalender</b> verbinden, damit deine Termine neben den
+    ToDos stehen und du Termine von dort aus anlegen kannst. Ein Konto gibt es nur auf
+    Einladung; wer noch keins hat, kann sich auf eine Warteliste eintragen.
+  </p>
+
+  <h2>3. Welche Daten verarbeitet werden</h2>
+
+  <h3>Konto und Anmeldung</h3>
+  <ul>
+    <li><b>E-Mail-Adresse.</b> Sie ist dein Zugang. Die Anmeldung läuft ohne Passwort: du bekommst
+      einen Link (und einen Code) per E-Mail, beide gelten 10 Minuten und nur einmal. Gespeichert
+      wird nur ein Hash davon, nicht der Code selbst.</li>
+    <li><b>Sitzungs-Cookie</b> <code>todo_session</code>. Es hält dich angemeldet (bis du dich abmeldest),
+      ist von JavaScript aus nicht lesbar und gilt für alle Seiten unter <code>it-wolf.org</code>.
+      In der Datenbank liegt nur ein Hash des Werts.</li>
+    <li>Rechtsgrundlage: Bereitstellung der App für dich, Art. 6 Abs. 1 lit. b DSGVO.</li>
+  </ul>
+
+  <h3>Deine Inhalte</h3>
+  <p>
+    Listen, Bereiche, Themen, ToDos mit Notizen, Terminen und Unterpunkten, Gewohnheiten und ihr
+    Verlauf, erfasste Arbeitszeiten und deine Einstellungen. Das sind deine eigenen Eingaben; sie
+    werden nur gespeichert, damit du sie auf allen deinen Geräten wiederfindest. Teilst du eine Liste,
+    sehen die Personen, mit denen du sie teilst, ihren Inhalt. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.
+  </p>
+
+  <h3>Warteliste</h3>
+  <p>
+    Trägst du dich ein, speichere ich deinen Namen und deine E-Mail-Adresse, um dich freizuschalten
+    oder abzulehnen. Zum Schutz vor automatischen Einträgen läuft dabei die Bot-Prüfung
+    „Turnstile“ von Cloudflare. Rechtsgrundlage: deine Anfrage, Art. 6 Abs. 1 lit. b DSGVO.
+  </p>
+
+  <h3>Benachrichtigungen (freiwillig)</h3>
+  <p>
+    Schaltest du Benachrichtigungen ein, speichere ich die Adresse deines Geräts beim Push-Dienst deines
+    Browsers (Google, Apple oder Mozilla). Die Nachricht nennt nur, wie viele ToDos fällig sind oder dass
+    Gewohnheiten offen sind. Du kannst sie jederzeit ausschalten. Rechtsgrundlage: deine Einwilligung,
+    Art. 6 Abs. 1 lit. a DSGVO.
+  </p>
+
+  <h3>Speicher im Browser</h3>
+  <p>
+    Die App legt auf deinem Gerät Einstellungen (Hell/Dunkel, Ansicht, Zoom) und eine Kopie deiner ToDos ab, damit sie
+    auch ohne Internet startet. Das ist technisch nötig und bleibt auf deinem Gerät. Werbe- oder Analyse-Cookies
+    gibt es nicht.
+  </p>
+
+  <h2 id="google">4. Google Kalender (nur wenn du ihn verbindest)</h2>
+  <div class="kasten">
+    <h3>Was passiert</h3>
+    <p>
+      Erst wenn du in den Einstellungen oder im Kalender auf <b>„Mit Google verbinden“</b> klickst, leitet dich
+      die App zu Google weiter. Dort entscheidest du, ob du den Zugriff erlaubst. Ohne diesen Klick
+      fließen keine Google-Daten.
+    </p>
+
+    <h3>Welche Berechtigungen die App anfragt, und wofür</h3>
+    <ul>
+      <li><code>openid</code> und <code>email</code>: um dir „verbunden als …“ mit deiner Google-Adresse zu zeigen.
+        Mehr nicht.</li>
+      <li><code>https://www.googleapis.com/auth/calendar.calendarlist.readonly</code>: um die Liste deiner Kalender
+        (Name und Farbe) zu lesen, damit du wählen kannst, welche die App anzeigt.</li>
+      <li><code>https://www.googleapis.com/auth/calendar.events</code>: um deine Termine zu lesen und im Kalender der App
+        anzuzeigen, und um Termine anzulegen, zu ändern und zu löschen, aber Letzteres nur, wenn du das im Kalender der App
+        selbst auslöst.</li>
+    </ul>
+
+    <h3>Was gespeichert wird, und was nicht</h3>
+    <ul>
+      <li><b>Gespeichert</b> werden deine Google-Adresse, ein Aktualisierungs-Token, das kurzlebige Zugriffs-Token,
+        die erteilten Berechtigungen und das Datum der Verbindung. Das Token liegt in der Datenbank des
+        Betreibers und wird nur benutzt, um deine Termine in deinem Auftrag abzurufen.</li>
+      <li><b>Nicht gespeichert</b> werden deine Termine. Sie werden bei jedem Öffnen des Kalenders direkt von Google geholt
+        und nur im Arbeitsspeicher deines Browsers gehalten.</li>
+    </ul>
+
+    <h3>Wofür deine Google-Daten verwendet werden</h3>
+    <p>
+      Ausschließlich, um dir in der App deine Termine anzuzeigen und Termine auf deine Anweisung hin anzulegen,
+      zu ändern oder zu löschen. Sie werden <b>nicht</b> verkauft, nicht für Werbung genutzt, nicht für andere Zwecke
+      ausgewertet, nicht zum Training von KI- oder Machine-Learning-Modellen verwendet und nicht an Dritte weitergegeben.
+      Ich lese deine Kalenderinhalte nicht. Einzige Ausnahme sind Zugriffe, die du selbst auslöst, und gesetzliche Pflichten.
+      Eine Sonderfunktion nur für das Konto des Betreibers steht in Abschnitt 6.
+    </p>
+
+    <h3>Verbindung trennen und Daten löschen</h3>
+    <ul>
+      <li>In den Einstellungen unter „Google Kalender“ auf <b>„Verbindung trennen“</b>: die App widerruft den Zugriff
+        bei Google und löscht das Token sofort aus ihrer Datenbank.</li>
+      <li>Du kannst den Zugriff auch bei Google entziehen:
+        <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>.
+        Die App erkennt das und räumt die Verbindung auf.</li>
+      <li>Löschst du dein Konto (Abschnitt 8), verschwindet auch die Google-Verbindung.</li>
+    </ul>
+    <p>Rechtsgrundlage: deine Einwilligung, Art. 6 Abs. 1 lit. a DSGVO. Du kannst sie jederzeit widerrufen.</p>
+
+    <h3 lang="en">Google API Services User Data Policy</h3>
+    <p lang="en">
+      The use and transfer to any other app of information received from Google APIs will adhere to the
+      <a href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes" target="_blank" rel="noopener">Google API Services User Data Policy</a>,
+      including the Limited Use requirements.
+    </p>
+  </div>
+
+  <h2>5. Empfänger und Dienstleister</h2>
+  <ul>
+    <li><b>Cloudflare, Inc.</b> (USA): Hosting der App, Datenbank (so eingestellt, dass sie in der EU liegt) und die
+      Bot-Prüfung der Warteliste. Cloudflare verarbeitet dabei auch technische Zugriffsdaten wie die IP-Adresse, um die Seite
+      auszuliefern und abzusichern. Die App selbst speichert keine IP-Adressen. Bei Cloudflare und Resend kann es zu einer
+      Übermittlung in die USA kommen; die Anbieter sichern sie über EU-Standardvertragsklauseln oder das EU-US Data Privacy
+      Framework ab.</li>
+    <li><b>Resend</b> (USA): Versand der Anmelde-Mails über <code>login@mail.it-wolf.org</code>. Resend bekommt dafür deine
+      E-Mail-Adresse und den Text der Mail.</li>
+    <li><b>Google</b> (nur wenn du den Kalender verbindest): siehe Abschnitt 4.</li>
+    <li><b>Push-Dienste</b> deines Browsers (Google, Apple, Mozilla), nur wenn du Benachrichtigungen einschaltest.</li>
+    <li><b>cron-job.org</b> löst zu festen Uhrzeiten die Prüfung aus, ob Erinnerungen fällig sind. Es bekommt dabei keine
+      personenbezogenen Daten.</li>
+  </ul>
+  <p>
+    Zur Verwaltung der Warteliste bekommt der Betreiber eine E-Mail mit deinem Namen und deiner Adresse.
+    Eine Weitergabe darüber hinaus findet nicht statt.
+  </p>
+
+  <h2>6. Sonderfunktion für das Konto des Betreibers</h2>
+  <p>
+    Für das Konto des Betreibers (Hendrik Wolf) sendet die App morgens eine WhatsApp-Nachricht mit seinen fälligen ToDos
+    und den rot markierten Terminen des Tages aus seinem eigenen Google Kalender. Der Versand läuft über den Dienst
+    CallMeBot an seine eigene Nummer. Für kein anderes Konto gibt es diese Funktion; Kalenderdaten anderer Nutzer
+    werden dafür nie gelesen.
+  </p>
+
+  <h2>7. Wie lange Daten gespeichert bleiben</h2>
+  <ul>
+    <li>Anmeldelinks und -codes: 10 Minuten (der Link in einer Willkommens-Mail nach der Freischaltung: 7 Tage).</li>
+    <li>Sitzung: bis du dich abmeldest oder dein Konto löschst.</li>
+    <li>Deine Inhalte und das Google-Token: bis du sie löschst, die Verbindung trennst oder dein Konto löschst.</li>
+    <li>Wartelisten-Eintrag: bis zur Entscheidung, danach bis du ihn löschen lässt.</li>
+  </ul>
+
+  <h2>8. Deine Rechte, und wie du dein Konto löschst</h2>
+  <p>
+    Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und
+    Widerspruch, und du kannst Einwilligungen jederzeit widerrufen (Art. 15 bis 21 und 7 Abs. 3 DSGVO). Schreib dafür an
+    <a href="mailto:kontakt@it-wolf.org">kontakt@it-wolf.org</a>.
+  </p>
+  <p>
+    <b>Konto löschen</b> kannst du selbst: in der App auf das Zahnrad, im Bereich „Konto“ auf „Konto löschen“, dann deine
+    E-Mail-Adresse zur Bestätigung eintippen. Dabei werden dein Konto, deine Listen, Gewohnheiten und Zeiten, deine Geräte für Benachrichtigungen, offene
+    Anmeldecodes, ein Wartelisten-Eintrag und die Google-Verbindung gelöscht. Listen, in die du nur eingeladen warst,
+    bleiben für die anderen bestehen.
+  </p>
+  <p>
+    Du kannst dich außerdem bei einer Datenschutz-Aufsichtsbehörde beschweren, zum Beispiel der deines Bundeslandes.
+  </p>
+
+  <h2>9. Änderungen</h2>
+  <p>
+    Ändert sich etwas an der App, was diese Erklärung betrifft, passe ich sie an. Das Datum oben zeigt den Stand.
+  </p>
+
+  <h2 lang="en">Summary in English (for Google)</h2>
+  <div lang="en">
+    <p>
+      <b>ToDo-Liste - IT Wolf</b> (todo.it-wolf.org) is a free, privately operated to-do list. Accounts exist by invitation only.
+      Sign-in is passwordless, by a one-time link sent to the user's e-mail address.
+    </p>
+    <p>
+      <b>Google user data.</b> Only if a user clicks "Connect with Google", the app requests <code>openid</code>,
+      <code>email</code>, <code>calendar.calendarlist.readonly</code> and <code>calendar.events</code>. The calendar list (names
+      and colors) and the events are read to display them in the app's own calendar view next to the user's to-dos. Events are
+      created, changed or deleted only when the user does so inside the app. The user's e-mail address is shown as "connected as …" and is not used for
+      anything else.
+    </p>
+    <p>
+      <b>Storage.</b> We store the Google e-mail address, the refresh token, the short-lived access token, the granted scopes and the
+      connection date. Calendar events are not stored; they are fetched from Google on demand and held only in the browser's memory.
+    </p>
+    <p>
+      <b>Use and sharing.</b> Google user data is used only to provide these user-facing features. It is not sold, not used for
+      advertising, not used to develop, improve or train AI/ML models, and not transferred to third parties. No humans read it,
+      except with the user's consent, for security purposes, or to comply with law.
+    </p>
+    <p>
+      <b>Revocation and deletion.</b> Users can disconnect in the app's settings ("Verbindung trennen"), which revokes the token at
+      Google and deletes it from our database, or at
+      <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>.
+      Deleting the account deletes the Google connection as well. Contact: <a href="mailto:kontakt@it-wolf.org">kontakt@it-wolf.org</a>.
+    </p>
+    <p>
+      The use and transfer to any other app of information received from Google APIs will adhere to the
+      <a href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes" target="_blank" rel="noopener">Google API Services User Data Policy</a>,
+      including the Limited Use requirements.
+    </p>
+  </div>
+
+  <p class="klein" style="margin-top:34px">
+    <a href="/">Zur ToDo-Liste</a> · <a href="mailto:kontakt@it-wolf.org">Kontakt</a>
+  </p>
+</main>
+</body>
+</html>
