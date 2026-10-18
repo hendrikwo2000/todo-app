@@ -1917,6 +1917,17 @@ html:not(.breit) #kalZu { display: none; }
   padding: 20px;
 }
 .kal-popup[hidden] { display: none; }
+/* Monatswahl neben der Liste (Kalender als Spalte rechts, html.kal-split): sie
+   geht ueber der Kalender-Spalte auf, direkt unter dem Monatsnamen, auf den
+   man gerade geklickt hat. Mittig auf dem Bildschirm musste die Maus quer durchs
+   Fenster (Hendrik, 18.10.2026). padding-left in Prozent der Bildschirmbreite
+   schiebt die Mitte des Kastens auf die Mitte der Kalender-Spalte; --kal-breite
+   gilt auch neben der Heute-Spalte, der Kalender-Teil behaelt genau diese
+   Breite. Die uebrigen Dialoge (Tag, Termin, Rueckfrage) bleiben mittig. */
+html.kal-split #kalWahl {
+  align-items: flex-start;
+  padding: 84px 0 20px calc(100% - var(--kal-breite));
+}
 .kal-popup-box {
   display: flex;
   flex-direction: column;

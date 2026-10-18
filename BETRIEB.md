@@ -1972,6 +1972,15 @@ und `.kal-punkt` in `style.css`. Die Auswahl (`.farbe-popup`) ist 208 px breit:
 sieben Punkte je Reihe, bei zwölf Farben plus „Keine“ zwei Reihen. Im
 Dunkelmodus stand Indigo erst zu nah an Blau, er hat jetzt `#595dcc`.
 
+**Monatswahl beim Kalender (18.10.2026).** Wo der Kalender als Spalte rechts
+steht (`html.kal-split`), geht die Monatswahl (`#kalWahl`) über dieser Spalte
+auf, direkt unter dem Monatsnamen, statt mittig auf dem Bildschirm: Hendrik
+musste mit der Maus quer durchs Fenster. Technisch nur `padding` am Overlay
+(`calc(100% - var(--kal-breite))` links, 84 px oben); der Hintergrund bleibt
+ganzflächig abgedunkelt. Am Handy und unter 1000 px bleibt sie mittig. Tag-Karte,
+Termin-Formular und Rückfrage sitzen weiter mittig, die hat Hendrik nicht
+genannt.
+
 **Ungeprüft:** echtes iPad und echtes Handy (nachgestellt mit 1180 × 820 bzw.
 375 × 812 im Testbrowser), echte Google-Termine (nachgebaute Antwort aus der
 lokalen Testhilfe `testdaten-lokal.js`, nicht im Repo), der Zug am
