@@ -116,12 +116,12 @@ hierher weiter, deine Gewohnheiten und Sitzungen sind dieselben.
   geloggte Zeit lässt sich nicht mehr ändern). Läuft eine Sitzung, steht die
   Restzeit am Reiter. Am Ende gibt es einen Ton.
 
-**„Verlauf & mehr ›“** unter den Gewohnheiten öffnet die Einstellungen (⚙️)
-im Reiter **Verlauf & mehr**:
+**„Verlauf & mehr ›“** unter den Gewohnheiten (oder der Eintrag „Verlauf & mehr“
+in den Einstellungen, Reiter „Gewohnheiten") öffnet das Fenster
+**Gewohnheiten**:
 
 - **Verlauf:** ein Monatskalender je Gewohnheit. Ein Tipp auf einen Tag
-  trägt ihn nach, Wischen wechselt den Monat. Der Stift in der gewählten Pille
-  bearbeitet die Gewohnheit
+  trägt ihn nach, Wischen wechselt den Monat
 - **Statistik:** wie oft geschafft, über 7, 30 oder 90 Tage
 - **Fokuszeit:** Fokusminuten pro Woche
 
@@ -135,6 +135,7 @@ im Reiter **Verlauf & mehr**:
 - **Verwalten:** neue Gewohnheit anlegen (abhaken oder mit Zielmenge,
   mindestens oder höchstens, täglich / feste Wochentage / X Mal die Woche),
   bearbeiten, Reihenfolge ändern, archivieren und löschen
+- **Verlauf & mehr:** öffnet das Fenster mit Verlauf, Statistik und Fokuszeit
 
 Mit eingeschalteten Benachrichtigungen erinnert dich die App um 17 Uhr auch
 an Gewohnheiten, die heute noch offen sind.

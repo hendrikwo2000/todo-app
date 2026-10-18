@@ -784,22 +784,23 @@ function resetAkkordeon() {
   });
 }
 
-// Die drei Reiter unter den globalen Einstellungen: "ToDo" (Google, Listen),
-// "Gewohnheiten" (Timer, Kalender-Streifen, Flamme, Verwalten) und
-// "Verlauf & mehr" (Verlauf, Statistik, Fokuszeit). Die Reiterzeile steht im
-// HTML, hier wird nur umgeschaltet. Beim Oeffnen immer "ToDo": dort
+// Die zwei Reiter unter den globalen Einstellungen: "ToDo" (Google, Listen)
+// und "Gewohnheiten" (Timer, Kalender-Streifen, Flamme). Die Reiterzeile
+// steht im HTML, hier wird nur umgeschaltet. Beim Oeffnen immer "ToDo": dort
 // liegen die Listen, der haeufigste Grund fuers Zahnrad.
-const EIN_REITER = { todo: "einReiterTodo", gewohnheiten: "einReiterGewohnheiten", verlauf: "einReiterVerlauf" };
+const EIN_REITER = { todo: "einReiterTodo", gewohnheiten: "einReiterGewohnheiten" };
 function zeigeEinReiter(name) {
   if (!EIN_REITER[name]) name = "todo";
   for (const [k, id] of Object.entries(EIN_REITER)) {
     document.getElementById(id).hidden = k !== name;
   }
-  for (const seg of document.querySelectorAll(".ein-reiter-seg")) {
+  for (const seg of document.querySelectorAll("#einstellungenHaupt .ein-reiter-seg")) {
     seg.setAttribute("aria-selected", String(seg.dataset.einReiter === name));
   }
 }
-for (const seg of document.querySelectorAll(".ein-reiter-seg")) {
+// Nur die Reiter der Einstellungen: dieselbe Klasse hat die Reiterzeile im
+// Fenster "Gewohnheiten", und die gehoert gewohnheiten.js.
+for (const seg of document.querySelectorAll("#einstellungenHaupt .ein-reiter-seg")) {
   seg.addEventListener("click", () => zeigeEinReiter(seg.dataset.einReiter));
 }
 
@@ -954,22 +955,6 @@ function oeffneEinstellungen() {
   // Gewohnheiten und Fokus-Timer (gewohnheiten-dialoge.js).
   window.gewEinstellungenZeigen?.();
 }
-
-/**
- * Die Einstellungen direkt an einer Stelle oeffnen: Reiter und Abschnitt, der
- * aufgeklappt sein soll. Fuer den Kalender-Streifen ("Verlauf & mehr ›",
- * "Fokuszeit pro Woche ›") - dort stand bis 18.10.2026 ein eigenes Fenster.
- * Der Abschnitt wird NACH dem Oeffnen aufgeklappt, weil oeffneEinstellungen()
- * alles zuklappt; sein toggle-Ereignis klappt die anderen zu und zeichnet ihn
- * (gewohnheiten.js).
- */
-function oeffneEinstellungenBei(reiter, abschnitt) {
-  oeffneEinstellungen();
-  zeigeEinReiter(reiter);
-  const det = document.querySelector(`#einstellungenHaupt details[data-abschnitt="${abschnitt}"]`);
-  if (det) det.open = true;
-}
-window.oeffneEinstellungenBei = oeffneEinstellungenBei;
 
 /** Eine Liste aus den Einstellungen heraus zur aktiven machen. */
 function aktiviereListeAusEinstellungen(id) {
@@ -3658,13 +3643,7 @@ einstellungenPopup.addEventListener("click", e => {
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
   if (!listenMenue.hidden) schliesseMenue();
-  if (!einstellungenPopup.hidden) {
-    einstellungenPopup.hidden = true;
-    // Der Kalender-Streifen dahinter hat einen eigenen Escape-Handler (kalender.js)
-    // und schloesse sich im selben Tastendruck gleich mit - mit den Einstellungen
-    // ueber dem Streifen ("Verlauf & mehr ›") waere das einer zu viel.
-    e.stopImmediatePropagation();
-  }
+  if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
   if (farbePickerFuer) { farbePickerFuer = null; render(); }
   if (themaWerkzeugeFuer) { themaWerkzeugeFuer = null; farbePickerFuer = null; render(); }
 });
