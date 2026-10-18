@@ -3502,7 +3502,8 @@ html.kal-split .fok-ring { max-height: 190px; }
 /* ---------- Rahmen ---------- */
 .gw-kopfzeile { justify-content: space-between; align-items: center; }
 .gw-box .gw-kopfzeile h2.gw-titel { margin: 0; font-size: 18px; text-align: left; }
-.gw-reiter {
+.gw-reiter,
+.ein-reiter {
   display: flex;
   flex: none;
   gap: 2px;
@@ -3512,7 +3513,8 @@ html.kal-split .fok-ring { max-height: 190px; }
   border-radius: 10px;
   background: var(--col-bg);
 }
-.gw-reiter-seg {
+.gw-reiter-seg,
+.ein-reiter-seg {
   flex: 1;
   min-width: 0;
   border: 0;
@@ -3525,7 +3527,8 @@ html.kal-split .fok-ring { max-height: 190px; }
   cursor: pointer;
   transition: background .15s, color .15s;
 }
-.gw-reiter-seg[aria-selected="true"] {
+.gw-reiter-seg[aria-selected="true"],
+.ein-reiter-seg[aria-selected="true"] {
   background: var(--row);
   box-shadow: 0 1px 2px rgba(0, 0, 0, .10);
   color: var(--text);
@@ -3796,9 +3799,9 @@ html.kal-split .fok-ring { max-height: 190px; }
 }
 
 /* ---------- Einstellungen: Abschnitte Kalender-Streifen, Gewohnheiten,
-   Fokus-Timer ---------- */
-/* Eine Schalterzeile INNERHALB eines aufgeklappten Abschnitts. .ein-zeile
-   allein reicht dort nicht: ihr display:flex kommt von .ein-abschnitt. */
+   Fokus-Timer (Reiter "Gewohnheiten") ---------- */
+/* Eine Schalterzeile INNERHALB eines Abschnitts. .ein-zeile allein reicht
+   dort nicht: ihr display:flex kommt von .ein-abschnitt. */
 .gw-ein-zeile { display: flex; align-items: center; gap: 8px; padding: 4px 2px; }
 .gw-ein-zeile .switch { margin-left: auto; }
 .gw-slider-zeile { display: flex; align-items: center; gap: 8px; }
@@ -3807,3 +3810,24 @@ html.kal-split .fok-ring { max-height: 190px; }
   flex: none; min-width: 52px; text-align: right;
   font-size: 13px; font-weight: 600; color: var(--text);
 }
+
+/* ---------- Einstellungen: Reiter "ToDo" und "Gewohnheiten" ---------- */
+/* Das Aussehen der Reiterzeile kommt aus .gw-reiter / .gw-reiter-seg weiter
+   oben (geteilt mit dem Fenster "Gewohnheiten"). Nur der Abstand ist hier
+   ein anderer: die Hauptansicht ist ein Flex mit gap, den unteren Abstand
+   liefert der gap. */
+.ein-reiter { margin: 6px 0 0; }
+.ein-reiterinhalt { display: flex; flex-direction: column; gap: 12px; }
+/* Eigene display-Regel schlaegt das hidden-Attribut - siehe .ein-abschnitt[hidden]. */
+.ein-reiterinhalt[hidden] { display: none; }
+/* Die Trennlinie steht ZWISCHEN zwei sichtbaren Abschnitten, nicht direkt unter
+   der Reiterzeile. Darum "~" statt :first-child: "Google Kalender" ist oft
+   ausgeblendet, und dann waere "Meine Listen" nicht das erste Kind. */
+.ein-reiterinhalt > .ein-abschnitt { border-top: 0; padding-top: 0; margin-top: 0; }
+.ein-reiterinhalt > .ein-abschnitt:not([hidden]) ~ .ein-abschnitt {
+  border-top: 1px solid var(--line); padding-top: 6px; margin-top: 2px;
+}
+/* Feste Ueberschrift statt Klappzeile (Reiter "Gewohnheiten"): .ein-kopf
+   bringt Cursor und Hover-Farbe einer Klappzeile mit, beides passt hier nicht. */
+.ein-kopf-fest { margin: 0; font: inherit; cursor: default; }
+.ein-kopf-fest:hover .ein-kopf-text { color: var(--text); }

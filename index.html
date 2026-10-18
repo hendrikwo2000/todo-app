@@ -305,15 +305,21 @@
   <!-- Einstellungen hinter dem Zahnrad. Ein Dialog mit mehreren Ansichten:
        Hauptansicht (Listen + Konto), Zugriff-verwalten, Abmelde-Rueckfrage,
        Loesch-Bestaetigung. Die Listen-Zeilen fuellt JS.
-       Hauptansicht gemischt: die meisten Abschnitte ein Akkordeon
-       (<details>/<summary>, echtes Ein-Abschnitt-offen erzwingt
-       resetAkkordeon()/JS beim Oeffnen bzw. beim Aufklappen eines anderen) -
-       Ziel: nicht alles auf einen Blick, nur was gerade gebraucht wird.
-       "Darstellung" (Toggle-Switch) und "Verwaltung" (Link) sind bewusst
-       keine Akkordeons, sondern einzeilig, weil sie nur einen einzigen
+       Hauptansicht oben: die globalen Einstellungen (Darstellung, Zoom,
+       Benachrichtigungen, Konto, Verwaltung). Darunter zwei Reiter, "ToDo"
+       und "Gewohnheiten", mit je eigenen Einstellungen (zeigeEinReiter() in
+       app.js).
+       Im Reiter "ToDo" sind die Abschnitte ein Akkordeon (<details>/<summary>,
+       echtes Ein-Abschnitt-offen erzwingt resetAkkordeon()/JS beim Oeffnen
+       bzw. beim Aufklappen eines anderen; das gilt samt Konto fuer die ganze
+       Hauptansicht) - Ziel: nicht alles auf einen Blick, nur was gerade
+       gebraucht wird. Der Reiter "Gewohnheiten" ist bewusst kein Akkordeon:
+       drei kurze Abschnitte, die offen untereinander stehen.
+       "Darstellung", "Zoom", "Benachrichtigungen" (Toggle-Switch) und
+       "Verwaltung" (Link) sind einzeilig, weil sie nur einen einzigen
        Zustand zeigen statt mehrerer Unter-Elemente. Der Kurztext je
-       Kopfzeile (ein-kopf-sub) fuellt JS, damit man auch zugeklappt sieht,
-       was drinsteckt. -->
+       Kopfzeile eines Akkordeons (ein-kopf-sub) fuellt JS, damit man auch
+       zugeklappt sieht, was drinsteckt. -->
   <div id="einstellungenPopup" class="admin-popup" hidden>
     <div class="admin-popup-box einstellungen">
 
@@ -371,147 +377,6 @@
         </div>
         <p id="pushHinweis" class="ein-hinweis" hidden></p>
 
-        <!-- Google-Kalender verknuepfen (nur lesen). Der Abschnitt blendet
-             sich komplett aus, wenn im Pages-Projekt keine Google-Zugangsdaten
-             hinterlegt sind - dann gibt es die Funktion schlicht nicht. -->
-        <details class="ein-abschnitt" id="googleAbschnitt" hidden data-abschnitt="google">
-          <summary class="ein-kopf">
-            <span class="ein-kopf-icon">📆</span>
-            <span class="ein-kopf-text">Google Kalender</span>
-            <span class="ein-kopf-sub" id="subGoogle"></span>
-            <span class="ein-kopf-pfeil">▾</span>
-          </summary>
-          <div class="ein-inhalt">
-            <p id="googleText" class="ein-hinweis"></p>
-            <button type="button" id="googleVerbinden" class="btn google-btn">
-              <span class="google-g" aria-hidden="true">
-                <svg viewBox="0 0 48 48" width="17" height="17">
-                  <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/>
-                  <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.3-4.7 6.9l7.3 5.7c4.3-3.9 6.8-9.7 6.8-16.6z"/>
-                  <path fill="#FBBC05" d="M10.4 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.7l7.8-6.1z"/>
-                  <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.3-5.7c-2 1.4-4.7 2.3-8.6 2.3-6.3 0-11.7-3.7-13.6-9.2l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/>
-                </svg>
-              </span>
-              Mit Google verbinden
-            </button>
-            <button type="button" id="googleTrennen" class="btn gefahr" hidden>Verbindung trennen</button>
-          </div>
-        </details>
-
-        <details class="ein-abschnitt" data-abschnitt="listen">
-          <summary class="ein-kopf">
-            <span class="ein-kopf-icon">📋</span>
-            <span class="ein-kopf-text">Meine Listen</span>
-            <span class="ein-kopf-sub" id="subListen"></span>
-            <span class="ein-kopf-pfeil">▾</span>
-          </summary>
-          <div class="ein-inhalt">
-            <div id="eigeneListen" class="listen-liste"></div>
-            <div class="ein-reihe">
-              <button type="button" id="neueListe" class="btn klein">＋ neue Liste</button>
-              <p id="neueListeHinweis" class="ein-hinweis" hidden></p>
-            </div>
-          </div>
-        </details>
-
-        <details class="ein-abschnitt" id="geteiltAbschnitt" hidden data-abschnitt="geteilt">
-          <summary class="ein-kopf">
-            <span class="ein-kopf-icon">🔗</span>
-            <span class="ein-kopf-text">Geteilt mit mir</span>
-            <span class="ein-kopf-sub" id="subGeteilt"></span>
-            <span class="ein-kopf-pfeil">▾</span>
-          </summary>
-          <div class="ein-inhalt">
-            <div id="geteilteListen" class="listen-liste"></div>
-          </div>
-        </details>
-
-        <!-- Seit Oktober 2026 gibt es hier keinen Link mehr zur eigenen
-             Fokus-App: Gewohnheiten und Timer sind Teil dieser App, fuer
-             jedes Konto. Die drei Abschnitte unten ersetzen ihn und den
-             frueheren Schalter "Fokus im Kalender". -->
-
-        <!-- Was der Kalender-Streifen neben dem Kalender als Reiter zeigt.
-             Zwei Schalter statt einem: wer nur den Timer will, soll die
-             Gewohnheiten nicht mitnehmen muessen - und umgekehrt. Bewusst
-             "Kalender-Streifen" und nicht "Bereiche": Bereiche heissen in
-             dieser App die Spalten des Boards.
-             Gilt pro Geraet (localStorage), wie die Darstellung: wer am
-             Rechner die Gewohnheiten mitlaufen laesst, will sie am Handy nicht
-             zwangslaeufig auch. -->
-        <details class="ein-abschnitt" data-abschnitt="streifen">
-          <summary class="ein-kopf">
-            <span class="ein-kopf-icon">🧩</span>
-            <span class="ein-kopf-text">Kalender-Streifen</span>
-            <span class="ein-kopf-sub" id="subStreifen"></span>
-            <span class="ein-kopf-pfeil">▾</span>
-          </summary>
-          <div class="ein-inhalt">
-            <p class="ein-hinweis">Was der Streifen neben dem Kalender als Reiter zeigt. Gilt für dieses Gerät.</p>
-            <div class="gw-ein-zeile">
-              <span class="ein-kopf-text">Gewohnheiten</span>
-              <label class="switch">
-                <input type="checkbox" id="streifenGewohnheitenSwitch">
-                <span class="switch-label" id="streifenGewohnheitenLabel">An</span>
-                <span class="switch-track"><span class="switch-thumb"></span></span>
-              </label>
-            </div>
-            <div class="gw-ein-zeile">
-              <span class="ein-kopf-text">Timer</span>
-              <label class="switch">
-                <input type="checkbox" id="streifenTimerSwitch">
-                <span class="switch-label" id="streifenTimerLabel">An</span>
-                <span class="switch-track"><span class="switch-thumb"></span></span>
-              </label>
-            </div>
-          </div>
-        </details>
-
-        <!-- Gilt pro KONTO (Tabelle fokus_einstellungen). Gefuellt aus
-             gewohnheiten-dialoge.js. -->
-        <details class="ein-abschnitt" data-abschnitt="gewohnheiten">
-          <summary class="ein-kopf">
-            <span class="ein-kopf-icon">🔥</span>
-            <span class="ein-kopf-text">Gewohnheiten</span>
-            <span class="ein-kopf-sub" id="subGewohnheiten"></span>
-            <span class="ein-kopf-pfeil">▾</span>
-          </summary>
-          <div class="ein-inhalt">
-            <div class="gw-ein-zeile">
-              <span class="ein-kopf-text">Flamme zählt</span>
-              <label class="switch">
-                <input type="checkbox" id="gewFlammenSwitch">
-                <span class="switch-label" id="gewFlammenLabel">Insgesamt</span>
-                <span class="switch-track"><span class="switch-thumb"></span></span>
-              </label>
-            </div>
-            <p id="gewFlammenHinweis" class="ein-hinweis"></p>
-            <button type="button" id="gewVerwaltenOeffnen" class="btn klein">Verlauf, Statistik &amp; Verwalten</button>
-            <!-- Ein normaler Link, kein JS: der Server setzt
-                 Content-Disposition, der Browser laedt herunter. Zurueckspielen
-                 gibt es bewusst nicht, siehe functions/api/export.js. -->
-            <a href="/api/export" download class="btn klein">⬇️ Gewohnheiten exportieren (JSON)</a>
-          </div>
-        </details>
-
-        <details class="ein-abschnitt" data-abschnitt="timer">
-          <summary class="ein-kopf">
-            <span class="ein-kopf-icon">⏱️</span>
-            <span class="ein-kopf-text">Fokus-Timer</span>
-            <span class="ein-kopf-sub" id="subGewTimer"></span>
-            <span class="ein-kopf-pfeil">▾</span>
-          </summary>
-          <div class="ein-inhalt">
-            <label for="gewDauer" class="gw-label">Standarddauer</label>
-            <div class="gw-slider-zeile">
-              <input type="range" id="gewDauer" min="5" max="180" step="5">
-              <span class="gw-slider-wert" id="gewDauerWert">25 Min</span>
-              <button type="button" class="btn klein" id="gewDauerSpeichern">Speichern</button>
-            </div>
-            <p class="ein-hinweis">Gilt ab der nächsten Sitzung.</p>
-          </div>
-        </details>
-
         <details class="ein-abschnitt" data-abschnitt="konto">
           <summary class="ein-kopf">
             <span class="ein-kopf-icon">👤</span>
@@ -544,6 +409,160 @@
           <span class="ein-kopf-icon">🛡️</span>
           <span class="ein-kopf-text">Verwaltung</span>
         </a>
+
+        <!-- Zwei Reiter fuer das, was nicht global ist. Die Reihenfolge der
+             Knoepfe ist die der Inhalte darunter; welcher offen ist, setzt
+             zeigeEinReiter() in app.js (beim Oeffnen immer "ToDo").
+             Eigene Klassen statt gw-reiter-*: gewohnheiten.js greift sich
+             .gw-reiter-seg im Fenster "Gewohnheiten", beide Reiterzeilen
+             sehen aber gleich aus (siehe style.css). -->
+        <div class="ein-reiter" role="tablist" aria-label="Einstellungen">
+          <button type="button" class="ein-reiter-seg" id="einReiterKnopfTodo" role="tab" data-ein-reiter="todo" aria-selected="true" aria-controls="einReiterTodo">ToDo</button>
+          <button type="button" class="ein-reiter-seg" id="einReiterKnopfGewohnheiten" role="tab" data-ein-reiter="gewohnheiten" aria-selected="false" aria-controls="einReiterGewohnheiten">Gewohnheiten</button>
+        </div>
+
+        <div id="einReiterTodo" class="ein-reiterinhalt" role="tabpanel" aria-labelledby="einReiterKnopfTodo">
+          <!-- Google-Kalender verknuepfen (nur lesen). Der Abschnitt blendet
+               sich komplett aus, wenn im Pages-Projekt keine Google-Zugangsdaten
+               hinterlegt sind - dann gibt es die Funktion schlicht nicht. -->
+          <details class="ein-abschnitt" id="googleAbschnitt" hidden data-abschnitt="google">
+            <summary class="ein-kopf">
+              <span class="ein-kopf-icon">📆</span>
+              <span class="ein-kopf-text">Google Kalender</span>
+              <span class="ein-kopf-sub" id="subGoogle"></span>
+              <span class="ein-kopf-pfeil">▾</span>
+            </summary>
+            <div class="ein-inhalt">
+              <p id="googleText" class="ein-hinweis"></p>
+              <button type="button" id="googleVerbinden" class="btn google-btn">
+                <span class="google-g" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" width="17" height="17">
+                    <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.3-4.7 6.9l7.3 5.7c4.3-3.9 6.8-9.7 6.8-16.6z"/>
+                    <path fill="#FBBC05" d="M10.4 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.7l7.8-6.1z"/>
+                    <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.3-5.7c-2 1.4-4.7 2.3-8.6 2.3-6.3 0-11.7-3.7-13.6-9.2l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/>
+                  </svg>
+                </span>
+                Mit Google verbinden
+              </button>
+              <button type="button" id="googleTrennen" class="btn gefahr" hidden>Verbindung trennen</button>
+            </div>
+          </details>
+
+          <details class="ein-abschnitt" data-abschnitt="listen">
+            <summary class="ein-kopf">
+              <span class="ein-kopf-icon">📋</span>
+              <span class="ein-kopf-text">Meine Listen</span>
+              <span class="ein-kopf-sub" id="subListen"></span>
+              <span class="ein-kopf-pfeil">▾</span>
+            </summary>
+            <div class="ein-inhalt">
+              <div id="eigeneListen" class="listen-liste"></div>
+              <div class="ein-reihe">
+                <button type="button" id="neueListe" class="btn klein">＋ neue Liste</button>
+                <p id="neueListeHinweis" class="ein-hinweis" hidden></p>
+              </div>
+            </div>
+          </details>
+
+          <details class="ein-abschnitt" id="geteiltAbschnitt" hidden data-abschnitt="geteilt">
+            <summary class="ein-kopf">
+              <span class="ein-kopf-icon">🔗</span>
+              <span class="ein-kopf-text">Geteilt mit mir</span>
+              <span class="ein-kopf-sub" id="subGeteilt"></span>
+              <span class="ein-kopf-pfeil">▾</span>
+            </summary>
+            <div class="ein-inhalt">
+              <div id="geteilteListen" class="listen-liste"></div>
+            </div>
+          </details>
+        </div>
+
+        <!-- Seit Oktober 2026 gibt es keinen Link mehr zur eigenen Fokus-App:
+             Gewohnheiten und Timer sind Teil dieser App, fuer jedes Konto.
+             Offen untereinander statt als Akkordeon - es sind wenige Zeilen,
+             und man soll nichts erst aufklappen muessen. Die Kopfzeilen sind
+             feste Ueberschriften (ein-kopf-fest), keine Klappzeilen. -->
+        <div id="einReiterGewohnheiten" class="ein-reiterinhalt" role="tabpanel" aria-labelledby="einReiterKnopfGewohnheiten" hidden>
+
+          <!-- Gilt pro KONTO (Tabelle fokus_einstellungen). Gefuellt aus
+               gewohnheiten-dialoge.js. -->
+          <div class="ein-abschnitt" data-abschnitt="timer">
+            <h3 class="ein-kopf ein-kopf-fest">
+              <span class="ein-kopf-icon">⏱️</span>
+              <span class="ein-kopf-text">Fokus-Timer</span>
+            </h3>
+            <div class="ein-inhalt">
+              <label for="gewDauer" class="gw-label">Standarddauer</label>
+              <div class="gw-slider-zeile">
+                <input type="range" id="gewDauer" min="5" max="180" step="5">
+                <span class="gw-slider-wert" id="gewDauerWert">25 Min</span>
+                <button type="button" class="btn klein" id="gewDauerSpeichern">Speichern</button>
+              </div>
+              <p class="ein-hinweis">Gilt ab der nächsten Sitzung.</p>
+            </div>
+          </div>
+
+          <!-- Was der Kalender-Streifen neben dem Kalender als Reiter zeigt.
+               Zwei Schalter statt einem: wer nur den Timer will, soll die
+               Gewohnheiten nicht mitnehmen muessen - und umgekehrt. Bewusst
+               "Kalender-Streifen" und nicht "Bereiche": Bereiche heissen in
+               dieser App die Spalten des Boards.
+               Gilt pro Geraet (localStorage), wie die Darstellung: wer am
+               Rechner die Gewohnheiten mitlaufen laesst, will sie am Handy
+               nicht zwangslaeufig auch. -->
+          <div class="ein-abschnitt" data-abschnitt="streifen">
+            <h3 class="ein-kopf ein-kopf-fest">
+              <span class="ein-kopf-icon">🧩</span>
+              <span class="ein-kopf-text">Kalender-Streifen</span>
+            </h3>
+            <div class="ein-inhalt">
+              <p class="ein-hinweis">Was der Streifen neben dem Kalender als Reiter zeigt. Gilt für dieses Gerät.</p>
+              <div class="gw-ein-zeile">
+                <span class="ein-kopf-text">Gewohnheiten</span>
+                <label class="switch">
+                  <input type="checkbox" id="streifenGewohnheitenSwitch">
+                  <span class="switch-label" id="streifenGewohnheitenLabel">An</span>
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
+              </div>
+              <div class="gw-ein-zeile">
+                <span class="ein-kopf-text">Timer</span>
+                <label class="switch">
+                  <input type="checkbox" id="streifenTimerSwitch">
+                  <span class="switch-label" id="streifenTimerLabel">An</span>
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gilt pro KONTO (Tabelle fokus_einstellungen). Gefuellt aus
+               gewohnheiten-dialoge.js. -->
+          <div class="ein-abschnitt" data-abschnitt="gewohnheiten">
+            <h3 class="ein-kopf ein-kopf-fest">
+              <span class="ein-kopf-icon">🔥</span>
+              <span class="ein-kopf-text">Gewohnheiten</span>
+            </h3>
+            <div class="ein-inhalt">
+              <div class="gw-ein-zeile">
+                <span class="ein-kopf-text">Flamme zählt</span>
+                <label class="switch">
+                  <input type="checkbox" id="gewFlammenSwitch">
+                  <span class="switch-label" id="gewFlammenLabel">Insgesamt</span>
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
+              </div>
+              <p id="gewFlammenHinweis" class="ein-hinweis"></p>
+              <button type="button" id="gewVerwaltenOeffnen" class="btn klein">Verlauf, Statistik &amp; Verwalten</button>
+              <!-- Ein normaler Link, kein JS: der Server setzt
+                   Content-Disposition, der Browser laedt herunter. Zurueckspielen
+                   gibt es bewusst nicht, siehe functions/api/export.js. -->
+              <a href="/api/export" download class="btn klein">⬇️ Gewohnheiten exportieren (JSON)</a>
+            </div>
+          </div>
+
+        </div>
       </div>
 
       <!-- Zugriff einer eigenen, geteilten Liste verwalten. Erreichbar,

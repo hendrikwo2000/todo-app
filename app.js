@@ -763,11 +763,13 @@ function zeigeEinAnsicht(name) {
 // Akkordeon der Hauptansicht: je Oeffnen klappen die anderen Abschnitte zu -
 // die <details> werden nie neu gerendert, darum reicht eine einmalige
 // Verdrahtung auf das native "toggle"-Event (deckt auch Tastaturbedienung
-// ab, nicht nur Klicks).
-document.querySelectorAll("#einstellungenHaupt > details.ein-abschnitt").forEach(det => {
+// ab, nicht nur Klicks). Das Konto oben und die Abschnitte im Reiter "ToDo"
+// bilden EIN Akkordeon (darum kein ">" im Selektor); der Reiter
+// "Gewohnheiten" hat keine <details>.
+document.querySelectorAll("#einstellungenHaupt details.ein-abschnitt").forEach(det => {
   det.addEventListener("toggle", () => {
     if (det.open) {
-      document.querySelectorAll("#einstellungenHaupt > details.ein-abschnitt").forEach(other => {
+      document.querySelectorAll("#einstellungenHaupt details.ein-abschnitt").forEach(other => {
         if (other !== det) other.open = false;
       });
     }
@@ -777,9 +779,27 @@ document.querySelectorAll("#einstellungenHaupt > details.ein-abschnitt").forEach
 // Bei jedem Oeffnen auf denselben Ausschnitt zurueck - "Meine Listen" ist
 // laut Erst-Hinweis der haeufigste Grund fuers Zahnrad, der Rest faengt zu.
 function resetAkkordeon() {
-  document.querySelectorAll("#einstellungenHaupt > details.ein-abschnitt").forEach(det => {
+  document.querySelectorAll("#einstellungenHaupt details.ein-abschnitt").forEach(det => {
     det.open = det.dataset.abschnitt === "listen";
   });
+}
+
+// Die zwei Reiter unter den globalen Einstellungen: "ToDo" (Google, Listen)
+// und "Gewohnheiten" (Timer, Kalender-Streifen, Flamme). Die Reiterzeile
+// steht im HTML, hier wird nur umgeschaltet. Beim Oeffnen immer "ToDo": dort
+// liegt "Meine Listen", laut Erst-Hinweis der haeufigste Grund fuers Zahnrad.
+const EIN_REITER = { todo: "einReiterTodo", gewohnheiten: "einReiterGewohnheiten" };
+function zeigeEinReiter(name) {
+  if (!EIN_REITER[name]) name = "todo";
+  for (const [k, id] of Object.entries(EIN_REITER)) {
+    document.getElementById(id).hidden = k !== name;
+  }
+  for (const seg of document.querySelectorAll(".ein-reiter-seg")) {
+    seg.setAttribute("aria-selected", String(seg.dataset.einReiter === name));
+  }
+}
+for (const seg of document.querySelectorAll(".ein-reiter-seg")) {
+  seg.addEventListener("click", () => zeigeEinReiter(seg.dataset.einReiter));
 }
 
 // ---------- Google-Kalender ----------
@@ -838,8 +858,6 @@ function zeigeStreifenSchalter() {
   streifenGewohnheitenLabel.textContent = streifenAn.gewohnheiten ? "An" : "Aus";
   streifenTimerSwitch.checked = streifenAn.timer;
   streifenTimerLabel.textContent = streifenAn.timer ? "An" : "Aus";
-  const an = [streifenAn.gewohnheiten && "Gewohnheiten", streifenAn.timer && "Timer"].filter(Boolean);
-  document.getElementById("subStreifen").textContent = an.length ? an.join(" · ") : "nur Kalender";
 }
 
 function schalteStreifen(welcher, an) {
@@ -914,6 +932,7 @@ function oeffneEinstellungen() {
   schliesseMenue();
   zeichneListen();
   resetAkkordeon();
+  zeigeEinReiter("todo");
   document.getElementById("kontoMsg").textContent = "";
   // Verwaltung nur fuer Admins - der Abschnitt bleibt sonst ausgeblendet.
   document.getElementById("adminAbschnitt").hidden = !istAdmin;
