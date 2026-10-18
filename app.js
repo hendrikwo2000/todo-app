@@ -2609,52 +2609,131 @@ function persistOrderFromDOM(openList) {
   ids.forEach((id, i) => { const t = findTodo(id); if (t) t.order = i; });
 }
 
-// Spalte links/rechts der Maus finden (zum Einsortieren beim Spalten-Drag).
-// Die Spalten brechen bei genug Bereichen per flex-wrap in mehrere Zeilen um -
-// deshalb zuerst die Zeile unter der Maus bestimmen (alle Spalten einer
-// flex-Zeile teilen sich denselben oberen Rand, auch bei unterschiedlicher
-// Hoehe durch unterschiedlich viele ToDos) und erst danach links/rechts
-// einordnen. Reiner X-Abgleich liess eine in Zeile 2 gezogene Spalte
-// faelschlich in Zeile 1 springen.
-function getColumnAfter(container, x, y) {
-  const cols = [...container.querySelectorAll(".column:not(.col-dragging)")];
-  if (!cols.length) return null;
+// ---------- Board-Anordnung: Bereiche rutschen nach oben ----------
+// Das Board besteht aus senkrechten Streifen (.board-spalte). Jeder Bereich
+// kommt der Reihe nach in den gerade KUERZESTEN Streifen. So bleibt unter einem
+// kurzen Bereich keine Luecke, nur weil nebenan ein hoher steht (seit
+// 18.10.2026; vorher brach das Board per flex-wrap in Reihen um, und jede Reihe
+// war so hoch wie ihr hoechster Bereich).
+// Wie viele Streifen es gibt, entscheidet allein die Breite des Boards.
+const BEREICH_MINBREITE = 340;   // schmaler wird ein Bereich nur, damit zwei nebeneinander passen
+const BEREICH_NOTBREITE = 280;   // ... und so schmal darf er dafuer werden (Wert aus der flex-wrap-Zeit)
+const BEREICH_ABSTAND = 16;      // gehoert zu gap in .board und .board-spalte (style.css)
+let bereichsReihenfolge = [];    // Bereichs-Ids in Lesereihenfolge, setzt render()
+let auslegung = { n: 0, breite: 0 };
 
-  const zeilen = [];
-  for (const col of cols) {
-    const box = col.getBoundingClientRect();
-    let zeile = zeilen.find(z => Math.abs(z.top - box.top) < 1);
-    if (!zeile) { zeile = { top: box.top, bottom: box.bottom, cols: [] }; zeilen.push(zeile); }
-    zeile.bottom = Math.max(zeile.bottom, box.bottom);
-    zeile.cols.push({ col, box });
-  }
-  zeilen.sort((a, b) => a.top - b.top);
+function spaltenAnzahl(breite, bereiche) {
+  let n = Math.floor((breite + BEREICH_ABSTAND) / (BEREICH_MINBREITE + BEREICH_ABSTAND));
+  if (n < 2 && breite >= 2 * BEREICH_NOTBREITE + BEREICH_ABSTAND) n = 2;
+  return Math.max(1, Math.min(n, bereiche));
+}
 
-  let zielIndex = zeilen.findIndex(z => y >= z.top && y <= z.bottom);
-  if (zielIndex === -1) {
-    let bestDist = Infinity;
-    zeilen.forEach((z, i) => {
-      const dist = y < z.top ? z.top - y : y - z.bottom;
-      if (dist < bestDist) { bestDist = dist; zielIndex = i; }
+// Verteilt die Bereiche, die gerade im Board stehen (lose oder in alten
+// Streifen), neu auf die Streifen. Die Lesereihenfolge kommt aus
+// bereichsReihenfolge, nicht aus dem DOM - der ist nach dem ersten Verteilen
+// nicht mehr die Reihenfolge.
+function ordneBereiche() {
+  const nachId = new Map([...board.querySelectorAll(".column")].map(c => [c.dataset.cat, c]));
+  if (!nachId.size) return;
+  const reihe = bereichsReihenfolge.filter(id => nachId.has(id));
+  const breite = board.clientWidth;
+  // Breite 0: das Board ist gerade ausgeblendet (Handy mit offenem Kalender).
+  // Einspaltig ablegen; der Beobachter unten legt neu aus, sobald es wieder da ist.
+  const n = breite ? spaltenAnzahl(breite, reihe.length) : 1;
+
+  // Beim Umhaengen verliert ein Eingabefeld den Fokus (Fenster ziehen,
+  // Bereich ziehen) - merken und danach zurueckgeben.
+  const fokus = document.activeElement;
+  const hatteFokus = fokus && fokus !== document.body && board.contains(fokus);
+  const auswahl = hatteFokus && fokus.selectionStart != null ? [fokus.selectionStart, fokus.selectionEnd] : null;
+
+  board.querySelectorAll(":scope > .board-spalte").forEach(s => s.remove());
+  const streifen = Array.from({ length: n }, () => {
+    const s = document.createElement("div");
+    s.className = "board-spalte";
+    board.appendChild(s);
+    return s;
+  });
+
+  // Erst alle in den ersten Streifen: alle Streifen sind gleich breit, die
+  // Bereiche haben dort also schon ihre endgueltige Breite und lassen sich
+  // messen. Gemessen wird komplett VOR dem Umhaengen.
+  reihe.forEach(id => streifen[0].appendChild(nachId.get(id)));
+  if (n > 1) {
+    passeAlleNotizfelderAn();   // offene Notizfelder erst auf ihre Hoehe bringen
+    const hoehen = reihe.map(id => nachId.get(id).getBoundingClientRect().height);
+    const summen = new Array(n).fill(0);
+    reihe.forEach((id, i) => {
+      let k = 0;
+      for (let j = 1; j < n; j++) if (summen[j] < summen[k]) k = j;   // bei Gleichstand der linke
+      summen[k] += hoehen[i] + BEREICH_ABSTAND;
+      streifen[k].appendChild(nachId.get(id));
     });
   }
 
-  let closest = { offset: -Infinity, el: null };
-  for (const { col, box } of zeilen[zielIndex].cols) {
-    const offset = x - box.left - box.width / 2;
-    if (offset < 0 && offset > closest.offset) closest = { offset, el: col };
+  if (hatteFokus && document.activeElement !== fokus) {
+    fokus.focus({ preventScroll: true });
+    if (auswahl) { try { fokus.setSelectionRange(auswahl[0], auswahl[1]); } catch (e) { /* Feldtyp ohne Auswahl */ } }
   }
-  if (closest.el) return closest.el;
-
-  // Maus steht rechts von allen Spalten dieser Zeile: ans Zeilenende, also vor
-  // die erste Spalte der naechsten Zeile (oder ganz ans Ende, wenn letzte Zeile).
-  const naechsteZeile = zeilen[zielIndex + 1];
-  return naechsteZeile ? naechsteZeile.cols[0].col : null;
+  auslegung = { n, breite };
 }
 
-// Bereichs-Reihenfolge aus der aktuellen DOM-Anordnung uebernehmen.
-function persistColumnOrderFromDOM() {
-  const ids = [...board.querySelectorAll(".column")].map(c => c.dataset.cat);
+// Das Board aendert seine Breite, ohne dass render() laeuft: Fenster ziehen,
+// Kalender auf- oder zuklappen, breiter ziehen. Nur neu verteilen, wenn sich die
+// Streifenzahl aendert oder die Breite spuerbar - kleine Schwankungen (eine
+// Bildlaufleiste kommt oder geht) wuerden die Bereiche sonst grundlos springen
+// lassen. Waehrend ein Bereich gezogen wird, steuert das Ziehen die Anordnung.
+let neuAuslegenTimer = null;
+function pruefeAuslegung() {
+  const breite = board.clientWidth;
+  if (!breite || !bereichsReihenfolge.length || draggedCat) return;
+  const n = spaltenAnzahl(breite, bereichsReihenfolge.length);
+  if (n === auslegung.n && Math.abs(breite - auslegung.breite) < 40) return;
+  ordneBereiche();
+}
+new ResizeObserver(() => {
+  clearTimeout(neuAuslegenTimer);
+  neuAuslegenTimer = setTimeout(pruefeAuslegung, 120);
+}).observe(board);
+
+// Vor welchem Bereich soll der gezogene landen? Gibt dessen Id zurueck, null =
+// ans Ende, undefined = nichts aendern (Zeiger steht auf dem gezogenen selbst).
+// Gesucht wird erst der Streifen unter dem Zeiger, darin der erste Bereich, dessen
+// Mitte unter dem Zeiger liegt. Unter dem letzten Bereich des Streifens heisst:
+// direkt hinter ihm in der Lesereihenfolge. Welcher Streifen es danach WIRKLICH
+// wird, entscheidet die Anordnung selbst - die Lesereihenfolge ist, was zaehlt.
+function einfuegeStelle(x, y) {
+  const gezogen = board.querySelector(".column.col-dragging");
+  if (!gezogen) return undefined;
+  const g = gezogen.getBoundingClientRect();
+  if (x >= g.left && x <= g.right && y >= g.top && y <= g.bottom) return undefined;
+
+  let streifen = null, abstand = Infinity;
+  for (const s of board.querySelectorAll(":scope > .board-spalte")) {
+    const r = s.getBoundingClientRect();
+    const d = x < r.left ? r.left - x : (x > r.right ? x - r.right : 0);
+    if (d < abstand) { abstand = d; streifen = s; }
+  }
+  if (!streifen) return undefined;
+
+  const kinder = [...streifen.querySelectorAll(":scope > .column:not(.col-dragging)")];
+  const davor = kinder.find(c => {
+    const r = c.getBoundingClientRect();
+    return y < r.top + r.height / 2;
+  });
+  if (davor) return davor.dataset.cat;
+
+  const letzter = kinder[kinder.length - 1];
+  if (!letzter) return undefined;
+  const rest = bereichsReihenfolge.filter(id => id !== draggedCat);
+  const i = rest.indexOf(letzter.dataset.cat);
+  if (i < 0) return undefined;
+  return i + 1 < rest.length ? rest[i + 1] : null;
+}
+
+// Bereichs-Reihenfolge aus der Lesereihenfolge uebernehmen.
+function persistColumnOrder() {
+  const ids = bereichsReihenfolge;
   state.categories.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
   // "Ohne Bereich" bleibt immer ganz vorne, egal wohin eine Spalte gezogen
   // wurde (stabiler Sort, die uebrigen Bereiche behalten ihre Reihenfolge).
@@ -2766,6 +2845,7 @@ function render() {
   if (editingCat && !state.categories.some(c => c.id === editingCat)) editingCat = null;
   if (editingThema && !state.themen.some(th => th.id === editingThema)) editingThema = null;
   board.innerHTML = "";
+  bereichsReihenfolge = [];
 
   // Noch gar keine Liste: erst eine anlegen, dann gibt es Bereiche.
   if (!aktiveListe) {
@@ -2810,7 +2890,9 @@ function render() {
   // Array.sort ist stabil, die Reihenfolge der uebrigen Bereiche bleibt also.
   const spalten = state.categories.slice()
     .sort((a, b) => (istOhneBereich(a.id) ? 0 : 1) - (istOhneBereich(b.id) ? 0 : 1));
+  bereichsReihenfolge = spalten.map(cat => cat.id);
   spalten.forEach(cat => board.appendChild(renderColumn(cat)));
+  ordneBereiche();   // vor dem Fokussieren: Umhaengen kostet den Fokus
 
   // Eingabefeld der gerade offenen Stelle fokussieren (frei oder in einem Thema).
   if (addingCat) {
@@ -3843,16 +3925,22 @@ board.addEventListener("dragover", e => {
   if (!draggedCat) return;
   e.preventDefault();
   e.dataTransfer.dropEffect = "move";
-  const draggingCol = board.querySelector(".column.col-dragging");
-  if (!draggingCol) return;
-  const after = getColumnAfter(board, e.clientX, e.clientY);
-  if (after == null) board.appendChild(draggingCol);
-  else board.insertBefore(draggingCol, after);
+  const vor = einfuegeStelle(e.clientX, e.clientY);
+  if (vor === undefined) return;
+  const rest = bereichsReihenfolge.filter(id => id !== draggedCat);
+  const i = vor === null ? rest.length : rest.indexOf(vor);
+  if (i < 0) return;
+  rest.splice(i, 0, draggedCat);
+  // "Ohne Bereich" bleibt vorne (stabiler Sort), auch waehrend des Ziehens.
+  rest.sort((a, b) => (istOhneBereich(a) ? 0 : 1) - (istOhneBereich(b) ? 0 : 1));
+  if (rest.every((id, k) => id === bereichsReihenfolge[k])) return;   // nichts neu
+  bereichsReihenfolge = rest;
+  ordneBereiche();
 });
 board.addEventListener("drop", e => {
   if (!draggedCat) return;
   e.preventDefault();
-  persistColumnOrderFromDOM();
+  persistColumnOrder();
   render();
   save();
 });

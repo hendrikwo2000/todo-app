@@ -1921,13 +1921,44 @@ die Darkmode-Regel braucht `:not(.kal-balken-luecke)`, sonst malt sie graue
 Kästchen in leere Tage. `kontrastFarbe()` ist entfallen; die Marke im
 Quellen-Filter bleibt satt.
 
-**Bereichs-Spalten: linksbündig, Höhe nach Inhalt.** Einen halben Tag lang
-reichten die Spalten bis zum unteren Fensterrand. Hendrik fand das „etwas
-komisch“, es ist zurückgebaut, **nicht wieder vorschlagen**. Geblieben ist
-`justify-content: flex-start`: ein Bereich, der nicht mehr in die erste Reihe
-passt, beginnt die nächste links statt allein in der Mitte (gewählt gegen
-Masonry und waagerechtes Scrollen). Preis: bei zugeklapptem Kalender stehen
-wenige Spalten links statt mittig.
+**Bereichs-Spalten: Höhe nach Inhalt.** Einen halben Tag lang reichten die
+Spalten bis zum unteren Fensterrand. Hendrik fand das „etwas komisch“, es ist
+zurückgebaut, **nicht wieder vorschlagen**.
+
+**Bereiche rücken nach oben (18.10.2026).** Das Board ist kein `flex-wrap` mehr,
+sondern eine Reihe senkrechter Streifen (`.board-spalte`); `ordneBereiche()` in
+`app.js` legt jeden Bereich der Reihe nach in den gerade kürzesten Streifen.
+Anlass: Hendrik störte der Leerraum unter kurzen Bereichen (jede Reihe war so
+hoch wie ihr höchster, bei ihm stand „Test ToDo“ neben dem langen „Projekte“)
+und drei Bereiche nebeneinander neben dem Kalender. Masonry, das er am 09.10.
+verworfen hatte, hat er jetzt selbst gewählt (gefragt mit ASCII-Vorschau an
+seinen echten Einträgen; die Alternativen „Ohne Bereich“ als Streifen oben und
+„lange ToDos kürzen“ hat er nicht genommen).
+- **Anzahl der Streifen** allein aus der Breite des Boards (`spaltenAnzahl()`):
+  Mindestbreite 340 px (`BEREICH_MINBREITE`), aber mindestens zwei, solange
+  zweimal 280 px passen (so war es vorher). Am Rechner mit offenem Kalender
+  (1920 px, Board rund 950 px) sind das zwei Streifen statt drei. Mehr Streifen
+  als Bereiche gibt es nie.
+- **Messen:** erst alle Bereiche in den ersten Streifen (alle Streifen sind
+  gleich breit, `flex: 1 1 0`), Höhen lesen, dann umhängen. Aufgerufen am Ende
+  von `render()` und vom `ResizeObserver` am Board (120 ms Verzögerung), wenn
+  sich die Streifenzahl ändert oder die Breite um 40 px. Kleinere Schwankungen
+  (eine Bildlaufleiste kommt oder geht) legen nichts neu aus.
+- **Die Lesereihenfolge steht in `bereichsReihenfolge`**, nicht im DOM: der ist
+  nach dem Verteilen nach Streifen sortiert.
+- **Preis:** Ein Bereich kann beim Neuzeichnen den Streifen wechseln, wenn sich
+  Höhen ändern (ToDo abhaken, Bereich wächst oder schrumpft). Ein neuer Bereich
+  landet im kürzesten Streifen, nicht „links in der nächsten Reihe“.
+- **Bereich ziehen:** `einfuegeStelle()` bestimmt, vor welchem Bereich der
+  gezogene landet (Streifen unter dem Zeiger, darin der erste Bereich, dessen
+  Mitte unter dem Zeiger liegt; steht der Zeiger auf dem gezogenen selbst,
+  passiert nichts). Das Board legt dabei live neu aus, die Vorschau ist also das
+  Ergebnis. Gespeichert wird die Lesereihenfolge; in welchem Streifen der
+  Bereich landet, entscheidet die Anordnung. „Ohne Bereich“ bleibt vorne.
+- **Falle beim Testen:** im Claude-Browser feuert der `ResizeObserver`
+  verzögert (nach rund 1,5 s); `pruefeAuslegung()` direkt aufrufen, wenn nichts
+  passiert. Das Ziehen ist nur mit nachgebauten Drag-Ereignissen geprüft, nicht
+  mit echter Maus.
 
 **Ungeprüft:** echtes iPad und echtes Handy (nachgestellt mit 1180 × 820 bzw.
 375 × 812 im Testbrowser), echte Google-Termine (nachgebaute Antwort aus der

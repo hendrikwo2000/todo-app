@@ -335,26 +335,39 @@ input[type="date"]:focus {
 }
 
 /* ---------- Board / Spalten ---------- */
-/* Linksbuendig statt zentriert (seit 09.10.2026): ein Bereich, der nicht mehr
-   in die erste Reihe passt, beginnt die naechste Reihe links - wie Text. Mit
-   center stand er allein unten in der Mitte, das hat Hendrik gestoert. Preis:
-   stehen wenige Spalten auf ihrer Hoechstbreite (Kalender zu), bleibt der
-   Rest rechts frei statt zu beiden Seiten.
+/* Das Board besteht aus senkrechten Streifen (.board-spalte), in die app.js die
+   Bereiche verteilt: jeder kommt in den gerade kuerzesten (ordneBereiche).
+   Seit 18.10.2026; vorher brach das Board per flex-wrap in Reihen um, und
+   jede Reihe war so hoch wie ihr hoechster Bereich - unter kurzen Bereichen
+   blieb viel Luft. Hendrik hatte Masonry am 09.10. verworfen und am 18.10. nach
+   den Luecken selbst gewaehlt.
+   Linksbuendig (seit 09.10.2026, damals gegen center): stehen wenige Streifen
+   auf ihrer Hoechstbreite (Kalender zu), bleibt der Rest rechts frei.
    Die Spalten enden unter ihrer letzten Karte. Einen halben Tag lang reichten
    sie bis zum unteren Rand - Hendrik fand das „etwas komisch“, nicht wieder
    vorschlagen. */
 .board {
   display: flex;
-  flex-wrap: wrap;
   justify-content: flex-start;
   gap: 16px;
   align-items: flex-start;
 }
+/* Alle Streifen gleich breit (flex-basis 0, nicht nach Inhalt): ordneBereiche
+   misst die Hoehen im ersten Streifen und verlaesst sich darauf, dass die
+   Bereiche in jedem anderen genauso breit stehen. Gap gehoert zu
+   BEREICH_ABSTAND in app.js. */
+.board-spalte {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
 .column {
-  flex: 1 1 280px;
-  min-width: 250px;
-  max-width: 560px;
+  flex: none;
+  min-width: 0;
   background: var(--col-bg);
   border-radius: 12px;
   padding: 9px;
