@@ -2457,7 +2457,7 @@ rechnet Kalenderfarben mit den Spiegeln in `gewohnheiten-daten.js`
 
 **Ab 1380 px (`istDrei()`, Heute-Spalte da) sind die Gewohnheiten kein Reiter,
 sondern ein Abschnitt ganz unten in der Heute-Spalte** (`#fokHeute` in
-`#kalHeute`, unter `#kalTagesliste`; Überschrift „🔥 Gewohnheiten heute" mit
+`#kalHeuteSpalte`, unter `#kalTagesliste`; Überschrift „🔥 Gewohnheiten heute" mit
 Bilanz „2 von 5"). Hendriks Wunsch: „lieber unter den heutigen Tag, ganz unten,
 als Extra Abschnitt - das passt auf dem PC gut, auf dem Handy und Tablet eher
 nicht". Auf Nachfrage bestätigt: am PC **nur** der Abschnitt, der Reiter
@@ -2489,7 +2489,7 @@ Streifen, Tagesansicht über den ToDos ohne Gewohnheiten.
   Mengenfeld wie am Handy unter den Namen (`.fok-heute .fok-gew.mit-menge`).
 - **„heute" im Kopf, weil die Spalte einen anderen Tag zeigen kann** (der im
   Kalender gewählte); die Gewohnheiten sind immer die von heute.
-- Die Heute-Spalte ist seitdem verschachtelt: `#kalHeute` (grauer Kasten, Klasse
+- Die Heute-Spalte ist seitdem verschachtelt: `#kalHeuteSpalte` (grauer Kasten, Klasse
   `.kal-liste`, `[hidden]` bei < 1380 px) enthält `#kalTagesliste` (Klasse
   `.kal-tagblock`; das Wischen zwischen den Tagen verschiebt nur ihn) und
   `#fokHeute`.

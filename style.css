@@ -2205,7 +2205,7 @@ html:not(.breit) #kalZu { display: none; }
   flex-direction: column;
   gap: 5px;
 }
-/* Die Heute-Spalte (#kalHeute) hat seit 18.10.2026 zwei Teile: den Tag
+/* Die Heute-Spalte (#kalHeuteSpalte) hat seit 18.10.2026 zwei Teile: den Tag
    (#kalTagesliste, das, was die Liste bis dahin allein war) und ganz unten die
    Gewohnheiten (#fokHeute, nur ab 1380 px). margin-top: auto schiebt sie an den
    Fuss der Spalte, wenn der Tag kurz ist; ist er lang, folgt sie ihm und die

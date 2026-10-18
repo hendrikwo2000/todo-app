@@ -44,7 +44,7 @@ const kalRaster      = document.getElementById("kalRaster");
 const kalTagesliste  = document.getElementById("kalTagesliste");
 // Die Heute-Spalte als Ganzes: der Tag (kalTagesliste) und darunter die
 // Gewohnheiten (fokus.js). Erst ab 1380 px sichtbar.
-const kalHeute       = document.getElementById("kalHeute");
+const kalHeuteSpalte = document.getElementById("kalHeuteSpalte");
 const kalFilter      = document.getElementById("kalFilter");
 const kalFilterKnopf = document.getElementById("kalFilterKnopf");
 const kalOben        = document.getElementById("kalOben");
@@ -3216,7 +3216,7 @@ function zeichneUnten() {
   // Die Tagesliste im Panel gibt es nur als eigene Heute-Spalte (ab 1380 px).
   // Darunter steht der Tag ueber den ToDos (zeichneTagOben) bzw. am Handy
   // in der Tages-Karte.
-  kalHeute.hidden = !istDrei();
+  kalHeuteSpalte.hidden = !istDrei();
 
   // Die Reiterzeile ueberlebt den Wechsel zum Kalender - sie ist der Weg
   // zurueck. Ohne Fokus (kein Zugang oder abgeschaltet) waere sie ein Reiter
