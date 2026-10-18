@@ -473,73 +473,51 @@
           </div>
 
           <!-- Seit Oktober 2026 gibt es keinen Link mehr zur eigenen Fokus-App:
-               Gewohnheiten und Timer sind Teil dieser App, fuer jedes Konto. Die
-               Abschnitte sind wie im Reiter "ToDo" ein Akkordeon, alle zu.
-               Der Timer hat seit 18.10.2026 einen eigenen Reiter (unten) -
-               vorher standen Standarddauer und sein Anzeige-Schalter hier
-               mit drin, und ein Ausbau des Timers waere in den Gewohnheiten
-               weitergewachsen. -->
+               Gewohnheiten und Timer sind Teil dieser App, fuer jedes Konto.
+               Seit 18.10.2026 ganz getrennt (Hendrik: "der Timer hat nichts mit
+               Gewohnheiten zu tun"): eigener Reiter, eigenes Fenster fuer die
+               Fokuszeit. Einfache Schalter stehen als Zeile wie "Darstellung"
+               (ohne Aufklappen, ohne Erklaertext); aufgeklappt wird nur, was
+               mehr Inhalt hat. -->
           <div id="einReiterGewohnheiten" class="ein-reiterinhalt" role="tabpanel" aria-labelledby="einReiterKnopfGewohnheiten" hidden>
 
-            <!-- Je ein Anzeige-Schalter pro Reiter: wer nur den Timer will, soll
-                 die Gewohnheiten nicht mitnehmen muessen - und umgekehrt.
+            <!-- Gewohnheiten in der App zeigen (am PC unter dem Tag in der
+                 Heute-Spalte, am Tablet und Handy unten in der Kachel "heute").
                  Gilt pro Geraet (localStorage), wie die Darstellung: wer am
                  Rechner die Gewohnheiten mitlaufen laesst, will sie am Handy
                  nicht zwangslaeufig auch. -->
-            <details class="ein-abschnitt" data-abschnitt="streifen">
-              <summary class="ein-kopf">
-                <span class="ein-kopf-icon">🧩</span>
-                <span class="ein-kopf-text">Anzeige</span>
-                <span class="ein-kopf-sub" id="subStreifen"></span>
-                <span class="ein-kopf-pfeil">▾</span>
-              </summary>
-              <div class="ein-inhalt">
-                <p class="ein-hinweis">Die Gewohnheiten stehen am PC unter dem Tag in der Heute-Spalte, am Tablet und Handy unten in der Kachel „heute“, aufklappbar. Gilt für dieses Gerät.</p>
-                <div class="gw-ein-zeile">
-                  <span class="ein-kopf-text">Gewohnheiten</span>
-                  <label class="switch">
-                    <input type="checkbox" id="streifenGewohnheitenSwitch">
-                    <span class="switch-label" id="streifenGewohnheitenLabel">An</span>
-                    <span class="switch-track"><span class="switch-thumb"></span></span>
-                  </label>
-                </div>
-              </div>
-            </details>
+            <div class="ein-abschnitt ein-zeile" data-abschnitt="streifen">
+              <span class="ein-kopf-icon">🧩</span>
+              <span class="ein-kopf-text">Anzeige</span>
+              <label class="switch">
+                <input type="checkbox" id="streifenGewohnheitenSwitch">
+                <span class="switch-label" id="streifenGewohnheitenLabel">An</span>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
 
-            <!-- Gilt pro KONTO (Tabelle fokus_einstellungen). Gefuellt aus
+            <!-- Zaehlweise der Flamme, gilt pro KONTO (Tabelle
+                 fokus_einstellungen). Angehakt = "In Reihe". Gefuellt aus
                  gewohnheiten-dialoge.js. -->
-            <details class="ein-abschnitt" data-abschnitt="gewohnheiten">
-              <summary class="ein-kopf">
-                <span class="ein-kopf-icon">🔥</span>
-                <span class="ein-kopf-text">Gewohnheiten</span>
-                <span class="ein-kopf-sub" id="subGewohnheiten"></span>
-                <span class="ein-kopf-pfeil">▾</span>
-              </summary>
-              <div class="ein-inhalt">
-                <div class="gw-ein-zeile">
-                  <span class="ein-kopf-text">Flamme zählt</span>
-                  <label class="switch">
-                    <input type="checkbox" id="gewFlammenSwitch">
-                    <span class="switch-label" id="gewFlammenLabel">Insgesamt</span>
-                    <span class="switch-track"><span class="switch-thumb"></span></span>
-                  </label>
-                </div>
-                <p id="gewFlammenHinweis" class="ein-hinweis"></p>
-                <!-- Ein normaler Link, kein JS: der Server setzt
-                     Content-Disposition, der Browser laedt herunter. Zurueckspielen
-                     gibt es bewusst nicht, siehe functions/api/export.js. -->
-                <a href="/api/export" download class="btn klein">⬇️ Gewohnheiten exportieren (JSON)</a>
-              </div>
-            </details>
+            <div class="ein-abschnitt ein-zeile" id="gewFlammenZeile" data-abschnitt="flamme">
+              <span class="ein-kopf-icon">🔥</span>
+              <span class="ein-kopf-text">Flamme zählt</span>
+              <label class="switch">
+                <input type="checkbox" id="gewFlammenSwitch">
+                <span class="switch-label" id="gewFlammenLabel">Insgesamt</span>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
 
-            <!-- Anlegen, bearbeiten, ordnen, archivieren, loeschen. Stand bis
-                 18.10.2026: vierter Reiter im Fenster "Gewohnheiten" - Hendrik
-                 wollte es direkt hier haben. Gefuellt aus gewohnheiten.js
-                 (gewZeichneVerwalten). -->
+            <!-- Anlegen, bearbeiten, ordnen, archivieren, loeschen. Hiess bis
+                 18.10.2026 "Verwalten", daneben stand ein Abschnitt
+                 "Gewohnheiten" mit Flamme und JSON-Export - Hendrik erwartete
+                 unter "Gewohnheiten" aber genau das hier. Gefuellt aus
+                 gewohnheiten.js (gewZeichneVerwalten). -->
             <details class="ein-abschnitt" data-abschnitt="verwalten">
               <summary class="ein-kopf">
-                <span class="ein-kopf-icon">🛠️</span>
-                <span class="ein-kopf-text">Verwalten</span>
+                <span class="ein-kopf-icon">✅</span>
+                <span class="ein-kopf-text">Gewohnheiten</span>
                 <span class="ein-kopf-sub" id="subGewVerwalten"></span>
                 <span class="ein-kopf-pfeil">▾</span>
               </summary>
@@ -552,48 +530,36 @@
               </div>
             </details>
 
-            <!-- Der Weg zum Fenster "Gewohnheiten" (Verlauf, Statistik, Fokuszeit):
-                 ein Eintrag wie die Klappzeilen, aber mit Pfeil nach rechts, weil er
-                 ein Fenster oeffnet statt aufzuklappen. Hendrik wollte das Fenster
-                 behalten ("wie davor") und nur hier verlinkt haben (18.10.2026);
-                 ein dritter Reiter "Verlauf & mehr" in den Einstellungen war der
-                 Zwischenstand davor und ist wieder raus. -->
+            <!-- Der Weg zum Fenster "Gewohnheiten" (Verlauf, Statistik): ein
+                 Eintrag wie die Klappzeilen, aber mit Pfeil nach rechts, weil er
+                 ein Fenster oeffnet statt aufzuklappen. Hendrik wollte das
+                 Fenster behalten und nur hier verlinkt haben (18.10.2026). Die
+                 Fokuszeit war bis dahin dessen dritter Reiter und hat jetzt ein
+                 eigenes Fenster (Reiter Timer). -->
             <button type="button" id="gewVerlaufOeffnen" class="ein-abschnitt ein-zeile ein-zeile-knopf">
               <span class="ein-kopf-icon">📅</span>
-              <span class="ein-kopf-text">Verlauf &amp; mehr</span>
-              <span class="ein-kopf-sub">Statistik</span>
+              <span class="ein-kopf-text">Verlauf &amp; Statistik</span>
               <span class="ein-kopf-pfeil ein-kopf-weiter" aria-hidden="true">›</span>
             </button>
 
           </div>
 
           <!-- Reiter "Timer" (seit 18.10.2026): Anzeige-Schalter fuer den Knopf
-               ⏱ in der Kopfzeile, Standarddauer, und der Weg zur Fokuszeit. Die
-               Fokuszeit selbst bleibt der dritte Reiter im Fenster
-               "Gewohnheiten" - der Eintrag hier oeffnet das Fenster direkt dort.
+               ⏱ in der Kopfzeile, Standarddauer, und das Fenster "Fokuszeit".
                Platz fuer den Ausbau des Timers. -->
           <div id="einReiterTimer" class="ein-reiterinhalt" role="tabpanel" aria-labelledby="einReiterKnopfTimer" hidden>
 
-            <!-- Gilt pro Geraet (localStorage), wie die Anzeige der Gewohnheiten. -->
-            <details class="ein-abschnitt" data-abschnitt="timer-anzeige">
-              <summary class="ein-kopf">
-                <span class="ein-kopf-icon">🧩</span>
-                <span class="ein-kopf-text">Anzeige</span>
-                <span class="ein-kopf-sub" id="subStreifenTimer"></span>
-                <span class="ein-kopf-pfeil">▾</span>
-              </summary>
-              <div class="ein-inhalt">
-                <p class="ein-hinweis">Der Timer-Knopf ⏱ oben in der Kopfzeile. Gilt für dieses Gerät.</p>
-                <div class="gw-ein-zeile">
-                  <span class="ein-kopf-text">Timer</span>
-                  <label class="switch">
-                    <input type="checkbox" id="streifenTimerSwitch">
-                    <span class="switch-label" id="streifenTimerLabel">An</span>
-                    <span class="switch-track"><span class="switch-thumb"></span></span>
-                  </label>
-                </div>
-              </div>
-            </details>
+            <!-- Der Timer-Knopf ⏱ in der Kopfzeile. Gilt pro Geraet
+                 (localStorage), wie die Anzeige der Gewohnheiten. -->
+            <div class="ein-abschnitt ein-zeile" data-abschnitt="timer-anzeige">
+              <span class="ein-kopf-icon">🧩</span>
+              <span class="ein-kopf-text">Anzeige</span>
+              <label class="switch">
+                <input type="checkbox" id="streifenTimerSwitch">
+                <span class="switch-label" id="streifenTimerLabel">An</span>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
 
             <!-- Gilt pro KONTO (Tabelle fokus_einstellungen). Gefuellt aus
                  gewohnheiten-dialoge.js. -->
@@ -614,7 +580,7 @@
               </div>
             </details>
 
-            <!-- Wie "Verlauf & mehr": oeffnet ein Fenster statt aufzuklappen. -->
+            <!-- Oeffnet das eigene Fenster "Fokuszeit" (#fokuszeitFenster). -->
             <button type="button" id="gewFokuszeitOeffnen" class="ein-abschnitt ein-zeile ein-zeile-knopf">
               <span class="ein-kopf-icon">📊</span>
               <span class="ein-kopf-text">Fokuszeit</span>
@@ -711,7 +677,8 @@
     </div>
   </div>
 
-  <!-- Das Fenster "Gewohnheiten": Verlauf, Statistik, Fokuszeit.
+  <!-- Das Fenster "Gewohnheiten": Verlauf und Statistik (die Fokuszeit hat
+       seit 18.10.2026 ihr eigenes Fenster, #fokuszeitFenster).
        Seit Oktober 2026 hier statt in der eigenen Fokus-App. Steht AUSSERHALB
        des Kalender-Panels, aus demselben Grund wie die Kalender-Dialoge oben
        (dessen transform verbiegt position:fixed). Gefuellt aus
@@ -730,7 +697,6 @@
       <div class="ein-reiter" role="tablist" aria-label="Ansicht">
         <button type="button" class="ein-reiter-seg" data-gw-reiter="verlauf" role="tab" aria-selected="true">Verlauf</button>
         <button type="button" class="ein-reiter-seg" data-gw-reiter="statistik" role="tab" aria-selected="false">Statistik</button>
-        <button type="button" class="ein-reiter-seg" data-gw-reiter="fokuszeit" role="tab" aria-selected="false">Fokuszeit</button>
       </div>
       <div class="ein-blaettern gw-blaettern">
 
@@ -761,7 +727,24 @@
           <div id="gewStatListe" class="gw-liste"></div>
         </section>
 
-        <section id="gewFokuszeit" class="gw-ansicht" hidden>
+      </div>
+    </div>
+  </div>
+
+  <!-- Das Fenster "Fokuszeit" (seit 18.10.2026, vorher dritter Reiter im
+       Fenster "Gewohnheiten"): die Wochenstatistik des Timers. Geoeffnet aus
+       den Einstellungen, Reiter "Timer". Gleicher Rahmen wie das Fenster
+       "Gewohnheiten", nur ohne Reiter. Gefuellt aus gewohnheiten.js
+       (gewZeichneFokuszeit). -->
+  <div id="fokuszeitFenster" class="admin-popup gw-fenster" hidden>
+    <div class="admin-popup-box einstellungen gw-box" role="dialog" aria-labelledby="fokuszeitTitel">
+      <header class="ein-kopfzeile gw-kopfzeile">
+        <h2 id="fokuszeitTitel" class="gw-titel">Fokuszeit</h2>
+        <button type="button" id="fokuszeitZu" class="ein-schliessen"
+                aria-label="Fokuszeit schließen" title="Schließen">✕</button>
+      </header>
+      <div class="ein-blaettern gw-blaettern">
+        <section id="gewFokuszeit" class="gw-ansicht">
           <div class="gw-kacheln">
             <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinHeute">0</div><div class="gw-kachel-name">Min. heute</div></div>
             <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinWoche">0</div><div class="gw-kachel-name">Min. diese Woche</div></div>
@@ -773,7 +756,6 @@
           <p id="gewFokuszeitHinweis" class="ein-hinweis gw-mitte" hidden></p>
           <p class="ein-hinweis gw-mitte">Den Timer startest du über den Knopf ⏱ oben. Die Standarddauer steht in den Einstellungen unter „Timer“.</p>
         </section>
-
       </div>
     </div>
   </div>

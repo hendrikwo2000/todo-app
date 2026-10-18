@@ -116,8 +116,9 @@
     return fetchOriginal(eingabe, Object.assign({}, optionen, { headers }));
   };
 
-  // Dasselbe fuer Links auf /api/... (Gewohnheiten-Export): kurz vor dem
-  // Klick das Konto anhaengen.
+  // Dasselbe fuer Links auf /api/... (bis Oktober 2026 der Gewohnheiten-
+  // Export, heute keiner mehr - die Huelle bleibt fuer den naechsten): kurz
+  // vor dem Klick das Konto anhaengen.
   document.addEventListener("click", (e) => {
     if (!tabKonto || !e.target.closest) return;
     const link = e.target.closest('a[href^="/api/"]');

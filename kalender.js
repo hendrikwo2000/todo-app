@@ -3316,7 +3316,7 @@ function darfGeste() {
   if (!einstellungenPopup.hidden) return false;
   // Das Fenster "Gewohnheiten" hat seine eigene Wischgeste (Monat im
   // Verlauf) - der Rand-Wisch des Streifens darf da nicht mitziehen.
-  if (window.gewIstOffen?.()) return false;
+  if (window.gewEinFensterOffen?.()) return false;
   if (formularOffen || wahlOffen) return false;
   if (kalLock && !kalLock.classList.contains("hidden")) return false;
   if (draggedId || draggedCat || draggedThema) return false;

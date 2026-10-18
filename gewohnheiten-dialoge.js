@@ -297,8 +297,8 @@ for (const dialog of [gewDialog, gewTagDialog]) {
 }
 
 /* --------------------------------------------------------- Einstellungen */
-/* Zwei Abschnitte im Akkordeon der Einstellungen: "Gewohnheiten" (Zaehlweise
-   der Flamme, Export; Reiter Gewohnheiten) und "Standarddauer" (Reiter Timer).
+/* Zwei Einstellungen pro Konto: die Zaehlweise der Flamme (Schalter-Zeile im
+   Reiter Gewohnheiten) und die Standarddauer (Abschnitt im Reiter Timer).
    Beide Werte gelten pro KONTO (Tabelle fokus_einstellungen), anders als die
    Schalter im Abschnitt "Anzeige" (je einer in den Reitern Gewohnheiten
    und Timer), die pro Geraet gelten. */
@@ -306,16 +306,16 @@ for (const dialog of [gewDialog, gewTagDialog]) {
 let gewEinstellungen = { arbeitMin: 25, flammenModus: "absolut" };
 
 /**
- * Der Schalter fuer die Zaehlweise. Angehakt = "In Reihe". Der Hinweis darunter
- * ist die EINZIGE Stelle, an der die beiden Bedeutungen erklaert werden - auf
- * der Karte steht in beiden Faellen nur "🔥 <Zahl> Tage" (Hendriks Vorgabe vom
- * 15.08.2026: die Anzeige sieht gleich aus, nur die Zahl ist eine andere).
+ * Der Schalter fuer die Zaehlweise. Angehakt = "In Reihe". Seit 18.10.2026 eine
+ * Zeile ohne Aufklappen und ohne Erklaertext darunter (Hendriks Wunsch); die
+ * Erklaerung steht nur noch als Tooltip an der Zeile. Auf der Karte steht in
+ * beiden Faellen nur "🔥 <Zahl> Tage" (Vorgabe vom 15.08.2026).
  */
 function gewZeichneFlammenSchalter() {
   const reihe = gewEinstellungen.flammenModus === "reihe";
   gewFeld("gewFlammenSwitch").checked = reihe;
   gewFeld("gewFlammenLabel").textContent = reihe ? "In Reihe" : "Insgesamt";
-  gewFeld("gewFlammenHinweis").textContent = reihe
+  gewFeld("gewFlammenZeile").title = reihe
     ? "Tage am Stück. Ein ausgelassener Tag setzt die Flamme zurück auf null."
     : "Alle erledigten Tage zusammen. Ein ausgelassener Tag kostet nichts, er bringt nur nichts.";
 }
@@ -329,7 +329,6 @@ function gewZeichneEinstellungsSubtexte() {
   if (gewBestand.geladen) {
     const n = gewBestand.gewohnheiten.filter(g => !g.archiviert).length;
     const archiv = gewBestand.gewohnheiten.length - n;
-    gewFeld("subGewohnheiten").textContent = n === 1 ? "1 Gewohnheit" : `${n} Gewohnheiten`;
     gewFeld("subGewVerwalten").textContent = archiv ? `${n} aktiv · ${archiv} im Archiv` : `${n} aktiv`;
   }
 }
@@ -407,5 +406,5 @@ gewFeld("gewDauerSpeichern").addEventListener("click", async () => {
 });
 
 gewFeld("gewVerlaufOeffnen").addEventListener("click", () => gewFensterOeffnen("verlauf"));
-// Aus dem Reiter "Timer": dasselbe Fenster, gleich auf der Fokuszeit.
-gewFeld("gewFokuszeitOeffnen").addEventListener("click", () => gewFensterOeffnen("fokuszeit"));
+// Aus dem Reiter "Timer": das eigene Fenster "Fokuszeit" (gewohnheiten.js).
+gewFeld("gewFokuszeitOeffnen").addEventListener("click", () => fokuszeitOeffnen());

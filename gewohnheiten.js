@@ -32,8 +32,10 @@ const gewFenster = document.getElementById("gewFenster");
 const gewAnsichten = {
   verlauf: document.getElementById("gewVerlauf"),
   statistik: document.getElementById("gewStatistik"),
-  fokuszeit: document.getElementById("gewFokuszeit"),
 };
+// Die Fokuszeit hat seit 18.10.2026 ihr eigenes Fenster (Hendrik: "der Timer
+// hat nichts mit Gewohnheiten zu tun") - vorher der dritte Reiter hier.
+const fokuszeitFenster = document.getElementById("fokuszeitFenster");
 const gewKalRaster = document.getElementById("gewKalRaster");
 
 let gewReiter = "verlauf";
@@ -107,7 +109,6 @@ function gewZeichneAktuell() {
   gewZeichneVerwalten();
   if (!gewIstOffen()) return;
   if (gewReiter === "statistik") gewZeichneStatistik();
-  else if (gewReiter === "fokuszeit") gewZeichneFokuszeit();
   else gewZeichneVerlauf();
 }
 
@@ -429,8 +430,23 @@ for (const knopf of document.querySelectorAll("#gewStatZeitraum button")) {
 }
 
 /* ------------------------------------------------------------ Fokuszeit */
-// Die Wochenstatistik des Timers. Den Timer selbst gibt es nur im Streifen -
-// zwei Start-Knoepfe an zwei Orten waeren einer zu viel.
+// Die Wochenstatistik des Timers, im eigenen Fenster. Den Timer selbst startet
+// nur der Knopf ⏱ in der Kopfzeile - zwei Start-Knoepfe an zwei Orten waeren
+// einer zu viel.
+
+function fokuszeitIstOffen() { return !fokuszeitFenster.hidden; }
+
+function fokuszeitOeffnen() {
+  // Aus den Einstellungen heraus: die schliessen, wie beim Fenster Gewohnheiten.
+  if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
+  fokuszeitFenster.hidden = false;
+  fokuszeitFenster.querySelector(".gw-blaettern").scrollTop = 0;
+  gewZeichneFokuszeit();
+}
+
+function fokuszeitSchliessen() {
+  fokuszeitFenster.hidden = true;
+}
 
 async function gewZeichneFokuszeit() {
   const antwort = await gewApi(`/api/fokus?heute=${todayStr()}`);
@@ -632,9 +648,11 @@ for (const seg of gewFenster.querySelectorAll(".ein-reiter-seg")) {
   seg.addEventListener("click", () => gewZeigeReiter(seg.dataset.gwReiter));
 }
 document.getElementById("gewFensterZu").addEventListener("click", gewFensterSchliessen);
+document.getElementById("fokuszeitZu").addEventListener("click", fokuszeitSchliessen);
 // Klick neben den Kasten schliesst, wie bei den Einstellungen. Am Handy fuellt
 // das Fenster den Bildschirm, dort bleibt das ✕.
 gewFenster.addEventListener("click", e => { if (e.target === gewFenster) gewFensterSchliessen(); });
+fokuszeitFenster.addEventListener("click", e => { if (e.target === fokuszeitFenster) fokuszeitSchliessen(); });
 document.getElementById("gewNeuKnopf").addEventListener("click", () => gewOeffneDialog(null));
 
 /**
@@ -649,6 +667,7 @@ function gewSchliesseOberste() {
     if (!el.hidden) { el.hidden = true; return true; }
   }
   if (gewIstOffen()) { gewFensterSchliessen(); return true; }
+  if (fokuszeitIstOffen()) { fokuszeitSchliessen(); return true; }
   return false;
 }
 
@@ -665,9 +684,14 @@ document.addEventListener("keydown", e => {
   }
 }, true);
 
-window.gewIstOffen = gewIstOffen;
+// Fuer kalender.js (keine Rand-Wischgeste, solange ein Fenster offen ist):
+// beide Fenster zaehlen. Eigener Name, NICHT window.gewIstOffen: eine
+// Funktionsdeklaration auf oberster Ebene IST window.gewIstOffen - die zu
+// ueberschreiben liess gewIstOffen() sich selbst endlos aufrufen.
+window.gewEinFensterOffen = () => gewIstOffen() || fokuszeitIstOffen();
 window.gewSchliesseOberste = gewSchliesseOberste;
 window.gewFensterOeffnen = gewFensterOeffnen;
+window.fokuszeitOeffnen = fokuszeitOeffnen;
 
 /**
  * Aenderungen von anderswo. "tag" und "bestand" kommen mit frischem Bestand
@@ -676,13 +700,14 @@ window.gewFensterOeffnen = gewFensterOeffnen;
  * Flamme brauchen den Bestand frisch vom Server.
  */
 gewBeiAenderung(async was => {
-  // Das Fenster ODER die Einstellungen (mit der Verwalten-Liste) offen?
-  const einstellungenOffen = !einstellungenPopup.hidden;
-  if (!gewIstOffen() && !einstellungenOffen) return;
+  // Eine Timer-Sitzung betrifft nur die Fokuszeit, nicht die Gewohnheiten.
   if (was === "timer") {
-    if (gewIstOffen() && gewReiter === "fokuszeit") gewZeichneFokuszeit();
+    if (fokuszeitIstOffen()) gewZeichneFokuszeit();
     return;
   }
+  // Das Fenster ODER die Einstellungen (mit der Gewohnheiten-Liste) offen?
+  const einstellungenOffen = !einstellungenPopup.hidden;
+  if (!gewIstOffen() && !einstellungenOffen) return;
   if (was === "nachgeliefert" || was === "einstellungen") await gewLadeBestand();
   gewZeichneAktuell();
 });

@@ -16,8 +16,8 @@ export const WEITERE_COOKIE = "todo_weitere";
 export const MAX_KONTEN = 5;
 
 // Welches der angemeldeten Konten ein Tab meint, schickt konto.js bei jeder
-// API-Anfrage als Header mit. Echte Seitenaufrufe (Google verbinden, Export)
-// koennen keinen Header setzen, die haengen ?konto= an die Adresse.
+// API-Anfrage als Header mit. Echte Seitenaufrufe (Google verbinden) koennen
+// keinen Header setzen, die haengen ?konto= an die Adresse.
 const KONTO_HEADER = "X-Konto";
 
 // Das Sitzungs-Cookie gilt fuer die ganze Domain, nicht nur fuer

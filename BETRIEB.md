@@ -171,8 +171,8 @@ wurde. Höchstens `MAX_KONTEN` = 5.
   sieht nur dieses). Alle weiteren Token stehen mit Punkt getrennt in
   `todo_weitere` (HttpOnly, host-only).
 - Welches Konto ein Tab meint, kommt als Header `X-Konto: <user_id>`, bei
-  echten Seitenaufrufen als `?konto=` (Gewohnheiten-Export,
-  `/api/google/start`). `angemeldeterNutzer` nimmt dann **nur** die Sitzung
+  echten Seitenaufrufen als `?konto=` (`/api/google/start`; bis 18.10.2026
+  auch der Gewohnheiten-Export). `angemeldeterNutzer` nimmt dann **nur** die Sitzung
   genau dieses Kontos — ist sie weg, gibt es 401 statt still das erste Konto.
   Ohne Header alles wie vorher.
 - `anmeldungVorbereiten` (in `verify-code.js` und `link.js`, VOR dem
@@ -407,15 +407,24 @@ Konto, Verwaltung (nur Admin). Darunter **drei Reiter**, `ToDo`,
 in `app.js`; beim Öffnen immer `ToDo`) als **Karteikarten**: der gewählte
 Reiter geht nahtlos in den gerahmten Inhalt darunter über (`.ein-reiterbox`):
 - **ToDo**: Google Kalender, Meine Listen, Geteilt mit mir.
-- **Gewohnheiten**: Anzeige (nur der Gewohnheiten-Schalter), Gewohnheiten,
-  Verwalten (Liste mit Stift und Hoch/Runter, „Neue Gewohnheit", Archiv),
-  „Verlauf & mehr ›".
-- **Timer** (eigener Reiter seit 18.10.2026): Anzeige (Schalter für den Knopf
-  ⏱), Standarddauer, „Fokuszeit ›" — öffnet das Fenster „Gewohnheiten" direkt
-  auf dem Reiter Fokuszeit. Hendriks Frage war, ob Gewohnheiten und Timer
-  getrennt gehören; er will den Timer als Nächstes ausbauen, und der soll dafür
-  nicht weiter in den Gewohnheiten wachsen. Bei 360 px passen die drei Reiter
-  noch ohne Abschneiden („Gewohnheiten" ist der längste).
+- **Gewohnheiten**: Anzeige (Schalter-Zeile), Flamme zählt (Schalter-Zeile),
+  Gewohnheiten (aufklappbar: Liste mit Stift und Hoch/Runter, „Neue
+  Gewohnheit", Archiv — hieß bis 18.10.2026 „Verwalten"), „Verlauf & Statistik ›".
+- **Timer** (eigener Reiter seit 18.10.2026): Anzeige (Schalter-Zeile für den
+  Knopf ⏱), Standarddauer (aufklappbar), „Fokuszeit ›" — öffnet das eigene
+  Fenster „Fokuszeit". Hendriks Frage war, ob Gewohnheiten und Timer getrennt
+  gehören; er will den Timer als Nächstes ausbauen. Gleich danach wollte er die
+  Trennung vollständig („der Timer hat nichts mit Gewohnheiten zu tun"): eigenes
+  Fenster für die Fokuszeit, das Gewohnheiten-Fenster nur noch mit Verlauf und
+  Statistik. Bei 360 px passen die drei Reiter noch ohne Abschneiden
+  („Gewohnheiten" ist der längste).
+
+**Schalter als Zeile, Inhalt zum Aufklappen.** Ein einzelner Schalter steht
+wie „Darstellung" direkt als Zeile (`.ein-abschnitt.ein-zeile`), ohne
+Aufklappen und ohne Erklärtext (Hendrik, 18.10.2026); aufklappbar (`<details>`)
+ist nur, was mehr Inhalt hat. Die Erklärung der Flammen-Zählweise steht seitdem
+nur noch als Tooltip (`title`) an der Zeile. Der JSON-Export
+(`/api/export`) ist am selben Tag ersatzlos weggefallen („braucht man nicht").
 
 Hendriks Vorgabe (gefragt): „Einstellungen öffnen, dann sieht man alle
 globalen Einstellungen … und dann ein Reiter zum Öffnen, damit es
@@ -2479,9 +2488,9 @@ der alten App (cron-job.org) bekommt seitdem 410 und kann weg.
 |---|---|
 | Daten, Regel-Spiegel, Offline-Warteschlange, einziger Schreibweg fuer Tage (`gewSchreibeTag`) | `gewohnheiten-daten.js` |
 | Gewohnheiten (Heute-Spalte am PC, sonst unter der Tagesansicht) und Timer (Knopf mit Fenster) | `fokus.js` |
-| Fenster "Gewohnheiten" (Verlauf, Statistik, Fokuszeit) und die Verwalten-Liste in den Einstellungen | `gewohnheiten.js` |
+| Fenster "Gewohnheiten" (Verlauf, Statistik), Fenster "Fokuszeit" und die Gewohnheiten-Liste in den Einstellungen | `gewohnheiten.js` |
 | Dialoge anlegen/bearbeiten und Tag nachtragen, Einstellungsabschnitte | `gewohnheiten-dialoge.js` |
-| Endpunkte | `functions/api/gewohnheiten/*`, `functions/api/fokus/*`, `functions/api/export.js` |
+| Endpunkte | `functions/api/gewohnheiten/*`, `functions/api/fokus/*` |
 | Regeln (Status, Flamme, heute dran/ruht/offen) | `functions/_lib/tag.js`, `heute.js`, `fokus.js` |
 | Abend-Erinnerung | `functions/_lib/erinnerung.js` (siehe "Benachrichtigungen") |
 
@@ -2517,8 +2526,8 @@ gibt es keine Rand-Wischgeste (`darfGeste`).
 
 **Einstellungen** (seit 18.10.2026 verteilt auf die Reiter „Gewohnheiten" und
 „Timer", eingeklappt; Aufbau siehe Kapitel „Einstellungen"):
-- **Anzeige** - zwei Schalter, Gewohnheiten und Timer je fuer sich, jeder im
-  Abschnitt „Anzeige" seines Reiters,
+- **Anzeige** - zwei Schalter, Gewohnheiten und Timer je fuer sich, jeder als
+  Zeile „Anzeige" in seinem Reiter,
   pro Geraet in `localStorage.streifenGewohnheiten` / `streifenTimer`
   (Standard an; wer den alten gemeinsamen Schalter `fokusPanel` aus hatte,
   startet mit beiden aus). Der Schalter "Gewohnheiten" gilt fuer beide Orte der
@@ -2529,15 +2538,28 @@ gibt es keine Rand-Wischgeste (`darfGeste`).
   (bewusst nicht "Bereiche": so heissen hier die Spalten des Boards). Bis Oktober
   2026 war das EIN Schalter "Fokus im Kalender", davor ein 🔥 in der
   Kopfzeile.
-- **Gewohnheiten** - Zaehlweise der Flamme (insgesamt / in Reihe), Export als
-  JSON (`/api/export`, nur Gewohnheiten und Sitzungen).
-- **Verwalten** - Liste mit Stift und Hoch/Runter, „Neue Gewohnheit", Archiv.
-- **Verlauf & mehr** - kein Abschnitt, sondern ein Eintrag, der das Fenster
-  „Gewohnheiten" oeffnet (Verlauf, Statistik, Fokuszeit).
+- **Flamme zählt** - Zaehlweise der Flamme (insgesamt / in Reihe), Schalter-Zeile
+  `#gewFlammenZeile`. Der JSON-Export daneben ist seit 18.10.2026 weg.
+- **Gewohnheiten** (bis 18.10.2026 "Verwalten") - Liste mit Stift und
+  Hoch/Runter, „Neue Gewohnheit", Archiv.
+- **Verlauf & Statistik** - kein Abschnitt, sondern ein Eintrag, der das Fenster
+  „Gewohnheiten" oeffnet (zwei Reiter: Verlauf, Statistik).
 - **Standarddauer** (Reiter Timer, bis 18.10.2026 "Fokus-Timer" im Reiter
   Gewohnheiten).
-- **Fokuszeit ›** (Reiter Timer) - oeffnet dasselbe Fenster mit
-  `gewFensterOeffnen("fokuszeit")`.
+- **Fokuszeit ›** (Reiter Timer) - oeffnet das eigene Fenster `#fokuszeitFenster`
+  (`fokuszeitOeffnen()` in gewohnheiten.js), bis 18.10.2026 der dritte Reiter des
+  Fensters Gewohnheiten.
+
+**Falle beim Exportieren nach `window`:** Eine Funktionsdeklaration auf oberster
+Ebene eines klassischen Skripts IST schon `window.<name>`. Wer
+`window.gewIstOffen = () => gewIstOffen() || …` schreibt, ueberschreibt damit die
+Funktion selbst - sie ruft sich endlos auf (beim Bau des Fokuszeit-Fensters
+passiert, im Test aufgefallen: Statistik blieb leer, Escape ging nicht). Deshalb
+heisst der kombinierte Test fuer kalender.js `window.gewEinFensterOffen`.
+
+**Oben fest** stehen die Einstellungen, beide Fenster und seit 18.10.2026 auch
+der Dialog „Neue Gewohnheit" (`#gewDialog`): Ziel-Art und Rhythmus blenden
+Felder ein, und mittig zentriert rutschte er dabei nach oben.
 
 Zaehlweise und Dauer gelten pro KONTO (`fokus_einstellungen`), anders als die
 Streifen-Schalter. `GET /api/fokus` liefert beide in `einstellungen`.
@@ -2706,9 +2728,9 @@ Auch „Heute" holt nichts mehr nach vorn: der Streifen zeigt immer das Raster.
 
 Bei den Gewohnheiten: abhaken (einfach oder mit Menge über −/Zahl/+), Flammen
 sehen und ueber den Stift an der Karte gleich bearbeiten; im Timer-Fenster starten,
-pausieren, beenden. Alles andere - anlegen, Verlauf, Statistik, Fokuszeit,
-Reihenfolge, Archiv - steht seit Oktober 2026 im Fenster "Gewohnheiten" (siehe
-oben), Zaehlweise, Dauer und Export in den Einstellungen. Bis dahin fuehrte ein
+pausieren, beenden. Alles andere steht seit Oktober 2026 in den Einstellungen
+(anlegen, Reihenfolge, Archiv, Zaehlweise, Dauer) und in den Fenstern
+"Gewohnheiten" (Verlauf, Statistik) und "Fokuszeit". Bis dahin fuehrte ein
 ↗ in der Kopfzeile des Bereichs zur Fokus-App.
 
 **Wiederoeffnen hat ein Rueckgaengig** (Snackbar, wie in der Fokus-App): aus

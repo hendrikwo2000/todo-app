@@ -1410,17 +1410,23 @@ input[type="date"]:focus {
    ist. Mittig zentriert wanderte sie bei jeder Hoehenaenderung nach oben. Die
    Hoehe bekommt den Rest bis 20px (Polster des Dialogs) vor dem unteren Rand;
    ist der Inhalt hoeher, blaettert .ein-blaettern. Am Handy fuellt der Dialog
-   den Bildschirm, dort greift der Block darunter. Dasselbe gilt fuer das
-   Fenster "Gewohnheiten" (#gewFenster): dort springt die Oberkante sonst beim
-   Wechsel zwischen Verlauf, Statistik, Fokuszeit und Verwalten. */
+   den Bildschirm, dort greift der Block darunter. Dasselbe gilt fuer die
+   Fenster "Gewohnheiten" (#gewFenster: Oberkante sprang beim Wechsel zwischen
+   Verlauf und Statistik) und "Fokuszeit" sowie den Dialog "Neue Gewohnheit"
+   (#gewDialog: Ziel-Art und Wochentage blenden Felder ein, und der Dialog
+   rutschte dabei nach oben - Hendrik, 18.10.2026). */
 #einstellungenPopup,
-#gewFenster {
+#gewFenster,
+#fokuszeitFenster,
+#gewDialog {
   --ein-abstand-oben: 8vh;
   align-items: flex-start;
   padding-top: var(--ein-abstand-oben);
 }
 #einstellungenPopup .admin-popup-box.einstellungen,
-#gewFenster .admin-popup-box.gw-box {
+#gewFenster .admin-popup-box.gw-box,
+#fokuszeitFenster .admin-popup-box.gw-box,
+#gewDialog .gw-dialog-box {
   max-height: min(calc(100vh - var(--ein-abstand-oben) - 20px), 900px);
 }
 /* Das ✕ rechts - die linke Ecke gehoert dem Inhalt. */
@@ -3546,7 +3552,10 @@ body.zieht, body.zieht .todo {
   border-radius: 12px;
 }
 #gewFenster[data-reiter="verlauf"] .gw-blaettern { border-top-left-radius: 0; }
-#gewFenster[data-reiter="fokuszeit"] .gw-blaettern { border-top-right-radius: 0; }
+#gewFenster[data-reiter="statistik"] .gw-blaettern { border-top-right-radius: 0; }
+/* Das Fenster "Fokuszeit" hat keine Reiterzeile - der Abstand, den sonst sie
+   zum Titel haelt, kommt hier an den Rahmen. */
+#fokuszeitFenster .gw-blaettern { margin-top: 10px; }
 @media (max-width: 560px) {
   .gw-blaettern { padding: 12px; }
 }
@@ -3564,8 +3573,9 @@ body.zieht, body.zieht .todo {
 /* Am Handy ueber den ganzen Bildschirm - dieselbe Schwelle und dieselben
    Masse wie die Einstellungen. */
 @media (max-width: 560px) {
-  #gewFenster { padding: 0; }
-  #gewFenster .admin-popup-box.gw-box {
+  #gewFenster, #fokuszeitFenster { padding: 0; }
+  #gewFenster .admin-popup-box.gw-box,
+  #fokuszeitFenster .admin-popup-box.gw-box {
     width: 100%;
     height: 100%;
     max-height: none;
@@ -3929,6 +3939,9 @@ body.zieht, body.zieht .todo {
   -webkit-tap-highlight-color: transparent;
 }
 .ein-kopf-weiter { font-size: 18px; line-height: 1; }
+/* Ohne Kurztext davor ("Verlauf & Statistik") schiebt sonst nichts den Pfeil
+   an den rechten Rand - sonst tut das margin-left:auto von .ein-kopf-sub. */
+.ein-kopf-text + .ein-kopf-weiter { margin-left: auto; }
 @media (hover: hover) {
   .ein-zeile-knopf:hover .ein-kopf-text { color: var(--accent); }
 }
