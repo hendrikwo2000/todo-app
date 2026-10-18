@@ -4443,6 +4443,7 @@ document.getElementById("googleTrennenJa").addEventListener("click", async () =>
     verbunden: "Google-Kalender verbunden.",
     abgebrochen: "Verbindung abgebrochen.",
     abgelehnt: "Verbindung abgelehnt - bitte noch einmal versuchen.",
+    unvollstaendig: "Bitte im Google-Dialog beide Berechtigungen ankreuzen (Liste der Kalender und Termine), sonst kann die App deinen Kalender nicht lesen. Dann noch einmal verbinden.",
     "kein-dauerzugriff": "Google hat keinen dauerhaften Zugriff erteilt. Bitte in den Google-Kontoeinstellungen den Zugriff für diese App entfernen und erneut verbinden.",
     "keine-sitzung": "Anmeldung abgelaufen - bitte neu anmelden und noch einmal verbinden.",
     "nicht-eingerichtet": "Google-Verknüpfung ist auf diesem Server nicht eingerichtet.",

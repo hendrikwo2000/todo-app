@@ -2045,6 +2045,11 @@ geprüft, **nicht** gegen ein echtes Konto durchgespielt. Die Schritte für Hend
 englischen Begründungen und das Video-Drehbuch stehen in `ToDo/Google-Verifizierung.md`
 (außerhalb des Repos, weil `web/` komplett öffentlich ausgeliefert wird). Kein Impressum:
 Hendrik will seine Anschrift nicht veröffentlichen.
+**Teilweise erteilte Berechtigungen (18.10.2026):** Googles Dialog hat ein Häkchen je Berechtigung, bei nicht
+verifizierten Apps stehen sie zunächst alle leer. `callback.js` prüft deshalb mit `kalenderRechteVollstaendig()`,
+ob Kalenderliste UND Termine erteilt wurden; sonst wird nichts gespeichert, der Zugriff bei Google gleich
+widerrufen und die App zeigt `?google=unvollstaendig`. Vorher hätte ein fehlendes Häkchen die Verbindung beim
+ersten Abruf als „getrennt“ gelöscht, ohne Erklärung. Google verlangt diesen Umgang mit Teil-Zustimmung.
 
 **Einrichtung (einmalig, in der Google Cloud Console).** Projekt anlegen →
 Calendar API aktivieren → OAuth-Zustimmungsbildschirm (Extern, Bereiche

@@ -11,6 +11,7 @@ import { nutzerOderFehler } from "../../_lib/zugang.js";
 import { liesCookie, mitCookies } from "../../_lib/session.js";
 import {
   fehltEinrichtung, tauscheCode, emailAusIdToken, speichereKonto,
+  kalenderRechteVollstaendig, widerrufe,
 } from "../../_lib/google.js";
 import { STATE_COOKIE, KONTO_COOKIE } from "./start.js";
 
@@ -50,6 +51,14 @@ export async function onRequestGet({ request, env }) {
 
   try {
     const daten = await tauscheCode(env, request, code);
+    // Haeckchen im Zustimmungsdialog weggelassen: nichts speichern und den
+    // halben Zugriff bei Google gleich wieder entziehen, sonst steht er dort
+    // als Verbindung, die in der App nie angekommen ist. Vor dem Test auf das
+    // refresh_token, dessen Fehlen waere hier die falsche Auskunft.
+    if (!kalenderRechteVollstaendig(daten.scope)) {
+      await widerrufe(daten.refresh_token || daten.access_token);
+      return zurueck(request, "unvollstaendig");
+    }
     // Ohne refresh_token waere die Verknuepfung nach einer Stunde still tot.
     // Passiert, wenn access_type/prompt fehlen - lieber hier hart abbrechen
     // als eine Verbindung anbieten, die morgen nicht mehr geht.

@@ -40,12 +40,22 @@ const API_BASE   = "https://www.googleapis.com/calendar/v3";
 // und die App bietet das Anlegen nur an, wenn es gedeckt ist (siehe
 // darfSchreiben).
 export const SCOPE_SCHREIBEN = "https://www.googleapis.com/auth/calendar.events";
+export const SCOPE_KALENDERLISTE = "https://www.googleapis.com/auth/calendar.calendarlist.readonly";
 export const SCOPES = [
   "openid",
   "email",
-  "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+  SCOPE_KALENDERLISTE,
   SCOPE_SCHREIBEN,
 ].join(" ");
+
+// Googles Zustimmungsdialog hat ein Haeckchen je Berechtigung, und der Nutzer
+// darf einzelne weglassen (bei nicht verifizierten Apps stehen sie sogar
+// zunaechst ALLE leer). Ohne beide Kalender-Berechtigungen kann die App weder
+// die Kalenderliste noch Termine lesen - dann gar nicht erst verbinden.
+export function kalenderRechteVollstaendig(scopeText) {
+  const erteilt = String(scopeText || "").split(/\s+/);
+  return erteilt.includes(SCOPE_KALENDERLISTE) && erteilt.includes(SCOPE_SCHREIBEN);
+}
 
 export function darfSchreiben(konto) {
   return !!(konto && typeof konto.scopes === "string" && konto.scopes.includes(SCOPE_SCHREIBEN));
