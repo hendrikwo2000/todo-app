@@ -1134,7 +1134,7 @@ input[type="date"]:focus {
 }
 .lock-box h2 { margin: 0; font-size: 18px; }
 .lock-hint { margin: 0; font-size: 12.5px; color: var(--muted); }
-/* Beschreibung und Links unter dem Kasten, Gegenstueck zu .rechtsfuss. */
+/* Beschreibung und Links unter dem Kasten, Gegenstueck zu .ein-rechtsfuss. */
 .lock-fuss {
   width: min(320px, 90vw);
   margin: 0;
@@ -1143,11 +1143,17 @@ input[type="date"]:focus {
   line-height: 1.5;
   color: var(--muted);
 }
-.lock-fuss a, .rechtsfuss a { color: inherit; }
-/* Datenschutz/Kontakt am Ende der Liste (Angemeldete). */
-.rechtsfuss {
-  margin-top: 36px;
-  padding: 0 0 max(14px, env(safe-area-inset-bottom));
+.lock-fuss a, .ein-rechtsfuss a { color: inherit; }
+/* Datenschutz/Kontakt ganz unten in den Einstellungen (Angemeldete). Das
+   Polster unten (Kerbe, Home-Balken) bringt die Box des Dialogs schon mit.
+   Die Hauptansicht waechst auf die volle Hoehe des Blaetter-Kastens, und
+   margin-top: auto schiebt den Fuss an dessen Unterkante: am Handy (Vollbild)
+   steht er am Bildschirmrand statt mitten im leeren Raum, am Rechner (Kasten
+   so hoch wie der Inhalt) bleibt es beim Abstand von 24px. */
+#einstellungenHaupt { flex: 1 0 auto; }
+.ein-rechtsfuss {
+  margin-top: auto;
+  padding-top: 24px;
   text-align: center;
   font-size: 12px;
   color: var(--muted);
@@ -1925,7 +1931,7 @@ html:not(.breit) #kalZu { display: none; }
    die Monatswahl ein Block, der sich zwischen Kopfzeile und Raster schob und
    den ganzen Rest nach unten zog - am Handy rutschte die Tagesliste dabei aus
    dem Bild. Am Handy fuellt der Kasten den Bildschirm, am Rechner sitzt er
-   mittig. */
+   mittig (das Termin-Fenster ausgenommen: das sitzt oben, siehe unten). */
 .kal-popup {
   position: fixed;
   inset: 0;
@@ -1943,7 +1949,8 @@ html:not(.breit) #kalZu { display: none; }
    Fenster (Hendrik, 18.10.2026). padding-left in Prozent der Bildschirmbreite
    schiebt die Mitte des Kastens auf die Mitte der Kalender-Spalte; --kal-breite
    gilt auch neben der Heute-Spalte, der Kalender-Teil behaelt genau diese
-   Breite. Die uebrigen Dialoge (Tag, Termin, Rueckfrage) bleiben mittig. */
+   Breite. Die uebrigen Dialoge (Tag, Rueckfrage) bleiben mittig, das
+   Termin-Fenster sitzt oben (#kalTerminPopup weiter unten). */
 html.kal-split #kalWahl {
   align-items: flex-start;
   padding: 84px 0 20px calc(100% - var(--kal-breite));
@@ -1974,6 +1981,20 @@ html.kal-split #kalWahl {
     border: 0;
     border-radius: 0;
     padding: max(16px, var(--oben)) 16px max(16px, env(safe-area-inset-bottom));
+  }
+}
+/* Das Termin-Fenster (neu / ansehen / bearbeiten, alles ein Kasten) sitzt am
+   Rechner oben fest statt mittig - wie die Einstellungen. Mittig wanderte die
+   Oberkante bei jeder Hoehenaenderung: Ansehen -> Bearbeiten, Ganztaegig,
+   Farbwahl, Wiederholung (Hendrik, 18.10.2026). Der Kasten wird ueber
+   max-height: 100% (von .kal-popup-box) bis 20px vor den unteren Rand hoch, ist
+   der Inhalt hoeher, scrollt .kal-form-inhalt. Nur ueber 560px: darunter
+   fuellt der Kasten den Bildschirm (Block davor), und die ID-Regel hier
+   wuerde dessen padding: 0 sonst schlagen. */
+@media (min-width: 561px) {
+  #kalTerminPopup {
+    align-items: flex-start;
+    padding-top: 8vh;
   }
 }
 .kal-popup-kopf {

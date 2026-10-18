@@ -124,13 +124,10 @@
 
     <main id="board" class="board"><!-- Spalten werden per JS eingefuegt --></main>
 
-    <!-- Datenschutz und Kontakt: fuer Angemeldete dezent am Seitenende, und
-         auch fuer Besucher ohne JavaScript lesbar (Google prueft die Startseite
-         auf einen Link zur Datenschutzerklaerung). Gegenstueck auf der
-         Anmeldemaske: .lock-fuss. -->
-    <footer class="rechtsfuss">
-      <a href="/datenschutz">Datenschutz</a> · <a href="mailto:kontakt@it-wolf.org">Kontakt</a>
-    </footer>
+    <!-- Datenschutz und Kontakt stehen fuer Angemeldete seit 18.10.2026 ganz
+         unten in den Einstellungen (.ein-rechtsfuss), nicht mehr am Listenende.
+         Besucher sehen sie auf der Anmeldemaske (.lock-fuss) - das ist die
+         Seite, die Google fuer die Verifizierung prueft. -->
   </div>
 
   <div id="snackbar" class="snackbar" aria-live="polite"></div>
@@ -581,6 +578,14 @@
 
           </div>
         </div><!-- /.ein-reiterbox -->
+
+        <!-- Datenschutz und Kontakt, ganz unten und in jedem Reiter gleich
+             (steht bewusst ausserhalb der Reiter-Inhalte). Frueher am Ende der
+             Liste; verschoben am 18.10.2026. Fuer Besucher ohne Anmeldung
+             steht derselbe Link auf der Anmeldemaske (.lock-fuss). -->
+        <footer class="ein-rechtsfuss">
+          <a href="/datenschutz">Datenschutz</a> · <a href="mailto:kontakt@it-wolf.org">Kontakt</a>
+        </footer>
       </div>
 
       <!-- Zugriff einer eigenen, geteilten Liste verwalten. Erreichbar,

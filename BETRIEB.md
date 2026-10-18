@@ -1956,9 +1956,17 @@ steht (`html.kal-split`), geht die Monatswahl (`#kalWahl`) über dieser Spalte
 auf, direkt unter dem Monatsnamen, statt mittig auf dem Bildschirm: Hendrik
 musste mit der Maus quer durchs Fenster. Technisch nur `padding` am Overlay
 (`calc(100% - var(--kal-breite))` links, 84 px oben); der Hintergrund bleibt
-ganzflächig abgedunkelt. Am Handy und unter 1000 px bleibt sie mittig. Tag-Karte,
-Termin-Formular und Rückfrage sitzen weiter mittig, die hat Hendrik nicht
-genannt.
+ganzflächig abgedunkelt. Am Handy und unter 1000 px bleibt sie mittig. Tag-Karte
+und Rückfrage sitzen weiter mittig, die hat Hendrik nicht genannt.
+
+**Termin-Fenster sitzt oben fest (18.10.2026).** `#kalTerminPopup` (neu, ansehen,
+bearbeiten und die Wiederholungs-Seite sind ein Kasten) hat am Rechner
+`align-items: flex-start` und `padding-top: 8vh`, wie die Einstellungen. Mittig
+sprang die Oberkante bei „Bearbeiten“, Ganztägig, Farbwahl und Wiederholung. Die
+Regel steht in `@media (min-width: 561px)`: am Handy ist das Fenster Vollbild
+(`.kal-popup-voll`), und die ID-Regel würde dessen `padding: 0` sonst schlagen.
+Die Höhe braucht keine eigene Zeile, `max-height: 100%` von `.kal-popup-box` reicht
+dann bis 20 px vor den unteren Rand.
 
 **Ungeprüft:** echtes iPad und echtes Handy (nachgestellt mit 1180 × 820 bzw.
 375 × 812 im Testbrowser), echte Google-Termine (nachgebaute Antwort aus der
@@ -2017,7 +2025,9 @@ dagegen entschieden und am 18.10. umentschieden, weil die App inzwischen mehrere
 hat und die Warnung die Adresse des Betreibers zeigt. Vorbereitet und live: die
 Datenschutzerklärung `datenschutz.html` (Adresse `/datenschutz`, deutsch mit englischer
 Zusammenfassung und dem Limited-Use-Satz), der Link dorthin auf der Anmeldemaske
-(`.lock-fuss`) und im Seitenfuß (`.rechtsfuss`), und die **schmalere Berechtigung**:
+(`.lock-fuss`) und ganz unten in den Einstellungen (`.ein-rechtsfuss`; bis zum
+18.10.2026 stand er stattdessen am Listenende, Hendriks Wunsch), und die
+**schmalere Berechtigung**:
 `calendar.calendarlist.readonly` statt `calendar.readonly` (Kalenderliste und Farbpalette),
 dazu `calendar.events` für Termine. Gegen die Berechtigungslisten der Google-Methoden
 geprüft, **nicht** gegen ein echtes Konto durchgespielt. Die Schritte für Hendrik, die
