@@ -99,7 +99,7 @@ Kalender dahinter zieht mit.
 Zurück geht es mit einem Wisch in der Kopfzeile, einem Tipp daneben, ✕ oder
 Escape. Auf dem Handy füllt der Kalender den ganzen Bildschirm.
 
-## Gewohnheiten und Timer
+## Gewohnheiten
 
 Gehören seit Oktober 2026 fest zur App, für jedes Konto. Der frühere
 Fokus-Tracker (fokus.it-wolf.org) ist hier aufgegangen — die Adresse leitet
@@ -116,31 +116,56 @@ es wird nachgetragen, sobald du wieder online bist.
   ToDos, einklappbar - er startet zu und zeigt im Kopf, wie viele heute erledigt
   sind („2 von 5").
 
-**Der Timer** ist der Knopf **⏱** oben neben dem Zahnrad. Ein Tipp öffnet ein
-kleines Fenster: **▶ Start** beginnt eine Sitzung mit deiner Standarddauer, **⏸**
-hält sie an, **⏹** beendet sie (ab einer Minute mit Rückfrage — geloggte Zeit lässt
-sich nicht mehr ändern). Läuft eine Sitzung, steht die Restzeit am Knopf. Am Ende
-gibt es einen Ton.
-
-**„Verlauf & mehr“** in den Einstellungen (⚙️, Reiter „Gewohnheiten") öffnet das
-Fenster **Gewohnheiten**:
+**„Verlauf & Statistik“** in den Einstellungen (⚙️, Reiter „Gewohnheiten") öffnet
+das Fenster **Gewohnheiten**:
 
 - **Verlauf:** ein Monatskalender je Gewohnheit. Ein Tipp auf einen Tag
   trägt ihn nach, Wischen wechselt den Monat
 - **Statistik:** wie oft geschafft, über 7, 30 oder 90 Tage
-- **Fokuszeit:** Fokusminuten pro Woche
 
 **In den Einstellungen (⚙️), Reiter „Gewohnheiten":**
 
-- **Fokus-Timer:** die Standarddauer
-- **Anzeige:** Gewohnheiten und Timer-Knopf einzeln ein- oder ausblenden
-  (gilt für dieses Gerät)
-- **Gewohnheiten:** ob die Flamme alle erledigten Tage zählt oder nur die am
-  Stück; Export als Datei
-- **Verwalten:** neue Gewohnheit anlegen (abhaken oder mit Zielmenge,
+- **Anzeige:** Gewohnheiten ein- oder ausblenden (gilt für dieses Gerät)
+- **Flamme zählt:** alle erledigten Tage oder nur die am Stück
+- **Gewohnheiten:** neue Gewohnheit anlegen (abhaken oder mit Zielmenge,
   mindestens oder höchstens, täglich / feste Wochentage / X Mal die Woche),
   bearbeiten, Reihenfolge ändern, archivieren und löschen
-- **Verlauf & mehr:** öffnet das Fenster mit Verlauf, Statistik und Fokuszeit
+- **Verlauf & Statistik:** öffnet das Fenster mit Verlauf und Statistik
+
+## Zeiterfassung
+
+Mit dem Knopf **⏱** oben neben dem Zahnrad buchst du Zeit auf ein ToDo. Die Uhr
+zählt hoch, bis du sie stoppst; an den ToDos selbst steht keine Zeit, alles liegt
+hinter dem Knopf.
+
+- **Woran arbeitest du?** Oben stehen die heute fälligen (rot: überfällig) und
+  die zuletzt bebuchten ToDos, darüber eine Suche über alle offenen ToDos aller
+  Listen (Enter nimmt den ersten Treffer). Ein Tipp startet die Uhr. Ohne ToDo
+  geht auch: **„Ohne ToDo starten“**.
+- Läuft die Uhr, steht die Zeit am Knopf. **Wechseln** bucht das bisherige ToDo
+  und startet gleich auf dem nächsten, **⏹ Stopp** beendet den Eintrag. Eine
+  Pause gibt es nicht: wer weitermacht, startet neu, die Zeit summiert sich.
+- **Abhaken** des ToDos, auf dem die Uhr läuft, stoppt sie mit.
+- Unter **„Heute gebucht“** stehen die Einträge des Tages; der **Stift** ändert
+  ToDo, Datum, Von und Bis oder löscht den Eintrag. **„+ Zeit nachtragen“**
+  bucht Zeit ohne Uhr (über Mitternacht geht: 23:30 bis 0:30 ist eine Stunde).
+- **Vergessen zu stoppen?** Nach 4 Stunden hält die Uhr von selbst an. Am Knopf
+  erscheint ein gelber Punkt, im Fenster ein Hinweis mit **Korrigieren** oder
+  **Passt so**.
+- Ein Start, der keine 10 Sekunden läuft (falsches ToDo angetippt und gleich
+  gewechselt), wird nicht gebucht.
+
+**„Statistik ›“** (im Fenster hinter ⏱ oder in den Einstellungen, Reiter
+„Timer") zeigt eine Woche, einen Monat oder ein Jahr: Balken pro Tag bzw. Monat,
+die Summe, darunter aufklappbar **Liste › Bereich › ToDo**. ToDos mit gleichem
+Namen im selben Bereich zählen zusammen, so stehen alle Wiederholungen eines
+Serien-ToDos in einer Zeile. Ganz unten die einzelnen Einträge und **⬇ CSV**:
+die Einträge des Zeitraums als Datei für Excel (Datum, Von, Bis, Dauer, ToDo,
+Liste, Bereich), etwa als Nachweis.
+
+Deine Fokuszeit aus der Zeit vor der Zeiterfassung steht dort als „Ohne ToDo“.
+Die Zeit gehört dir allein, auch bei geteilten Listen sieht niemand sonst, was du
+gebucht hast. Die Zeiterfassung braucht Netz.
 
 Mit eingeschalteten Benachrichtigungen erinnert dich die App um 17 Uhr auch
 an Gewohnheiten, die heute noch offen sind.

@@ -297,13 +297,13 @@ for (const dialog of [gewDialog, gewTagDialog]) {
 }
 
 /* --------------------------------------------------------- Einstellungen */
-/* Zwei Einstellungen pro Konto: die Zaehlweise der Flamme (Schalter-Zeile im
-   Reiter Gewohnheiten) und die Standarddauer (Abschnitt im Reiter Timer).
-   Beide Werte gelten pro KONTO (Tabelle fokus_einstellungen), anders als die
-   Schalter im Abschnitt "Anzeige" (je einer in den Reitern Gewohnheiten
-   und Timer), die pro Geraet gelten. */
+/* Eine Einstellung pro Konto: die Zaehlweise der Flamme (Schalter-Zeile im
+   Reiter Gewohnheiten). Sie gilt pro KONTO (Tabelle fokus_einstellungen),
+   anders als die Schalter im Abschnitt "Anzeige" (je einer in den Reitern
+   Gewohnheiten und Timer), die pro Geraet gelten. Die Standarddauer im Reiter
+   Timer ist am 18.10.2026 mit dem Countdown weggefallen. */
 
-let gewEinstellungen = { arbeitMin: 25, flammenModus: "absolut" };
+let gewEinstellungen = { flammenModus: "absolut" };
 
 /**
  * Der Schalter fuer die Zaehlweise. Angehakt = "In Reihe". Seit 18.10.2026 eine
@@ -320,12 +320,7 @@ function gewZeichneFlammenSchalter() {
     : "Alle erledigten Tage zusammen. Ein ausgelassener Tag kostet nichts, er bringt nur nichts.";
 }
 
-function gewZeichneDauer() {
-  gewFeld("gewDauerWert").textContent = `${gewFeld("gewDauer").value} Min`;
-}
-
 function gewZeichneEinstellungsSubtexte() {
-  gewFeld("subGewTimer").textContent = `${gewEinstellungen.arbeitMin} Min`;
   if (gewBestand.geladen) {
     const n = gewBestand.gewohnheiten.filter(g => !g.archiviert).length;
     const archiv = gewBestand.gewohnheiten.length - n;
@@ -340,8 +335,6 @@ function gewZeichneEinstellungsSubtexte() {
  */
 window.gewEinstellungenZeigen = async function () {
   gewZeichneFlammenSchalter();
-  gewFeld("gewDauer").value = String(gewEinstellungen.arbeitMin);
-  gewZeichneDauer();
   gewZeichneEinstellungsSubtexte();
   // Die Verwalten-Liste zeigt erst den gemerkten Stand (oder "Lädt …") und
   // wird nach dem Laden neu gezeichnet - sie kann an einem anderen Geraet
@@ -351,19 +344,16 @@ window.gewEinstellungenZeigen = async function () {
   gewZeichneVerwalten();
 
   const [fokus, bestand] = await Promise.all([
-    gewApi(`/api/fokus?heute=${todayStr()}`),
+    gewApi("/api/fokus"),
     gewLadeBestand(),
   ]);
   gewLaedt = false;
   gewLadeFehler = bestand.ok ? "" : (bestand.fehler || "");
   if (fokus.ok && fokus.daten.einstellungen) {
     gewEinstellungen = {
-      arbeitMin: fokus.daten.einstellungen.arbeitMin || 25,
       flammenModus: fokus.daten.einstellungen.flammenModus || "absolut",
     };
     gewZeichneFlammenSchalter();
-    gewFeld("gewDauer").value = String(gewEinstellungen.arbeitMin);
-    gewZeichneDauer();
   }
   gewZeichneEinstellungsSubtexte();
   gewZeichneVerwalten();
@@ -390,21 +380,4 @@ gewFeld("gewFlammenSwitch").addEventListener("change", async () => {
   gewMeldeAenderung("einstellungen");
 });
 
-gewFeld("gewDauer").addEventListener("input", gewZeichneDauer);
-
-gewFeld("gewDauerSpeichern").addEventListener("click", async () => {
-  const arbeitMin = Number(gewFeld("gewDauer").value);
-  const antwort = await gewApi("/api/fokus/einstellungen", {
-    method: "PUT",
-    body: JSON.stringify({ arbeitMin }),
-  });
-  if (!antwort.ok) { snackInfo(antwort.daten.error || "Speichern fehlgeschlagen."); return; }
-  gewEinstellungen.arbeitMin = antwort.daten.arbeitMin;
-  gewZeichneEinstellungsSubtexte();
-  gewMeldeAenderung("einstellungen");
-  snackInfo(`Standarddauer: ${gewEinstellungen.arbeitMin} Minuten`);
-});
-
 gewFeld("gewVerlaufOeffnen").addEventListener("click", () => gewFensterOeffnen("verlauf"));
-// Aus dem Reiter "Timer": das eigene Fenster "Fokuszeit" (gewohnheiten.js).
-gewFeld("gewFokuszeitOeffnen").addEventListener("click", () => fokuszeitOeffnen());

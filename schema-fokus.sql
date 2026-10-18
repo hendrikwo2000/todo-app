@@ -108,3 +108,32 @@ CREATE TABLE IF NOT EXISTS fokus_einstellungen (
 CREATE INDEX IF NOT EXISTS idx_gew_user   ON gewohnheiten(user_id, archiviert, position);
 CREATE INDEX IF NOT EXISTS idx_logs_datum ON gewohnheit_logs(gewohnheit_id, datum);
 CREATE INDEX IF NOT EXISTS idx_fokus_user ON fokus_sitzungen(user_id, datum);
+
+-- Zeiterfassung (seit 18.10.2026, loest fokus_sitzungen ab - siehe
+-- migration-zeiterfassung.sql). Ein Eintrag = eine Strecke der Stoppuhr oder
+-- eine nachgetragene Zeit, optional auf ein ToDo gebucht.
+--
+-- todo_id ist bewusst KEIN Fremdschluessel: api/todos.js schreibt eine Liste bei
+-- jedem Speichern komplett neu (DELETE + INSERT mit denselben ids). Ein
+-- REFERENCES todos(id) mit SET NULL oder CASCADE wuerde die Buchungen dabei
+-- jedes Mal leeren bzw. loeschen. Damit eine Buchung ihr ToDo ueberlebt (geloescht,
+-- Liste verlassen), stehen Text, Liste und Bereich zum Zeitpunkt der Buchung
+-- daneben; die App nimmt die aktuellen Namen, solange es das ToDo noch gibt.
+--
+-- gekappt = 1: die Uhr lief ueber 4 Stunden und wurde dort angehalten; die App
+-- zeigt einen Hinweis, bis der Eintrag korrigiert oder bestaetigt ist.
+CREATE TABLE IF NOT EXISTS zeiteintraege (
+  id            TEXT PRIMARY KEY,
+  user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  start         TEXT NOT NULL,                 -- UTC, 'YYYY-MM-DD HH:MM:SS'
+  ende          TEXT,                          -- UTC; NULL = die Uhr laeuft
+  datum         TEXT NOT NULL,                 -- lokales Datum des Starts
+  todo_id       TEXT,
+  todo_text     TEXT,
+  liste_name    TEXT,
+  bereich_name  TEXT,
+  gekappt       INTEGER NOT NULL DEFAULT 0,
+  nachgetragen  INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_zeit_user ON zeiteintraege(user_id, datum);

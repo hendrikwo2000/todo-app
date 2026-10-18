@@ -48,6 +48,7 @@ export async function loescheKonto(env, nutzer) {
       "DELETE FROM gewohnheit_logs WHERE gewohnheit_id IN (SELECT id FROM gewohnheiten WHERE user_id = ?)"
     ).bind(nutzer.id),
     env.DB.prepare("DELETE FROM fokus_sitzungen WHERE user_id = ?").bind(nutzer.id),
+    env.DB.prepare("DELETE FROM zeiteintraege WHERE user_id = ?").bind(nutzer.id),
     env.DB.prepare("DELETE FROM gewohnheiten WHERE user_id = ?").bind(nutzer.id),
     env.DB.prepare("DELETE FROM fokus_einstellungen WHERE user_id = ?").bind(nutzer.id),
     // Der Rest wie gehabt.

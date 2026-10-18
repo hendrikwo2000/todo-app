@@ -411,8 +411,9 @@ Reiter geht nahtlos in den gerahmten Inhalt darunter über (`.ein-reiterbox`):
   Gewohnheiten (aufklappbar: Liste mit Stift und Hoch/Runter, „Neue
   Gewohnheit", Archiv — hieß bis 18.10.2026 „Verwalten"), „Verlauf & Statistik ›".
 - **Timer** (eigener Reiter seit 18.10.2026): Anzeige (Schalter-Zeile für den
-  Knopf ⏱), Standarddauer (aufklappbar), „Fokuszeit ›" — öffnet das eigene
-  Fenster „Fokuszeit". Hendriks Frage war, ob Gewohnheiten und Timer getrennt
+  Knopf ⏱), „Statistik ›" — öffnet das Fenster „Statistik" der Zeiterfassung
+  (siehe Kapitel „Zeiterfassung"). Bis zum Umbau am selben Abend standen hier die
+  Standarddauer des Countdowns und „Fokuszeit ›". Hendriks Frage war, ob Gewohnheiten und Timer getrennt
   gehören; er will den Timer als Nächstes ausbauen. Gleich danach wollte er die
   Trennung vollständig („der Timer hat nichts mit Gewohnheiten zu tun"): eigenes
   Fenster für die Fokuszeit, das Gewohnheiten-Fenster nur noch mit Verlauf und
@@ -2487,16 +2488,17 @@ der alten App (cron-job.org) bekommt seitdem 410 und kann weg.
 | Teil | Datei |
 |---|---|
 | Daten, Regel-Spiegel, Offline-Warteschlange, einziger Schreibweg fuer Tage (`gewSchreibeTag`) | `gewohnheiten-daten.js` |
-| Gewohnheiten (Heute-Spalte am PC, sonst unter der Tagesansicht) und Timer (Knopf mit Fenster) | `fokus.js` |
-| Fenster "Gewohnheiten" (Verlauf, Statistik), Fenster "Fokuszeit" und die Gewohnheiten-Liste in den Einstellungen | `gewohnheiten.js` |
+| Gewohnheiten (Heute-Spalte am PC, sonst unter der Tagesansicht) | `fokus.js` |
+| Fenster "Gewohnheiten" (Verlauf, Statistik) und die Gewohnheiten-Liste in den Einstellungen | `gewohnheiten.js` |
 | Dialoge anlegen/bearbeiten und Tag nachtragen, Einstellungsabschnitte | `gewohnheiten-dialoge.js` |
-| Endpunkte | `functions/api/gewohnheiten/*`, `functions/api/fokus/*` |
+| Endpunkte | `functions/api/gewohnheiten/*`, `functions/api/fokus/*` (nur noch die Zaehlweise der Flamme) |
 | Regeln (Status, Flamme, heute dran/ruht/offen) | `functions/_lib/tag.js`, `heute.js`, `fokus.js` |
+| Der Timer - seit 18.10.2026 eine Zeiterfassung | `zeiterfassung.js`, eigenes Kapitel "Zeiterfassung" unten |
 | Abend-Erinnerung | `functions/_lib/erinnerung.js` (siehe "Benachrichtigungen") |
 
 Die Skripte laden in dieser Reihenfolge: `app.js`, `kalender.js`,
 `gewohnheiten-daten.js`, `fokus.js`, `gewohnheiten.js`,
-`gewohnheiten-dialoge.js`. Alle neuen Namen auf oberster Ebene beginnen mit
+`gewohnheiten-dialoge.js`, `zeiterfassung.js`. Alle neuen Namen auf oberster Ebene beginnen mit
 `gew`, alle neuen CSS-Klassen mit `gw-` - die Fokus-App hatte eigene
 `.kal-*`, `.hinweis`, `.popup-*`, die hier etwas anderes meinen. Wer sich
 aendert, meldet es ueber `gewMeldeAenderung()`; Streifen und Fenster hoeren
@@ -2509,8 +2511,8 @@ im Abschnitt einen Leerzustand mit "＋ Gewohnheit anlegen" (`aktive: 0` in der
 Antwort von `gewohnheiten/heute`).
 
 **Fenster statt eigener Seite.** Verlauf (Monatskalender je Gewohnheit,
-Nachtragen per Tipp, Wischen wechselt den Monat), Statistik (7/30/90 Tage),
-Fokuszeit (Minuten pro Woche) stehen in `#gewFenster` (Verwalten - anlegen,
+Nachtragen per Tipp, Wischen wechselt den Monat) und Statistik (7/30/90 Tage;
+bis 18.10.2026 auch die Fokuszeit, Minuten pro Woche) stehen in `#gewFenster` (Verwalten - anlegen,
 bearbeiten, Reihenfolge, Archiv, loeschen - seit 18.10.2026 in den
 Einstellungen, siehe dort) - geoeffnet ueber den
 Eintrag "Verlauf & mehr" in den Einstellungen (Reiter "Gewohnheiten"). Die Links
@@ -2544,11 +2546,10 @@ gibt es keine Rand-Wischgeste (`darfGeste`).
   Hoch/Runter, „Neue Gewohnheit", Archiv.
 - **Verlauf & Statistik** - kein Abschnitt, sondern ein Eintrag, der das Fenster
   „Gewohnheiten" oeffnet (zwei Reiter: Verlauf, Statistik).
-- **Standarddauer** (Reiter Timer, bis 18.10.2026 "Fokus-Timer" im Reiter
-  Gewohnheiten).
-- **Fokuszeit ›** (Reiter Timer) - oeffnet das eigene Fenster `#fokuszeitFenster`
-  (`fokuszeitOeffnen()` in gewohnheiten.js), bis 18.10.2026 der dritte Reiter des
-  Fensters Gewohnheiten.
+- **Statistik ›** (Reiter Timer) - oeffnet das Fenster `#zeitFenster` der
+  Zeiterfassung. Bis 18.10.2026 standen hier die Standarddauer des Countdowns
+  und "Fokuszeit ›" (eigenes Fenster `#fokuszeitFenster`, davor dritter Reiter des
+  Fensters Gewohnheiten) - beides ist mit der Zeiterfassung weggefallen.
 
 **Falle beim Exportieren nach `window`:** Eine Funktionsdeklaration auf oberster
 Ebene eines klassischen Skripts IST schon `window.<name>`. Wer
@@ -2561,8 +2562,10 @@ heisst der kombinierte Test fuer kalender.js `window.gewEinFensterOffen`.
 der Dialog „Neue Gewohnheit" (`#gewDialog`): Ziel-Art und Rhythmus blenden
 Felder ein, und mittig zentriert rutschte er dabei nach oben.
 
-Zaehlweise und Dauer gelten pro KONTO (`fokus_einstellungen`), anders als die
-Streifen-Schalter. `GET /api/fokus` liefert beide in `einstellungen`.
+Die Zaehlweise gilt pro KONTO (`fokus_einstellungen`), anders als die
+Streifen-Schalter. `GET /api/fokus` liefert sie in `einstellungen`, `PUT
+/api/fokus/einstellungen` setzt sie. Die Spalte `arbeit_min` (Standarddauer des
+alten Countdowns) steht noch in der Tabelle und wird nicht mehr gelesen.
 
 ### Bis Oktober 2026: der Durchreicher
 
@@ -2647,31 +2650,17 @@ Ein Element, **zwei mögliche Orte**; `fokPlatziere()` hängt es um:
 - Die Links „Verlauf & mehr ›" am Ende der Liste und „Fokuszeit pro Woche ›" beim Timer
   sind weg (Hendrik: stehen in den Einstellungen).
 
-#### Der Timer: Knopf und kleines Fenster
+#### Der Timer: Knopf und Fenster
 
 - **Knopf** `.timer-knopf` ⏱ **zweimal im Dokument**, wie das Zahnrad: in der
   App-Kopfzeile (links vom Zahnrad) und in der Kopfzeile des Kalenders (am Handy
   verdeckt der Kalender die App-Kopfzeile; im breiten Fenster ist der zweite wie das
   Zahnrad dort ausgeblendet, `html.breit`). Sichtbar, wenn angemeldet und „Timer" unter
-  „Anzeige" an ist (`aktualisiereKnoepfe()`). Läuft eine Sitzung, trägt er die Restzeit
-  und färbt sich (`.laeuft`); am Handy steht dann nur die Zeit ohne Symbol, sonst
-  schrumpfte der Listenname in der Kopfzeile auf „Meine ...".
-- **Fenster** `#timerPopup` (ein `.admin-popup`, ausserhalb des Panels wegen der
-  transform-Falle): Ring, Restzeit, Start/Pause/Stopp. Die Struktur steht fest im HTML,
-  `fokus.js` setzt im Sekundentakt nur Text und `stroke-dashoffset`; nur die Knopfreihe
-  wird bei einem Zustandswechsel neu gefüllt (sonst flackerte sie im Takt). Der Ring hat
-  eine feste Grösse (`min(220px, 62vw)`), weil `container-type: size` eine
-  ausdrückliche braucht - die alte Höhenableitung aus dem Streifen (`flex: 1`,
-  `@container unten`) ist weg. Vor der ersten Antwort der API steht „Lädt …" statt
-  „Start" (`fokTimerGeladen`).
-- **Wann geladen wird:** `ladeFokus()` holt Sitzung, Standarddauer und Liste beim
-  ersten Zeichnen nach der Anmeldung (damit der Knopf eine laufende Sitzung von einem
-  anderen Gerät zeigt), beim Öffnen des Fensters und beim Zurückkehren in den Tab.
-- **Schließen:** ✕, Klick daneben, Escape (eigener Handler in der Einfangphase mit
-  `stopImmediatePropagation`, damit nicht im selben Tastendruck der Streifen dahinter
-  zugeht; eine offene Rückfrage „Sitzung beenden?" hat Vorrang) und die Zurück-Taste am
-  Handy (`window.fokusSchliesseOberste`, eingehängt in `schliesseObersteEbene` in
-  `kalender.js`).
+  „Anzeige" an ist. Was dahinter steckt, steht seit 18.10.2026 im Kapitel
+  **„Zeiterfassung"** (`zeiterfassung.js`).
+- Bis dahin war das Fenster ein Countdown mit Ring, Start/Pause/Stopp und Ton am
+  Sitzungsende (Code damals in `fokus.js`). Der Ring hatte eine feste Grösse, weil
+  `container-type: size` eine ausdrückliche braucht - falls er je zurückkommt.
 
 #### Was vom Streifen übrig ist
 
@@ -2689,8 +2678,9 @@ Ein Element, **zwei mögliche Orte**; `fokPlatziere()` hängt es um:
   Öffnen startet zu (`frischOeffnen()`); damit man sieht, dass etwas abgewählt ist,
   färbt sich der Trichter (`.aktiv`).
 - **Die `[hidden]`-Falle** gilt für alles hier mit `display: flex`: `.kal-oben`,
-  `.kal-liste`, `.fok-inhalt`, `.fok-heute`, `.fok-oben`, `.fok-timer`, `.timer-knopf`
-  brauchen je ihre eigene `[hidden] { display: none }`-Zeile.
+  `.kal-liste`, `.fok-inhalt`, `.fok-heute`, `.fok-oben`, `.timer-knopf` und die
+  `zt-`-Teile der Zeiterfassung (`.zt-inhalt`, `.zt-gekappt`, `.zt-uhr`, `.zt-wahl`,
+  `.zt-dialog-wahl`) brauchen je ihre eigene `[hidden] { display: none }`-Zeile.
 
 ### Der Umschalter: nur noch auf oder zu
 
@@ -2727,11 +2717,10 @@ Auch „Heute" holt nichts mehr nach vorn: der Streifen zeigt immer das Raster.
 ### Was der Fokus-Teil kann — und was nicht
 
 Bei den Gewohnheiten: abhaken (einfach oder mit Menge über −/Zahl/+), Flammen
-sehen und ueber den Stift an der Karte gleich bearbeiten; im Timer-Fenster starten,
-pausieren, beenden. Alles andere steht seit Oktober 2026 in den Einstellungen
-(anlegen, Reihenfolge, Archiv, Zaehlweise, Dauer) und in den Fenstern
-"Gewohnheiten" (Verlauf, Statistik) und "Fokuszeit". Bis dahin fuehrte ein
-↗ in der Kopfzeile des Bereichs zur Fokus-App.
+sehen und ueber den Stift an der Karte gleich bearbeiten. Alles andere steht seit
+Oktober 2026 in den Einstellungen (anlegen, Reihenfolge, Archiv, Zaehlweise) und
+im Fenster "Gewohnheiten" (Verlauf, Statistik). Bis dahin fuehrte ein ↗ in der
+Kopfzeile des Bereichs zur Fokus-App. Der Timer: siehe Kapitel "Zeiterfassung".
 
 **Wiederoeffnen hat ein Rueckgaengig** (Snackbar, wie in der Fokus-App): aus
 "50 von 60" wird beim Tipp auf den Haken eine 0, ohne Rueckfrage.
@@ -2742,22 +2731,6 @@ ganze Liste frisch. Das zweite ist nötig, weil sich das Drumherum ändern kann 
 die Tagesbilanz, und bei „X Mal die Woche" verschwindet die Gewohnheit mit dem
 erreichten Ziel ganz aus der Liste.
 
-**Der Timer ist reine Anzeige**, gerechnet wird aus dem Startzeitpunkt vom
-Server (`functions/_lib/fokus.js`). Die Dauer ist die Standarddauer aus den
-Einstellungen (Abschnitt "Fokus-Timer"). Beenden fragt ab einer Minute nach
-— eine geloggte Sitzung ist nachträglich nicht mehr änderbar.
-
-**Bei laufender Sitzung trägt der Timer-KNOPF in der Kopfzeile die Restzeit**
-(`.timer-knopf.laeuft` in der Akzentfarbe, im Sekundentakt von
-`aktualisiereKnoepfe()`). Bis 18.10.2026 stand sie am Timer-Reiter im Streifen, davor
-am 🔥-Knopf der Kopfzeile. **Der Preis, bewusst:** weg ist nur die Zeit im Streifen -
-der Knopf steht immer da, sogar bei zugeklapptem Streifen. Das Sitzungsende meldet
-sich zusätzlich über den Tab-Titel und den Ton.
-
-Am Sitzungsende gibt es **Ton, Tab-Titel und - bei eingeschalteten
-Benachrichtigungen (`badgeErlaubt`) - eine Browser-Benachrichtigung**. Die
-kam bis Oktober 2026 aus der Fokus-App und fehlte hier deshalb bewusst.
-
 **Offline geht Abhaken trotzdem** (seit Oktober 2026, aus der Fokus-App
 uebernommen): der Haken landet in einer Warteschlange im localStorage
 (`gew_warteschlange`, ein Eintrag je Gewohnheit und Tag), die Karte springt
@@ -2766,5 +2739,154 @@ beim Zurueckkehren in die App und nach dem Start. Die Heute-Liste des letzten
 Ladens liegt unter `gew_heute` (gilt nur am selben Tag), der Bestand des
 Fensters unter `gew_stand`; beides faellt beim Abmelden weg (`gewVergiss`).
 Flamme und "x von 3 diese Woche" stimmen erst nach dem Nachliefern wieder.
-Anlegen, Bearbeiten und der Timer brauchen Netz - beim Timer mit Absicht: er
-rechnet aus dem Startzeitpunkt, nachgereicht waere die Sitzung gelogen.
+Anlegen, Bearbeiten und die Zeiterfassung brauchen Netz - bei der Uhr mit
+Absicht: sie rechnet aus dem Startzeitpunkt des Servers, nachgereicht waere der
+Eintrag gelogen.
+
+## Zeiterfassung (seit 18.10.2026)
+
+Der Knopf ⏱ war bis dahin ein 25-Minuten-Countdown ohne Bezug („Fokusminuten
+pro Woche"). Hendriks Auftrag: „Zeit auf ein ToDo buchen, das heißt, ich drücke
+oben die Stoppuhr und kann ein ToDo auswählen, woran ich arbeite. Also nicht
+einfach nur ein Timer." Code: `zeiterfassung.js` (Client, Präfix `zt`/`zt-`),
+`functions/_lib/zeit.js` und `functions/api/zeit/*` (Server), Tabelle
+`zeiteintraege` (`schema-fokus.sql`, eingespielt mit `migration-zeiterfassung.sql`).
+
+**Hendriks Entscheidungen (gefragt, nicht angenommen):**
+
+- **Zweck: alles** - Dauer einzelner Aufgaben, Summe pro Liste/Bereich, fokussiert
+  bleiben, Nachweis. Dazu sein Satz: „Die Zeit ist eine Ergänzung, sollte nicht auf
+  den ersten Blick zu sehen sein, sonst wird das überladen." Deshalb steht **an den
+  ToDo-Karten keine Zeit**, und der Einstieg ist **nur der Knopf ⏱** (kein ▶ an der
+  Karte).
+- **Stoppuhr, zählt hoch.** Der Countdown samt Standarddauer, Ring, Ton und
+  Sitzungsende ist weg.
+- **ToDo optional** („Ohne ToDo starten").
+- **Keine Pause-Taste:** Stopp beendet den Eintrag, Weitermachen ist ein neuer.
+  Jeder Eintrag hat so echte Von-bis-Zeiten.
+- **Alles im Fenster** hinter ⏱ (Variante 1 seiner ASCII-Vorschau): oben Uhr bzw.
+  Auswahl, darunter „Heute gebucht" mit Stift, „+ Zeit nachtragen", „Statistik ›".
+- **Bearbeiten, löschen, nachtragen** - alles erlaubt.
+- **Deckel bei 4 h + Hinweis**, falls man das Stoppen vergisst.
+- **Statistik gruppiert und aufklappbar**: Liste › Bereich › ToDo, darunter die
+  Einträge; **CSV-Export**; **Serien-ToDos zusammen**.
+- **Abhaken stoppt die Uhr**, wenn sie auf genau diesem ToDo läuft.
+
+**Meine Entscheidungen, im Bericht genannt:** Einträge unter 10 Sekunden werden
+beim Stoppen/Wechseln verworfen (`MIN_SEK`, Fehlgriff); alte Fokus-Sitzungen sind
+als „Ohne ToDo" übernommen; die Zeit ist persönlich, auch bei geteilten Listen;
+Woche ab Montag mit KW, Monat, Jahr; Reiter in den Einstellungen heißt weiter
+„Timer".
+
+### Daten
+
+`zeiteintraege`: `start`/`ende` in UTC (`ende` NULL = die Uhr läuft, höchstens
+eine je Nutzer), `datum` = lokaler Tag des Starts (danach gehen Statistik und
+„Heute"), `todo_id` plus **Schnappschuss** `todo_text`, `liste_name`,
+`bereich_name`, dazu `gekappt` und `nachgetragen`. Die Dauer wird nicht
+gespeichert, sondern per `strftime('%s')` aus `start`/`ende` gerechnet - so gibt
+es nur eine Wahrheit, wenn jemand Von oder Bis korrigiert.
+
+**`todo_id` ist absichtlich KEIN Fremdschlüssel.** `PUT /api/todos` schreibt eine
+Liste bei jedem Speichern komplett neu (DELETE + INSERT mit denselben ids). Ein
+`REFERENCES todos(id)` mit `SET NULL` hätte bei jedem Speichern alle Buchungen
+vom ToDo gelöst, mit `CASCADE` gelöscht. Wer hier „aufräumt", verliert alle
+Zeiten. Aus demselben Grund steht der Schnappschuss daneben: ist das ToDo weg
+(gelöscht, Liste verlassen), zeigt die Statistik den Namen von damals. Solange es
+das ToDo gibt, nimmt die App die **aktuellen** Namen aus `listen`/`daten`
+(`ztFindeTodo`) - umbenannt oder verschoben zählt richtig.
+
+Der Server prüft beim Buchen nur die Form der ToDo-Felder, nicht, ob es das ToDo
+gibt: ein gerade angelegtes ToDo ist vielleicht noch nicht gespeichert, und die
+Felder verraten niemandem etwas (der Eintrag gehört dem Nutzer, aufgelöst wird
+in der App mit deren eigenen Listen).
+
+### Endpunkte (`functions/api/zeit/`)
+
+| Pfad | Was |
+|---|---|
+| `GET /api/zeit?heute=` | laufende Uhr, heute fertig Gebuchtes, gekappte Einträge (Hinweis), zuletzt bebuchte ToDo-ids |
+| `POST /api/zeit/start` | `{ heute, todoId?, todoText?, listeName?, bereichName? }` - beendet eine laufende Uhr (= „Wechseln") und startet neu; Antwort `laeuft`, `beendet` |
+| `POST /api/zeit/stop` | hält an; `beendet: null`, wenn nichts lief, gekappt oder unter 10 s verworfen |
+| `GET /api/zeit/eintraege?von=&bis=` | fertige Einträge eines Zeitraums (höchstens 400 Tage), neueste zuerst |
+| `POST/PUT/DELETE /api/zeit/eintrag` | nachtragen / korrigieren (`id`, `start`, `ende` als ISO, `datum`, Buchung) bzw. `{ id, gekapptOk: true }` / löschen. Die laufende Uhr ist hier nicht zu haben (409 bzw. 404) |
+
+Geprüft wird: Bis nach Von, höchstens 24 h, Ende nicht in der Zukunft (2 Minuten
+Spielraum), Datum gültig. Über Mitternacht rechnet der Dialog selbst: liegt Bis
+nicht nach Von, ist es der nächste Tag (23:30–0:30 = 1 h).
+
+### Der Deckel
+
+**Gekappt wird beim Lesen**, nicht per Zeitplan: `laufenderEintrag()` in
+`_lib/zeit.js` setzt bei mehr als 4 h `ende = start + 4 h` und `gekappt = 1`, und
+JEDER Weg, der nach der laufenden Uhr fragt (Fenster laden, Start, Stopp), geht
+dort durch. Läuft die App, holt der Sekundentakt bei 4 h den Stand neu und meldet
+es in der Snackbar. Danach: gelber Punkt am Knopf (`.timer-knopf.hinweis`) und
+ein Hinweis oben im Fenster mit „Korrigieren" (Dialog; jede Korrektur setzt
+`gekappt = 0`) und „Passt so" (`gekapptOk`).
+
+### Das Fenster hinter ⏱ (`#timerPopup`)
+
+- **Auswahl** („Woran arbeitest du?", bei laufender Uhr nach „Wechseln"):
+  ohne Suchtext „Heute fällig" (fällig und überfällig, roter Balken links, höchstens
+  6) und „Zuletzt" (3, aus `zuletzt` vom Server, nur offene); mit Suchtext die
+  Treffer aus allen offenen ToDos aller Listen (Wortanfang zuerst, höchstens 8).
+  Enter nimmt den ersten Treffer. Die noch unsichtbare nächste Ausgabe eines
+  Serien-ToDos (`nochNichtFaellig`) fehlt, wie auf dem Board. Dieselbe Liste
+  (`ztZeichneWahl`) steckt im Eintrag-Dialog.
+- **Uhr:** ToDo mit Liste · Bereich, Zeit h:mm:ss, „Wechseln", „⏹ Stopp". Am Knopf
+  in der Kopfzeile m:ss bzw. h:mm:ss (am Handy ohne Symbol, wie vorher).
+- **Heute gebucht:** Einträge mit `datum` = heute, neueste zuerst, Stift öffnet den
+  Dialog (`#ztDialog`). Die laufende Uhr zählt nicht mit.
+- **Neu gezeichnet** bei jedem `render()` der App (`window.zeitNeuZeichnen`), damit
+  ein umbenanntes oder erledigtes ToDo sofort stimmt; geladen beim Öffnen, nach
+  jeder Aktion und beim Zurückkehren in den Tab.
+- **Abhaken:** `toggleDone` in `app.js` ruft `window.zeitBeiAbhaken(id)`.
+- **Oben fest** wie die Einstellungen (`#timerPopup`, `#ztDialog`, `#zeitFenster`
+  in der Gruppe mit `--ein-abstand-oben`): die Auswahl klappt auf und zu.
+- **Schließen von innen nach außen** (Dialog, Statistik, Fenster): Escape in der
+  Einfangphase, Zurück-Taste über `window.zeitSchliesseOberste` in
+  `schliesseObersteEbene` (kalender.js). Solange eines offen ist, keine
+  Rand-Wischgeste (`window.zeitFensterOffen` in `darfGeste`).
+- **Reihenfolge im DOM:** `#timerPopup`, `#zeitFenster`, `#ztDialog` - der Dialog
+  muss hinter beiden stehen, er wird aus beiden geöffnet und legt sich bei
+  gleichem z-index nur über das, was vor ihm steht.
+
+### Statistik (`#zeitFenster`)
+
+Woche (Mo–So, „KW 42 · 12.10.–18.10.2026"), Monat, Jahr; ‹ › blättert, › endet beim
+laufenden Zeitraum. Balken pro Tag bzw. Monat (Monat ohne Zahlen, Wert im
+Tooltip - 31 Zahlen haben keinen Platz). Darunter der Baum (`ztBaueBaum`):
+**Liste › Bereich › ToDo**, ToDos ohne Bereich direkt an der Liste, Blätter mit
+gleichem Namen im selben Bereich zusammengefasst (Serien), „Ohne ToDo" als letzte
+Zeile; standardmäßig zu, aufgeklappt bleibt beim Blättern. Ganz unten die
+Einträge (erst 30, dann „Alle anzeigen").
+
+**CSV** entsteht im Browser aus den geladenen Einträgen: Semikolon und BOM (ein
+deutsches Excel öffnet sie per Doppelklick richtig), Stunden mit Komma, älteste
+zuerst. Felder, die mit `= + - @` beginnen, bekommen ein Hochkomma - sonst läse
+Excel einen ToDo-Text wie „=1+1" als Formel. Dateiname
+`zeiterfassung-2026-KW42.csv` / `-2026-10` / `-2026` (das Jahr einer KW ist das
+ihres Donnerstags).
+
+### Übernommen und abgebaut
+
+- `migration-zeiterfassung.sql` kopiert die alten Fokus-Sitzungen (`echte_min > 0`)
+  als „Ohne ToDo" (gleiche ids, `INSERT OR IGNORE`, mehrfach ausführbar).
+  `fokus_sitzungen` bleibt stehen und wird nicht mehr gelesen.
+- Gelöscht: `functions/api/fokus/start.js`, `stop.js`, `pause.js`, das Fenster
+  „Fokuszeit" (`#fokuszeitFenster`, `gewZeichneFokuszeit`), die Standarddauer in den
+  Einstellungen, der Countdown-Teil von `fokus.js` samt Ton und
+  Browser-Benachrichtigung am Sitzungsende. `GET /api/fokus` liefert nur noch die
+  Zaehlweise der Flamme. Ein alter, noch geladener Client bekommt für Start/Stopp
+  405 und zeigt „Start fehlgeschlagen" - bis zum nächsten Laden.
+- Konto löschen räumt `zeiteintraege` mit ab (`_lib/loeschen.js`).
+
+**Lokal getestet** (18.10.2026, `wrangler pages dev`, Browser-Pane bei 1024/1500 px
+und 375 px, hell und dunkel): Start, Wechseln, Stopp, Abhaken stoppt, Fehlgriff
+unter 10 s, Nachtragen über den Dialog, über Mitternacht, Bearbeiten, Löschen,
+alle Fehlerfälle der API, der Deckel (Start in der lokalen DB um 5 h
+zurückgesetzt), Korrigieren aus dem Hinweis, Statistik Woche/Monat/Jahr und
+Blättern, CSV-Inhalt, Einstellungen, Escape, doppelte IDs. **Ungeprüft:** das
+echte Herunterladen der CSV am Handy (iOS öffnet Blob-Downloads je nach Version
+als Vorschau), Excel selbst, und das Zusammenspiel zweier Geräte live.

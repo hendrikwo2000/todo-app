@@ -3315,8 +3315,10 @@ function darfGeste() {
   if (istSplit()) return false;
   if (!einstellungenPopup.hidden) return false;
   // Das Fenster "Gewohnheiten" hat seine eigene Wischgeste (Monat im
-  // Verlauf) - der Rand-Wisch des Streifens darf da nicht mitziehen.
+  // Verlauf) - der Rand-Wisch des Streifens darf da nicht mitziehen. Ebenso
+  // nicht hinter den Fenstern der Zeiterfassung.
   if (window.gewEinFensterOffen?.()) return false;
+  if (window.zeitFensterOffen?.()) return false;
   if (formularOffen || wahlOffen) return false;
   if (kalLock && !kalLock.classList.contains("hidden")) return false;
   if (draggedId || draggedCat || draggedThema) return false;
@@ -3771,11 +3773,11 @@ for (const karte of kalTagKarten) {
 // Formular (von der Wiederholen-Seite erst zurueck ins Formular, aus dem
 // Farbmenue erst das Menue), Monatswahl, Filter, zuletzt die Tages-Karte.
 function schliesseObersteEbene() {
-  // Ganz oben liegt, wenn offen, das Timer-Fenster (fokus.js), darunter das
-  // Fenster "Gewohnheiten" samt seinen Dialogen (gewohnheiten.js) - beide stehen
-  // ueber dem Streifen. Escape faengt sie selbst ab; hierher kommt vor allem die
-  // Zurueck-Taste am Handy.
-  if (window.fokusSchliesseOberste?.()) return true;
+  // Ganz oben liegen, wenn offen, die Fenster der Zeiterfassung (zeiterfassung.js),
+  // darunter das Fenster "Gewohnheiten" samt seinen Dialogen (gewohnheiten.js) -
+  // alle stehen ueber dem Streifen. Escape fangen sie selbst ab; hierher kommt
+  // vor allem die Zurueck-Taste am Handy.
+  if (window.zeitSchliesseOberste?.()) return true;
   if (window.gewSchliesseOberste?.()) return true;
   if (frageAufloesen) { beantworteFrage(null); return true; }
   if (formularOffen) {

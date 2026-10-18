@@ -1,12 +1,13 @@
 "use strict";
 
 /* ====================================================================
-   Fenster "Gewohnheiten" – Verlauf, Statistik, Fokuszeit
+   Fenster "Gewohnheiten" – Verlauf, Statistik
 
    Seit Oktober 2026 steht hier, was bis dahin die eigene Fokus-App
    (fokus.it-wolf.org) konnte und der Streifen nicht: der Monatskalender je
-   Gewohnheit samt Nachtragen, die Erfuellungsquote und die Fokusminuten pro
-   Woche. Das Verwalten (anlegen, aendern, ordnen, archivieren, loeschen) war
+   Gewohnheit samt Nachtragen und die Erfuellungsquote. (Die Fokusminuten pro
+   Woche standen bis 18.10.2026 auch hier; seitdem ist der Timer eine
+   Zeiterfassung mit eigener Statistik, siehe zeiterfassung.js.) Das Verwalten (anlegen, aendern, ordnen, archivieren, loeschen) war
    bis 18.10.2026 ein vierter Reiter hier; es steht jetzt als Abschnitt
    "Verwalten" direkt in den Einstellungen (Reiter "Gewohnheiten"), wird aber
    weiter in dieser Datei gezeichnet (gewZeichneVerwalten).
@@ -14,7 +15,7 @@
    Hendriks Entscheidung (gefragt): ein EIGENES Fenster, geoeffnet nur noch aus
    den Einstellungen (Eintrag "Verlauf & mehr" im Reiter "Gewohnheiten"; die
    Links bei den Gewohnheiten und beim Timer gibt es seit 18.10.2026 nicht mehr).
-   Abhaken und der Timer stehen in fokus.js, und die Ansicht-Pille in der
+   Abhaken steht in fokus.js, und die Ansicht-Pille in der
    Kopfzeile bleibt bei zwei Segmenten (ein drittes hatte er schon einmal
    verworfen). Verworfen wurden eine eigene Seite (wirkte wie eine zweite App)
    und weitere Reiter im Streifen (dort fehlte der Platz; seit 18.10.2026 gibt
@@ -33,9 +34,9 @@ const gewAnsichten = {
   verlauf: document.getElementById("gewVerlauf"),
   statistik: document.getElementById("gewStatistik"),
 };
-// Die Fokuszeit hat seit 18.10.2026 ihr eigenes Fenster (Hendrik: "der Timer
-// hat nichts mit Gewohnheiten zu tun") - vorher der dritte Reiter hier.
-const fokuszeitFenster = document.getElementById("fokuszeitFenster");
+// Die Fokuszeit war bis 18.10.2026 der dritte Reiter hier, dann kurz ein
+// eigenes Fenster; seitdem gibt es stattdessen die Statistik der Zeiterfassung
+// (zeiterfassung.js).
 const gewKalRaster = document.getElementById("gewKalRaster");
 
 let gewReiter = "verlauf";
@@ -429,67 +430,6 @@ for (const knopf of document.querySelectorAll("#gewStatZeitraum button")) {
   };
 }
 
-/* ------------------------------------------------------------ Fokuszeit */
-// Die Wochenstatistik des Timers, im eigenen Fenster. Den Timer selbst startet
-// nur der Knopf ⏱ in der Kopfzeile - zwei Start-Knoepfe an zwei Orten waeren
-// einer zu viel.
-
-function fokuszeitIstOffen() { return !fokuszeitFenster.hidden; }
-
-function fokuszeitOeffnen() {
-  // Aus den Einstellungen heraus: die schliessen, wie beim Fenster Gewohnheiten.
-  if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
-  fokuszeitFenster.hidden = false;
-  fokuszeitFenster.querySelector(".gw-blaettern").scrollTop = 0;
-  gewZeichneFokuszeit();
-}
-
-function fokuszeitSchliessen() {
-  fokuszeitFenster.hidden = true;
-}
-
-async function gewZeichneFokuszeit() {
-  const antwort = await gewApi(`/api/fokus?heute=${todayStr()}`);
-  const diagramm = document.getElementById("gewDiagramm");
-  const namen = document.getElementById("gewDiagrammNamen");
-  const hinweis = document.getElementById("gewFokuszeitHinweis");
-  if (!antwort.ok) {
-    hinweis.hidden = false;
-    hinweis.textContent = antwort.status === 0
-      ? "Ohne Verbindung gibt es keine Wochenstatistik."
-      : "Die Wochenstatistik konnte nicht geladen werden.";
-    return;
-  }
-  hinweis.hidden = true;
-  const d = antwort.daten;
-  document.getElementById("gewMinHeute").textContent = d.heuteMin;
-  document.getElementById("gewMinWoche").textContent = d.dieseWoche;
-  document.getElementById("gewMinSchnitt").textContent = d.schnitt;
-
-  diagramm.replaceChildren();
-  namen.replaceChildren();
-  const hoechst = Math.max(1, ...d.wochen.map(w => w.minuten));
-  d.wochen.forEach((w, i) => {
-    const spalte = document.createElement("div");
-    spalte.className = "gw-diagramm-spalte" + (i === d.wochen.length - 1 ? " jetzt" : "");
-    const wert = document.createElement("div");
-    wert.className = "gw-diagramm-wert";
-    wert.textContent = w.minuten || "";
-    const saeule = document.createElement("div");
-    saeule.className = "gw-diagramm-saeule";
-    // Prozent der hoechsten Woche, nicht absolut: sonst waere bei einer
-    // ruhigen Woche gar nichts zu sehen.
-    saeule.style.height = `${Math.round(w.minuten / hoechst * 100)}%`;
-    saeule.title = `Woche ab ${gewFormatDatum(w.start)}: ${w.minuten} Min.`;
-    spalte.append(wert, saeule);
-    diagramm.appendChild(spalte);
-
-    const beschriftung = document.createElement("span");
-    beschriftung.textContent = w.start.slice(8) + "." + w.start.slice(5, 7) + ".";
-    namen.appendChild(beschriftung);
-  });
-}
-
 /* ------------------------------------------------------------ Verwalten */
 /* Reihenfolge, Bearbeiten und Archiv an einem Ort: dem Abschnitt "Verwalten" in
    den Einstellungen (Reiter "Gewohnheiten"). Zwischen Oktober und dem
@@ -648,11 +588,9 @@ for (const seg of gewFenster.querySelectorAll(".ein-reiter-seg")) {
   seg.addEventListener("click", () => gewZeigeReiter(seg.dataset.gwReiter));
 }
 document.getElementById("gewFensterZu").addEventListener("click", gewFensterSchliessen);
-document.getElementById("fokuszeitZu").addEventListener("click", fokuszeitSchliessen);
 // Klick neben den Kasten schliesst, wie bei den Einstellungen. Am Handy fuellt
 // das Fenster den Bildschirm, dort bleibt das ✕.
 gewFenster.addEventListener("click", e => { if (e.target === gewFenster) gewFensterSchliessen(); });
-fokuszeitFenster.addEventListener("click", e => { if (e.target === fokuszeitFenster) fokuszeitSchliessen(); });
 document.getElementById("gewNeuKnopf").addEventListener("click", () => gewOeffneDialog(null));
 
 /**
@@ -667,7 +605,6 @@ function gewSchliesseOberste() {
     if (!el.hidden) { el.hidden = true; return true; }
   }
   if (gewIstOffen()) { gewFensterSchliessen(); return true; }
-  if (fokuszeitIstOffen()) { fokuszeitSchliessen(); return true; }
   return false;
 }
 
@@ -684,14 +621,13 @@ document.addEventListener("keydown", e => {
   }
 }, true);
 
-// Fuer kalender.js (keine Rand-Wischgeste, solange ein Fenster offen ist):
-// beide Fenster zaehlen. Eigener Name, NICHT window.gewIstOffen: eine
-// Funktionsdeklaration auf oberster Ebene IST window.gewIstOffen - die zu
-// ueberschreiben liess gewIstOffen() sich selbst endlos aufrufen.
-window.gewEinFensterOffen = () => gewIstOffen() || fokuszeitIstOffen();
+// Fuer kalender.js (keine Rand-Wischgeste, solange ein Fenster offen ist).
+// Eigener Name, NICHT window.gewIstOffen: eine Funktionsdeklaration auf oberster
+// Ebene IST window.gewIstOffen - die zu ueberschreiben liess gewIstOffen() sich
+// selbst endlos aufrufen (beim Bau des Fokuszeit-Fensters passiert).
+window.gewEinFensterOffen = () => gewIstOffen();
 window.gewSchliesseOberste = gewSchliesseOberste;
 window.gewFensterOeffnen = gewFensterOeffnen;
-window.fokuszeitOeffnen = fokuszeitOeffnen;
 
 /**
  * Aenderungen von anderswo. "tag" und "bestand" kommen mit frischem Bestand
@@ -700,11 +636,6 @@ window.fokuszeitOeffnen = fokuszeitOeffnen;
  * Flamme brauchen den Bestand frisch vom Server.
  */
 gewBeiAenderung(async was => {
-  // Eine Timer-Sitzung betrifft nur die Fokuszeit, nicht die Gewohnheiten.
-  if (was === "timer") {
-    if (fokuszeitIstOffen()) gewZeichneFokuszeit();
-    return;
-  }
   // Das Fenster ODER die Einstellungen (mit der Gewohnheiten-Liste) offen?
   const einstellungenOffen = !einstellungenPopup.hidden;
   if (!gewIstOffen() && !einstellungenOffen) return;

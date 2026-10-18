@@ -52,11 +52,12 @@
       <button id="addTodoBtn" class="btn add-cat" title="ToDo anlegen – landet ohne Bereich, bis du es zuordnest">＋ ToDo</button>
       <button id="addCatBtn" class="btn add-cat">＋ Bereich</button>
       <span id="saveStatus" class="save-status"></span>
-      <!-- Der Timer als Knopf (seit 18.10.2026, vorher ein Reiter ueber dem
-           Kalender): zeigt die Restzeit, solange eine Sitzung laeuft, und oeffnet
-           ein kleines Fenster (#timerPopup). Zweimal im Dokument wie das Zahnrad -
-           am Handy verdeckt der Kalender die Kopfzeile. Sichtbarkeit: fokus.js. -->
-      <button type="button" class="btn timer-knopf" title="Fokus-Timer" hidden><span aria-hidden="true">⏱</span><span class="timer-zeit"></span></button>
+      <!-- Die Zeiterfassung als Knopf (seit 18.10.2026, vorher ein Reiter ueber
+           dem Kalender): zeigt die gelaufene Zeit, solange die Uhr laeuft, und
+           oeffnet ein kleines Fenster (#timerPopup). Zweimal im Dokument wie das
+           Zahnrad - am Handy verdeckt der Kalender die Kopfzeile. Sichtbarkeit
+           und Inhalt: zeiterfassung.js. -->
+      <button type="button" class="btn timer-knopf" title="Zeiterfassung" hidden><span aria-hidden="true">⏱</span><span class="timer-zeit"></span></button>
       <button id="einstellungenBtn" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
       <!-- Umschalter Liste/Kalender, aussen rechts. Die Ecke gehoert ihm und
            nicht dem Zahnrad, weil er im Umschalt-Modus im Kalender noch einmal
@@ -150,7 +151,7 @@
          unten sitzt, saesse es sonst mitten im Panel statt in der Ecke, in der
          man ein Schliesskreuz sucht. -->
     <div class="kal-ansicht-zeile">
-      <button type="button" class="btn timer-knopf" title="Fokus-Timer" hidden><span aria-hidden="true">⏱</span><span class="timer-zeit"></span></button>
+      <button type="button" class="btn timer-knopf" title="Zeiterfassung" hidden><span aria-hidden="true">⏱</span><span class="timer-zeit"></span></button>
       <button type="button" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
       <div class="ansicht-schalter" role="group" aria-label="Ansicht">
         <button type="button" class="ansicht-seg" data-ansicht="liste"
@@ -476,7 +477,7 @@
                Gewohnheiten und Timer sind Teil dieser App, fuer jedes Konto.
                Seit 18.10.2026 ganz getrennt (Hendrik: "der Timer hat nichts mit
                Gewohnheiten zu tun"): eigener Reiter, eigenes Fenster fuer die
-               Fokuszeit. Einfache Schalter stehen als Zeile wie "Darstellung"
+               Zeit-Statistik. Einfache Schalter stehen als Zeile wie "Darstellung"
                (ohne Aufklappen, ohne Erklaertext); aufgeklappt wird nur, was
                mehr Inhalt hat. -->
           <div id="einReiterGewohnheiten" class="ein-reiterinhalt" role="tabpanel" aria-labelledby="einReiterKnopfGewohnheiten" hidden>
@@ -545,8 +546,9 @@
           </div>
 
           <!-- Reiter "Timer" (seit 18.10.2026): Anzeige-Schalter fuer den Knopf
-               ⏱ in der Kopfzeile, Standarddauer, und das Fenster "Fokuszeit".
-               Platz fuer den Ausbau des Timers. -->
+               ⏱ in der Kopfzeile und das Fenster "Statistik" der Zeiterfassung.
+               Die Standarddauer ist mit dem Countdown weggefallen (die Uhr
+               zaehlt seit 18.10.2026 hoch). -->
           <div id="einReiterTimer" class="ein-reiterinhalt" role="tabpanel" aria-labelledby="einReiterKnopfTimer" hidden>
 
             <!-- Der Timer-Knopf ⏱ in der Kopfzeile. Gilt pro Geraet
@@ -561,30 +563,11 @@
               </label>
             </div>
 
-            <!-- Gilt pro KONTO (Tabelle fokus_einstellungen). Gefuellt aus
-                 gewohnheiten-dialoge.js. -->
-            <details class="ein-abschnitt" data-abschnitt="timer">
-              <summary class="ein-kopf">
-                <span class="ein-kopf-icon">⏱️</span>
-                <span class="ein-kopf-text">Standarddauer</span>
-                <span class="ein-kopf-sub" id="subGewTimer"></span>
-                <span class="ein-kopf-pfeil">▾</span>
-              </summary>
-              <div class="ein-inhalt">
-                <div class="gw-slider-zeile">
-                  <input type="range" id="gewDauer" min="5" max="180" step="5" aria-label="Standarddauer">
-                  <span class="gw-slider-wert" id="gewDauerWert">25 Min</span>
-                  <button type="button" class="btn klein" id="gewDauerSpeichern">Speichern</button>
-                </div>
-                <p class="ein-hinweis">Gilt ab der nächsten Sitzung.</p>
-              </div>
-            </details>
-
-            <!-- Oeffnet das eigene Fenster "Fokuszeit" (#fokuszeitFenster). -->
-            <button type="button" id="gewFokuszeitOeffnen" class="ein-abschnitt ein-zeile ein-zeile-knopf">
+            <!-- Oeffnet das Fenster "Statistik" der Zeiterfassung (#zeitFenster). -->
+            <button type="button" id="ztStatistikEinstellungen" class="ein-abschnitt ein-zeile ein-zeile-knopf">
               <span class="ein-kopf-icon">📊</span>
-              <span class="ein-kopf-text">Fokuszeit</span>
-              <span class="ein-kopf-sub">pro Woche</span>
+              <span class="ein-kopf-text">Statistik</span>
+              <span class="ein-kopf-sub">Zeit pro Liste und ToDo</span>
               <span class="ein-kopf-pfeil ein-kopf-weiter" aria-hidden="true">›</span>
             </button>
 
@@ -647,38 +630,61 @@
     </div>
   </div>
 
-  <!-- Der Fokus-Timer als kleines Fenster (Knopf ⏱ in der Kopfzeile, fokus.js).
-       Steht AUSSERHALB des Kalender-Panels, aus demselben Grund wie die anderen
-       Dialoge (dessen transform verbiegt position:fixed). Die Struktur steht fest
-       im HTML, fokus.js setzt im Sekundentakt nur Text und Ring-Versatz - ein
-       SVG pro Sekunde neu zu bauen waere Verschwendung. Nur die Knopfreihe
-       wechselt ihren Inhalt (Start bzw. Pause/Stopp) und wird neu gefuellt. -->
+  <!-- Die Zeiterfassung als kleines Fenster (Knopf ⏱ in der Kopfzeile,
+       zeiterfassung.js). Steht AUSSERHALB des Kalender-Panels, aus demselben
+       Grund wie die anderen Dialoge (dessen transform verbiegt position:fixed).
+       Hendriks Wahl, 18.10.2026: "alles im Fenster" - oben die laufende Uhr bzw.
+       die Auswahl "Woran arbeitest du?", darunter das heute Gebuchte mit Stift,
+       Nachtragen und der Weg zur Statistik. An den ToDo-Karten steht bewusst
+       keine Zeit ("sonst wird das ueberladen"). -->
   <div id="timerPopup" class="admin-popup timer-popup" hidden>
     <div class="admin-popup-box timer-box" role="dialog" aria-labelledby="timerTitel">
       <header class="ein-kopfzeile timer-kopfzeile">
-        <h2 id="timerTitel" class="timer-titel">Fokus-Timer</h2>
+        <h2 id="timerTitel" class="timer-titel">Zeiterfassung</h2>
         <button type="button" id="timerZu" class="ein-schliessen"
-                aria-label="Timer schließen" title="Schließen">✕</button>
+                aria-label="Zeiterfassung schließen" title="Schließen">✕</button>
       </header>
-      <p id="fokTimerHinweis" class="ein-hinweis timer-hinweis">Lädt …</p>
-      <div id="fokTimer" class="fok-timer" hidden>
-        <div class="fok-ring">
-          <svg viewBox="0 0 120 120" aria-hidden="true">
-            <circle class="fok-ring-spur" cx="60" cy="60" r="52"></circle>
-            <circle id="fokRingFuellung" class="fok-ring-fuellung" cx="60" cy="60" r="52"></circle>
-          </svg>
-          <div class="fok-ring-mitte">
-            <span id="fokZeit" class="fok-zeit"></span>
-            <span id="fokGeplant" class="fok-geplant"></span>
+      <p id="ztHinweis" class="ein-hinweis timer-hinweis">Lädt …</p>
+      <div id="ztInhalt" class="zt-inhalt" hidden>
+        <!-- Die Uhr lief ueber 4 Stunden und wurde angehalten. -->
+        <div id="ztGekappt" class="zt-gekappt" hidden></div>
+        <!-- Die laufende Uhr. Im Sekundentakt wird nur die Zeit gesetzt. -->
+        <section id="ztUhr" class="zt-uhr" hidden>
+          <div id="ztUhrTodo" class="zt-uhr-todo"></div>
+          <div id="ztUhrZeit" class="zt-uhr-zeit">0:00:00</div>
+          <div class="zt-knoepfe">
+            <button type="button" id="ztWechseln" class="btn">Wechseln</button>
+            <button type="button" id="ztStopp" class="btn zt-stopp">⏹ Stopp</button>
           </div>
-        </div>
-        <div id="fokKnoepfe" class="fok-knoepfe"></div>
+        </section>
+        <!-- Auswahl: ohne laufende Uhr immer da, bei laufender nach "Wechseln". -->
+        <section id="ztWahl" class="zt-wahl" hidden>
+          <div class="zt-wahl-kopf">
+            <span id="ztWahlTitel">Woran arbeitest du?</span>
+            <button type="button" id="ztWahlAbbrechen" class="lock-link" hidden>Abbrechen</button>
+          </div>
+          <input type="search" id="ztSuche" class="eingabe-feld zt-suche" placeholder="ToDo suchen …"
+                 autocomplete="off" enterkeyhint="search" aria-label="ToDo suchen">
+          <div id="ztWahlListe" class="zt-wahl-liste"></div>
+          <button type="button" id="ztOhneTodo" class="btn zt-ohne-start">Ohne ToDo starten</button>
+        </section>
+        <section class="zt-heute">
+          <div class="zt-heute-kopf">
+            <span>Heute gebucht</span>
+            <span id="ztHeuteSumme" class="zt-summe"></span>
+          </div>
+          <div id="ztHeuteListe" class="zt-eintraege"></div>
+          <div class="zt-fuss">
+            <button type="button" id="ztNachtragen" class="lock-link">+ Zeit nachtragen</button>
+            <button type="button" id="ztStatistikOeffnen" class="lock-link">Statistik ›</button>
+          </div>
+        </section>
       </div>
     </div>
   </div>
 
-  <!-- Das Fenster "Gewohnheiten": Verlauf und Statistik (die Fokuszeit hat
-       seit 18.10.2026 ihr eigenes Fenster, #fokuszeitFenster).
+  <!-- Das Fenster "Gewohnheiten": Verlauf und Statistik (die Zeit hat seit
+       18.10.2026 ihr eigenes Fenster, #zeitFenster).
        Seit Oktober 2026 hier statt in der eigenen Fokus-App. Steht AUSSERHALB
        des Kalender-Panels, aus demselben Grund wie die Kalender-Dialoge oben
        (dessen transform verbiegt position:fixed). Gefuellt aus
@@ -731,32 +737,87 @@
     </div>
   </div>
 
-  <!-- Das Fenster "Fokuszeit" (seit 18.10.2026, vorher dritter Reiter im
-       Fenster "Gewohnheiten"): die Wochenstatistik des Timers. Geoeffnet aus
-       den Einstellungen, Reiter "Timer". Gleicher Rahmen wie das Fenster
-       "Gewohnheiten", nur ohne Reiter. Gefuellt aus gewohnheiten.js
-       (gewZeichneFokuszeit). -->
-  <div id="fokuszeitFenster" class="admin-popup gw-fenster" hidden>
-    <div class="admin-popup-box einstellungen gw-box" role="dialog" aria-labelledby="fokuszeitTitel">
+  <!-- Das Fenster "Statistik" der Zeiterfassung (seit 18.10.2026, loest das
+       Fenster "Fokuszeit" mit den Minuten pro Woche ab). Geoeffnet aus dem
+       Fenster hinter ⏱ und aus den Einstellungen (Reiter "Timer"). Gleicher
+       Rahmen wie das Fenster "Gewohnheiten", nur ohne Reiter. Hendriks Wahl:
+       gruppiert und aufklappbar nach Liste › Bereich › ToDo, darunter die
+       einzelnen Eintraege als Nachweis, dazu ein CSV-Export. Gefuellt aus
+       zeiterfassung.js. -->
+  <div id="zeitFenster" class="admin-popup gw-fenster zt-fenster" hidden>
+    <div class="admin-popup-box einstellungen gw-box" role="dialog" aria-labelledby="zeitFensterTitel">
       <header class="ein-kopfzeile gw-kopfzeile">
-        <h2 id="fokuszeitTitel" class="gw-titel">Fokuszeit</h2>
-        <button type="button" id="fokuszeitZu" class="ein-schliessen"
-                aria-label="Fokuszeit schließen" title="Schließen">✕</button>
+        <h2 id="zeitFensterTitel" class="gw-titel">Statistik</h2>
+        <button type="button" id="zeitFensterZu" class="ein-schliessen"
+                aria-label="Statistik schließen" title="Schließen">✕</button>
       </header>
       <div class="ein-blaettern gw-blaettern">
-        <section id="gewFokuszeit" class="gw-ansicht">
-          <div class="gw-kacheln">
-            <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinHeute">0</div><div class="gw-kachel-name">Min. heute</div></div>
-            <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinWoche">0</div><div class="gw-kachel-name">Min. diese Woche</div></div>
-            <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinSchnitt">0</div><div class="gw-kachel-name">Schnitt/Woche</div></div>
+        <section class="gw-ansicht">
+          <div class="zt-zeitraum">
+            <div id="ztZeitraum" class="gw-pillen" role="tablist" aria-label="Zeitraum">
+              <button type="button" data-zeitraum="woche" aria-selected="true">Woche</button>
+              <button type="button" data-zeitraum="monat" aria-selected="false">Monat</button>
+              <button type="button" data-zeitraum="jahr" aria-selected="false">Jahr</button>
+            </div>
+            <div class="zt-blaettern">
+              <button type="button" id="ztZurueck" class="gw-pfeil" aria-label="Zeitraum davor">‹</button>
+              <span id="ztZeitraumName" class="zt-zeitraum-name"></span>
+              <button type="button" id="ztVor" class="gw-pfeil" aria-label="Zeitraum danach">›</button>
+            </div>
           </div>
-          <div class="gw-abschnitt-titel">Fokusminuten pro Woche</div>
-          <div id="gewDiagramm" class="gw-diagramm"></div>
-          <div id="gewDiagrammNamen" class="gw-diagramm-namen"></div>
-          <p id="gewFokuszeitHinweis" class="ein-hinweis gw-mitte" hidden></p>
-          <p class="ein-hinweis gw-mitte">Den Timer startest du über den Knopf ⏱ oben. Die Standarddauer steht in den Einstellungen unter „Timer“.</p>
+          <div id="ztDiagramm" class="gw-diagramm zt-diagramm"></div>
+          <div id="ztDiagrammNamen" class="gw-diagramm-namen zt-diagramm-namen"></div>
+          <div class="zt-gesamt"><span>Gesamt</span><span id="ztGesamt" class="zt-summe"></span></div>
+          <div id="ztBaum" class="zt-baum"></div>
+          <div class="zt-eintraege-kopf">
+            <span class="gw-abschnitt-titel">Einträge</span>
+            <button type="button" id="ztExport" class="btn klein" title="Einträge des Zeitraums als CSV-Datei (Excel)">⬇ CSV</button>
+          </div>
+          <div id="ztEintraege" class="zt-eintraege"></div>
+          <p id="ztStatHinweis" class="ein-hinweis gw-mitte" hidden></p>
         </section>
       </div>
+    </div>
+  </div>
+
+  <!-- Einen Eintrag nachtragen oder korrigieren (zeiterfassung.js). Von-bis
+       statt einer reinen Dauer: so bleibt jeder Eintrag als Nachweis lesbar.
+       Liegt im DOM nach dem Timer-Fenster und legt sich bei gleichem z-index
+       darueber. -->
+  <div id="ztDialog" class="admin-popup gw-dialog zt-dialog" hidden>
+    <div class="admin-popup-box gw-dialog-box" role="dialog" aria-labelledby="ztDialogTitel">
+      <div class="admin-popup-icon">⏱</div>
+      <h2 id="ztDialogTitel">Zeit nachtragen</h2>
+      <div class="gw-feld">
+        <span class="gw-label">ToDo</span>
+        <button type="button" id="ztDialogTodo" class="zt-todo-knopf" aria-expanded="false"></button>
+        <div id="ztDialogWahl" class="zt-dialog-wahl" hidden>
+          <input type="search" id="ztDialogSuche" class="eingabe-feld zt-suche" placeholder="ToDo suchen …"
+                 autocomplete="off" aria-label="ToDo suchen">
+          <div id="ztDialogListe" class="zt-wahl-liste"></div>
+        </div>
+      </div>
+      <div class="gw-feld">
+        <label for="ztDatum">Datum</label>
+        <input type="date" id="ztDatum" class="eingabe-feld">
+      </div>
+      <div class="gw-reihe">
+        <div class="gw-feld">
+          <label for="ztVon">Von</label>
+          <input type="time" id="ztVon" class="eingabe-feld">
+        </div>
+        <div class="gw-feld">
+          <label for="ztBis">Bis</label>
+          <input type="time" id="ztBis" class="eingabe-feld">
+        </div>
+      </div>
+      <p id="ztDialogDauer" class="ein-hinweis gw-mitte"></p>
+      <p class="lock-msg" id="ztDialogMsg" aria-live="polite"></p>
+      <div class="gw-knoepfe">
+        <button type="button" class="btn" id="ztDialogAbbrechen">Abbrechen</button>
+        <button type="button" class="btn primary" id="ztDialogSpeichern">Speichern</button>
+      </div>
+      <button type="button" class="lock-link" id="ztDialogLoeschen" hidden>Eintrag löschen</button>
     </div>
   </div>
 
@@ -918,5 +979,8 @@
   <script src="fokus.js"></script>
   <script src="gewohnheiten.js"></script>
   <script src="gewohnheiten-dialoge.js"></script>
+  <!-- Zeiterfassung (seit 18.10.2026): Knopf ⏱, Fenster, Statistik. Braucht
+       gewApi aus gewohnheiten-daten.js und den Zustand aus app.js. -->
+  <script src="zeiterfassung.js"></script>
 </body>
 </html>

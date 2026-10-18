@@ -1038,7 +1038,8 @@ const streifenAn = {
   gewohnheiten: liesStreifenSchalter(STREIFEN_KEYS.gewohnheiten),
   timer: liesStreifenSchalter(STREIFEN_KEYS.timer),
 };
-// fokus.js fragt hier nach, was angezeigt werden soll.
+// fokus.js (Gewohnheiten) und zeiterfassung.js (Knopf ⏱) fragen hier nach,
+// was angezeigt werden soll.
 window.fokusBereiche = () => ({ ...streifenAn });
 
 function zeigeStreifenSchalter() {
@@ -1053,9 +1054,9 @@ function schalteStreifen(welcher, an) {
   localStorage.setItem(STREIFEN_KEYS[welcher], an ? "an" : "aus");
   zeigeStreifenSchalter();
   // Die Gewohnheiten raeumen selbst um (zeichneHeuteSpalte und zeichneTagOben in
-  // kalender.js), der Timer-Knopf wird von fokus.js ein- bzw. ausgeblendet.
+  // kalender.js), der Knopf ⏱ wird von zeiterfassung.js ein- bzw. ausgeblendet.
   window.kalenderNeuZeichnen?.();
-  window.fokusEinstellungGeaendert?.();
+  window.zeitEinstellungGeaendert?.();
 }
 
 // ---------- Zoom mit zwei Fingern ----------
@@ -2299,6 +2300,9 @@ function toggleDone(id, boardId = aktiveListe) {
   // verlieren (siehe Kommentar in toggleUnterpunkt).
   if (t.done) {
     (inhalt.unterpunkte || []).forEach(u => { if (u.todoId === t.id) u.done = true; });
+    // Laeuft die Zeiterfassung auf genau diesem ToDo, haelt sie an (Hendriks
+    // Wahl, 18.10.2026) - wer fertig ist, arbeitet nicht mehr daran.
+    window.zeitBeiAbhaken?.(t.id);
   }
   // Wiederkehrendes ToDo abgehakt: sofort die naechste Ausgabe anlegen. Baut
   // das neue ToDo direkt (nicht ueber addTodoTo()) - die Funktion raeumt
@@ -2750,9 +2754,12 @@ function render() {
   // Offenes Kalender-Panel mitziehen (siehe kalender.js). Zugeklappt und
   // solange die Datei noch nicht geladen ist, kostet der Aufruf nichts.
   if (window.kalenderNeuZeichnen) window.kalenderNeuZeichnen();
-  // Dasselbe fuers Fokus-Panel (fokus.js): der erste Aufruf heisst
-  // "angemeldet, Daten da" - erst ab dann gibt es die Fokus-Reiter.
+  // Dasselbe fuer die Gewohnheiten (fokus.js) und die Zeiterfassung
+  // (zeiterfassung.js): der erste Aufruf heisst "angemeldet, Daten da" - erst ab
+  // dann gibt es Gewohnheiten und den Knopf ⏱. Spaeter zieht die Zeiterfassung
+  // ihr offenes Fenster nach (ein ToDo kann umbenannt oder erledigt sein).
   if (window.fokusNeuZeichnen) window.fokusNeuZeichnen();
+  if (window.zeitNeuZeichnen) window.zeitNeuZeichnen();
   synchronisiereOhneBereich();
   if (addingCat && !state.categories.some(c => c.id === addingCat)) { addingCat = null; addingThema = null; }
   if (addingThema && !state.themen.some(th => th.id === addingThema)) addingThema = null;

@@ -1412,12 +1412,16 @@ input[type="date"]:focus {
    ist der Inhalt hoeher, blaettert .ein-blaettern. Am Handy fuellt der Dialog
    den Bildschirm, dort greift der Block darunter. Dasselbe gilt fuer die
    Fenster "Gewohnheiten" (#gewFenster: Oberkante sprang beim Wechsel zwischen
-   Verlauf und Statistik) und "Fokuszeit" sowie den Dialog "Neue Gewohnheit"
-   (#gewDialog: Ziel-Art und Wochentage blenden Felder ein, und der Dialog
-   rutschte dabei nach oben - Hendrik, 18.10.2026). */
+   Verlauf und Statistik) und "Statistik" der Zeiterfassung sowie den Dialog
+   "Neue Gewohnheit" (#gewDialog: Ziel-Art und Wochentage blenden Felder ein, und
+   der Dialog rutschte dabei nach oben - Hendrik, 18.10.2026). Ebenso das Fenster
+   hinter dem Timer-Knopf und sein Eintrag-Dialog: dort klappt die Auswahl auf
+   und zu. */
 #einstellungenPopup,
 #gewFenster,
-#fokuszeitFenster,
+#zeitFenster,
+#timerPopup,
+#ztDialog,
 #gewDialog {
   --ein-abstand-oben: 8vh;
   align-items: flex-start;
@@ -1425,7 +1429,9 @@ input[type="date"]:focus {
 }
 #einstellungenPopup .admin-popup-box.einstellungen,
 #gewFenster .admin-popup-box.gw-box,
-#fokuszeitFenster .admin-popup-box.gw-box,
+#zeitFenster .admin-popup-box.gw-box,
+#timerPopup .admin-popup-box.timer-box,
+#ztDialog .gw-dialog-box,
 #gewDialog .gw-dialog-box {
   max-height: min(calc(100vh - var(--ein-abstand-oben) - 20px), 900px);
 }
@@ -3210,19 +3216,20 @@ body.zieht, body.zieht .todo {
 .kal-frage-knoepfe .btn { justify-content: center; min-height: 46px; font-size: 15px; }
 
 /* ====================================================================
-   Fokus: die Gewohnheiten unter dem Tag und der Timer als Knopf
+   Fokus: die Gewohnheiten unter dem Tag und die Zeiterfassung als Knopf
 
    Bis 18.10.2026 standen beide als Reiter (Kalender | Gewohnheiten | Timer) ueber
    dem Kalender-Raster im Streifen und traten an dessen Stelle. Die Reiterzeile
    gibt es nicht mehr (Hendrik: stoerte ueber dem Kalender). Die Gewohnheiten
    stehen jetzt dort, wo der Tag steht - Heute-Spalte am PC (.fok-heute), Abschnitt
    unter der Tagesansicht am Tablet und Handy (.fok-oben) -, der Timer ist ein Knopf
-   in der Kopfzeile mit einem kleinen Fenster. Hier steht, wie das aussieht.
+   in der Kopfzeile mit einem Fenster: seit demselben Tag eine Stoppuhr, die auf
+   ToDos bucht (zeiterfassung.js, Klassen zt-). Hier steht, wie das aussieht.
    ==================================================================== */
 
 /* ---------- Timer-Knopf in der Kopfzeile ---------- */
-/* Zweimal im Dokument (App-Kopfzeile und Kalender), wie das Zahnrad. Laeuft eine
-   Sitzung, steht die Restzeit daran und er faerbt sich. */
+/* Zweimal im Dokument (App-Kopfzeile und Kalender), wie das Zahnrad. Laeuft die
+   Uhr, steht die gelaufene Zeit daran und er faerbt sich. */
 .timer-knopf {
   display: inline-flex;
   align-items: center;
@@ -3235,7 +3242,18 @@ body.zieht, body.zieht .todo {
 .timer-zeit { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .timer-zeit:empty { display: none; }
 .timer-knopf.laeuft { color: var(--accent); border-color: var(--accent); }
-/* Am Handy steht bei laufender Sitzung nur die Zeit, ohne das Symbol: mit beidem
+/* Ein gekappter Eintrag wartet auf einen Blick (Hinweis im Fenster): ein Punkt
+   oben rechts am Knopf. */
+.timer-knopf { position: relative; }
+.timer-knopf.hinweis::after {
+  content: "";
+  position: absolute;
+  top: 3px; right: 3px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--yellow);
+}
+/* Am Handy steht bei laufender Uhr nur die Zeit, ohne das Symbol: mit beidem
    schrumpfte der Listenname in der Kopfzeile auf "Meine ...". */
 @media (max-width: 480px) {
   .timer-knopf.laeuft > [aria-hidden] { display: none; }
@@ -3247,80 +3265,177 @@ body.zieht, body.zieht .todo {
 .topbar > .timer-knopf { margin-left: auto; }
 .topbar > .timer-knopf:not([hidden]) + #einstellungenBtn { margin-left: 0; }
 
-/* ---------- Timer-Fenster ---------- */
-.admin-popup-box.timer-box { width: min(340px, 100%); padding: 12px 24px 24px; gap: 8px; }
+/* ---------- Fenster der Zeiterfassung ---------- */
+/* Oben fest wie die Einstellungen (siehe #timerPopup weiter oben): die Auswahl
+   klappt auf und zu, mittig sprang dabei die Oberkante. Ist der Inhalt hoeher
+   als der Platz, blaettert der Kasten selbst. */
+.admin-popup-box.timer-box {
+  width: min(400px, 100%);
+  padding: 12px 20px 18px;
+  gap: 10px;
+  text-align: left;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .timer-kopfzeile { justify-content: space-between; align-items: center; }
 .admin-popup-box.timer-box h2.timer-titel { margin: 0; font-size: 18px; text-align: left; }
-.timer-hinweis { text-align: center; padding: 18px 0; }
+.admin-popup-box .timer-hinweis { text-align: center; padding: 18px 0; }
 .timer-hinweis[hidden] { display: none; }
-.fok-timer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  padding: 4px 0 2px;
-}
-.fok-timer[hidden] { display: none; }
 
-.fok-ring {
-  position: relative;
-  flex: none;
-  /* Feste Groesse: im Fenster gibt es keine Hoehe, aus der der Ring sie
-     ableiten koennte (container-type: size braucht eine ausdrueckliche). */
-  width: min(220px, 62vw);
-  height: min(220px, 62vw);
-  /* Damit die Zeit in der Mitte mit dem Ring skaliert statt mit dem Fenster. */
-  container-type: size;
+.zt-inhalt { display: flex; flex-direction: column; gap: 16px; }
+.zt-inhalt[hidden] { display: none; }
+
+/* Die Uhr lief ueber 4 Stunden und wurde angehalten. Gelb wie "teilweise" bei
+   den Gewohnheiten: Achtung, aber kein Fehler. */
+.zt-gekappt {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--yellow);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--yellow) 14%, transparent);
 }
-/* display:block ist Pflicht: als inline-Element steht das SVG auf der
-   Textgrundlinie, und die Luecke darunter machte den Kreis fuenf Pixel hoeher
-   als breit - aus dem Ring wurde ein Ei. */
-.fok-ring svg { display: block; width: 100%; height: 100%; transform: rotate(-90deg); }
-.fok-ring circle {
-  fill: none;
-  stroke-width: 9;
-  stroke-linecap: round;
-}
-.fok-ring-spur { stroke: var(--line); }
-.fok-ring-fuellung {
-  stroke: var(--accent);
-  /* Ohne Uebergang springt der Ring im Sekundentakt; mit einem kurzen wandert
-     er. Laenger als eine Sekunde darf er nicht dauern, sonst holt ihn der
-     naechste Takt ein. */
-  transition: stroke-dashoffset .9s linear;
-}
-/* Ohne laufende Sitzung ist der Ring leer - dann faellt auch die Farbe der
-   Zeit auf grau zurueck, damit die Uhr nicht scharf gestellt aussieht. */
-.fok-ring-mitte {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
+.zt-gekappt[hidden] { display: none; }
+.admin-popup-box .zt-gekappt p { font-size: 13.5px; color: var(--text); }
+.zt-gekappt-knoepfe { display: flex; gap: 8px; }
+
+/* Die laufende Uhr. */
+.zt-uhr {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 14px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--accent-soft);
   text-align: center;
 }
-.fok-zeit {
-  /* cqmin = Anteil der kleineren Ringseite: schrumpft der Ring, schrumpft die
-     Zahl mit. clamp faengt beide Enden ab (und den Fall, dass ein Browser mit
-     Container-Abfragen nichts anfangen kann). */
-  font-size: clamp(20px, 22cqmin, 44px);
-  font-weight: 600;
+.zt-uhr[hidden] { display: none; }
+.zt-uhr-todo { display: flex; flex-direction: column; align-items: center; gap: 2px; max-width: 100%; }
+.zt-uhr-name { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.zt-uhr-ort { font-size: 12px; color: var(--muted); }
+.zt-uhr-zeit {
+  font-size: 40px; font-weight: 600; line-height: 1.1;
   font-variant-numeric: tabular-nums;
-  color: var(--muted);
-  line-height: 1.1;
+  color: var(--accent);
 }
-.fok-timer.laeuft .fok-zeit { color: var(--accent); }
-.fok-geplant {
-  font-size: clamp(10px, 6cqmin, 12px);
-  color: var(--muted);
-  padding: 0 12px;
-}
-.fok-knoepfe { display: flex; gap: 8px; flex: none; }
+.zt-knoepfe { display: flex; gap: 8px; }
 /* Fingergerecht, hier ist Platz dafuer. */
-.fok-knoepfe .btn { min-height: 44px; padding: 6px 18px; }
-.fok-start { background: var(--accent); color: #fff; border-color: var(--accent); }
+.zt-knoepfe .btn { min-height: 44px; padding: 6px 18px; }
+.zt-stopp { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* "Ohne ToDo" ist kein ToDo-Name - grau, damit es sich nicht wie einer liest. */
+.zt-uhr-name.ohne, .zt-eintrag-name.ohne, .zt-todo-knopf-name.ohne { color: var(--muted); }
+
+/* Auswahl: "Woran arbeitest du?" bzw. "Wechseln zu ..." - im Fenster und im
+   Eintrag-Dialog dieselbe Liste. */
+.zt-wahl { display: flex; flex-direction: column; gap: 8px; }
+.zt-wahl[hidden] { display: none; }
+.zt-wahl-kopf { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 15px; font-weight: 600; }
+.zt-wahl-liste { display: flex; flex-direction: column; gap: 4px; }
+.zt-wahl-abschnitt {
+  margin-top: 4px;
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--muted);
+}
+.zt-wahl-eintrag {
+  display: flex; align-items: baseline; gap: 8px;
+  width: 100%; min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit; font-size: 14px; text-align: left;
+  cursor: pointer;
+}
+/* Ueberfaelliges mit dem roten Balken links, wie in der Tagesliste. */
+.zt-wahl-eintrag.ueberfaellig { border-left-color: var(--red); }
+@media (hover: hover) {
+  .zt-wahl-eintrag:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .zt-wahl-eintrag.ueberfaellig:hover { border-left-color: var(--red); }
+}
+.zt-wahl-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.zt-wahl-ort {
+  flex: none; max-width: 45%;
+  font-size: 12px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.admin-popup-box .zt-wahl-hinweis { margin: 2px 0; font-size: 13px; }
+.admin-popup-box .btn.zt-ohne-start { align-self: flex-start; }
+
+/* Heute gebucht. */
+.zt-heute { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+.zt-heute-kopf {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--muted);
+}
+.zt-summe { font-variant-numeric: tabular-nums; color: var(--text); }
+/* Die Ueberschrift steht in Grossbuchstaben - die Summe darin nicht ("4 H 01"). */
+.zt-heute-kopf .zt-summe { font-size: 13px; text-transform: none; letter-spacing: 0; }
+.zt-eintraege { display: flex; flex-direction: column; }
+.zt-eintrag { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); }
+.zt-eintrag:first-child { border-top: 0; }
+.zt-eintrag-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.zt-eintrag-name { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zt-eintrag-zeit { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.zt-eintrag-dauer { flex: none; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.zt-fuss { display: flex; justify-content: space-between; gap: 8px; }
+.admin-popup-box .zt-fuss .lock-link { font-size: 13.5px; }
+
+/* ---------- Eintrag-Dialog ---------- */
+.zt-todo-knopf {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit; font-size: 14px; text-align: left;
+  cursor: pointer;
+}
+.zt-todo-knopf-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.zt-todo-knopf-pfeil { flex: none; color: var(--muted); }
+.zt-dialog-wahl { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.zt-dialog-wahl[hidden] { display: none; }
+
+/* ---------- Statistik ---------- */
+.zt-zeitraum { display: flex; flex-direction: column; gap: 8px; }
+.zt-blaettern { display: flex; align-items: center; gap: 8px; }
+.zt-blaettern .gw-pfeil { width: 38px; height: 38px; font-size: 18px; }
+.zt-zeitraum-name { flex: 1; text-align: center; font-size: 14.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Ein Monat hat 31 Balken - mit dem normalen Abstand blieben dafuer am Handy
+   kaum zwei Pixel. */
+.zt-diagramm.zt-dicht, .zt-diagramm-namen.zt-dicht { gap: 2px; }
+.zt-diagramm-namen > span { white-space: nowrap; overflow: visible; }
+.zt-gesamt {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px; font-weight: 700;
+}
+.zt-baum { display: flex; flex-direction: column; margin-top: -12px; }
+.zt-knoten {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; min-height: 38px;
+  padding: 6px 4px 6px calc(4px + var(--tiefe, 0) * 18px);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--text);
+  font: inherit; font-size: 14px; text-align: left;
+}
+button.zt-knoten { cursor: pointer; }
+@media (hover: hover) {
+  button.zt-knoten:hover { background: var(--accent-soft); }
+}
+.zt-knoten-pfeil { flex: none; width: 14px; font-size: 12px; color: var(--muted); }
+.zt-knoten-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.zt-knoten-summe { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
+.zt-liste .zt-knoten-name { font-weight: 600; }
+.zt-frei .zt-knoten-name { color: var(--muted); }
+.zt-eintraege-kopf { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.zt-eintraege-kopf .gw-abschnitt-titel { margin: 0; }
+.admin-popup-box .lock-link.zt-mehr { align-self: center; margin-top: 6px; }
 
 /* ---------- Gewohnheiten in der Kachel "heute" (Tablet, Handy) ---------- */
 /* Letzter Abschnitt IN der Kachel der Tagesansicht (.tag-oben), abgesetzt durch
@@ -3553,9 +3668,9 @@ body.zieht, body.zieht .todo {
 }
 #gewFenster[data-reiter="verlauf"] .gw-blaettern { border-top-left-radius: 0; }
 #gewFenster[data-reiter="statistik"] .gw-blaettern { border-top-right-radius: 0; }
-/* Das Fenster "Fokuszeit" hat keine Reiterzeile - der Abstand, den sonst sie
+/* Das Fenster "Statistik" hat keine Reiterzeile - der Abstand, den sonst sie
    zum Titel haelt, kommt hier an den Rahmen. */
-#fokuszeitFenster .gw-blaettern { margin-top: 10px; }
+#zeitFenster .gw-blaettern { margin-top: 10px; }
 @media (max-width: 560px) {
   .gw-blaettern { padding: 12px; }
 }
@@ -3573,9 +3688,9 @@ body.zieht, body.zieht .todo {
 /* Am Handy ueber den ganzen Bildschirm - dieselbe Schwelle und dieselben
    Masse wie die Einstellungen. */
 @media (max-width: 560px) {
-  #gewFenster, #fokuszeitFenster { padding: 0; }
+  #gewFenster, #zeitFenster { padding: 0; }
   #gewFenster .admin-popup-box.gw-box,
-  #fokuszeitFenster .admin-popup-box.gw-box {
+  #zeitFenster .admin-popup-box.gw-box {
     width: 100%;
     height: 100%;
     max-height: none;
@@ -3862,12 +3977,6 @@ body.zieht, body.zieht .todo {
    dort nicht: ihr display:flex kommt von .ein-abschnitt. */
 .gw-ein-zeile { display: flex; align-items: center; gap: 8px; padding: 4px 2px; }
 .gw-ein-zeile .switch { margin-left: auto; }
-.gw-slider-zeile { display: flex; align-items: center; gap: 8px; }
-.gw-slider-zeile input[type="range"] { flex: 1; min-width: 0; }
-.gw-slider-wert {
-  flex: none; min-width: 52px; text-align: right;
-  font-size: 13px; font-weight: 600; color: var(--text);
-}
 
 /* ---------- Einstellungen: Reiter "ToDo", "Gewohnheiten" und "Timer" ---------- */
 /* Karteikarten-Reiter: der gewaehlte Reiter geht nahtlos in den Inhalt darunter
