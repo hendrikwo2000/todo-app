@@ -2778,6 +2778,33 @@ als „Ohne ToDo" übernommen; die Zeit ist persönlich, auch bei geteilten List
 Woche ab Montag mit KW, Monat, Jahr; Reiter in den Einstellungen heißt weiter
 „Timer".
 
+**Zweite Runde am selben Abend** (Hendrik: „Guter Ansatz, noch ein paar
+Verbesserungen", wieder mit ASCII-Skizzen gefragt):
+
+- **Dropdown statt Suche** („muss ich selber das ToDo suchen, finde ein
+  Dropdown-Menü besser, wo die ToDos nach Bereichen sortiert und farblich markiert
+  sind"): alle Listen, gruppiert nach Liste › Bereich, Farbstreifen des Bereichs,
+  oben ein Feld zum Eingrenzen. **Auswählen, dann „▶ Starten"** (nicht: Tipp
+  startet sofort). Die Vorschläge „Heute fällig"/„Zuletzt" sind damit weg.
+- **„Wechseln" ist weg** („ich wähle ein ToDo aus und arbeite daran, warum
+  wechseln"). Bei laufender Uhr steht das ToDo als dasselbe Dropdown oben; eine
+  Wahl dort ordnet die laufende Uhr **ab ihrem Start** zu („wenn ich ohne ToDo
+  arbeite, soll ich während der Zeit ein ToDo hinzufügen [können], dann wird von
+  Beginn an die Zeit darauf gebucht") - auch zum Korrigieren eines Fehlgriffs.
+  Darunter nur ein runder Stopp-Knopf (die alten Knöpfe fand er „optisch nicht
+  schön").
+- **„Heute gebucht" einklappbar**, standardmäßig zu („ist zu viel").
+- **Nachtragen** mit Kopf wie die Fenster, Dropdown, Tag Heute/Gestern/Kalender,
+  Von–Bis und Dauer-Knöpfen (statt Beginn + Dauer).
+- **Statistik: vierter Zeitraum „Gesamt"** („wie viel Zeit gesamt in einige ToDos
+  bzw. Bereiche geflossen ist") statt einer zweiten Zahl in jeder Zeile.
+
+Meine Calls dazu: Ohne Bereich steht in jeder Liste zuletzt; ToDos mit Termin
+zuerst (früheste oben), dann die ohne in Board-Reihenfolge; „heute"/„überfällig"
+in Rot rechts am Eintrag; der Filter trifft auch Bereichsnamen (dann der ganze
+Bereich); „Heute gebucht" merkt sich den offenen Zustand nicht, jedes Öffnen
+startet zu; die Auswahl springt nach dem Stoppen auf „Ohne ToDo" zurück.
+
 ### Daten
 
 `zeiteintraege`: `start`/`ende` in UTC (`ende` NULL = die Uhr läuft, höchstens
@@ -2805,10 +2832,11 @@ in der App mit deren eigenen Listen).
 
 | Pfad | Was |
 |---|---|
-| `GET /api/zeit?heute=` | laufende Uhr, heute fertig Gebuchtes, gekappte Einträge (Hinweis), zuletzt bebuchte ToDo-ids |
-| `POST /api/zeit/start` | `{ heute, todoId?, todoText?, listeName?, bereichName? }` - beendet eine laufende Uhr (= „Wechseln") und startet neu; Antwort `laeuft`, `beendet` |
+| `GET /api/zeit?heute=` | laufende Uhr, heute fertig Gebuchtes, gekappte Einträge (Hinweis). Bis zur zweiten Runde auch `zuletzt` (zuletzt bebuchte ToDo-ids) - mit der Vorschlagsliste weggefallen |
+| `POST /api/zeit/start` | `{ heute, todoId?, todoText?, listeName?, bereichName? }` - beendet eine noch laufende Uhr (anderer Tab/anderes Gerät) und startet neu; Antwort `laeuft`, `beendet` |
+| `PUT /api/zeit/laufend` | `{ todoId?, todoText?, listeName?, bereichName? }` - gibt der laufenden Uhr ein ToDo (oder keins), **ab ihrem Start**, ohne sie anzuhalten; 409, wenn keine läuft (auch wenn sie gerade gekappt wurde) |
 | `POST /api/zeit/stop` | hält an; `beendet: null`, wenn nichts lief, gekappt oder unter 10 s verworfen |
-| `GET /api/zeit/eintraege?von=&bis=` | fertige Einträge eines Zeitraums (höchstens 400 Tage), neueste zuerst |
+| `GET /api/zeit/eintraege?von=&bis=` | fertige Einträge eines Zeitraums (höchstens 400 Tage), neueste zuerst; `?alle=1` statt von/bis = alles seit Beginn (Zeitraum „Gesamt") |
 | `POST/PUT/DELETE /api/zeit/eintrag` | nachtragen / korrigieren (`id`, `start`, `ende` als ISO, `datum`, Buchung) bzw. `{ id, gekapptOk: true }` / löschen. Die laufende Uhr ist hier nicht zu haben (409 bzw. 404) |
 
 Geprüft wird: Bis nach Von, höchstens 24 h, Ende nicht in der Zukunft (2 Minuten
@@ -2827,24 +2855,40 @@ ein Hinweis oben im Fenster mit „Korrigieren" (Dialog; jede Korrektur setzt
 
 ### Das Fenster hinter ⏱ (`#timerPopup`)
 
-- **Auswahl** („Woran arbeitest du?", bei laufender Uhr nach „Wechseln"):
-  ohne Suchtext „Heute fällig" (fällig und überfällig, roter Balken links, höchstens
-  6) und „Zuletzt" (3, aus `zuletzt` vom Server, nur offene); mit Suchtext die
-  Treffer aus allen offenen ToDos aller Listen (Wortanfang zuerst, höchstens 8).
-  Enter nimmt den ersten Treffer. Die noch unsichtbare nächste Ausgabe eines
-  Serien-ToDos (`nochNichtFaellig`) fehlt, wie auf dem Board. Dieselbe Liste
-  (`ztZeichneWahl`) steckt im Eintrag-Dialog.
-- **Uhr:** ToDo mit Liste · Bereich, Zeit h:mm:ss, „Wechseln", „⏹ Stopp". Am Knopf
-  in der Kopfzeile m:ss bzw. h:mm:ss (am Handy ohne Symbol, wie vorher).
-- **Heute gebucht:** Einträge mit `datum` = heute, neueste zuerst, Stift öffnet den
-  Dialog (`#ztDialog`). Die laufende Uhr zählt nicht mit.
+- **Dropdown** (`ztDropdown`, dreimal: vor dem Start `ztDdStart`, bei laufender
+  Uhr `ztDdLaufend`, im Dialog `ztDdDialog`): ein Knopf wie ein Auswahlfeld (Name,
+  darunter Liste · Bereich, links der Farbstreifen) und darunter **im Fluss** eine
+  aufklappende Liste - kein schwebendes Menü, so passt sie in jedes Fenster und
+  blättert selbst (`max-height`). Bewusst kein `<select>`: das zeigt keine Farben,
+  am iPhone schon gar nicht. Inhalt (`ztGruppen`): oben „Ohne ToDo", dann je Liste
+  (Reihenfolge von `listen`) ihre Bereiche in Board-Reihenfolge, „Ohne Bereich"
+  zuletzt, nur offene ToDos ohne die noch unsichtbare nächste Ausgabe einer Serie
+  (`nochNichtFaellig`). Mit Termin zuerst. Das Feld oben grenzt ein (ToDo-Text oder
+  Bereichsname), Enter nimmt den ersten Treffer, Fokus nur mit Maus (sonst klappte
+  am Handy die Tastatur über die Liste). Ein Klick daneben klappt zu (Handler in der
+  Einfangphase, weil der Klick auf einen Eintrag die Liste neu baut), Escape auch.
+  Die Farbe kommt nur aus der Palette `FARBEN` (`ztFarbwert`), nie als freier Text in
+  einen style-Wert.
+- **Vor dem Start:** Dropdown (steht auf „Ohne ToDo"), darunter „▶ Starten".
+- **Uhr:** oben das Dropdown mit dem laufenden ToDo („Ohne ToDo – jetzt
+  zuordnen"), eine Wahl schickt `PUT /api/zeit/laufend`; darunter die Zeit h:mm:ss
+  und der runde Knopf „Stoppen" (`.zt-stopp`, Kreis mit Quadrat aus CSS). Am Knopf in
+  der Kopfzeile m:ss bzw. h:mm:ss (am Handy ohne Symbol, wie vorher).
+- **Heute gebucht:** eine Zeile mit der Summe (`#ztHeuteKopf`), ein Tipp klappt die
+  Einträge mit `datum` = heute auf (neueste zuerst, Stift öffnet `#ztDialog`). Jedes
+  Öffnen des Fensters startet zu. Die laufende Uhr zählt nicht mit.
+- **Dialog:** Kopf mit Titel links und ✕, Dropdown, Tag (Knöpfe Heute/Gestern,
+  daneben das Datumsfeld), Von – Bis, Dauer-Knöpfe 15/30/60/120 min (setzen Bis =
+  Von + Dauer; der passende ist hervorgehoben), darunter „= 1 h 30". Die leere
+  Fehlerzeile ist ausgeblendet (`.lock-msg:empty`), sonst stand eine Lücke über den
+  Knöpfen.
 - **Neu gezeichnet** bei jedem `render()` der App (`window.zeitNeuZeichnen`), damit
   ein umbenanntes oder erledigtes ToDo sofort stimmt; geladen beim Öffnen, nach
   jeder Aktion und beim Zurückkehren in den Tab.
 - **Abhaken:** `toggleDone` in `app.js` ruft `window.zeitBeiAbhaken(id)`.
 - **Oben fest** wie die Einstellungen (`#timerPopup`, `#ztDialog`, `#zeitFenster`
-  in der Gruppe mit `--ein-abstand-oben`): die Auswahl klappt auf und zu.
-- **Schließen von innen nach außen** (Dialog, Statistik, Fenster): Escape in der
+  in der Gruppe mit `--ein-abstand-oben`): das Dropdown klappt auf und zu.
+- **Schließen von innen nach außen** (offenes Dropdown, Dialog, Statistik, Fenster): Escape in der
   Einfangphase, Zurück-Taste über `window.zeitSchliesseOberste` in
   `schliesseObersteEbene` (kalender.js). Solange eines offen ist, keine
   Rand-Wischgeste (`window.zeitFensterOffen` in `darfGeste`).
@@ -2854,8 +2898,11 @@ ein Hinweis oben im Fenster mit „Korrigieren" (Dialog; jede Korrektur setzt
 
 ### Statistik (`#zeitFenster`)
 
-Woche (Mo–So, „KW 42 · 12.10.–18.10.2026"), Monat, Jahr; ‹ › blättert, › endet beim
-laufenden Zeitraum. Balken pro Tag bzw. Monat (Monat ohne Zahlen, Wert im
+Woche (Mo–So, „KW 42 · 12.10.–18.10.2026"), Monat, Jahr und **Gesamt** (seit dem
+ersten Eintrag, „seit 15.08.2026"); ‹ › blättert, › endet beim laufenden Zeitraum,
+bei „Gesamt" sind die Pfeile unsichtbar (Platz bleibt, damit nichts springt). Gesamt
+hat einen Balken je Monat, ab 13 Monaten nur noch mit Jahreszahl am Januar, über 24
+Monate einen je Jahr. Balken pro Tag bzw. Monat (Monat ohne Zahlen, Wert im
 Tooltip - 31 Zahlen haben keinen Platz). Darunter der Baum (`ztBaueBaum`):
 **Liste › Bereich › ToDo**, ToDos ohne Bereich direkt an der Liste, Blätter mit
 gleichem Namen im selben Bereich zusammengefasst (Serien), „Ohne ToDo" als letzte
@@ -2866,8 +2913,8 @@ Einträge (erst 30, dann „Alle anzeigen").
 deutsches Excel öffnet sie per Doppelklick richtig), Stunden mit Komma, älteste
 zuerst. Felder, die mit `= + - @` beginnen, bekommen ein Hochkomma - sonst läse
 Excel einen ToDo-Text wie „=1+1" als Formel. Dateiname
-`zeiterfassung-2026-KW42.csv` / `-2026-10` / `-2026` (das Jahr einer KW ist das
-ihres Donnerstags).
+`zeiterfassung-2026-KW42.csv` / `-2026-10` / `-2026` / `-gesamt` (das Jahr einer KW
+ist das ihres Donnerstags).
 
 ### Übernommen und abgebaut
 
@@ -2890,3 +2937,16 @@ zurückgesetzt), Korrigieren aus dem Hinweis, Statistik Woche/Monat/Jahr und
 Blättern, CSV-Inhalt, Einstellungen, Escape, doppelte IDs. **Ungeprüft:** das
 echte Herunterladen der CSV am Handy (iOS öffnet Blob-Downloads je nach Version
 als Vorschau), Excel selbst, und das Zusammenspiel zweier Geräte live.
+
+**Zweite Runde lokal getestet** (gleicher Abend, 717/1024 px und 375 px, hell und
+dunkel, mit Bereichsfarben in den Testdaten): Dropdown zu/auf, Farben, Eingrenzen +
+Enter, echter Klick auf Knopf und Eintrag, Starten, Zuordnen bei laufender Uhr
+(gleicher Eintrag, gleicher Start, auch zurück auf „ohne"), Stopp bucht die ganze
+Zeit aufs zugeordnete ToDo, 409 ohne laufende Uhr, Heute-Zeile auf/zu, Dialog mit
+Heute/Gestern und Dauer-Knöpfen (auch über Mitternacht), Bearbeiten, Gesamt (auch
+über Monate mit Lücke; über ein und zwei Jahre nur rechnerisch), CSV-Dateiname,
+Escape-Reihenfolge, Klick daneben, Abhaken stoppt, doppelte IDs. Einmal ging das
+Fenster beim ersten echten Klick aufs Dropdown zu - danach nicht mehr
+nachstellbar, auch nicht mit Protokoll aller Klick- und popstate-Ereignisse.
+Vermutlich der vorher abgebrochene Klick des Test-Werkzeugs; falls es live
+auftritt: hier weitersuchen.

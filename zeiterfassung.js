@@ -9,9 +9,8 @@
    Entscheidungen dazu (gefragt, nicht angenommen):
    - Die Uhr zaehlt HOCH, ohne Pause-Taste: Stopp beendet den Eintrag,
      Weitermachen ist ein neuer. Jeder Eintrag hat so echte Von-bis-Zeiten.
-   - Ein ToDo ist optional ("Ohne ToDo starten").
-   - Einstieg NUR ueber ⏱ oben, und ALLES steht im Fenster dahinter: Auswahl
-     bzw. laufende Uhr, darunter das heute Gebuchte, Nachtragen, Statistik.
+   - Ein ToDo ist optional.
+   - Einstieg NUR ueber ⏱ oben, und ALLES steht im Fenster dahinter.
      An den ToDo-Karten steht bewusst keine Zeit ("sonst wird das ueberladen").
    - Eintraege lassen sich bearbeiten, loeschen und nachtragen.
    - Laeuft die Uhr ueber 4 Stunden, haelt der Server sie dort an (gekappt),
@@ -20,6 +19,18 @@
    - Statistik gruppiert nach Liste › Bereich › ToDo; Serien-ToDos (jede
      Ausgabe ist eine eigene Zeile in todos) zaehlen zusammen - gleicher Name
      im selben Bereich ist eine Zeile. Dazu ein CSV-Export als Nachweis.
+
+   Zweite Runde am selben Abend (wieder gefragt, mit Skizzen):
+   - Statt Suche und Vorschlagsliste ein DROPDOWN nach Liste › Bereich mit der
+     Bereichsfarbe, oben ein Feld zum Eingrenzen. Auswaehlen, dann "Starten".
+   - "Wechseln" ist weg ("ich waehle ein ToDo aus und arbeite daran, warum
+     wechseln"). Bei laufender Uhr steht oben dasselbe Dropdown: wer ohne ToDo
+     gestartet hat oder sich vertippt hat, waehlt dort, und die Zeit zaehlt AB
+     START darauf (PUT /api/zeit/laufend). Darunter ein runder Stopp-Knopf.
+   - "Heute gebucht" ist eine einklappbare Zeile, standardmaessig zu.
+   - Nachtragen: Kopf wie die anderen Fenster, Dropdown, Tag als Heute/Gestern/
+     Kalender, Dauer-Knoepfe, die "Bis" setzen.
+   - Statistik: vierter Zeitraum "Gesamt" - alles seit Beginn.
 
    Gerechnet wird auf dem Server (functions/_lib/zeit.js), die Uhr hier ist
    reine Anzeige ab dem Stand der letzten Antwort.
@@ -37,15 +48,10 @@ const ztPopup         = document.getElementById("timerPopup");
 const ztHinweisEl     = document.getElementById("ztHinweis");
 const ztInhaltEl      = document.getElementById("ztInhalt");
 const ztGekapptEl     = document.getElementById("ztGekappt");
+const ztStartBlock    = document.getElementById("ztStartBlock");
 const ztUhrEl         = document.getElementById("ztUhr");
-const ztUhrTodoEl     = document.getElementById("ztUhrTodo");
 const ztUhrZeitEl     = document.getElementById("ztUhrZeit");
-const ztWahlEl        = document.getElementById("ztWahl");
-const ztWahlTitelEl   = document.getElementById("ztWahlTitel");
-const ztWahlAbbrEl    = document.getElementById("ztWahlAbbrechen");
-const ztSucheEl       = document.getElementById("ztSuche");
-const ztWahlListeEl   = document.getElementById("ztWahlListe");
-const ztOhneTodoEl    = document.getElementById("ztOhneTodo");
+const ztHeuteKopf     = document.getElementById("ztHeuteKopf");
 const ztHeuteSummeEl  = document.getElementById("ztHeuteSumme");
 const ztHeuteListeEl  = document.getElementById("ztHeuteListe");
 
@@ -64,16 +70,14 @@ const ztStatHinweisEl = document.getElementById("ztStatHinweis");
 
 const ztDialog        = document.getElementById("ztDialog");
 const ztDialogTitel   = document.getElementById("ztDialogTitel");
-const ztDialogTodoEl  = document.getElementById("ztDialogTodo");
-const ztDialogWahlEl  = document.getElementById("ztDialogWahl");
-const ztDialogSuche   = document.getElementById("ztDialogSuche");
-const ztDialogListe   = document.getElementById("ztDialogListe");
 const ztDatumEl       = document.getElementById("ztDatum");
 const ztVonEl         = document.getElementById("ztVon");
 const ztBisEl         = document.getElementById("ztBis");
 const ztDialogDauer   = document.getElementById("ztDialogDauer");
 const ztDialogMsg     = document.getElementById("ztDialogMsg");
 const ztDialogLoeschen = document.getElementById("ztDialogLoeschen");
+const ztTagChips      = [...ztDialog.querySelectorAll(".zt-tag-wahl .zt-chip")];
+const ztDauerChips    = [...ztDialog.querySelectorAll(".zt-dauer-wahl .zt-chip")];
 
 // Wie DECKEL_SEK in functions/_lib/zeit.js. Gekappt wird dort - hier dient der
 // Wert nur dazu, im richtigen Moment neu zu laden.
@@ -92,8 +96,8 @@ let ztBasisMs = 0;        // wann ztLaeuft.sek gemessen wurde
 let ztDeckelGemeldet = false;
 let ztHeute = [];         // heute fertig gebuchte Eintraege, neueste zuerst
 let ztGekappt = [];       // gekappte Eintraege, die noch einen Hinweis brauchen
-let ztZuletzt = [];       // zuletzt bebuchte ToDo-ids, neueste zuerst
-let ztWechselt = false;   // Auswahl bei laufender Uhr offen ("Wechseln")
+let ztAuswahl = {};       // im Dropdown gewaehlt, bevor "Starten" kommt; {} = ohne
+let ztHeuteOffen = false; // "Heute gebucht" aufgeklappt
 
 // ---------- Kleine Helfer ----------
 function ztApi(pfad, optionen) {
@@ -130,6 +134,7 @@ function ztKnopfText(sek) {
 const ZT_UHRZEIT = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" });
 const ZT_WOCHENTAG = new Intl.DateTimeFormat("de-DE", { weekday: "short" });
 const ZT_MONAT = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
+const ZT_MONAT_KURZ = new Intl.DateTimeFormat("de-DE", { month: "short" });
 
 function ztUhrzeit(iso) { return ZT_UHRZEIT.format(new Date(iso)); }
 function ztVonBis(e) { return `${ztUhrzeit(e.start)}–${ztUhrzeit(e.ende)}`; }
@@ -144,8 +149,23 @@ function ztTagKurz(tag) {
   const d = ztAlsDatum(tag);
   return `${ZT_WOCHENTAG.format(d).replace(".", "")} ${ztZwei(d.getDate())}.${ztZwei(d.getMonth() + 1)}.`;
 }
+// "13.10.2026"
+function ztTagLang(tag) {
+  const d = ztAlsDatum(tag);
+  return `${ztZwei(d.getDate())}.${ztZwei(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
 
-// Die Suche nur mit Maus gleich in den Fokus: am Handy klappte sonst die
+// "HH:MM" <-> Minuten seit Mitternacht.
+function ztMinVon(hhmm) {
+  const [h, m] = String(hhmm || "").split(":").map(Number);
+  return Number.isInteger(h) && Number.isInteger(m) ? h * 60 + m : null;
+}
+function ztHhmm(min) {
+  const m = ((min % 1440) + 1440) % 1440;
+  return `${ztZwei(Math.floor(m / 60))}:${ztZwei(m % 60)}`;
+}
+
+// Ein Suchfeld nur mit Maus gleich in den Fokus: am Handy klappte sonst die
 // Tastatur auf und verdeckte genau die Liste, aus der man waehlen will.
 function ztFokussiere(feld) {
   if (window.matchMedia("(hover: hover)").matches) feld.focus();
@@ -162,6 +182,13 @@ function ztErlaubt() {
   return b.timer !== false;
 }
 
+function ztHinweisZeile(text) {
+  const p = document.createElement("p");
+  p.className = "zt-leer";
+  p.textContent = text;
+  return p;
+}
+
 // ---------- ToDos aus app.js ----------
 // Die App haelt alle Listen im Speicher (`listen`, `daten`). Daraus kommen die
 // aktuellen Namen - gespeichert sind nur die zum Zeitpunkt der Buchung.
@@ -176,6 +203,7 @@ function ztFundAus(t, boardId, bereiche) {
     listeName: meta ? meta.name : "",
     bereichId: mitBereich ? cat.id : null,
     bereichName: mitBereich ? cat.name : "",
+    farbe: mitBereich ? (cat.farbe || null) : null,
   };
 }
 
@@ -194,21 +222,6 @@ function ztFindeTodo(id) {
     if (t) return ztFundAus(t, boardId, ztBereicheVon(d));
   }
   return null;
-}
-
-// Alle offenen ToDos aus allen Listen - ohne die noch unsichtbare naechste
-// Ausgabe einer Serie (nochNichtFaellig), die man auf dem Board auch nicht sieht.
-function ztOffeneTodos() {
-  const funde = [];
-  for (const b of listen) {
-    const d = daten[b.id] || {};
-    const bereiche = ztBereicheVon(d);
-    for (const t of (d.todos || [])) {
-      if (t.done || nochNichtFaellig(t)) continue;
-      funde.push(ztFundAus(t, b.id, bereiche));
-    }
-  }
-  return funde;
 }
 
 // Was mit einer Buchung zum Server geht: die id und die Namen von jetzt.
@@ -237,6 +250,206 @@ function ztOrtVon(e) {
   return [liste, bereich].filter(Boolean).join(" · ");
 }
 
+// Die Bereichsfarbe als CSS-Wert - nur aus der festen Palette (FARBEN in
+// app.js), damit kein fremder Text in einem style-Wert landet.
+function ztFarbwert(farbe) {
+  return FARBEN.some(f => f.id === farbe) ? `var(--farbe-${farbe})` : "";
+}
+
+/* ====================================================================
+   Das Dropdown: offene ToDos nach Liste › Bereich, mit Bereichsfarbe
+   ==================================================================== */
+
+// Wie auf dem Board: mit Termin zuerst (frueheste oben), dann die ohne in ihrer
+// Reihenfolge.
+function ztTodoReihenfolge(a, b) {
+  if (!!a.due !== !!b.due) return a.due ? -1 : 1;
+  if (a.due && b.due && a.due !== b.due) return a.due < b.due ? -1 : 1;
+  return (a.order ?? 0) - (b.order ?? 0);
+}
+
+/**
+ * Die offenen ToDos aller Listen, je Liste nach Bereichen in der Reihenfolge des
+ * Boards, "Ohne Bereich" zuletzt. Weg bleiben erledigte und die noch
+ * unsichtbare naechste Ausgabe einer Serie (nochNichtFaellig), die man auf dem
+ * Board auch nicht sieht. Mit Suchtext nur, was passt: am ToDo-Text oder am
+ * Bereichsnamen (dann der ganze Bereich).
+ */
+function ztGruppen(suche) {
+  const q = suche.trim().toLocaleLowerCase("de");
+  const gruppen = [];
+  for (const b of listen) {
+    const d = daten[b.id] || {};
+    const bereichMap = ztBereicheVon(d);
+    const bereiche = [];
+    let ohne = null;
+    for (const c of (d.categories || [])) {
+      const ohneBereich = istOhneBereich(c.id);
+      const bereichPasst = !!q && !ohneBereich && c.name.toLocaleLowerCase("de").includes(q);
+      const todos = (d.todos || [])
+        .filter(t => t.categoryId === c.id && !t.done && !nochNichtFaellig(t))
+        .filter(t => !q || bereichPasst || t.text.toLocaleLowerCase("de").includes(q))
+        .sort(ztTodoReihenfolge)
+        .map(t => ztFundAus(t, b.id, bereichMap));
+      if (!todos.length) continue;
+      const g = { name: ohneBereich ? "Ohne Bereich" : c.name, farbe: ohneBereich ? null : c.farbe, todos };
+      if (ohneBereich) ohne = g; else bereiche.push(g);
+    }
+    if (ohne) bereiche.push(ohne);
+    if (bereiche.length) gruppen.push({ name: b.name, bereiche });
+  }
+  return gruppen;
+}
+
+const ztDropdowns = [];
+
+/**
+ * Ein Dropdown in `host` - im Fenster (vor dem Start und bei laufender Uhr) und
+ * im Eintrag-Dialog dasselbe. Ein eigenes statt eines <select>: das kann keine
+ * Farben, am iPhone schon gar nicht. Die Liste klappt im Fluss auf (kein
+ * schwebendes Menue), so passt sie in jedes Fenster und blaettert selbst.
+ *
+ * `buchung()` sagt, was gerade gewaehlt ist ({ todoId, todoText, listeName,
+ * bereichName } oder {}), `beiWahl(fund)` bekommt die Wahl (null = ohne ToDo),
+ * `ohneText()` steht im Knopf, wenn nichts gewaehlt ist.
+ */
+function ztDropdown(host, { buchung, beiWahl, ohneText }) {
+  const knopf = document.createElement("button");
+  knopf.type = "button";
+  knopf.className = "zt-dd-knopf";
+  knopf.setAttribute("aria-haspopup", "listbox");
+  knopf.setAttribute("aria-expanded", "false");
+  const panel = document.createElement("div");
+  panel.className = "zt-dd-panel";
+  panel.hidden = true;
+  const filter = document.createElement("input");
+  filter.type = "search";
+  filter.className = "eingabe-feld zt-dd-filter";
+  filter.placeholder = "Eingrenzen …";
+  filter.autocomplete = "off";
+  filter.setAttribute("aria-label", "ToDos eingrenzen");
+  const liste = document.createElement("div");
+  liste.className = "zt-dd-liste";
+  liste.setAttribute("role", "listbox");
+  panel.append(filter, liste);
+  host.replaceChildren(knopf, panel);
+
+  const dd = { offen: false };
+
+  function zeichneKnopf() {
+    const b = buchung() || {};
+    const f = b.todoId ? ztFindeTodo(b.todoId) : null;
+    const text = document.createElement("span");
+    text.className = "zt-dd-text";
+    const name = document.createElement("span");
+    name.className = "zt-dd-name" + (b.todoId ? "" : " ohne");
+    name.textContent = b.todoId ? ztNameVon(b) : ohneText();
+    text.appendChild(name);
+    const ort = ztOrtVon(b);
+    if (ort) {
+      const o = document.createElement("span");
+      o.className = "zt-dd-ort";
+      o.textContent = ort;
+      text.appendChild(o);
+    }
+    const pfeil = document.createElement("span");
+    pfeil.className = "zt-dd-pfeil";
+    pfeil.setAttribute("aria-hidden", "true");
+    pfeil.textContent = dd.offen ? "▴" : "▾";
+    knopf.replaceChildren(text, pfeil);
+    knopf.style.setProperty("--zt-farbe", ztFarbwert(f?.farbe));
+    knopf.setAttribute("aria-expanded", String(dd.offen));
+  }
+
+  function eintrag(fund, gewaehltId) {
+    const k = document.createElement("button");
+    k.type = "button";
+    k.className = "zt-dd-eintrag" + (fund ? "" : " zt-dd-ohne");
+    k.setAttribute("role", "option");
+    k.setAttribute("aria-selected", String((fund ? fund.todo.id : null) === (gewaehltId || null)));
+    const text = document.createElement("span");
+    text.className = "zt-dd-eintrag-text";
+    text.textContent = fund ? fund.todo.text : "Ohne ToDo";
+    k.appendChild(text);
+    const due = fund?.todo.due;
+    if (due && due <= todayStr()) {
+      const f = document.createElement("span");
+      f.className = "zt-dd-faellig";
+      f.textContent = due < todayStr() ? "überfällig" : "heute";
+      k.appendChild(f);
+    }
+    k.onclick = () => { dd.schliesse(); beiWahl(fund); };
+    return k;
+  }
+
+  function zeichneListe() {
+    const gewaehltId = (buchung() || {}).todoId || null;
+    liste.replaceChildren();
+    const suche = filter.value;
+    if (!suche.trim()) liste.appendChild(eintrag(null, gewaehltId));
+    const gruppen = ztGruppen(suche);
+    for (const l of gruppen) {
+      const kopf = document.createElement("div");
+      kopf.className = "zt-dd-liste-kopf";
+      kopf.textContent = l.name;
+      liste.appendChild(kopf);
+      for (const g of l.bereiche) {
+        // Der Farbstreifen laeuft am ganzen Bereich entlang, wie am Board.
+        const gruppe = document.createElement("div");
+        gruppe.className = "zt-dd-gruppe";
+        gruppe.style.setProperty("--zt-farbe", ztFarbwert(g.farbe));
+        const name = document.createElement("div");
+        name.className = "zt-dd-bereich";
+        name.textContent = g.name;
+        gruppe.appendChild(name);
+        for (const fund of g.todos) gruppe.appendChild(eintrag(fund, gewaehltId));
+        liste.appendChild(gruppe);
+      }
+    }
+    if (!gruppen.length) {
+      liste.appendChild(ztHinweisZeile(suche.trim() ? "Kein offenes ToDo gefunden." : "Keine offenen ToDos."));
+    }
+  }
+
+  dd.zeichne = () => { zeichneKnopf(); if (dd.offen) zeichneListe(); };
+  dd.oeffne = () => {
+    for (const anderes of ztDropdowns) if (anderes !== dd) anderes.schliesse();
+    dd.offen = true;
+    panel.hidden = false;
+    filter.value = "";
+    dd.zeichne();
+    ztFokussiere(filter);
+    panel.scrollIntoView?.({ block: "nearest" });
+  };
+  dd.schliesse = () => {
+    if (!dd.offen) return;
+    dd.offen = false;
+    panel.hidden = true;
+    zeichneKnopf();
+  };
+  dd.enthaelt = el => host.contains(el);
+
+  knopf.addEventListener("click", () => (dd.offen ? dd.schliesse() : dd.oeffne()));
+  filter.addEventListener("input", zeichneListe);
+  // Enter nimmt den ersten Treffer - wer tippt, will nicht noch zielen.
+  filter.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    liste.querySelector(".zt-dd-eintrag")?.click();
+  });
+
+  ztDropdowns.push(dd);
+  zeichneKnopf();
+  return dd;
+}
+
+// Ein Tipp daneben klappt zu. In der Einfangphase, damit die Pruefung vor dem
+// Klick-Handler des Ziels laeuft - der baut die Liste womoeglich neu, danach
+// haengt das Ziel nicht mehr im Dokument.
+document.addEventListener("click", e => {
+  for (const dd of ztDropdowns) if (dd.offen && !dd.enthaelt(e.target)) dd.schliesse();
+}, true);
+
 // ---------- Laden ----------
 function ztUebernimmLaufend(e) {
   ztLaeuft = e || null;
@@ -254,8 +467,6 @@ async function ztLade() {
     ztUebernimmLaufend(antwort.daten.laeuft);
     ztHeute = antwort.daten.heute || [];
     ztGekappt = antwort.daten.gekappt || [];
-    ztZuletzt = antwort.daten.zuletzt || [];
-    if (!ztLaeuft) ztWechselt = false;
   } else {
     ztFehler = antwort.status === 0
       ? "Keine Verbindung – die Zeiterfassung braucht Netz."
@@ -275,97 +486,6 @@ function ztZeichneKnoepfe() {
     k.classList.toggle("hinweis", !ztLaeuft && ztGekappt.length > 0);
     k.querySelector(".timer-zeit").textContent = ztLaeuft ? ztKnopfText(sek) : "";
     k.title = ztLaeuft ? `Uhr läuft: ${ztNameVon(ztLaeuft)}` : "Zeiterfassung";
-  }
-}
-
-// ---------- Zeichnen: Auswahl ----------
-function ztWahlKnopf(fund, beiWahl) {
-  const k = document.createElement("button");
-  k.type = "button";
-  k.className = "zt-wahl-eintrag";
-  const text = document.createElement("span");
-  text.className = "zt-wahl-text";
-  text.textContent = fund ? fund.todo.text : "Ohne ToDo";
-  k.appendChild(text);
-  if (fund) {
-    const ort = document.createElement("span");
-    ort.className = "zt-wahl-ort";
-    ort.textContent = [fund.listeName, fund.bereichName].filter(Boolean).join(" · ");
-    k.appendChild(ort);
-    if (fund.todo.due && fund.todo.due < todayStr()) k.classList.add("ueberfaellig");
-  }
-  k.onclick = () => beiWahl(fund);
-  return k;
-}
-
-function ztWahlTitel(text) {
-  const t = document.createElement("div");
-  t.className = "zt-wahl-abschnitt";
-  t.textContent = text;
-  return t;
-}
-
-function ztWahlHinweis(text) {
-  const p = document.createElement("p");
-  p.className = "zt-wahl-hinweis";
-  p.textContent = text;
-  return p;
-}
-
-/**
- * Die Auswahl in `ziel` zeichnen - im Fenster und im Dialog dieselbe.
- * Ohne Suchtext: "Heute fällig" (inkl. ueberfaellig) und "Zuletzt"; mit
- * Suchtext die Treffer aus allen offenen ToDos. `beiWahl(fund)` bekommt das
- * gewaehlte ToDo, null heisst "ohne". `ausser` laesst ein ToDo weg (das, auf
- * dem die Uhr gerade laeuft), `mitOhne` haengt "Ohne ToDo" als Eintrag an.
- */
-function ztZeichneWahl(ziel, suche, beiWahl, { ausser = null, mitOhne = false } = {}) {
-  ziel.replaceChildren();
-  const offen = ztOffeneTodos().filter(f => f.todo.id !== ausser);
-  const q = suche.trim().toLocaleLowerCase("de");
-
-  if (q) {
-    const treffer = offen
-      .map(f => ({ f, stelle: f.todo.text.toLocaleLowerCase("de").indexOf(q) }))
-      .filter(x => x.stelle >= 0)
-      // Wo das Wort vorn steht, ist es eher gemeint.
-      .sort((a, b) => (a.stelle === 0) === (b.stelle === 0)
-        ? a.f.todo.text.localeCompare(b.f.todo.text, "de")
-        : (a.stelle === 0 ? -1 : 1))
-      .slice(0, 8);
-    if (!treffer.length) ziel.appendChild(ztWahlHinweis("Kein offenes ToDo gefunden."));
-    for (const x of treffer) ziel.appendChild(ztWahlKnopf(x.f, beiWahl));
-  } else {
-    const heute = todayStr();
-    const faellig = offen
-      .filter(f => f.todo.due && f.todo.due <= heute)
-      .sort((a, b) => a.todo.due === b.todo.due
-        ? a.todo.text.localeCompare(b.todo.text, "de")
-        : (a.todo.due < b.todo.due ? -1 : 1));
-    const schon = new Set(faellig.map(f => f.todo.id));
-    const zuletzt = ztZuletzt
-      .map(id => offen.find(f => f.todo.id === id))
-      .filter(f => f && !schon.has(f.todo.id))
-      .slice(0, 3);
-
-    if (faellig.length) {
-      ziel.appendChild(ztWahlTitel("Heute fällig"));
-      for (const f of faellig.slice(0, 6)) ziel.appendChild(ztWahlKnopf(f, beiWahl));
-      if (faellig.length > 6) ziel.appendChild(ztWahlHinweis(`… und ${faellig.length - 6} weitere – über die Suche`));
-    }
-    if (zuletzt.length) {
-      ziel.appendChild(ztWahlTitel("Zuletzt"));
-      for (const f of zuletzt) ziel.appendChild(ztWahlKnopf(f, beiWahl));
-    }
-    if (!faellig.length && !zuletzt.length) {
-      ziel.appendChild(ztWahlHinweis(offen.length
-        ? "Heute ist nichts fällig. Such dir ein ToDo oder starte ohne."
-        : "Keine offenen ToDos."));
-    }
-  }
-  if (mitOhne) {
-    ziel.appendChild(ztWahlTitel("Oder"));
-    ziel.appendChild(ztWahlKnopf(null, beiWahl));
   }
 }
 
@@ -435,43 +555,16 @@ function ztZeichneGekappt() {
   ztGekapptEl.append(p, knoepfe);
 }
 
-function ztZeichneUhr() {
-  ztUhrEl.hidden = !ztLaeuft;
-  if (!ztLaeuft) return;
-  ztUhrTodoEl.replaceChildren();
-  const name = document.createElement("span");
-  name.className = "zt-uhr-name" + (ztLaeuft.todoId ? "" : " ohne");
-  name.textContent = ztNameVon(ztLaeuft);
-  ztUhrTodoEl.appendChild(name);
-  const ort = ztOrtVon(ztLaeuft);
-  if (ort) {
-    const o = document.createElement("span");
-    o.className = "zt-uhr-ort";
-    o.textContent = ort;
-    ztUhrTodoEl.appendChild(o);
-  }
-  ztUhrZeitEl.textContent = ztUhrText(ztVerstrichen());
-  document.getElementById("ztWechseln").setAttribute("aria-expanded", String(ztWechselt));
-}
-
-function ztZeichneAuswahl() {
-  const zeigen = !ztLaeuft || ztWechselt;
-  ztWahlEl.hidden = !zeigen;
-  if (!zeigen) return;
-  ztWahlTitelEl.textContent = ztLaeuft ? "Wechseln zu …" : "Woran arbeitest du?";
-  ztWahlAbbrEl.hidden = !ztLaeuft;
-  // Laeuft die Uhr schon ohne ToDo, ist "ohne" kein Wechsel.
-  ztOhneTodoEl.hidden = !!ztLaeuft && !ztLaeuft.todoId;
-  ztOhneTodoEl.textContent = ztLaeuft ? "Ohne ToDo weiter" : "Ohne ToDo starten";
-  ztZeichneWahl(ztWahlListeEl, ztSucheEl.value, ztStarte, { ausser: ztLaeuft?.todoId || null });
-}
-
 function ztZeichneHeute() {
   const summe = ztHeute.reduce((s, e) => s + e.sek, 0);
-  ztHeuteSummeEl.textContent = ztHeute.length ? ztDauer(summe) : "";
+  ztHeuteSummeEl.textContent = ztHeute.length ? ztDauer(summe) : "noch nichts";
+  ztHeuteKopf.setAttribute("aria-expanded", String(ztHeuteOffen));
+  ztHeuteKopf.querySelector(".zt-heute-pfeil").textContent = ztHeuteOffen ? "▾" : "▸";
+  ztHeuteListeEl.hidden = !ztHeuteOffen;
   ztHeuteListeEl.replaceChildren();
+  if (!ztHeuteOffen) return;
   if (!ztHeute.length) {
-    ztHeuteListeEl.appendChild(ztWahlHinweis("Heute noch nichts gebucht."));
+    ztHeuteListeEl.appendChild(ztHinweisZeile("Heute noch nichts gebucht."));
     return;
   }
   for (const e of ztHeute) ztHeuteListeEl.appendChild(ztEintragZeile(e, false));
@@ -485,23 +578,49 @@ function ztZeichne() {
   ztHinweisEl.textContent = ztFehler || "Lädt …";
   if (!ztGeladen) return;
   ztZeichneGekappt();
-  ztZeichneUhr();
-  ztZeichneAuswahl();
+  ztStartBlock.hidden = !!ztLaeuft;
+  ztUhrEl.hidden = !ztLaeuft;
+  if (ztLaeuft) {
+    ztDdStart.schliesse();
+    ztDdLaufend.zeichne();
+    ztUhrZeitEl.textContent = ztUhrText(ztVerstrichen());
+  } else {
+    ztDdLaufend.schliesse();
+    ztDdStart.zeichne();
+  }
   ztZeichneHeute();
 }
 
 // ---------- Aktionen ----------
-async function ztStarte(fund) {
-  const antwort = await ztSchreibe("/start", { heute: todayStr(), ...ztBuchungAus(fund) });
+async function ztStarte() {
+  const antwort = await ztSchreibe("/start", { heute: todayStr(), ...ztAuswahl });
   if (!antwort.ok) { snackInfo(antwort.daten.error || "Start fehlgeschlagen."); return; }
+  // Lief schon eine (anderes Geraet, anderer Tab), hat der Server sie gebucht.
   const vorher = antwort.daten.beendet;
   ztUebernimmLaufend(antwort.daten.laeuft);
-  ztWechselt = false;
-  ztSucheEl.value = "";
+  ztAuswahl = {};
   if (vorher) snackInfo(`${ztDauer(vorher.sek)} auf „${ztNameVon(vorher)}“ gebucht`);
   ztZeichne();
   await ztLade();
   ztNachAenderung();
+}
+
+/**
+ * Der laufenden Uhr ein ToDo geben - ab ihrem Start (Hendrik: "dann wird von
+ * Beginn an die Zeit darauf gebucht"). Auch zurueck auf "ohne".
+ */
+async function ztOrdneZu(fund) {
+  const b = ztBuchungAus(fund);
+  if ((b.todoId || null) === (ztLaeuft?.todoId || null)) return;
+  const antwort = await ztSchreibe("/laufend", b, "PUT");
+  if (!antwort.ok) {
+    snackInfo(antwort.daten.error || "Zuordnen fehlgeschlagen.");
+    ztLade();
+    return;
+  }
+  ztUebernimmLaufend(antwort.daten.laeuft);
+  snackInfo(fund ? `Die Zeit seit dem Start zählt jetzt auf „${fund.todo.text}“` : "Die Uhr läuft jetzt ohne ToDo");
+  ztZeichne();
 }
 
 /**
@@ -512,7 +631,6 @@ async function ztStoppe(abgehakt) {
   const antwort = await ztSchreibe("/stop", {});
   if (!antwort.ok) { snackInfo(antwort.daten.error || "Stoppen fehlgeschlagen."); return; }
   ztUebernimmLaufend(null);
-  ztWechselt = false;
   const e = antwort.daten.beendet;
   if (e) {
     snackInfo(abgehakt
@@ -529,12 +647,25 @@ function ztNachAenderung() {
   if (ztFensterIstOffen()) ztLadeStatistik();
 }
 
+// ---------- Die beiden Dropdowns im Fenster ----------
+const ztDdStart = ztDropdown(document.getElementById("ztDdStart"), {
+  buchung: () => ztAuswahl,
+  beiWahl: fund => { ztAuswahl = ztBuchungAus(fund); ztDdStart.zeichne(); },
+  ohneText: () => "Ohne ToDo",
+});
+const ztDdLaufend = ztDropdown(document.getElementById("ztDdLaufend"), {
+  buchung: () => ztLaeuft || {},
+  beiWahl: ztOrdneZu,
+  ohneText: () => "Ohne ToDo – jetzt zuordnen",
+});
+
 // ---------- Fenster oeffnen / schliessen ----------
 function ztOeffne() {
   ztOffen = true;
   ztPopup.hidden = false;
-  ztWechselt = false;
-  ztSucheEl.value = "";
+  ztAuswahl = {};
+  ztHeuteOffen = false;
+  for (const dd of ztDropdowns) dd.schliesse();
   ztZeichne();
   ztLade();
 }
@@ -542,27 +673,16 @@ function ztOeffne() {
 function ztSchliesse() {
   ztOffen = false;
   ztPopup.hidden = true;
+  ztDdStart.schliesse();
+  ztDdLaufend.schliesse();
 }
 
 for (const k of ztKnoepfe) k.addEventListener("click", ztOeffne);
 document.getElementById("timerZu").addEventListener("click", ztSchliesse);
 ztPopup.addEventListener("click", e => { if (e.target === ztPopup) ztSchliesse(); });
+document.getElementById("ztStarten").addEventListener("click", ztStarte);
 document.getElementById("ztStopp").addEventListener("click", () => ztStoppe(false));
-document.getElementById("ztWechseln").addEventListener("click", () => {
-  ztWechselt = !ztWechselt;
-  ztSucheEl.value = "";
-  ztZeichne();
-  if (ztWechselt) ztFokussiere(ztSucheEl);
-});
-ztWahlAbbrEl.addEventListener("click", () => { ztWechselt = false; ztSucheEl.value = ""; ztZeichne(); });
-ztOhneTodoEl.addEventListener("click", () => ztStarte(null));
-ztSucheEl.addEventListener("input", ztZeichneAuswahl);
-// Enter in der Suche nimmt den ersten Treffer - wer tippt, will nicht noch zielen.
-ztSucheEl.addEventListener("keydown", e => {
-  if (e.key !== "Enter") return;
-  e.preventDefault();
-  ztWahlListeEl.querySelector(".zt-wahl-eintrag")?.click();
-});
+ztHeuteKopf.addEventListener("click", () => { ztHeuteOffen = !ztHeuteOffen; ztZeichneHeute(); });
 document.getElementById("ztNachtragen").addEventListener("click", () => ztOeffneDialog(null));
 document.getElementById("ztStatistikOeffnen").addEventListener("click", () => ztOeffneStatistik());
 document.getElementById("ztStatistikEinstellungen").addEventListener("click", () => {
@@ -578,29 +698,13 @@ document.getElementById("ztStatistikEinstellungen").addEventListener("click", ()
 let ztDialogEintrag = null;   // der bearbeitete Eintrag, null = nachtragen
 let ztDialogBuchung = {};     // { todoId, todoText, listeName, bereichName } oder {}
 
-function ztZeichneDialogTodo() {
-  const b = ztDialogBuchung;
-  ztDialogTodoEl.replaceChildren();
-  const name = document.createElement("span");
-  name.className = "zt-todo-knopf-name" + (b.todoId ? "" : " ohne");
-  name.textContent = b.todoId ? ztNameVon(b) : "Ohne ToDo";
-  const pfeil = document.createElement("span");
-  pfeil.className = "zt-todo-knopf-pfeil";
-  pfeil.setAttribute("aria-hidden", "true");
-  pfeil.textContent = ztDialogWahlEl.hidden ? "▾" : "▴";
-  ztDialogTodoEl.append(name, pfeil);
-  ztDialogTodoEl.setAttribute("aria-expanded", String(!ztDialogWahlEl.hidden));
-}
+const ztDdDialog = ztDropdown(document.getElementById("ztDdDialog"), {
+  buchung: () => ztDialogBuchung,
+  beiWahl: fund => { ztDialogBuchung = ztBuchungAus(fund); ztDdDialog.zeichne(); },
+  ohneText: () => "Ohne ToDo",
+});
 
-function ztZeichneDialogWahl() {
-  ztZeichneWahl(ztDialogListe, ztDialogSuche.value, fund => {
-    ztDialogBuchung = ztBuchungAus(fund);
-    ztDialogWahlEl.hidden = true;
-    ztZeichneDialogTodo();
-  }, { mitOhne: true });
-}
-
-// Aus Datum und Uhrzeiten die Strecke. Liegt "Bis" nicht nach "Von", geht sie
+// Aus Tag und Uhrzeiten die Strecke. Liegt "Bis" nicht nach "Von", geht sie
 // ueber Mitternacht - 23:30 bis 0:30 ist eine Stunde, kein Fehler.
 function ztDialogStrecke() {
   const datum = ztDatumEl.value, von = ztVonEl.value, bis = ztBisEl.value;
@@ -613,11 +717,19 @@ function ztDialogStrecke() {
   return { start, ende, datum, ueberNacht };
 }
 
+// Dauer-Zeile und welche Schnellwahl gerade zutrifft.
 function ztZeichneDialogDauer() {
   const s = ztDialogStrecke();
+  const min = s ? Math.round((s.ende - s.start) / 60000) : null;
   ztDialogDauer.textContent = s
-    ? `= ${ztDauer((s.ende - s.start) / 1000)}` + (s.ueberNacht ? " (bis zum nächsten Tag)" : "")
+    ? `= ${ztDauer(min * 60)}` + (s.ueberNacht ? " (bis zum nächsten Tag)" : "")
     : "";
+  for (const c of ztTagChips) {
+    c.setAttribute("aria-pressed", String(ztDatumEl.value === addDaysStr(Number(c.dataset.tag))));
+  }
+  for (const c of ztDauerChips) {
+    c.setAttribute("aria-pressed", String(min === Number(c.dataset.min)));
+  }
 }
 
 function ztOeffneDialog(e) {
@@ -625,20 +737,17 @@ function ztOeffneDialog(e) {
   ztDialogTitel.textContent = e ? "Eintrag bearbeiten" : "Zeit nachtragen";
   ztDialogLoeschen.hidden = !e;
   ztDialogMsg.textContent = "";
-  ztDialogWahlEl.hidden = true;
-  ztDialogSuche.value = "";
   if (e) {
     // Die Buchung, wie sie ist - auch fuer ein inzwischen geloeschtes ToDo,
     // sonst ginge beim Korrigieren der Uhrzeit der Name verloren.
-    ztDialogBuchung = e.todoId
-      ? { todoId: e.todoId, todoText: e.todoText, listeName: e.listeName, bereichName: e.bereichName }
-      : {};
     const f = e.todoId ? ztFindeTodo(e.todoId) : null;
-    if (f) ztDialogBuchung = ztBuchungAus(f);
+    ztDialogBuchung = f ? ztBuchungAus(f)
+      : e.todoId ? { todoId: e.todoId, todoText: e.todoText, listeName: e.listeName, bereichName: e.bereichName }
+      : {};
     const start = new Date(e.start), ende = new Date(e.ende);
     ztDatumEl.value = ztTag(start);
-    ztVonEl.value = `${ztZwei(start.getHours())}:${ztZwei(start.getMinutes())}`;
-    ztBisEl.value = `${ztZwei(ende.getHours())}:${ztZwei(ende.getMinutes())}`;
+    ztVonEl.value = ztHhmm(start.getHours() * 60 + start.getMinutes());
+    ztBisEl.value = ztHhmm(ende.getHours() * 60 + ende.getMinutes());
   } else {
     // Vorschlag: die letzte halbe Stunde bis jetzt, auf 5 Minuten abgerundet.
     ztDialogBuchung = {};
@@ -646,23 +755,25 @@ function ztOeffneDialog(e) {
     bis.setMinutes(bis.getMinutes() - bis.getMinutes() % 5, 0, 0);
     const von = new Date(bis.getTime() - 30 * 60 * 1000);
     ztDatumEl.value = ztTag(von);
-    ztVonEl.value = `${ztZwei(von.getHours())}:${ztZwei(von.getMinutes())}`;
-    ztBisEl.value = `${ztZwei(bis.getHours())}:${ztZwei(bis.getMinutes())}`;
+    ztVonEl.value = ztHhmm(von.getHours() * 60 + von.getMinutes());
+    ztBisEl.value = ztHhmm(bis.getHours() * 60 + bis.getMinutes());
   }
   ztDatumEl.max = todayStr();
-  ztZeichneDialogTodo();
+  ztDdDialog.schliesse();
+  ztDdDialog.zeichne();
   ztZeichneDialogDauer();
   ztDialog.hidden = false;
 }
 
 function ztSchliesseDialog() {
+  ztDdDialog.schliesse();
   ztDialog.hidden = true;
   ztDialogEintrag = null;
 }
 
 async function ztSpeichereDialog() {
   const s = ztDialogStrecke();
-  if (!s) { ztDialogMsg.textContent = "Bitte Datum, Von und Bis ausfüllen."; return; }
+  if (!s) { ztDialogMsg.textContent = "Bitte Tag, Von und Bis ausfüllen."; return; }
   const koerper = {
     start: s.start.toISOString(),
     ende: s.ende.toISOString(),
@@ -695,19 +806,30 @@ async function ztLoescheDialog() {
   ztNachAenderung();
 }
 
-ztDialogTodoEl.addEventListener("click", () => {
-  ztDialogWahlEl.hidden = !ztDialogWahlEl.hidden;
-  ztDialogSuche.value = "";
-  ztZeichneDialogTodo();
-  if (!ztDialogWahlEl.hidden) { ztZeichneDialogWahl(); ztFokussiere(ztDialogSuche); }
-});
-ztDialogSuche.addEventListener("input", ztZeichneDialogWahl);
-ztDialogSuche.addEventListener("keydown", e => {
-  if (e.key !== "Enter") return;
-  e.preventDefault();
-  ztDialogListe.querySelector(".zt-wahl-eintrag")?.click();
-});
+// Heute / Gestern setzen den Tag; das Datumsfeld daneben kann jeden anderen.
+for (const c of ztTagChips) {
+  c.addEventListener("click", () => {
+    ztDatumEl.value = addDaysStr(Number(c.dataset.tag));
+    ztZeichneDialogDauer();
+  });
+}
+// Die Dauer-Knoepfe setzen "Bis" ab "Von" - die haeufigste Frage beim
+// Nachtragen ist "wie lange", nicht "bis wann".
+for (const c of ztDauerChips) {
+  c.addEventListener("click", () => {
+    const min = Number(c.dataset.min);
+    let von = ztMinVon(ztVonEl.value);
+    if (von === null) {
+      const jetzt = new Date();
+      von = jetzt.getHours() * 60 + jetzt.getMinutes() - min;
+      ztVonEl.value = ztHhmm(von);
+    }
+    ztBisEl.value = ztHhmm(von + min);
+    ztZeichneDialogDauer();
+  });
+}
 for (const feld of [ztDatumEl, ztVonEl, ztBisEl]) feld.addEventListener("input", ztZeichneDialogDauer);
+document.getElementById("ztDialogZu").addEventListener("click", ztSchliesseDialog);
 document.getElementById("ztDialogAbbrechen").addEventListener("click", ztSchliesseDialog);
 document.getElementById("ztDialogSpeichern").addEventListener("click", ztSpeichereDialog);
 ztDialogLoeschen.addEventListener("click", ztLoescheDialog);
@@ -717,7 +839,7 @@ ztDialog.addEventListener("click", e => { if (e.target === ztDialog) ztSchliesse
    Fenster: Statistik
    ==================================================================== */
 
-let ztZeitraum = "woche";      // "woche" | "monat" | "jahr"
+let ztZeitraum = "woche";      // "woche" | "monat" | "jahr" | "gesamt"
 let ztAnker = "";              // ein Tag im gezeigten Zeitraum
 let ztStatEintraege = [];
 let ztStatGeladen = false;
@@ -735,7 +857,15 @@ function ztKw(tag) {
   return 1 + Math.round(((d - erste) / 86400000 - 3 + (erste.getDay() + 6) % 7) / 7);
 }
 
+// Der erste Tag mit einem Eintrag - Beginn des Zeitraums "Gesamt".
+function ztErsterTag() {
+  let erster = todayStr();
+  for (const e of ztStatEintraege) if (e.datum < erster) erster = e.datum;
+  return erster;
+}
+
 function ztGrenzen() {
+  if (ztZeitraum === "gesamt") return { von: ztErsterTag(), bis: todayStr() };
   const d = ztAlsDatum(ztAnker);
   if (ztZeitraum === "woche") {
     const von = ztTagPlus(ztAnker, -((d.getDay() + 6) % 7));
@@ -750,6 +880,10 @@ function ztGrenzen() {
 }
 
 function ztZeitraumText({ von, bis }) {
+  if (ztZeitraum === "gesamt") {
+    if (!ztStatGeladen) return "Alles seit Beginn";
+    return ztStatEintraege.length ? `seit ${ztTagLang(von)}` : "Noch nichts gebucht";
+  }
   if (ztZeitraum === "woche") {
     const v = ztAlsDatum(von), b = ztAlsDatum(bis);
     return `KW ${ztKw(von)} · ${ztZwei(v.getDate())}.${ztZwei(v.getMonth() + 1)}.–`
@@ -761,6 +895,7 @@ function ztZeitraumText({ von, bis }) {
 
 // Fuer den Dateinamen beim Export.
 function ztZeitraumKurz({ von }) {
+  if (ztZeitraum === "gesamt") return "gesamt";
   if (ztZeitraum === "woche") {
     // Das Jahr der KW ist das ihres Donnerstags (KW 1 kann im Dezember beginnen).
     return `${ztTagPlus(von, 3).slice(0, 4)}-KW${ztZwei(ztKw(von))}`;
@@ -772,7 +907,9 @@ function ztZeitraumKurz({ von }) {
 async function ztLadeStatistik() {
   const g = ztGrenzen();
   const nr = ++ztStatNr;
-  const antwort = await ztApi(`/eintraege?von=${g.von}&bis=${g.bis}`);
+  const antwort = await ztApi(ztZeitraum === "gesamt"
+    ? "/eintraege?alle=1"
+    : `/eintraege?von=${g.von}&bis=${g.bis}`);
   if (nr !== ztStatNr) return;
   if (!antwort.ok) {
     ztStatGeladen = false;
@@ -789,14 +926,42 @@ async function ztLadeStatistik() {
   ztZeichneStatistik();
 }
 
-// Balken: Woche = 7 Tage, Monat = jeder Tag, Jahr = 12 Monate.
+// Ein Monats-Eimer, "2026-10".
+function ztMonatsEimer(schluessel, name) {
+  return { schluessel, name, sek: 0, jetzt: todayStr().startsWith(schluessel), monat: true };
+}
+
+/**
+ * Balken: Woche = 7 Tage, Monat = jeder Tag, Jahr = 12 Monate, Gesamt = jeder
+ * Monat seit dem ersten Eintrag (ueber zwei Jahre hinweg: jedes Jahr, sonst
+ * wuerden die Balken zu Strichen).
+ */
 function ztEimer(g) {
   const eimer = [];
+  let schluesselVon = e => e.datum;
   if (ztZeitraum === "jahr") {
     const namen = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-    for (let m = 0; m < 12; m++) {
-      const schluessel = `${g.von.slice(0, 4)}-${ztZwei(m + 1)}`;
-      eimer.push({ schluessel, name: namen[m], sek: 0, jetzt: todayStr().startsWith(schluessel) });
+    for (let m = 0; m < 12; m++) eimer.push(ztMonatsEimer(`${g.von.slice(0, 4)}-${ztZwei(m + 1)}`, namen[m]));
+    schluesselVon = e => e.datum.slice(0, 7);
+  } else if (ztZeitraum === "gesamt") {
+    const startJahr = Number(g.von.slice(0, 4)), startMonat = Number(g.von.slice(5, 7));
+    const endJahr = Number(g.bis.slice(0, 4)), endMonat = Number(g.bis.slice(5, 7));
+    const monate = (endJahr - startJahr) * 12 + endMonat - startMonat + 1;
+    if (monate > 24) {
+      for (let j = startJahr; j <= endJahr; j++) {
+        eimer.push({ schluessel: String(j), name: String(j), sek: 0, jetzt: j === endJahr, jahr: true });
+      }
+      schluesselVon = e => e.datum.slice(0, 4);
+    } else {
+      for (let i = 0; i < monate; i++) {
+        const d = new Date(startJahr, startMonat - 1 + i, 1, 12);
+        const schluessel = `${d.getFullYear()}-${ztZwei(d.getMonth() + 1)}`;
+        // Bis zwoelf Balken passt der Monatsname, darueber nur der Januar mit Jahr.
+        const name = monate <= 12 ? ZT_MONAT_KURZ.format(d).replace(".", "")
+          : (d.getMonth() === 0 || i === 0 ? String(d.getFullYear()) : "");
+        eimer.push(ztMonatsEimer(schluessel, name));
+      }
+      schluesselVon = e => e.datum.slice(0, 7);
     }
   } else {
     for (let tag = g.von; tag <= g.bis; tag = ztTagPlus(tag, 1)) {
@@ -809,7 +974,7 @@ function ztEimer(g) {
   }
   const nach = new Map(eimer.map(e => [e.schluessel, e]));
   for (const e of ztStatEintraege) {
-    const ziel = nach.get(ztZeitraum === "jahr" ? e.datum.slice(0, 7) : e.datum);
+    const ziel = nach.get(schluesselVon(e));
     if (ziel) ziel.sek += e.sek;
   }
   return eimer;
@@ -819,6 +984,12 @@ function ztEimer(g) {
 function ztStunden(sek) {
   const h = sek / 3600;
   return (h >= 10 ? String(Math.round(h)) : h.toFixed(1).replace(".", ",")) + " h";
+}
+
+function ztEimerName(e) {
+  if (e.jahr) return e.schluessel;
+  if (e.monat) return ZT_MONAT.format(ztAlsDatum(e.schluessel + "-01"));
+  return ztTagKurz(e.schluessel);
 }
 
 function ztZeichneDiagramm(g) {
@@ -840,7 +1011,7 @@ function ztZeichneDiagramm(g) {
     const saeule = document.createElement("div");
     saeule.className = "gw-diagramm-saeule";
     saeule.style.height = e.sek ? `${Math.round(e.sek / hoechst * 100)}%` : "0";
-    saeule.title = `${ztZeitraum === "jahr" ? e.schluessel : ztTagKurz(e.schluessel)}: ${ztDauer(e.sek)}`;
+    saeule.title = `${ztEimerName(e)}: ${ztDauer(e.sek)}`;
     spalte.append(wert, saeule);
     ztDiagrammEl.appendChild(spalte);
     const n = document.createElement("span");
@@ -948,8 +1119,13 @@ function ztZeichneStatistik() {
     k.setAttribute("aria-selected", String(k.dataset.zeitraum === ztZeitraum));
   }
   ztZeitraumName.textContent = ztZeitraumText(g);
+  // "Gesamt" laesst sich nicht blaettern; die Pfeile behalten ihren Platz,
+  // damit der Text darunter nicht springt.
+  const gesamt = ztZeitraum === "gesamt";
+  ztZurueckEl.style.visibility = gesamt ? "hidden" : "";
+  ztVorEl.style.visibility = gesamt ? "hidden" : "";
   // In die Zukunft gibt es nichts zu sehen.
-  ztVorEl.disabled = g.bis >= todayStr();
+  ztVorEl.disabled = gesamt || g.bis >= todayStr();
 
   const leer = !ztStatEintraege.length;
   ztZeichneDiagramm(g);
@@ -958,7 +1134,9 @@ function ztZeichneStatistik() {
   ztZeichneBaum();
   ztZeichneEintraege();
   if (ztStatGeladen && leer) {
-    ztEintraegeEl.appendChild(ztWahlHinweis("In diesem Zeitraum ist nichts gebucht."));
+    ztEintraegeEl.appendChild(ztHinweisZeile(gesamt
+      ? "Noch nichts gebucht."
+      : "In diesem Zeitraum ist nichts gebucht."));
   }
 }
 
@@ -987,9 +1165,12 @@ function ztBlaettere(richtung) {
 
 for (const k of ztZeitraumEl.querySelectorAll("button")) {
   k.addEventListener("click", () => {
-    ztZeitraum = k.dataset.zeitraum;
+    if (ztZeitraum === k.dataset.zeitraum) return;
     // Der neue Zeitraum enthaelt den bisher gezeigten Tag - nicht zurueck auf heute.
+    ztZeitraum = k.dataset.zeitraum;
     ztStatAlle = false;
+    ztStatEintraege = [];
+    ztStatGeladen = false;
     ztZeichneStatistik();
     ztLadeStatistik();
   });
@@ -1015,10 +1196,9 @@ function ztExportiere() {
   // Aelteste zuerst - so liest man einen Nachweis.
   for (const e of [...ztStatEintraege].reverse()) {
     const f = e.todoId ? ztFindeTodo(e.todoId) : null;
-    const d = ztAlsDatum(e.datum);
     const min = Math.round(e.sek / 60);
     zeilen.push([
-      `${ztZwei(d.getDate())}.${ztZwei(d.getMonth() + 1)}.${d.getFullYear()}`,
+      ztTagLang(e.datum),
       ztUhrzeit(e.start),
       ztUhrzeit(e.ende),
       `${Math.floor(min / 60)}:${ztZwei(min % 60)}`,
@@ -1045,8 +1225,11 @@ ztExportEl.addEventListener("click", ztExportiere);
    Escape, Zurueck-Taste, Takt, Anbindung an app.js
    ==================================================================== */
 
-// Von innen nach aussen: Dialog, Statistik, Fenster. Sagt, ob etwas zu war.
+// Von innen nach aussen: ein offenes Dropdown, Dialog, Statistik, Fenster.
+// Sagt, ob etwas zu war.
 function ztSchliesseOberste() {
+  const offen = ztDropdowns.find(dd => dd.offen);
+  if (offen) { offen.schliesse(); return true; }
   if (!ztDialog.hidden) { ztSchliesseDialog(); return true; }
   if (ztFensterIstOffen()) { ztSchliesseStatistik(); return true; }
   if (ztOffen) { ztSchliesse(); return true; }
@@ -1093,12 +1276,14 @@ document.addEventListener("visibilitychange", () => {
 /**
  * Aus render() in app.js. Der erste Aufruf heisst: angemeldet, Daten da - ab
  * jetzt gibt es den Knopf, und der Stand wird gleich geholt, damit er eine
- * laufende Uhr von einem anderen Geraet zeigt. Spaetere Aufrufe zeichnen nur
- * das offene Fenster nach (ein ToDo kann umbenannt oder erledigt worden sein).
+ * laufende Uhr von einem anderen Geraet zeigt. Spaetere Aufrufe zeichnen das
+ * offene Fenster nach (ein ToDo kann umbenannt, verschoben oder erledigt
+ * worden sein) - auch ein offenes Dropdown, das seinen Suchtext behaelt.
  */
 window.zeitNeuZeichnen = function () {
   if (ztBereit) {
     if (ztOffen) ztZeichne();
+    if (!ztDialog.hidden) ztDdDialog.zeichne();
     return;
   }
   ztBereit = true;

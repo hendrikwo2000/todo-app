@@ -633,10 +633,12 @@
   <!-- Die Zeiterfassung als kleines Fenster (Knopf ⏱ in der Kopfzeile,
        zeiterfassung.js). Steht AUSSERHALB des Kalender-Panels, aus demselben
        Grund wie die anderen Dialoge (dessen transform verbiegt position:fixed).
-       Hendriks Wahl, 18.10.2026: "alles im Fenster" - oben die laufende Uhr bzw.
-       die Auswahl "Woran arbeitest du?", darunter das heute Gebuchte mit Stift,
-       Nachtragen und der Weg zur Statistik. An den ToDo-Karten steht bewusst
-       keine Zeit ("sonst wird das ueberladen"). -->
+       Hendriks Wahl, 18.10.2026: "alles im Fenster". Seit der zweiten Runde am
+       selben Abend: ohne laufende Uhr ein Dropdown nach Liste › Bereich plus
+       "Starten"; mit laufender Uhr dasselbe Dropdown (ordnet ab Start zu) und ein
+       runder Stopp-Knopf - "Wechseln" ist weg. "Heute gebucht" ist eine
+       einklappbare Zeile. An den ToDo-Karten steht bewusst keine Zeit ("sonst
+       wird das ueberladen"). -->
   <div id="timerPopup" class="admin-popup timer-popup" hidden>
     <div class="admin-popup-box timer-box" role="dialog" aria-labelledby="timerTitel">
       <header class="ein-kopfzeile timer-kopfzeile">
@@ -648,32 +650,28 @@
       <div id="ztInhalt" class="zt-inhalt" hidden>
         <!-- Die Uhr lief ueber 4 Stunden und wurde angehalten. -->
         <div id="ztGekappt" class="zt-gekappt" hidden></div>
+        <!-- Ohne laufende Uhr: auswaehlen, dann starten. -->
+        <section id="ztStartBlock" class="zt-start" hidden>
+          <span class="zt-label" id="ztStartLabel">Woran arbeitest du?</span>
+          <div id="ztDdStart" class="zt-dd"></div>
+          <button type="button" id="ztStarten" class="btn primary zt-starten">▶ Starten</button>
+        </section>
         <!-- Die laufende Uhr. Im Sekundentakt wird nur die Zeit gesetzt. -->
         <section id="ztUhr" class="zt-uhr" hidden>
-          <div id="ztUhrTodo" class="zt-uhr-todo"></div>
+          <div id="ztDdLaufend" class="zt-dd"></div>
           <div id="ztUhrZeit" class="zt-uhr-zeit">0:00:00</div>
-          <div class="zt-knoepfe">
-            <button type="button" id="ztWechseln" class="btn">Wechseln</button>
-            <button type="button" id="ztStopp" class="btn zt-stopp">⏹ Stopp</button>
-          </div>
-        </section>
-        <!-- Auswahl: ohne laufende Uhr immer da, bei laufender nach "Wechseln". -->
-        <section id="ztWahl" class="zt-wahl" hidden>
-          <div class="zt-wahl-kopf">
-            <span id="ztWahlTitel">Woran arbeitest du?</span>
-            <button type="button" id="ztWahlAbbrechen" class="lock-link" hidden>Abbrechen</button>
-          </div>
-          <input type="search" id="ztSuche" class="eingabe-feld zt-suche" placeholder="ToDo suchen …"
-                 autocomplete="off" enterkeyhint="search" aria-label="ToDo suchen">
-          <div id="ztWahlListe" class="zt-wahl-liste"></div>
-          <button type="button" id="ztOhneTodo" class="btn zt-ohne-start">Ohne ToDo starten</button>
+          <button type="button" id="ztStopp" class="zt-stopp">
+            <span class="zt-stopp-kreis" aria-hidden="true"></span>
+            <span>Stoppen</span>
+          </button>
         </section>
         <section class="zt-heute">
-          <div class="zt-heute-kopf">
-            <span>Heute gebucht</span>
+          <button type="button" id="ztHeuteKopf" class="zt-heute-kopf" aria-expanded="false" aria-controls="ztHeuteListe">
+            <span class="zt-heute-titel">Heute gebucht</span>
             <span id="ztHeuteSumme" class="zt-summe"></span>
-          </div>
-          <div id="ztHeuteListe" class="zt-eintraege"></div>
+            <span class="zt-heute-pfeil" aria-hidden="true">▸</span>
+          </button>
+          <div id="ztHeuteListe" class="zt-eintraege" hidden></div>
           <div class="zt-fuss">
             <button type="button" id="ztNachtragen" class="lock-link">+ Zeit nachtragen</button>
             <button type="button" id="ztStatistikOeffnen" class="lock-link">Statistik ›</button>
@@ -758,6 +756,7 @@
               <button type="button" data-zeitraum="woche" aria-selected="true">Woche</button>
               <button type="button" data-zeitraum="monat" aria-selected="false">Monat</button>
               <button type="button" data-zeitraum="jahr" aria-selected="false">Jahr</button>
+              <button type="button" data-zeitraum="gesamt" aria-selected="false">Gesamt</button>
             </div>
             <div class="zt-blaettern">
               <button type="button" id="ztZurueck" class="gw-pfeil" aria-label="Zeitraum davor">‹</button>
@@ -782,36 +781,51 @@
 
   <!-- Einen Eintrag nachtragen oder korrigieren (zeiterfassung.js). Von-bis
        statt einer reinen Dauer: so bleibt jeder Eintrag als Nachweis lesbar.
-       Liegt im DOM nach dem Timer-Fenster und legt sich bei gleichem z-index
-       darueber. -->
+       Seit der zweiten Runde (18.10.2026, Hendrik: "etwas schoener gestalten,
+       wieder mit Dropdown"): Kopf wie die anderen Fenster, ToDo-Dropdown, Tag als
+       Heute/Gestern/Kalender, Dauer-Knoepfe, die "Bis" setzen.
+       Liegt im DOM nach dem Timer-Fenster und der Statistik und legt sich bei
+       gleichem z-index ueber beide. -->
   <div id="ztDialog" class="admin-popup gw-dialog zt-dialog" hidden>
-    <div class="admin-popup-box gw-dialog-box" role="dialog" aria-labelledby="ztDialogTitel">
-      <div class="admin-popup-icon">⏱</div>
-      <h2 id="ztDialogTitel">Zeit nachtragen</h2>
+    <div class="admin-popup-box gw-dialog-box zt-dialog-box" role="dialog" aria-labelledby="ztDialogTitel">
+      <header class="ein-kopfzeile zt-dialog-kopf">
+        <h2 id="ztDialogTitel">Zeit nachtragen</h2>
+        <button type="button" id="ztDialogZu" class="ein-schliessen"
+                aria-label="Schließen" title="Schließen">✕</button>
+      </header>
       <div class="gw-feld">
         <span class="gw-label">ToDo</span>
-        <button type="button" id="ztDialogTodo" class="zt-todo-knopf" aria-expanded="false"></button>
-        <div id="ztDialogWahl" class="zt-dialog-wahl" hidden>
-          <input type="search" id="ztDialogSuche" class="eingabe-feld zt-suche" placeholder="ToDo suchen …"
-                 autocomplete="off" aria-label="ToDo suchen">
-          <div id="ztDialogListe" class="zt-wahl-liste"></div>
-        </div>
+        <div id="ztDdDialog" class="zt-dd"></div>
       </div>
       <div class="gw-feld">
-        <label for="ztDatum">Datum</label>
-        <input type="date" id="ztDatum" class="eingabe-feld">
+        <span class="gw-label">Tag</span>
+        <div class="zt-tag-wahl">
+          <button type="button" class="zt-chip" data-tag="0" aria-pressed="false">Heute</button>
+          <button type="button" class="zt-chip" data-tag="-1" aria-pressed="false">Gestern</button>
+          <input type="date" id="ztDatum" class="eingabe-feld zt-datum" aria-label="Datum">
+        </div>
       </div>
-      <div class="gw-reihe">
+      <div class="zt-von-bis">
         <div class="gw-feld">
           <label for="ztVon">Von</label>
           <input type="time" id="ztVon" class="eingabe-feld">
         </div>
+        <span class="zt-strich" aria-hidden="true">–</span>
         <div class="gw-feld">
           <label for="ztBis">Bis</label>
           <input type="time" id="ztBis" class="eingabe-feld">
         </div>
       </div>
-      <p id="ztDialogDauer" class="ein-hinweis gw-mitte"></p>
+      <div class="gw-feld">
+        <span class="gw-label">Dauer</span>
+        <div class="zt-dauer-wahl">
+          <button type="button" class="zt-chip" data-min="15" aria-pressed="false">15 min</button>
+          <button type="button" class="zt-chip" data-min="30" aria-pressed="false">30 min</button>
+          <button type="button" class="zt-chip" data-min="60" aria-pressed="false">1 h</button>
+          <button type="button" class="zt-chip" data-min="120" aria-pressed="false">2 h</button>
+        </div>
+      </div>
+      <p id="ztDialogDauer" class="zt-dialog-dauer"></p>
       <p class="lock-msg" id="ztDialogMsg" aria-live="polite"></p>
       <div class="gw-knoepfe">
         <button type="button" class="btn" id="ztDialogAbbrechen">Abbrechen</button>

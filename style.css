@@ -3266,7 +3266,7 @@ body.zieht, body.zieht .todo {
 .topbar > .timer-knopf:not([hidden]) + #einstellungenBtn { margin-left: 0; }
 
 /* ---------- Fenster der Zeiterfassung ---------- */
-/* Oben fest wie die Einstellungen (siehe #timerPopup weiter oben): die Auswahl
+/* Oben fest wie die Einstellungen (siehe #timerPopup weiter oben): das Dropdown
    klappt auf und zu, mittig sprang dabei die Oberkante. Ist der Inhalt hoeher
    als der Platz, blaettert der Kasten selbst. */
 .admin-popup-box.timer-box {
@@ -3298,80 +3298,141 @@ body.zieht, body.zieht .todo {
 .admin-popup-box .zt-gekappt p { font-size: 13.5px; color: var(--text); }
 .zt-gekappt-knoepfe { display: flex; gap: 8px; }
 
-/* Die laufende Uhr. */
-.zt-uhr {
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-  padding: 14px 12px;
-  border: 1px solid var(--accent);
-  border-radius: 12px;
-  background: var(--accent-soft);
-  text-align: center;
-}
+/* Ohne laufende Uhr: auswaehlen, dann starten. */
+.zt-start { display: flex; flex-direction: column; gap: 10px; }
+.zt-start[hidden] { display: none; }
+.zt-label { font-size: 15px; font-weight: 600; }
+.admin-popup-box .btn.zt-starten { min-height: 48px; font-size: 16px; font-weight: 600; }
+
+/* Die laufende Uhr: oben das ToDo (Dropdown), die Zeit, ein runder Stopp. */
+.zt-uhr { display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
 .zt-uhr[hidden] { display: none; }
-.zt-uhr-todo { display: flex; flex-direction: column; align-items: center; gap: 2px; max-width: 100%; }
-.zt-uhr-name { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
-.zt-uhr-ort { font-size: 12px; color: var(--muted); }
 .zt-uhr-zeit {
-  font-size: 40px; font-weight: 600; line-height: 1.1;
+  text-align: center;
+  font-size: 44px; font-weight: 600; line-height: 1.05;
   font-variant-numeric: tabular-nums;
   color: var(--accent);
 }
-.zt-knoepfe { display: flex; gap: 8px; }
-/* Fingergerecht, hier ist Platz dafuer. */
-.zt-knoepfe .btn { min-height: 44px; padding: 6px 18px; }
-.zt-stopp { background: var(--accent); color: #fff; border-color: var(--accent); }
+.zt-stopp {
+  align-self: center;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 2px 10px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+.zt-stopp-kreis {
+  display: flex; align-items: center; justify-content: center;
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: transform .12s, filter .12s;
+}
+/* Das Stopp-Zeichen: ein weisses Quadrat mit runden Ecken. */
+.zt-stopp-kreis::before { content: ""; width: 20px; height: 20px; border-radius: 4px; background: #fff; }
+.zt-stopp:active .zt-stopp-kreis { transform: scale(.94); }
+@media (hover: hover) {
+  .zt-stopp:hover { color: var(--text); }
+  .zt-stopp:hover .zt-stopp-kreis { filter: brightness(1.08); }
+}
 /* "Ohne ToDo" ist kein ToDo-Name - grau, damit es sich nicht wie einer liest. */
-.zt-uhr-name.ohne, .zt-eintrag-name.ohne, .zt-todo-knopf-name.ohne { color: var(--muted); }
+.zt-eintrag-name.ohne { color: var(--muted); }
 
-/* Auswahl: "Woran arbeitest du?" bzw. "Wechseln zu ..." - im Fenster und im
-   Eintrag-Dialog dieselbe Liste. */
-.zt-wahl { display: flex; flex-direction: column; gap: 8px; }
-.zt-wahl[hidden] { display: none; }
-.zt-wahl-kopf { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 15px; font-weight: 600; }
-.zt-wahl-liste { display: flex; flex-direction: column; gap: 4px; }
-.zt-wahl-abschnitt {
-  margin-top: 4px;
+/* ---------- Dropdown: ToDos nach Liste › Bereich ---------- */
+/* Eigenes statt <select>: das zeigt keine Farben. Der Streifen links traegt die
+   Farbe des Bereichs (--zt-farbe, gesetzt in zeiterfassung.js), wie am Board. */
+.zt-dd { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.zt-dd-knopf {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; min-height: 50px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--zt-farbe, var(--line));
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit; text-align: left;
+  cursor: pointer;
+}
+.zt-dd-knopf[aria-expanded="true"] { border-color: var(--accent); border-left-color: var(--zt-farbe, var(--accent)); }
+.zt-dd-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.zt-dd-name { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.zt-dd-name.ohne { color: var(--muted); font-weight: 500; }
+.zt-dd-ort { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zt-dd-pfeil { flex: none; font-size: 13px; color: var(--muted); }
+.zt-dd-panel {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.zt-dd-panel[hidden] { display: none; }
+.zt-dd-liste {
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: min(46vh, 380px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.zt-dd-liste-kopf {
+  padding: 10px 4px 2px;
   font-size: 11.5px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .04em; color: var(--muted);
 }
-.zt-wahl-eintrag {
+.zt-dd-gruppe {
+  display: flex; flex-direction: column;
+  border-left: 4px solid var(--zt-farbe, transparent);
+  border-radius: 3px;
+}
+.zt-dd-bereich { padding: 6px 8px 2px; font-size: 12.5px; font-weight: 700; color: var(--text); }
+.zt-dd-eintrag {
   display: flex; align-items: baseline; gap: 8px;
   width: 100%; min-height: 40px;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-left-width: 4px;
-  border-radius: 9px;
-  background: var(--bg);
+  padding: 8px 8px 8px 18px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
   color: var(--text);
   font: inherit; font-size: 14px; text-align: left;
   cursor: pointer;
 }
-/* Ueberfaelliges mit dem roten Balken links, wie in der Tagesliste. */
-.zt-wahl-eintrag.ueberfaellig { border-left-color: var(--red); }
+.zt-dd-eintrag.zt-dd-ohne { padding-left: 10px; color: var(--muted); }
+.zt-dd-eintrag[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 @media (hover: hover) {
-  .zt-wahl-eintrag:hover { border-color: var(--accent); background: var(--accent-soft); }
-  .zt-wahl-eintrag.ueberfaellig:hover { border-left-color: var(--red); }
+  .zt-dd-eintrag:hover { background: var(--row); }
+  .zt-dd-eintrag[aria-selected="true"]:hover { background: var(--accent-soft); }
 }
-.zt-wahl-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.zt-wahl-ort {
-  flex: none; max-width: 45%;
-  font-size: 12px; color: var(--muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.admin-popup-box .zt-wahl-hinweis { margin: 2px 0; font-size: 13px; }
-.admin-popup-box .btn.zt-ohne-start { align-self: flex-start; }
+.zt-dd-eintrag-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.zt-dd-faellig { flex: none; font-size: 11.5px; font-weight: 600; color: var(--red); }
+.admin-popup-box .zt-leer { margin: 4px 2px; font-size: 13px; }
 
-/* Heute gebucht. */
-.zt-heute { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+/* ---------- Heute gebucht: eine Zeile, aufklappbar ---------- */
+.zt-heute { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
 .zt-heute-kopf {
-  display: flex; justify-content: space-between; gap: 8px;
-  font-size: 12px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .04em; color: var(--muted);
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; min-height: 40px;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit; text-align: left;
+  cursor: pointer;
+}
+.zt-heute-titel {
+  flex: 1;
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
 }
 .zt-summe { font-variant-numeric: tabular-nums; color: var(--text); }
-/* Die Ueberschrift steht in Grossbuchstaben - die Summe darin nicht ("4 H 01"). */
-.zt-heute-kopf .zt-summe { font-size: 13px; text-transform: none; letter-spacing: 0; }
+.zt-heute-kopf .zt-summe { font-size: 13.5px; font-weight: 600; }
+.zt-heute-pfeil { flex: none; width: 14px; text-align: center; font-size: 12px; }
+@media (hover: hover) {
+  .zt-heute-kopf:hover .zt-heute-titel { color: var(--text); }
+}
 .zt-eintraege { display: flex; flex-direction: column; }
+.zt-eintraege[hidden] { display: none; }
 .zt-eintrag { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); }
 .zt-eintrag:first-child { border-top: 0; }
 .zt-eintrag-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -3382,21 +3443,31 @@ body.zieht, body.zieht .todo {
 .admin-popup-box .zt-fuss .lock-link { font-size: 13.5px; }
 
 /* ---------- Eintrag-Dialog ---------- */
-.zt-todo-knopf {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%; min-height: 42px;
-  padding: 8px 12px;
+/* Kopf wie die Fenster: Titel links, ✕ rechts, kein grosses Symbol. */
+.zt-dialog-box { gap: 14px; }
+.zt-dialog-kopf { justify-content: space-between; align-items: center; padding-bottom: 0; }
+.admin-popup-box .zt-dialog-kopf h2 { margin: 0; font-size: 18px; text-align: left; }
+.zt-chip {
+  flex: none;
   border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit; font-size: 14px; text-align: left;
+  background: var(--row);
+  color: var(--muted);
+  font: inherit; font-size: 13px; font-weight: 600;
+  padding: 8px 12px; border-radius: 999px;
   cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s;
 }
-.zt-todo-knopf-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.zt-todo-knopf-pfeil { flex: none; color: var(--muted); }
-.zt-dialog-wahl { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
-.zt-dialog-wahl[hidden] { display: none; }
+.zt-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.zt-tag-wahl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.zt-tag-wahl .zt-datum { flex: 1 1 140px; width: auto; min-width: 0; }
+.zt-von-bis { display: flex; align-items: flex-end; gap: 8px; }
+.zt-von-bis > .gw-feld { flex: 1; min-width: 0; }
+.zt-strich { flex: none; padding-bottom: 10px; color: var(--muted); }
+.zt-dauer-wahl { display: flex; flex-wrap: wrap; gap: 6px; }
+.admin-popup-box .zt-dialog-dauer { margin: -4px 0 0; text-align: center; font-size: 14px; font-weight: 600; color: var(--text); }
+/* Ohne Meldung keine Leerzeile ueber den Knoepfen. */
+.zt-dialog-box .lock-msg:empty { display: none; }
 
 /* ---------- Statistik ---------- */
 .zt-zeitraum { display: flex; flex-direction: column; gap: 8px; }

@@ -1,10 +1,13 @@
 /**
  * Stand der Zeiterfassung fuer das Fenster hinter ⏱: die laufende Uhr, was
- * heute gebucht ist, gekappte Eintraege (Hinweis) und die zuletzt gebuchten
- * ToDos (fuer "Zuletzt" in der Auswahl).
+ * heute gebucht ist und gekappte Eintraege (Hinweis).
  *
  * Eine Anfrage beim Oeffnen und beim Zurueckkehren in die App. Laeuft die Uhr
  * schon laenger als der Deckel, haelt laufenderEintrag sie dabei an.
+ *
+ * Bis zum Umbau am Abend des 18.10.2026 kamen hier auch die zuletzt bebuchten
+ * ToDos mit ("Zuletzt" in der alten Auswahl). Seitdem waehlt man aus einem
+ * Dropdown nach Bereichen, das die App aus ihren eigenen Listen baut.
  */
 
 import { json } from "../../_lib/antwort.js";
@@ -25,7 +28,7 @@ export async function onRequestGet({ request, env }) {
     // Eintrag soll in den Listen darunter schon auftauchen.
     const laeuft = await laufenderEintrag(env, nutzerId);
 
-    const [heuteListe, gekappt, zuletzt] = await Promise.all([
+    const [heuteListe, gekappt] = await Promise.all([
       env.DB.prepare(
         `SELECT ${SPALTEN} FROM zeiteintraege
           WHERE user_id = ? AND datum = ? AND ende IS NOT NULL
@@ -36,20 +39,12 @@ export async function onRequestGet({ request, env }) {
           WHERE user_id = ? AND gekappt = 1 AND ende IS NOT NULL
           ORDER BY start DESC LIMIT 5`
       ).bind(nutzerId).all(),
-      // Die zuletzt bebuchten ToDos, neuestes zuerst. Ob sie noch offen sind,
-      // weiss nur die App - deshalb ein paar mehr, als sie zeigt.
-      env.DB.prepare(
-        `SELECT todo_id, MAX(start) AS zuletzt FROM zeiteintraege
-          WHERE user_id = ? AND todo_id IS NOT NULL
-          GROUP BY todo_id ORDER BY zuletzt DESC LIMIT 12`
-      ).bind(nutzerId).all(),
     ]);
 
     return json({
       laeuft: laeuft ? alsEintrag(laeuft) : null,
       heute: heuteListe.results.map(alsEintrag),
       gekappt: gekappt.results.map(alsEintrag),
-      zuletzt: zuletzt.results.map(z => z.todo_id),
     });
   } catch (e) {
     return json({ error: "Datenbankfehler beim Lesen" }, 500);

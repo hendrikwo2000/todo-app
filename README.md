@@ -132,43 +132,48 @@ das Fenster **Gewohnheiten**:
   bearbeiten, Reihenfolge ändern, archivieren und löschen
 - **Verlauf & Statistik:** öffnet das Fenster mit Verlauf und Statistik
 
+Mit eingeschalteten Benachrichtigungen erinnert dich die App um 17 Uhr auch
+an Gewohnheiten, die heute noch offen sind.
+
 ## Zeiterfassung
 
 Mit dem Knopf **⏱** oben neben dem Zahnrad buchst du Zeit auf ein ToDo. Die Uhr
 zählt hoch, bis du sie stoppst; an den ToDos selbst steht keine Zeit, alles liegt
 hinter dem Knopf.
 
-- **Woran arbeitest du?** Oben stehen die heute fälligen (rot: überfällig) und
-  die zuletzt bebuchten ToDos, darüber eine Suche über alle offenen ToDos aller
-  Listen (Enter nimmt den ersten Treffer). Ein Tipp startet die Uhr. Ohne ToDo
-  geht auch: **„Ohne ToDo starten“**.
-- Läuft die Uhr, steht die Zeit am Knopf. **Wechseln** bucht das bisherige ToDo
-  und startet gleich auf dem nächsten, **⏹ Stopp** beendet den Eintrag. Eine
-  Pause gibt es nicht: wer weitermacht, startet neu, die Zeit summiert sich.
+- **Woran arbeitest du?** Ein Tipp aufs Feld klappt alle offenen ToDos auf,
+  sortiert nach Liste und Bereich, mit dem Farbstreifen des Bereichs. Rot
+  markiert ist, was heute fällig oder überfällig ist. Oben grenzt ein Feld die
+  Liste ein (Enter nimmt den ersten Treffer). Wählen, dann **▶ Starten**. Ohne
+  Auswahl läuft die Uhr ohne ToDo.
+- Läuft die Uhr, steht die Zeit am Knopf. Oben im Fenster steht das ToDo: Hast
+  du ohne ToDo gestartet oder das falsche erwischt, wähl dort ein anderes, und
+  die Zeit **ab dem Start** zählt darauf. Der runde Knopf **Stoppen** beendet den
+  Eintrag. Eine Pause gibt es nicht: wer weitermacht, startet neu, die Zeit
+  summiert sich.
 - **Abhaken** des ToDos, auf dem die Uhr läuft, stoppt sie mit.
-- Unter **„Heute gebucht“** stehen die Einträge des Tages; der **Stift** ändert
-  ToDo, Datum, Von und Bis oder löscht den Eintrag. **„+ Zeit nachtragen“**
-  bucht Zeit ohne Uhr (über Mitternacht geht: 23:30 bis 0:30 ist eine Stunde).
+- **„Heute gebucht“** zeigt die Summe des Tages; ein Tipp klappt die Einträge
+  auf. Der **Stift** ändert ToDo, Tag, Von und Bis oder löscht den Eintrag.
+- **„+ Zeit nachtragen“** bucht Zeit ohne Uhr: ToDo wählen, Tag (Heute, Gestern
+  oder Kalender), Von und Bis. Die Knöpfe 15 min, 30 min, 1 h und 2 h setzen
+  „Bis“ passend zu „Von“. Über Mitternacht geht: 23:30 bis 0:30 ist eine Stunde.
 - **Vergessen zu stoppen?** Nach 4 Stunden hält die Uhr von selbst an. Am Knopf
   erscheint ein gelber Punkt, im Fenster ein Hinweis mit **Korrigieren** oder
   **Passt so**.
-- Ein Start, der keine 10 Sekunden läuft (falsches ToDo angetippt und gleich
-  gewechselt), wird nicht gebucht.
+- Ein Start, der keine 10 Sekunden läuft (versehentlich gestartet und gleich
+  wieder gestoppt), wird nicht gebucht.
 
 **„Statistik ›“** (im Fenster hinter ⏱ oder in den Einstellungen, Reiter
-„Timer") zeigt eine Woche, einen Monat oder ein Jahr: Balken pro Tag bzw. Monat,
-die Summe, darunter aufklappbar **Liste › Bereich › ToDo**. ToDos mit gleichem
-Namen im selben Bereich zählen zusammen, so stehen alle Wiederholungen eines
-Serien-ToDos in einer Zeile. Ganz unten die einzelnen Einträge und **⬇ CSV**:
-die Einträge des Zeitraums als Datei für Excel (Datum, Von, Bis, Dauer, ToDo,
-Liste, Bereich), etwa als Nachweis.
+„Timer") zeigt eine Woche, einen Monat, ein Jahr oder **Gesamt** (alles seit dem
+ersten Eintrag): Balken pro Tag bzw. Monat, die Summe, darunter aufklappbar
+**Liste › Bereich › ToDo**. ToDos mit gleichem Namen im selben Bereich zählen
+zusammen, so stehen alle Wiederholungen eines Serien-ToDos in einer Zeile. Ganz
+unten die einzelnen Einträge und **⬇ CSV**: die Einträge des Zeitraums als Datei
+für Excel (Datum, Von, Bis, Dauer, ToDo, Liste, Bereich), etwa als Nachweis.
 
 Deine Fokuszeit aus der Zeit vor der Zeiterfassung steht dort als „Ohne ToDo“.
 Die Zeit gehört dir allein, auch bei geteilten Listen sieht niemand sonst, was du
 gebucht hast. Die Zeiterfassung braucht Netz.
-
-Mit eingeschalteten Benachrichtigungen erinnert dich die App um 17 Uhr auch
-an Gewohnheiten, die heute noch offen sind.
 
 ## Google Kalender
 
