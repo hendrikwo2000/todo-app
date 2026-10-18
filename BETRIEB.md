@@ -911,8 +911,11 @@ Turnstile. Mit der Fusion ist sie weg — eintragen geht nur noch hier.
 
 ## Konten löschen
 
-Nutzer löschen ihr eigenes Konto in der App über den Abmelden-Knopf →
-„Konto löschen"; zur Bestätigung muss die eigene Adresse abgetippt werden.
+Nutzer löschen ihr eigenes Konto in der App unter Einstellungen → Konto →
+„Konto löschen" (kleiner roter Knopf unter Abmelden); zur Bestätigung muss die
+eigene Adresse abgetippt werden. **Admins sehen den Knopf nicht** (seit
+18.10.2026): der einzige Admin darf sich ohnehin nicht löschen, und ein
+weiterer Admin wird erst im Dashboard herabgestuft.
 Admins löschen fremde Konten im Dashboard. Beide Wege verschicken eine
 Benachrichtigung an die betroffene Adresse.
 
@@ -928,7 +931,8 @@ Eine einzelne **Liste** löscht der Ersteller getrennt davon in den
 Einstellungen (`/api/listen/loeschen`) — das lässt das Konto unberührt.
 
 **Der letzte Admin lässt sich nicht löschen** und sich auch selbst nicht
-degradieren — sonst käme niemand mehr an die Verwaltung.
+degradieren — sonst käme niemand mehr an die Verwaltung. Diese Sperre im
+Server bleibt, auch wenn die App den Knopf für Admins gar nicht erst zeigt.
 
 ## Barrierefreiheit
 

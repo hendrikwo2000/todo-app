@@ -1531,19 +1531,10 @@ input[type="date"]:focus {
 .ein-hinweis { font-size: 12px; color: var(--muted); margin: 0; }
 .ein-konto-name { font-size: 15px; font-weight: 600; margin: 0; }
 .ein-konto-mail { font-size: 12.5px; color: var(--muted); margin: 0; word-break: break-all; }
-/* Abmelden (harmlos, haeufig) steht jetzt fuer sich; die zwei
-   unwiderruflichen Aktionen stehen sichtbar abgesetzt in einer eigenen,
-   rot getoenten Box statt gleichrangig danebenzustehen. */
-.ein-gefahrenzone {
-  display: flex; flex-direction: column; gap: 8px;
-  margin-top: 4px; padding: 10px;
-  border: 1px solid var(--del-soft); border-radius: 10px;
-  background: var(--del-soft);
-}
-.ein-gefahren-label {
-  margin: 0; font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .04em; color: var(--red);
-}
+/* Konto loeschen: klein, rote Schrift, eine Zeile unter Wechseln/Abmelden
+   und nur so breit wie der Text - die Spalte zoege es sonst auf volle
+   Breite. */
+#kontoLoeschenStart { align-self: flex-start; margin-top: 4px; }
 .ein-reihe { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 #neueListe:disabled { opacity: .5; cursor: not-allowed; }
 #neueListe:disabled:hover { color: var(--text); border-color: var(--line); }
@@ -2295,9 +2286,15 @@ html.dreispaltig .kalender .kal-liste {
 .tag-oben .kal-liste-kopf:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 .tag-oben-pfeil {
   margin-left: auto;
+  flex: none; width: 14px; text-align: center;
   font-size: 13px; color: var(--muted);
   transition: transform .15s;
 }
+/* Die ＋ der Abschnitte (ToDos, Termine) ruecken um die Pfeil-Spalte der
+   Datumszeile nach links - 14 px Pfeil, 7 px Abstand, 2 px Rand - und stehen
+   so genau unter deren ＋. Vorher sassen sie am rechten Rand, das obere ＋
+   links neben dem Pfeil: am Handy sichtbar versetzt (Hendrik, 18.10.2026). */
+.tag-oben .kal-gruppe > .kal-gruppe-plus { margin-right: 23px; }
 .tag-oben-summe { font-weight: 400; }
 /* Ruhig (seit 10.10.2026, Heute-Spalte und Tagesansicht oben): ist nichts
    faellig, steht statt des ToDo-Abschnitts nur das ＋ rechts in der

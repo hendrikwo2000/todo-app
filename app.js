@@ -1126,6 +1126,10 @@ function oeffneEinstellungen() {
   // Verwaltung nur fuer Admins - der Abschnitt bleibt sonst ausgeblendet.
   document.getElementById("adminAbschnitt").hidden = !istAdmin;
   document.getElementById("kontoAdminBadge").hidden = !istAdmin;
+  // Admins loeschen sich nicht selbst: der einzige Admin darf es nicht (der
+  // Server sperrt das), und wer es doch will, wird erst im Dashboard
+  // herabgestuft. Der Knopf waere also nur eine Sackgasse.
+  document.getElementById("kontoLoeschenStart").hidden = istAdmin;
 
   zeigeEinAnsicht("haupt");
   einstellungenPopup.hidden = false;
