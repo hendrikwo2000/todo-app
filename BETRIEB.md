@@ -2831,10 +2831,19 @@ Verbesserungen", wieder mit ASCII-Skizzen gefragt):
   bzw. Bereiche geflossen ist") statt einer zweiten Zahl in jeder Zeile.
 
 Meine Calls dazu: Ohne Bereich steht in jeder Liste zuletzt; ToDos mit Termin
-zuerst (früheste oben), dann die ohne in Board-Reihenfolge; „heute"/„überfällig"
-in Rot rechts am Eintrag; der Filter trifft auch Bereichsnamen (dann der ganze
+zuerst (früheste oben), dann die ohne in Board-Reihenfolge; der Filter trifft
+auch Bereichsnamen (dann der ganze
 Bereich); „Heute gebucht" merkt sich den offenen Zustand nicht, jedes Öffnen
 startet zu; die Auswahl springt nach dem Stoppen auf „Ohne ToDo" zurück.
+
+**Termin im Dropdown (18.10.2026):** jedes ToDo mit Termin trägt rechts einen
+kleinen Chip mit dem Datum (`.zt-dd-termin`, Kurzform `03.11.`, das Jahr nur
+bei einem anderen als dem laufenden). Rot (`.dringend`) nach derselben Regel
+wie der Streifen am Board (`isUrgent`: überfällig, heute, morgen), sonst gelb.
+Vorher stand nur bei überfällig/heute ein rotes Wort, Zukunftstermine gar
+nicht. Hendrik wählte den Chip gegen „Farbpunkt vor dem Namen" und „Streifen
+links wie am Board" (der Bereichsstreifen sitzt dort schon links) und „wie am
+Board" gegen „nur heute rot". Der geschlossene Knopf zeigt den Termin nicht.
 
 ### Daten
 

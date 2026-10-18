@@ -3419,7 +3419,18 @@ body.zieht, body.zieht .todo {
   .zt-dd-eintrag[aria-selected="true"]:hover { background: var(--accent-soft); }
 }
 .zt-dd-eintrag-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.zt-dd-faellig { flex: none; font-size: 11.5px; font-weight: 600; color: var(--red); }
+/* Termin-Chip: gelb = hat einen Termin, rot = dringend (isUrgent in app.js, also
+   ueberfaellig, heute oder morgen - wie der Streifen am Board). Rot wie der
+   Zaehler am Bereich (.col-count.urgent). */
+.zt-dd-termin {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+  color: var(--orange);
+  background: color-mix(in srgb, var(--yellow) 14%, transparent);
+}
+.zt-dd-termin.dringend { color: var(--red); background: var(--del-soft); }
 .admin-popup-box .zt-leer { margin: 4px 2px; font-size: 13px; }
 
 /* ---------- Heute gebucht: eine Zeile, aufklappbar ---------- */

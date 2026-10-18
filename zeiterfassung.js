@@ -371,12 +371,18 @@ function ztDropdown(host, { buchung, beiWahl, ohneText }) {
     text.className = "zt-dd-eintrag-text";
     text.textContent = fund ? fund.todo.text : "Ohne ToDo";
     k.appendChild(text);
+    // Termin als kleiner Chip rechts (seit 18.10.2026, vorher nur das rote Wort
+    // "heute"/"ueberfaellig"). Gleiche Regel wie der Streifen am Board: dringend
+    // (ueberfaellig, heute, morgen) rot, jeder andere Termin gelb. Kurzform ohne
+    // Jahr, das Jahr nur, wenn es nicht das laufende ist.
     const due = fund?.todo.due;
-    if (due && due <= todayStr()) {
-      const f = document.createElement("span");
-      f.className = "zt-dd-faellig";
-      f.textContent = due < todayStr() ? "überfällig" : "heute";
-      k.appendChild(f);
+    if (due) {
+      const chip = document.createElement("span");
+      chip.className = "zt-dd-termin" + (isUrgent(due) ? " dringend" : "");
+      chip.textContent = due.slice(0, 4) === todayStr().slice(0, 4) ? formatDateShort(due) : formatDate(due);
+      const hinweis = dueInfo(due)?.badge;
+      chip.title = hinweis ? `${hinweis} · ${formatDate(due)}` : formatDate(due);
+      k.appendChild(chip);
     }
     k.onclick = () => { dd.schliesse(); beiWahl(fund); };
     return k;
