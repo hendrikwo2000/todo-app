@@ -286,8 +286,6 @@ html.ohne-zoom { touch-action: pan-x pan-y; }
    der Kopfzeile waren einer zu viel, und der Streifen sagt mit seinen eigenen
    Reitern ohnehin selbst, was unten steht. Wer Gewohnheiten oder Timer gar
    nicht sehen will, schaltet sie in den Einstellungen ab (Kalender-Streifen). */
-/* Gleiche Falle wie oben: display:flex auf .btn schlaegt [hidden]. */
-#todoZugangAufgebenStart[hidden] { display: none; }
 /* Schmale Screens: der Titel teilt sich die erste Zeile mit Zahnrad und
    Umschalter, die Anlege-Knoepfe ruecken gemeinsam in die zweite. */
 @media (max-width: 480px) {

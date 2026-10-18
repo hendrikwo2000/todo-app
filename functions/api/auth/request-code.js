@@ -9,7 +9,7 @@
  * Code, der nie kommt. Sollte es hier je eine offene Registrierung geben,
  * gehoert die generische Antwort zurueck.
  *
- * Ein Konto OHNE todo_zugang (z. B. nach "Zugang aufgeben") bekommt hier
+ * Ein Konto OHNE todo_zugang (z. B. ein reines Dashboard-Konto) bekommt hier
  * KEINE Absage mehr: der Login-Versuch selbst gilt als Freischaltung fuer
  * diese App - still, ohne eigene Meldung, genau wie ein ganz normaler Login.
  * Einmal wurde jemand ueber die Warteliste freigeschaltet, danach braucht

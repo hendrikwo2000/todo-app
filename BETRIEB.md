@@ -831,13 +831,18 @@ beiden Apps und ein Fokus-Schalter in der Nutzerliste. Das ist alles raus.
 liest nur niemand mehr, `quelle` ist für neue Einträge immer `'todo'`.
 
 **Selbstbedienung bleibt für den ToDo-Zugang:** Ein Konto ohne `todo_zugang`
-(etwa nach „ToDo-Zugang aufgeben") holt ihn sich mit dem nächsten
+(etwa ein reines Dashboard-Konto) holt ihn sich mit dem nächsten
 Login-Versuch still zurück — `request-code.js` und `link.js` setzen die Spalte,
 bevor sie den Code verschicken bzw. die Sitzung anlegen. In der Nutzerliste
 lässt sich `todo_zugang` jederzeit umlegen; beim eigenen Konto ist der
 Schalter gesperrt (kein hartes Aussperr-Risiko — `/admin` hängt an `role`, nicht
-an `todo_zugang` —, aber eine unnötig verwirrende Zwischenlage). Für
-`role='admin'` ist auch das Aufgeben in den Einstellungen gesperrt.
+an `todo_zugang` —, aber eine unnötig verwirrende Zwischenlage).
+
+**Kein „ToDo-Zugang aufgeben“ mehr für Nutzer** (seit 18.10.2026, Hendriks
+Wunsch): In den Einstellungen gibt es nur noch Abmelden und Konto löschen.
+Der Knopf samt `/api/auth/zugang-aufgeben` ist raus — er stammte aus der Zeit
+mit getrennter Fokus-App, in der man eine der beiden Apps aufgeben konnte,
+ohne das Konto zu löschen.
 
 **Die Willkommensmail meldet direkt an.** Sie enthält einen Anmeldelink, der
 sieben Tage gilt (`functions/_lib/willkommen.js`). Er liegt als normaler

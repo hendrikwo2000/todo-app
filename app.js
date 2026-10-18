@@ -911,7 +911,6 @@ const einAnsichten = {
   haupt:          document.getElementById("einstellungenHaupt"),
   mitglieder:     document.getElementById("mitgliederAnsicht"),
   abmelden:       document.getElementById("kontoAbmeldenFrage"),
-  zugangAufgeben: document.getElementById("todoZugangAufgebenFrage"),
   loeschen:       document.getElementById("kontoLoeschenFrage"),
   googleTrennen:  document.getElementById("googleTrennenFrage"),
 };
@@ -1101,12 +1100,6 @@ function oeffneEinstellungen() {
   // Verwaltung nur fuer Admins - der Abschnitt bleibt sonst ausgeblendet.
   document.getElementById("adminAbschnitt").hidden = !istAdmin;
   document.getElementById("kontoAdminBadge").hidden = !istAdmin;
-
-  // Als Admin nicht selbst den ToDo-Zugang aufgeben koennen (kein hartes
-  // Aussperr-Risiko, /admin haengt an der Rolle - aber eine unnoetig
-  // verwirrende Zwischenlage, siehe Kommentar im Endpunkt).
-  document.getElementById("todoZugangAufgebenStart").hidden = istAdmin;
-  document.getElementById("todoZugangAdminHinweis").hidden = !istAdmin;
 
   zeigeEinAnsicht("haupt");
   einstellungenPopup.hidden = false;
@@ -3788,18 +3781,6 @@ document.getElementById("kontoLoeschenZurueck")
   .addEventListener("click", () => zeigeEinAnsicht("haupt"));
 document.getElementById("kontoLoeschenEmail").addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); kontoLoeschen(); }
-});
-
-document.getElementById("todoZugangAufgebenStart")
-  .addEventListener("click", () => zeigeEinAnsicht("zugangAufgeben"));
-document.getElementById("todoZugangAufgebenZurueck")
-  .addEventListener("click", () => zeigeEinAnsicht("haupt"));
-document.getElementById("todoZugangAufgebenJa").addEventListener("click", async () => {
-  try {
-    await fetch("/api/auth/zugang-aufgeben", { method: "POST" });
-  } catch (e) { /* egal - der Gesperrt-Kasten zeigt den Zustand ohnehin an */ }
-  einstellungenPopup.hidden = true;
-  zeigeGesperrt("Du hast deinen ToDo-Zugang aufgegeben.");
 });
 
 document.getElementById("mitgliederZurueck")

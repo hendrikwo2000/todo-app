@@ -2,8 +2,9 @@
  * Wer darf die ToDo-Liste benutzen?
  *
  * Erlaubt ist, wer in der users-Tabelle mit todo_zugang=1 steht - ein Konto
- * allein reicht nicht (es kann den Zugang selbst aufgegeben haben, siehe
- * api/auth/zugang-aufgeben.js).
+ * allein reicht nicht (ein Admin kann den Zugang in der Nutzerliste
+ * entziehen). Selbst aufgeben ging bis Oktober 2026 ueber einen Knopf in den
+ * Einstellungen; der ist weg, Nutzer koennen sich nur abmelden oder loeschen.
  *
  * Bis Oktober 2026 gab es daneben fokus_zugang fuer die eigene Fokus-App,
  * und diese Datei war deren Spiegelung. Seit der Fusion gehoeren Gewohnheiten
