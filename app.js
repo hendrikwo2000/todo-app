@@ -968,11 +968,12 @@ function resetAkkordeon() {
   });
 }
 
-// Die zwei Reiter unter den globalen Einstellungen: "ToDo" (Google, Listen)
-// und "Gewohnheiten" (Timer, Kalender-Streifen, Flamme). Die Reiterzeile
+// Die drei Reiter unter den globalen Einstellungen: "ToDo" (Google, Listen),
+// "Gewohnheiten" (Anzeige, Flamme, Verwalten) und "Timer" (Anzeige,
+// Standarddauer, Fokuszeit - eigener Reiter seit 18.10.2026). Die Reiterzeile
 // steht im HTML, hier wird nur umgeschaltet. Beim Oeffnen immer "ToDo": dort
 // liegen die Listen, der haeufigste Grund fuers Zahnrad.
-const EIN_REITER = { todo: "einReiterTodo", gewohnheiten: "einReiterGewohnheiten" };
+const EIN_REITER = { todo: "einReiterTodo", gewohnheiten: "einReiterGewohnheiten", timer: "einReiterTimer" };
 function zeigeEinReiter(name) {
   if (!EIN_REITER[name]) name = "todo";
   for (const [k, id] of Object.entries(EIN_REITER)) {
@@ -1045,8 +1046,9 @@ function zeigeStreifenSchalter() {
   streifenGewohnheitenLabel.textContent = streifenAn.gewohnheiten ? "An" : "Aus";
   streifenTimerSwitch.checked = streifenAn.timer;
   streifenTimerLabel.textContent = streifenAn.timer ? "An" : "Aus";
-  const an = [streifenAn.gewohnheiten && "Gewohnheiten", streifenAn.timer && "Timer"].filter(Boolean);
-  document.getElementById("subStreifen").textContent = an.length ? an.join(" · ") : "nur Kalender";
+  // Je Reiter ein Abschnitt "Anzeige", der Kurztext sagt nur noch An/Aus.
+  document.getElementById("subStreifen").textContent = streifenAn.gewohnheiten ? "An" : "Aus";
+  document.getElementById("subStreifenTimer").textContent = streifenAn.timer ? "An" : "Aus";
 }
 
 function schalteStreifen(welcher, an) {

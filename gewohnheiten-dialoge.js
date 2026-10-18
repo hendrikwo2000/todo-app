@@ -298,9 +298,10 @@ for (const dialog of [gewDialog, gewTagDialog]) {
 
 /* --------------------------------------------------------- Einstellungen */
 /* Zwei Abschnitte im Akkordeon der Einstellungen: "Gewohnheiten" (Zaehlweise
-   der Flamme, Export) und "Fokus-Timer" (Standarddauer).
+   der Flamme, Export; Reiter Gewohnheiten) und "Standarddauer" (Reiter Timer).
    Beide Werte gelten pro KONTO (Tabelle fokus_einstellungen), anders als die
-   Schalter im Abschnitt "Kalender-Streifen", die pro Geraet gelten. */
+   Schalter im Abschnitt "Anzeige" (je einer in den Reitern Gewohnheiten
+   und Timer), die pro Geraet gelten. */
 
 let gewEinstellungen = { arbeitMin: 25, flammenModus: "absolut" };
 
@@ -406,3 +407,5 @@ gewFeld("gewDauerSpeichern").addEventListener("click", async () => {
 });
 
 gewFeld("gewVerlaufOeffnen").addEventListener("click", () => gewFensterOeffnen("verlauf"));
+// Aus dem Reiter "Timer": dasselbe Fenster, gleich auf der Fokuszeit.
+gewFeld("gewFokuszeitOeffnen").addEventListener("click", () => gewFensterOeffnen("fokuszeit"));

@@ -3859,7 +3859,7 @@ body.zieht, body.zieht .todo {
   font-size: 13px; font-weight: 600; color: var(--text);
 }
 
-/* ---------- Einstellungen: Reiter "ToDo" und "Gewohnheiten" ---------- */
+/* ---------- Einstellungen: Reiter "ToDo", "Gewohnheiten" und "Timer" ---------- */
 /* Karteikarten-Reiter: der gewaehlte Reiter geht nahtlos in den Inhalt darunter
    ueber, die anderen stehen dunkler und abgesetzt daneben. So sieht man ohne
    Erklaerung, dass die Abschnitte unter dem Reiter zu ihm gehoeren.
@@ -3900,10 +3900,10 @@ body.zieht, body.zieht .todo {
   border-radius: 12px;
 }
 /* Die obere Ecke unter dem gewaehlten Reiter bleibt eckig: dort laeuft seine
-   Aussenlinie in die des Inhalts. Der erste Reiter sitzt links, der zweite
-   rechts. */
+   Aussenlinie in die des Inhalts. Der erste Reiter sitzt links, der letzte
+   (seit 18.10.2026 "Timer") rechts; der mittlere hat beide Ecken rund. */
 #einReiterTodo { border-top-left-radius: 0; }
-#einReiterGewohnheiten { border-top-right-radius: 0; }
+#einReiterTimer { border-top-right-radius: 0; }
 /* Eigene display-Regel schlaegt das hidden-Attribut - siehe .ein-abschnitt[hidden]. */
 .ein-reiterinhalt[hidden] { display: none; }
 /* Die Trennlinie steht ZWISCHEN zwei sichtbaren Abschnitten, nicht direkt unter

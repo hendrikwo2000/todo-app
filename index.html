@@ -412,6 +412,7 @@
           <div class="ein-reiter" role="tablist" aria-label="Einstellungen">
             <button type="button" class="ein-reiter-seg" id="einReiterKnopfTodo" role="tab" data-ein-reiter="todo" aria-selected="true" aria-controls="einReiterTodo">ToDo</button>
             <button type="button" class="ein-reiter-seg" id="einReiterKnopfGewohnheiten" role="tab" data-ein-reiter="gewohnheiten" aria-selected="false" aria-controls="einReiterGewohnheiten">Gewohnheiten</button>
+            <button type="button" class="ein-reiter-seg" id="einReiterKnopfTimer" role="tab" data-ein-reiter="timer" aria-selected="false" aria-controls="einReiterTimer">Timer</button>
           </div>
 
           <div id="einReiterTodo" class="ein-reiterinhalt" role="tabpanel" aria-labelledby="einReiterKnopfTodo">
@@ -473,34 +474,15 @@
 
           <!-- Seit Oktober 2026 gibt es keinen Link mehr zur eigenen Fokus-App:
                Gewohnheiten und Timer sind Teil dieser App, fuer jedes Konto. Die
-               Abschnitte sind wie im Reiter "ToDo" ein Akkordeon, alle zu. -->
+               Abschnitte sind wie im Reiter "ToDo" ein Akkordeon, alle zu.
+               Der Timer hat seit 18.10.2026 einen eigenen Reiter (unten) -
+               vorher standen Standarddauer und sein Anzeige-Schalter hier
+               mit drin, und ein Ausbau des Timers waere in den Gewohnheiten
+               weitergewachsen. -->
           <div id="einReiterGewohnheiten" class="ein-reiterinhalt" role="tabpanel" aria-labelledby="einReiterKnopfGewohnheiten" hidden>
 
-            <!-- Gilt pro KONTO (Tabelle fokus_einstellungen). Gefuellt aus
-                 gewohnheiten-dialoge.js. -->
-            <details class="ein-abschnitt" data-abschnitt="timer">
-              <summary class="ein-kopf">
-                <span class="ein-kopf-icon">⏱️</span>
-                <span class="ein-kopf-text">Fokus-Timer</span>
-                <span class="ein-kopf-sub" id="subGewTimer"></span>
-                <span class="ein-kopf-pfeil">▾</span>
-              </summary>
-              <div class="ein-inhalt">
-                <label for="gewDauer" class="gw-label">Standarddauer</label>
-                <div class="gw-slider-zeile">
-                  <input type="range" id="gewDauer" min="5" max="180" step="5">
-                  <span class="gw-slider-wert" id="gewDauerWert">25 Min</span>
-                  <button type="button" class="btn klein" id="gewDauerSpeichern">Speichern</button>
-                </div>
-                <p class="ein-hinweis">Gilt ab der nächsten Sitzung.</p>
-              </div>
-            </details>
-
-            <!-- Was der Kalender-Streifen neben dem Kalender als Reiter zeigt.
-                 Zwei Schalter statt einem: wer nur den Timer will, soll die
-                 Gewohnheiten nicht mitnehmen muessen - und umgekehrt. Bewusst
-                 "Kalender-Streifen" und nicht "Bereiche": Bereiche heissen in
-                 dieser App die Spalten des Boards.
+            <!-- Je ein Anzeige-Schalter pro Reiter: wer nur den Timer will, soll
+                 die Gewohnheiten nicht mitnehmen muessen - und umgekehrt.
                  Gilt pro Geraet (localStorage), wie die Darstellung: wer am
                  Rechner die Gewohnheiten mitlaufen laesst, will sie am Handy
                  nicht zwangslaeufig auch. -->
@@ -512,20 +494,12 @@
                 <span class="ein-kopf-pfeil">▾</span>
               </summary>
               <div class="ein-inhalt">
-                <p class="ein-hinweis">Was du in der App siehst: die Gewohnheiten (am PC unter dem Tag in der Heute-Spalte, am Tablet und Handy unten in der Kachel „heute“, aufklappbar) und den Timer-Knopf ⏱ oben. Gilt für dieses Gerät.</p>
+                <p class="ein-hinweis">Die Gewohnheiten stehen am PC unter dem Tag in der Heute-Spalte, am Tablet und Handy unten in der Kachel „heute“, aufklappbar. Gilt für dieses Gerät.</p>
                 <div class="gw-ein-zeile">
                   <span class="ein-kopf-text">Gewohnheiten</span>
                   <label class="switch">
                     <input type="checkbox" id="streifenGewohnheitenSwitch">
                     <span class="switch-label" id="streifenGewohnheitenLabel">An</span>
-                    <span class="switch-track"><span class="switch-thumb"></span></span>
-                  </label>
-                </div>
-                <div class="gw-ein-zeile">
-                  <span class="ein-kopf-text">Timer</span>
-                  <label class="switch">
-                    <input type="checkbox" id="streifenTimerSwitch">
-                    <span class="switch-label" id="streifenTimerLabel">An</span>
                     <span class="switch-track"><span class="switch-thumb"></span></span>
                   </label>
                 </div>
@@ -587,7 +561,64 @@
             <button type="button" id="gewVerlaufOeffnen" class="ein-abschnitt ein-zeile ein-zeile-knopf">
               <span class="ein-kopf-icon">📅</span>
               <span class="ein-kopf-text">Verlauf &amp; mehr</span>
-              <span class="ein-kopf-sub">Statistik, Fokuszeit</span>
+              <span class="ein-kopf-sub">Statistik</span>
+              <span class="ein-kopf-pfeil ein-kopf-weiter" aria-hidden="true">›</span>
+            </button>
+
+          </div>
+
+          <!-- Reiter "Timer" (seit 18.10.2026): Anzeige-Schalter fuer den Knopf
+               ⏱ in der Kopfzeile, Standarddauer, und der Weg zur Fokuszeit. Die
+               Fokuszeit selbst bleibt der dritte Reiter im Fenster
+               "Gewohnheiten" - der Eintrag hier oeffnet das Fenster direkt dort.
+               Platz fuer den Ausbau des Timers. -->
+          <div id="einReiterTimer" class="ein-reiterinhalt" role="tabpanel" aria-labelledby="einReiterKnopfTimer" hidden>
+
+            <!-- Gilt pro Geraet (localStorage), wie die Anzeige der Gewohnheiten. -->
+            <details class="ein-abschnitt" data-abschnitt="timer-anzeige">
+              <summary class="ein-kopf">
+                <span class="ein-kopf-icon">🧩</span>
+                <span class="ein-kopf-text">Anzeige</span>
+                <span class="ein-kopf-sub" id="subStreifenTimer"></span>
+                <span class="ein-kopf-pfeil">▾</span>
+              </summary>
+              <div class="ein-inhalt">
+                <p class="ein-hinweis">Der Timer-Knopf ⏱ oben in der Kopfzeile. Gilt für dieses Gerät.</p>
+                <div class="gw-ein-zeile">
+                  <span class="ein-kopf-text">Timer</span>
+                  <label class="switch">
+                    <input type="checkbox" id="streifenTimerSwitch">
+                    <span class="switch-label" id="streifenTimerLabel">An</span>
+                    <span class="switch-track"><span class="switch-thumb"></span></span>
+                  </label>
+                </div>
+              </div>
+            </details>
+
+            <!-- Gilt pro KONTO (Tabelle fokus_einstellungen). Gefuellt aus
+                 gewohnheiten-dialoge.js. -->
+            <details class="ein-abschnitt" data-abschnitt="timer">
+              <summary class="ein-kopf">
+                <span class="ein-kopf-icon">⏱️</span>
+                <span class="ein-kopf-text">Standarddauer</span>
+                <span class="ein-kopf-sub" id="subGewTimer"></span>
+                <span class="ein-kopf-pfeil">▾</span>
+              </summary>
+              <div class="ein-inhalt">
+                <div class="gw-slider-zeile">
+                  <input type="range" id="gewDauer" min="5" max="180" step="5" aria-label="Standarddauer">
+                  <span class="gw-slider-wert" id="gewDauerWert">25 Min</span>
+                  <button type="button" class="btn klein" id="gewDauerSpeichern">Speichern</button>
+                </div>
+                <p class="ein-hinweis">Gilt ab der nächsten Sitzung.</p>
+              </div>
+            </details>
+
+            <!-- Wie "Verlauf & mehr": oeffnet ein Fenster statt aufzuklappen. -->
+            <button type="button" id="gewFokuszeitOeffnen" class="ein-abschnitt ein-zeile ein-zeile-knopf">
+              <span class="ein-kopf-icon">📊</span>
+              <span class="ein-kopf-text">Fokuszeit</span>
+              <span class="ein-kopf-sub">pro Woche</span>
               <span class="ein-kopf-pfeil ein-kopf-weiter" aria-hidden="true">›</span>
             </button>
 
@@ -740,7 +771,7 @@
           <div id="gewDiagramm" class="gw-diagramm"></div>
           <div id="gewDiagrammNamen" class="gw-diagramm-namen"></div>
           <p id="gewFokuszeitHinweis" class="ein-hinweis gw-mitte" hidden></p>
-          <p class="ein-hinweis gw-mitte">Den Timer startest du im Kalender-Streifen, Reiter „Timer“. Die Standarddauer steht in den Einstellungen.</p>
+          <p class="ein-hinweis gw-mitte">Den Timer startest du über den Knopf ⏱ oben. Die Standarddauer steht in den Einstellungen unter „Timer“.</p>
         </section>
 
       </div>

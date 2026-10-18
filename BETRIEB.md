@@ -402,13 +402,20 @@ Ansichten nach ihrer ID ein- und ausblendet.
 
 **Aufbau der Hauptansicht (seit 18.10.2026):** oben die **globalen**
 Einstellungen als Zeilen — Darstellung, Zoom (nur Touch), Benachrichtigungen,
-Konto, Verwaltung (nur Admin). Darunter **zwei Reiter**, `ToDo` und
-`Gewohnheiten` (`.ein-reiter`, umgeschaltet von `zeigeEinReiter()` in
-`app.js`; beim Öffnen immer `ToDo`) als **Karteikarten**: der gewählte Reiter
-geht nahtlos in den gerahmten Inhalt darunter über (`.ein-reiterbox`):
+Konto, Verwaltung (nur Admin). Darunter **drei Reiter**, `ToDo`,
+`Gewohnheiten` und `Timer` (`.ein-reiter`, umgeschaltet von `zeigeEinReiter()`
+in `app.js`; beim Öffnen immer `ToDo`) als **Karteikarten**: der gewählte
+Reiter geht nahtlos in den gerahmten Inhalt darunter über (`.ein-reiterbox`):
 - **ToDo**: Google Kalender, Meine Listen, Geteilt mit mir.
-- **Gewohnheiten**: Fokus-Timer, Kalender-Streifen, Gewohnheiten, Verwalten
-  (Liste mit Stift und Hoch/Runter, „Neue Gewohnheit", Archiv).
+- **Gewohnheiten**: Anzeige (nur der Gewohnheiten-Schalter), Gewohnheiten,
+  Verwalten (Liste mit Stift und Hoch/Runter, „Neue Gewohnheit", Archiv),
+  „Verlauf & mehr ›".
+- **Timer** (eigener Reiter seit 18.10.2026): Anzeige (Schalter für den Knopf
+  ⏱), Standarddauer, „Fokuszeit ›" — öffnet das Fenster „Gewohnheiten" direkt
+  auf dem Reiter Fokuszeit. Hendriks Frage war, ob Gewohnheiten und Timer
+  getrennt gehören; er will den Timer als Nächstes ausbauen, und der soll dafür
+  nicht weiter in den Gewohnheiten wachsen. Bei 360 px passen die drei Reiter
+  noch ohne Abschneiden („Gewohnheiten" ist der längste).
 
 Hendriks Vorgabe (gefragt): „Einstellungen öffnen, dann sieht man alle
 globalen Einstellungen … und dann ein Reiter zum Öffnen, damit es
@@ -427,7 +434,7 @@ am Reiter — „der blaue Balken" gefiel ihm nicht; sein Vorbild war ein Spiel-
 mit abgesetzten Reitern, deren gewählter in den Inhalt übergeht. Die Naht
 entsteht über `margin-bottom: -1px` an den Reitern; unter dem gewählten Reiter
 ist die obere Ecke des Inhalts eckig (`#einReiterTodo` links,
-`#einReiterGewohnheiten` rechts).
+`#einReiterTimer` rechts; der mittlere Reiter hat beide Ecken rund).
 
 **Ein Akkordeon über alles, beim Öffnen alles zu.** Konto (oben) und die
 Abschnitte beider Reiter bilden *ein* Akkordeon: immer nur einer offen
@@ -2508,10 +2515,10 @@ die Zurueck-Taste schliessen es von innen nach aussen (`gewSchliesseOberste`,
 eingehaengt in `schliesseObersteEbene` in kalender.js); solange es offen ist,
 gibt es keine Rand-Wischgeste (`darfGeste`).
 
-**Einstellungen, vier Abschnitte** (seit 18.10.2026 im Reiter „Gewohnheiten",
-eingeklappt, in der Reihenfolge Timer, Streifen, Gewohnheiten, Verwalten; Aufbau
-siehe Kapitel „Einstellungen"):
-- **Anzeige** - zwei Schalter, Gewohnheiten und Timer je fuer sich,
+**Einstellungen** (seit 18.10.2026 verteilt auf die Reiter „Gewohnheiten" und
+„Timer", eingeklappt; Aufbau siehe Kapitel „Einstellungen"):
+- **Anzeige** - zwei Schalter, Gewohnheiten und Timer je fuer sich, jeder im
+  Abschnitt „Anzeige" seines Reiters,
   pro Geraet in `localStorage.streifenGewohnheiten` / `streifenTimer`
   (Standard an; wer den alten gemeinsamen Schalter `fokusPanel` aus hatte,
   startet mit beiden aus). Der Schalter "Gewohnheiten" gilt fuer beide Orte der
@@ -2527,7 +2534,10 @@ siehe Kapitel „Einstellungen"):
 - **Verwalten** - Liste mit Stift und Hoch/Runter, „Neue Gewohnheit", Archiv.
 - **Verlauf & mehr** - kein Abschnitt, sondern ein Eintrag, der das Fenster
   „Gewohnheiten" oeffnet (Verlauf, Statistik, Fokuszeit).
-- **Fokus-Timer** - Standarddauer.
+- **Standarddauer** (Reiter Timer, bis 18.10.2026 "Fokus-Timer" im Reiter
+  Gewohnheiten).
+- **Fokuszeit ›** (Reiter Timer) - oeffnet dasselbe Fenster mit
+  `gewFensterOeffnen("fokuszeit")`.
 
 Zaehlweise und Dauer gelten pro KONTO (`fokus_einstellungen`), anders als die
 Streifen-Schalter. `GET /api/fokus` liefert beide in `einstellungen`.
