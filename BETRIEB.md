@@ -1851,6 +1851,16 @@ Google-Token** — er fragt immer nur unsere eigenen Endpunkte. Ein
 Zufallswert (`state`) geht gleichzeitig an Google und in ein kurzlebiges
 Cookie; nur wer beides vorweist, kommt durch.
 
+**Der Verbinden-Knopf steht an zwei Stellen** (Hendrik am 18.10.2026): in den
+Einstellungen (`#googleVerbinden`, app.js) und direkt im Tag - unter „Kein
+Google-Kalender verbunden." in der Heute-Spalte, in der Kachel „heute" und in der
+Tages-Karte (`baueGoogleVerbinden()` in `kalender.js`, `.kal-google-verbinden`).
+Beide tun dasselbe (`location.href = "/api/google/start"`). Der im Tag erscheint nur,
+wenn `googleZustand.moeglich` stimmt (Zugangsdaten im Pages-Projekt hinterlegt,
+sonst liefe er in einen Fehler) und nur im bedienbaren Tag, nicht in den
+Nachbarkarten der Tages-Karte. Lokal führt er mit der Test-Client-ID zu Googles
+Fehlerseite „invalid_client" - das ist erwartet, der Weg bis dahin ist der richtige.
+
 **Warum nicht der Browser-Weg.** Google Identity Services im Frontend käme
 ohne Client-Schlüssel und ohne Datenbank aus, gibt aber kein Refresh-Token
 heraus: nach spätestens einer Stunde bzw. bei jedem neuen Besuch müsste man
@@ -2472,8 +2482,10 @@ wohin die beiden Inhalte ziehen:
 - **Gewohnheiten:** am PC ein Abschnitt ganz unten in der Heute-Spalte (Hendriks
   Wunsch am selben Tag davor: „lieber unter den heutigen Tag, ganz unten, als Extra
   Abschnitt - das passt auf dem PC gut, auf dem Handy und Tablet eher nicht"); am
-  Tablet und Handy ein **einklappbarer** Abschnitt unter der Tagesansicht, standardmäßig
-  zu (statt ganz unten auf der ToDo-Seite oder eines zweiten Knopfs).
+  Tablet und Handy ein **einklappbarer** Abschnitt unten in der Kachel „heute"
+  (Tagesansicht), standardmäßig zu (statt ganz unten auf der ToDo-Seite oder eines
+  zweiten Knopfs). Zuerst war es ein eigener grauer Kasten unter der Kachel; Hendrik:
+  „Gewohnheiten soll in die Kachel heute unten, und zusätzlich aufklappbar sein".
 
 Mit der Reiterzeile sind entfallen: `kalUntenModus`, `setzeUnten()`,
 `fokusMoeglich()`, `window.fokusZeigen/Verstecken/Reiterzeile/HatZugang/Reiter/
@@ -2490,15 +2502,20 @@ Ein Element, **zwei mögliche Orte**; `fokPlatziere()` hängt es um:
 | Wo | Wann | Container | Gerufen von |
 | --- | --- | --- | --- |
 | Heute-Spalte | ab 1380 px (`istDrei()`), Streifen offen | `#fokHeute` in `#kalHeuteSpalte`, unter `#kalTagesliste`, `margin-top: auto` | `window.fokusHeute(an)`, aus `zeichneHeuteSpalte()` in `kalender.js` |
-| unter der Tagesansicht | darunter, Tagesansicht zu sehen (Board sichtbar) | `#fokOben` (grauer Kasten wie `#tagOben`, 8 px darunter), Kopf mit Bilanz | `window.fokusOben(an)`, aus `zeichneTagOben()` in `kalender.js` |
+| in der Kachel „heute" | darunter, Tagesansicht zu sehen (Board sichtbar) | `#fokOben`, letztes Kind von `#tagOben`, Linie darüber, Kopf mit Bilanz | `window.fokusOben(an, host)`, aus `zeichneTagOben()` in `kalender.js` |
 
 - **Zustände `fokHeuteAn` / `fokObenAn`** sagen, welcher Abschnitt gerade steht
   (angemeldet, Schalter „Gewohnheiten" an, passender Ort sichtbar). Beim Einschalten
   wird die Liste frisch geholt (`ladeFokus()`).
-- **Unter der Tagesansicht** steht der Abschnitt standardmäßig **zu**, mit der Bilanz
+- **In der Kachel „heute"** steht der Abschnitt standardmäßig **zu**, mit der Bilanz
   („2 von 5") im Kopf; ein Tipp auf den Kopf klappt ihn auf, die Wahl bleibt pro Gerät
-  gemerkt (`localStorage.fokObenOffen`). Er steht und fällt mit der Tagesansicht: am
-  Handy bei offenem Kalender ist beides weg.
+  gemerkt (`localStorage.fokObenOffen`). Er steht und fällt mit der Kachel: am Handy
+  bei offenem Kalender ist beides weg, und ist die Kachel selbst zugeklappt
+  (`.tag-oben.zu`), geht er mit. **Mechanik:** `zeichneTagOben()` leert die Kachel bei
+  jedem Zeichnen (`zeichneTagesliste` räumt ihr Ziel) und wirft den Abschnitt dabei
+  hinaus; deshalb ruft sie danach `window.fokusOben(true, tagObenEl)`, und
+  `fokPlatziere()` hängt ihn ans Ende (`fokObenHost`). Ohne Kachel (`fokusOben(false)`)
+  ist der Host weg.
 - **In der Heute-Spalte** steht er immer offen, mit „heute" im Kopf, weil die Spalte
   einen anderen Tag zeigen kann (den im Kalender gewählten) - die Gewohnheiten sind
   immer die von heute. Die Spalte ist 286 px breit; die Karten umbrechen das Mengenfeld

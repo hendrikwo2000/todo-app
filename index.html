@@ -94,11 +94,13 @@
          Kopf. Inhalt aus kalender.js (zeichneTagOben). -->
     <section id="tagOben" class="tag-oben" aria-label="Tagesansicht" hidden></section>
 
-    <!-- Die Gewohnheiten dazu, einklappbar und standardmaessig zu, mit der Bilanz
-         im Kopf (Hendrik am 18.10.2026: auf Tablet und Handy unter dem Tag, aber
-         nur auf Wunsch aufgeklappt). Steht und faellt mit #tagOben: derselbe
-         Zeitpunkt, dieselben Geraete (zeichneTagOben ruft fokusOben). Am PC
-         stehen sie stattdessen in der Heute-Spalte (#fokHeute). fokus.js. -->
+    <!-- Die Gewohnheiten gehoeren ans ENDE der Kachel "heute" (#tagOben) und sind
+         dort zusaetzlich einklappbar, standardmaessig zu, mit der Bilanz im Kopf
+         (Hendrik am 18.10.2026: erst ein eigener Kasten darunter, dann "in die
+         Kachel heute unten"). Das Element steht hier nur als Ausgangsplatz:
+         zeichneTagOben leert die Kachel bei jedem Zeichnen und reicht den
+         Abschnitt danach neu hinein (fokusOben in fokus.js). Am PC stehen die
+         Gewohnheiten stattdessen in der Heute-Spalte (#fokHeute). -->
     <section id="fokOben" class="fok-oben zu" aria-label="Gewohnheiten heute" hidden>
       <button type="button" id="fokObenKopf" class="fok-oben-kopf" aria-expanded="false">
         <span aria-hidden="true">🔥</span>
@@ -165,7 +167,7 @@
          Die Spalte (#kalHeuteSpalte) hat zwei Teile: den Tag (#kalTagesliste, von
          kalender.js gezeichnet) und ganz unten die Gewohnheiten (#fokHeute).
          Am PC stehen die Gewohnheiten als Abschnitt hier (Hendrik am
-         18.10.2026); am Tablet und Handy unter der Tagesansicht (#fokOben).
+         18.10.2026); am Tablet und Handy unten in der Kachel "heute" (#fokOben).
          fokus.js verschiebt dafuer #fokInhalt hierher und dorthin. -->
     <div id="kalHeuteSpalte" class="kal-liste">
       <div id="kalTagesliste" class="kal-tagblock"></div>
@@ -507,7 +509,7 @@
                 <span class="ein-kopf-pfeil">▾</span>
               </summary>
               <div class="ein-inhalt">
-                <p class="ein-hinweis">Was du in der App siehst: die Gewohnheiten (am PC unter dem Tag in der Heute-Spalte, am Tablet und Handy aufklappbar unter der Tagesansicht) und den Timer-Knopf ⏱ oben. Gilt für dieses Gerät.</p>
+                <p class="ein-hinweis">Was du in der App siehst: die Gewohnheiten (am PC unter dem Tag in der Heute-Spalte, am Tablet und Handy unten in der Kachel „heute“, aufklappbar) und den Timer-Knopf ⏱ oben. Gilt für dieses Gerät.</p>
                 <div class="gw-ein-zeile">
                   <span class="ein-kopf-text">Gewohnheiten</span>
                   <label class="switch">

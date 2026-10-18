@@ -9,8 +9,9 @@
 
    - Die GEWOHNHEITEN stehen zum Abhaken dort, wo der Tag steht: am PC (ab 1380 px,
      mit Heute-Spalte) als Abschnitt ganz unten in der Heute-Spalte (#fokHeute),
-     am Tablet und Handy als Abschnitt unter der Tagesansicht ueber den ToDos
-     (#fokOben), einklappbar und standardmaessig zu, mit der Bilanz im Kopf. Das
+     am Tablet und Handy als Abschnitt unten in der Kachel "heute" ueber den ToDos
+     (#fokOben in #tagOben), zusaetzlich einklappbar und standardmaessig zu, mit
+     der Bilanz im Kopf. Das
      Element #fokInhalt zieht je nach Breite zwischen beiden um (fokPlatziere);
      gezeichnet wird immer mit zeichneFokus().
    - Der TIMER ist ein Knopf in der Kopfzeile (.timer-knopf, zweimal im Dokument:
@@ -49,8 +50,8 @@ const fokKnopfReihe   = document.getElementById("fokKnoepfe");
 const fokRing         = document.getElementById("fokRingFuellung");
 // Die Timer-Knoepfe: einer in der App-Kopfzeile, einer im Kalender.
 const fokTimerKnoepfe = document.querySelectorAll(".timer-knopf");
-// Der Abschnitt in der Heute-Spalte (PC) und der unter der Tagesansicht (Tablet,
-// Handy).
+// Der Abschnitt in der Heute-Spalte (PC) und der unten in der Kachel "heute"
+// (Tablet, Handy).
 const fokHeuteBox     = document.getElementById("fokHeute");
 const fokHeuteBilanz  = document.getElementById("fokHeuteBilanz");
 const fokObenBox      = document.getElementById("fokOben");
@@ -71,8 +72,12 @@ let fokBereit = false;
 // (Tablet, Handy, Tagesansicht zu sehen).
 let fokHeuteAn = false;
 let fokObenAn = false;
-// Der Abschnitt unter der Tagesansicht ist einklappbar und startet zu; die Wahl
-// bleibt pro Geraet gemerkt.
+// Die Kachel "heute" (#tagOben), in die der Abschnitt gehoert. Sie wird bei jedem
+// Zeichnen geleert, dabei fliegt der Abschnitt raus - kalender.js reicht sie bei
+// jedem Zeichnen neu herein (fokusOben), fokPlatziere haengt ihn wieder an.
+let fokObenHost = null;
+// Der Abschnitt in der Kachel ist einklappbar und startet zu; die Wahl bleibt pro
+// Geraet gemerkt.
 const FOK_OBEN_KEY = "fokObenOffen";
 let fokObenOffen = false;
 try { fokObenOffen = localStorage.getItem(FOK_OBEN_KEY) === "1"; }
@@ -111,6 +116,8 @@ function fokPlatziere() {
   const ziel = amTag ? fokHeuteBox : fokObenKoerper;
   if (fokInhalt.parentElement !== ziel) ziel.appendChild(fokInhalt);
   fokHeuteBox.hidden = !(amTag && fokHeuteAn);
+  // Ans Ende der Kachel "heute" - dort steht er nach dem Zeichnen der Kachel.
+  if (fokObenHost && fokObenBox.parentElement !== fokObenHost) fokObenHost.appendChild(fokObenBox);
   fokObenBox.hidden = amTag || !fokObenAn;
   fokObenBox.classList.toggle("zu", !fokObenOffen);
   fokObenKopf.setAttribute("aria-expanded", String(fokObenOffen));
@@ -665,10 +672,12 @@ window.fokusHeute = function (an) {
 
 /**
  * Von kalender.js (zeichneTagOben) gerufen: `an` heisst, die Tagesansicht ueber den
- * ToDos steht da (Tablet, Handy, Fenster unter 1380 px, Board sichtbar). Der
- * Abschnitt darunter steht und faellt mit ihr.
+ * ToDos steht da (Tablet, Handy, Fenster unter 1380 px, Board sichtbar), und `host`
+ * ist ihre Kachel (#tagOben), frisch gezeichnet. Der Abschnitt gehoert ans Ende
+ * dieser Kachel und steht und faellt mit ihr.
  */
-window.fokusOben = function (an) {
+window.fokusOben = function (an, host) {
+  fokObenHost = an ? (host || fokObenHost) : null;
   const neu = !!an && fokBereit && fokErlaubt("gewohnheiten");
   const war = fokObenAn;
   fokObenAn = neu;
@@ -678,8 +687,8 @@ window.fokusOben = function (an) {
   if (!war) ladeFokus();
 };
 
-// Ein Tipp auf den Kopf klappt den Abschnitt unter der Tagesansicht auf und zu;
-// die Wahl bleibt pro Geraet gemerkt.
+// Ein Tipp auf den Kopf klappt den Abschnitt in der Kachel auf und zu; die Wahl
+// bleibt pro Geraet gemerkt.
 fokObenKopf.addEventListener("click", () => {
   fokObenOffen = !fokObenOffen;
   try { localStorage.setItem(FOK_OBEN_KEY, fokObenOffen ? "1" : "0"); }

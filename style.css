@@ -3287,46 +3287,58 @@ body.zieht, body.zieht .todo {
 .fok-knoepfe .btn { min-height: 44px; padding: 6px 18px; }
 .fok-start { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-/* ---------- Gewohnheiten unter der Tagesansicht (Tablet, Handy) ---------- */
-/* Eigener grauer Kasten direkt unter dem der Tagesansicht (.tag-oben, derselbe
-   Grund), einklappbar und standardmaessig zu - zu zeigt nur der Kopf mit der
-   Bilanz. margin-top zieht ihn 8 px an die Tagesansicht heran (deren
-   margin-bottom ist 16 px). Hendrik am 18.10.2026. */
+/* ---------- Gewohnheiten in der Kachel "heute" (Tablet, Handy) ---------- */
+/* Letzter Abschnitt IN der Kachel der Tagesansicht (.tag-oben), abgesetzt durch
+   eine Linie wie die anderen Abschnitte darin (ToDos, Termine). Einklappbar und
+   standardmaessig zu - zu zeigt nur der Kopf mit der Bilanz. Zuerst war es ein
+   eigener Kasten darunter; Hendrik wollte es "in die Kachel heute unten"
+   (18.10.2026). Ist die ganze Kachel zugeklappt, geht er mit (.tag-oben.zu). */
 .fok-oben {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  margin: -8px 0 16px;
-  padding: 10px 12px 12px;
-  border-radius: 12px;
-  background: var(--col-bg);
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
 }
 .fok-oben[hidden] { display: none; }
-.fok-oben.zu { padding-bottom: 10px; }
+/* Der Kopf in der Schrift der anderen Abschnittsueberschriften (.kal-gruppe). */
 .fok-oben-kopf {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   width: 100%;
   min-height: 24px;
   padding: 0;
   border: 0;
   background: none;
   font: inherit;
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 700;
-  color: var(--muted);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text);
   text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .fok-oben-kopf:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
-.fok-oben-bilanz { margin-left: auto; font-size: 12px; font-weight: 400; }
-.fok-oben-pfeil { font-size: 13px; transition: transform .15s; }
+.fok-oben-kopf .kal-heute-chip { text-transform: none; letter-spacing: 0; }
+.fok-oben-bilanz {
+  margin-left: auto;
+  font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none;
+  color: var(--muted);
+}
+.fok-oben-pfeil { font-size: 13px; letter-spacing: 0; color: var(--muted); transition: transform .15s; }
 .fok-oben.zu .fok-oben-pfeil { transform: rotate(-90deg); }
 .fok-oben-koerper { display: flex; flex-direction: column; gap: 7px; }
 .fok-oben.zu .fok-oben-koerper { display: none; }
 .fok-oben .fok-inhalt { flex: none; overflow: visible; padding-bottom: 0; }
+
+/* "Mit Google verbinden" im Tag, wenn noch kein Kalender verbunden ist (kalender.js,
+   baueGoogleVerbinden). Steht unter der grauen Zeile "Kein Google-Kalender
+   verbunden." und ist nur so breit wie sein Inhalt. */
+.kal-google-verbinden { align-self: flex-start; margin-top: 2px; }
 
 /* ---------- Gewohnheiten ---------- */
 .fok-inhalt {

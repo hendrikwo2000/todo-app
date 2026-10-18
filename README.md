@@ -112,9 +112,9 @@ es wird nachgetragen, sobald du wieder online bist.
 
 - **Am PC** (ab 1380 px Fensterbreite) als Abschnitt **ganz unten in der
   Heute-Spalte**, neben dem Kalender.
-- **Am Tablet und Handy** als Abschnitt **unter der Tagesansicht** über den ToDos,
-  einklappbar - er startet zu und zeigt im Kopf, wie viele heute erledigt sind
-  („2 von 5").
+- **Am Tablet und Handy** als Abschnitt **unten in der Kachel „heute"** über den
+  ToDos, einklappbar - er startet zu und zeigt im Kopf, wie viele heute erledigt
+  sind („2 von 5").
 
 **Der Timer** ist der Knopf **⏱** oben neben dem Zahnrad. Ein Tipp öffnet ein
 kleines Fenster: **▶ Start** beginnt eine Sitzung mit deiner Standarddauer, **⏸**
@@ -147,7 +147,9 @@ an Gewohnheiten, die heute noch offen sind.
 
 ## Google Kalender
 
-- **⚙️** oben rechts → **„Google Kalender"** → **„Mit Google verbinden"**
+- **⚙️** oben rechts → **„Google Kalender"** → **„Mit Google verbinden"**, oder
+  direkt im Tag: steht dort „Kein Google-Kalender verbunden.", sitzt darunter ein
+  Knopf **„Mit Google verbinden"**
 - Bei Google anmelden und den Zugriff bestätigen
 
 Danach stehen deine Google-Termine im Kalender neben den ToDos. Angezeigt wird

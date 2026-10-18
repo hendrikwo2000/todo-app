@@ -739,9 +739,11 @@ function zeichneTagOben() {
   // bei offenem Kalender gar nicht im Dokumentfluss) und erst mit einer Liste.
   const zeigen = tagOben() && !(kalOffen && !istSplit()) && !!aktiveListe;
   tagObenEl.hidden = !zeigen;
-  // Die Gewohnheiten darunter (#fokOben) stehen und fallen mit der Tagesansicht.
-  window.fokusOben?.(zeigen);
-  if (!zeigen) { tagObenEl.replaceChildren(); return; }
+  if (!zeigen) {
+    tagObenEl.replaceChildren();
+    window.fokusOben?.(false);
+    return;
+  }
 
   const heute = todayStr();
   const tag = kalOffen && kalAuswahl ? kalAuswahl : heute;
@@ -764,6 +766,10 @@ function zeichneTagOben() {
   const tageTermine = termineNachTagen();
   const ueberfaellige = todos.filter(t => t.due < heute);
   zeichneTagesliste(tage, tageTermine, ueberfaellige, heute, tagObenEl, false, tag, true);
+  // Die Gewohnheiten gehoeren ans Ende der Kachel (#fokOben, fokus.js). Das
+  // Zeichnen oben hat das Ziel geleert und sie dabei hinausgeworfen - darum werden
+  // sie hier jedes Mal neu hineingereicht.
+  window.fokusOben?.(true, tagObenEl);
 
   const kopf = tagObenEl.querySelector(".kal-liste-kopf");
   tagObenEl.classList.toggle("zu", tagObenZu);
@@ -1532,6 +1538,13 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
     if (!termineDesTages.length) {
       ziel.appendChild(baueLeerZeile(googleZustand.verbunden
         ? "Keine Termine." : "Kein Google-Kalender verbunden."));
+      // Gleich der Weg zum Verbinden dazu (Hendrik, 18.10.2026), statt erst den
+      // Umweg ueber die Einstellungen. Nur, wenn es Google hier ueberhaupt gibt
+      // (Zugangsdaten hinterlegt - sonst liefe der Knopf in einen Fehler) und nur
+      // im bedienbaren Tag, nicht in den Nachbarkarten.
+      if (!googleZustand.verbunden && googleZustand.moeglich && aktiv) {
+        ziel.appendChild(baueGoogleVerbinden());
+      }
     }
   }
 
@@ -2723,6 +2736,26 @@ function baueLeerZeile(text) {
   p.className = "kal-leer";
   p.textContent = text;
   return p;
+}
+
+// Dasselbe Google-G wie in den Einstellungen (index.html, #googleVerbinden).
+const GOOGLE_G_SVG = '<svg viewBox="0 0 48 48" width="14" height="14">'
+  + '<path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/>'
+  + '<path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.3-4.7 6.9l7.3 5.7c4.3-3.9 6.8-9.7 6.8-16.6z"/>'
+  + '<path fill="#FBBC05" d="M10.4 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.7l7.8-6.1z"/>'
+  + '<path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.3-5.7c-2 1.4-4.7 2.3-8.6 2.3-6.3 0-11.7-3.7-13.6-9.2l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/>'
+  + '</svg>';
+
+// "Mit Google verbinden" im Tag, wenn noch kein Kalender verbunden ist. Wie in
+// den Einstellungen ein echter Seitenwechsel zu Google (kein fetch: der
+// Zustimmungsdialog braucht ihn); zurueck kommt der Browser auf "/?google=...".
+function baueGoogleVerbinden() {
+  const k = document.createElement("button");
+  k.type = "button";
+  k.className = "btn klein google-btn kal-google-verbinden";
+  k.innerHTML = `<span class="google-g" aria-hidden="true">${GOOGLE_G_SVG}</span>Mit Google verbinden`;
+  k.addEventListener("click", () => { location.href = "/api/google/start"; });
+  return k;
 }
 
 // Startzeit fuer die linke Spalte der Termin-Zeile ("12:15").
