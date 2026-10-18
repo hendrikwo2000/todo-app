@@ -141,8 +141,24 @@
 
     <!-- Der gewaehlte Tag als eigene Heute-Spalte neben dem Raster - nur ab
          1380 px (html.dreispaltig). Darunter steht der Tag ueber den ToDos
-         (#tagOben), am Handy zusaetzlich in der Tages-Karte. -->
-    <div id="kalTagesliste" class="kal-liste"></div>
+         (#tagOben), am Handy zusaetzlich in der Tages-Karte.
+         Die Spalte (#kalHeute) hat zwei Teile: den Tag (#kalTagesliste, von
+         kalender.js gezeichnet) und ganz unten die Gewohnheiten (#fokHeute).
+         Die Gewohnheiten sind NUR hier ein Abschnitt (Hendrik am 18.10.2026:
+         am PC unter dem Tag, am Handy und Tablet bleiben sie ein Reiter im
+         Streifen). fokus.js verschiebt dafuer #fokInhalt hierher und zurueck. -->
+    <div id="kalHeute" class="kal-liste">
+      <div id="kalTagesliste" class="kal-tagblock"></div>
+      <section id="fokHeute" class="fok-heute" aria-label="Gewohnheiten heute" hidden>
+        <h3 class="kal-gruppe">
+          <span class="kal-gruppe-text">
+            <span class="kal-gruppe-symbol" aria-hidden="true">🔥</span>Gewohnheiten
+            <span class="kal-heute-chip">heute</span>
+          </span>
+          <span id="fokHeuteBilanz" class="fok-heute-bilanz"></span>
+        </h3>
+      </section>
+    </div>
 
     <!-- Die Reiterzeile schaltet den UNTEREN Teil um: Monatsraster,
          Gewohnheiten oder Timer. Die Tagesliste darueber bleibt dabei stehen.
@@ -522,7 +538,7 @@
                 <span class="ein-kopf-pfeil">▾</span>
               </summary>
               <div class="ein-inhalt">
-                <p class="ein-hinweis">Was der Streifen neben dem Kalender als Reiter zeigt. Gilt für dieses Gerät.</p>
+                <p class="ein-hinweis">Was neben dem Kalender zu sehen ist: die Gewohnheiten (am PC als Abschnitt unter dem Tag, sonst als Reiter) und der Timer (Reiter). Gilt für dieses Gerät.</p>
                 <div class="gw-ein-zeile">
                   <span class="ein-kopf-text">Gewohnheiten</span>
                   <label class="switch">

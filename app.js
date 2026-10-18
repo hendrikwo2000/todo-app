@@ -853,7 +853,10 @@ const streifenAn = {
 // fokus.js fragt hier nach, welche Reiter es gibt; kalender.js, ob es die
 // Reiterzeile ueberhaupt zeichnen soll.
 window.fokusBereiche = () => ({ ...streifenAn });
-window.fokusImStreifen = () => streifenAn.gewohnheiten || streifenAn.timer;
+// Am PC (Heute-Spalte da) gibt es die Gewohnheiten nicht als Reiter, sondern als
+// Abschnitt unter dem Tag - die Reiterzeile braucht dort nur der Timer.
+window.fokusImStreifen = () => streifenAn.timer
+  || (streifenAn.gewohnheiten && !window.kalenderDreispaltig?.());
 
 function zeigeStreifenSchalter() {
   streifenGewohnheitenSwitch.checked = streifenAn.gewohnheiten;

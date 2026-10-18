@@ -2205,6 +2205,37 @@ html:not(.breit) #kalZu { display: none; }
   flex-direction: column;
   gap: 5px;
 }
+/* Die Heute-Spalte (#kalHeute) hat seit 18.10.2026 zwei Teile: den Tag
+   (#kalTagesliste, das, was die Liste bis dahin allein war) und ganz unten die
+   Gewohnheiten (#fokHeute, nur ab 1380 px). margin-top: auto schiebt sie an den
+   Fuss der Spalte, wenn der Tag kurz ist; ist er lang, folgt sie ihm und die
+   Spalte blaettert. */
+.kal-tagblock { display: flex; flex-direction: column; gap: 5px; flex: none; }
+.fok-heute {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: none;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.fok-heute[hidden] { display: none; }
+/* Die Ueberschrift wie die Zwischenueberschriften des Tages (.kal-gruppe), nur
+   ohne deren Linie und Abstand: die Linie steht schon am Abschnitt selbst. */
+.fok-heute .kal-gruppe { margin: 0; padding-top: 0; border-top: 0; }
+.fok-heute .kal-heute-chip { text-transform: none; letter-spacing: 0; }
+.fok-heute-bilanz {
+  font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none;
+  color: var(--muted);
+}
+/* Die Liste blaettert hier nicht in sich - die Spalte blaettert. Die Karten
+   sind in der schmalen Spalte so eng wie am Handy: das Mengenfeld rutscht
+   unter den Namen (dieselbe Regel wie bei max-width: 420px weiter unten). */
+.fok-heute .fok-inhalt { flex: none; overflow: visible; padding-bottom: 0; }
+.fok-heute .fok-gew.mit-menge { flex-wrap: wrap; }
+.fok-heute .fok-gew.mit-menge .fok-gew-haupt { flex-basis: 100%; }
+.fok-heute .fok-menge { margin-left: auto; }
 
 /* ---------- Drei Spalten: Board | Heute | Kalender ---------- */
 /* Seit 09.10.2026, sobald neben Heute und dem Kalender noch zwei

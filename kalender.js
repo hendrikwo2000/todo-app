@@ -42,6 +42,9 @@ const kalMonatName   = document.getElementById("kalMonatName");
 const kalWochentage  = document.getElementById("kalWochentage");
 const kalRaster      = document.getElementById("kalRaster");
 const kalTagesliste  = document.getElementById("kalTagesliste");
+// Die Heute-Spalte als Ganzes: der Tag (kalTagesliste) und darunter die
+// Gewohnheiten (fokus.js). Erst ab 1380 px sichtbar.
+const kalHeute       = document.getElementById("kalHeute");
 const kalFilter      = document.getElementById("kalFilter");
 const kalFilterKnopf = document.getElementById("kalFilterKnopf");
 const kalOben        = document.getElementById("kalOben");
@@ -3213,12 +3216,16 @@ function zeichneUnten() {
   // Die Tagesliste im Panel gibt es nur als eigene Heute-Spalte (ab 1380 px).
   // Darunter steht der Tag ueber den ToDos (zeichneTagOben) bzw. am Handy
   // in der Tages-Karte.
-  kalTagesliste.hidden = !istDrei();
+  kalHeute.hidden = !istDrei();
 
   // Die Reiterzeile ueberlebt den Wechsel zum Kalender - sie ist der Weg
   // zurueck. Ohne Fokus (kein Zugang oder abgeschaltet) waere sie ein Reiter
   // allein.
   window.fokusReiterzeile?.(mitFokus);
+  // Die Gewohnheiten stehen am PC (ab 1380 px) als Abschnitt unter dem Tag in der
+  // Heute-Spalte, solange der Streifen offen ist - unabhaengig davon, ob unten
+  // Raster oder Timer steht. Ob es sie gibt (Zugang, Schalter), prueft fokus.js.
+  window.fokusHeute?.(istDrei() && kalOffen);
   // Steht der Kalender vorn, markiert ihn niemand sonst: setzeReiter() in
   // fokus.js laeuft nur, wenn dort etwas gezeichnet wird.
   if (!fokus) {
@@ -3279,6 +3286,9 @@ function oeffneKalender(modus) {
 // Fuer fokus.js: ob der Fokus-Teil gerade ueberhaupt zu sehen ist. Der
 // Sekundentakt des Timers zeichnet sonst ins Verborgene.
 window.kalenderIstOffen = () => kalOffen;
+// Fuer fokus.js: steht die Heute-Spalte da (ab 1380 px)? Dann wohnen die
+// Gewohnheiten dort und nicht als Reiter im Streifen.
+window.kalenderDreispaltig = istDrei;
 window.kalenderZeigtFokus = () => kalOffen && kalUntenModus === "fokus";
 
 function schliesseKalender() {

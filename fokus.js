@@ -19,6 +19,14 @@
    nur. Geschrieben wird ueber gewSchreibeTag() in gewohnheiten-daten.js,
    denselben Weg, den das Fenster benutzt - samt Offline-Warteschlange.
 
+   AM PC ANDERS (seit 18.10.2026, Hendriks Wunsch): ab 1380 px, wo die
+   Heute-Spalte neben dem Kalender steht, sind die Gewohnheiten dort ein Abschnitt
+   GANZ UNTEN unter dem Tag (#fokHeute) und nicht mehr ein Reiter - die Reiterzeile
+   hat dann nur Kalender und Timer. Am Handy und Tablet (wo die Tagesansicht ueber
+   den ToDos steht und die Gewohnheiten dort den Platz der ToDos nehmen wuerden)
+   bleibt alles beim Reiter. Technisch zieht #fokInhalt zwischen beiden Orten um
+   (fokPlatziere); gezeichnet wird weiter mit zeichneFokus().
+
    WO ES STEHT
    Kein eigenes Panel: Fokus fuellt #kalUnten und tritt damit an die Stelle des
    MONATSRASTERS - unten wechseln sich Raster und Fokus ab. Ganz oben steht
@@ -54,6 +62,9 @@ const fokZeitText    = document.getElementById("fokZeit");
 const fokGeplantText = document.getElementById("fokGeplant");
 const fokKnopfReihe  = document.getElementById("fokKnoepfe");
 const fokRing        = document.getElementById("fokRingFuellung");
+// Der Abschnitt in der Heute-Spalte (nur ab 1380 px) und seine Bilanz-Zeile.
+const fokHeuteBox    = document.getElementById("fokHeute");
+const fokHeuteBilanz = document.getElementById("fokHeuteBilanz");
 
 // Umfang des Fortschrittsrings (r=52 im SVG). Ueber stroke-dasharray/-offset
 // wird daraus der gefuellte Anteil.
@@ -62,6 +73,10 @@ const RING_UMFANG = 2 * Math.PI * 52;
 // Ob der Fokus-Teil gerade sichtbar ist. Der gemerkte Zustand liegt nicht mehr
 // hier, sondern in kalAnsicht (kalender.js) - es ist eine Ansicht von dreien.
 let fokSichtbar = false;
+// Ob die Gewohnheiten gerade als Abschnitt in der Heute-Spalte stehen (PC, Streifen
+// offen, Gewohnheiten eingeschaltet). Unabhaengig von fokSichtbar: der Abschnitt
+// steht auch da, wenn unten das Monatsraster vorn ist.
+let fokHeuteAn = false;
 // Ob die App angemeldet und geladen ist. Bis Oktober 2026 hing hier der
 // Fokus-Zugang des Kontos; seit der Fusion bekommt jedes Konto Gewohnheiten
 // und Timer. Gesetzt beim ersten render() (window.fokusNeuZeichnen).
@@ -87,10 +102,39 @@ function fokErlaubt(reiter) {
   return reiter === "timer" ? b.timer !== false : b.gewohnheiten !== false;
 }
 
+// Wohnen die Gewohnheiten gerade in der Heute-Spalte statt in einem Reiter? Das
+// entscheidet allein die Breite (istDrei in kalender.js).
+function fokAmTag() {
+  return !!window.kalenderDreispaltig?.();
+}
+
+// Gibt es den REITER? Wie fokErlaubt, nur dass es die Gewohnheiten am PC nicht
+// als Reiter gibt - dort stehen sie unter dem Tag.
+function fokTabErlaubt(reiter) {
+  if (reiter === "gewohnheiten" && fokAmTag()) return false;
+  return fokErlaubt(reiter);
+}
+
 // Der gewuenschte Reiter, wenn es ihn gibt - sonst der andere.
 function fokPassenderReiter(wunsch) {
-  if (fokErlaubt(wunsch)) return wunsch;
+  if (fokTabErlaubt(wunsch)) return wunsch;
   return wunsch === "timer" ? "gewohnheiten" : "timer";
+}
+
+// Die Gewohnheiten-Liste (#fokInhalt) an ihren Platz bringen: am PC in die
+// Heute-Spalte, sonst zurueck unter den Reiter im Streifen. Dasselbe Element
+// zieht um, damit alle Verweise darauf (und das Zeichnen) unveraendert bleiben.
+function fokPlatziere() {
+  const amTag = fokAmTag();
+  if (amTag && fokInhalt.parentElement !== fokHeuteBox) fokHeuteBox.appendChild(fokInhalt);
+  else if (!amTag && fokInhalt.parentElement === fokHeuteBox) fokTimerBox.after(fokInhalt);
+  fokHeuteBox.hidden = !(amTag && fokHeuteAn);
+}
+
+// Die Tagesbilanz ("2 von 5") steht im Reiter-Kopf und am PC am Abschnitt.
+function fokSetzeBilanz(text) {
+  fokBilanzText.textContent = text;
+  fokHeuteBilanz.textContent = text;
 }
 
 // ---------- Zugriff auf die API ----------
@@ -271,10 +315,11 @@ function setzeReiter(welcher, vomNutzer) {
   }
   const timerVorn = fokReiter === "timer";
   fokTimerBox.hidden = !fokSichtbar || !timerVorn || !!fokFehler;
-  fokInhalt.hidden = !fokSichtbar || timerVorn;
+  // Am PC steht die Liste in der Heute-Spalte und gehoert keinem Reiter.
+  fokInhalt.hidden = fokAmTag() ? !fokHeuteAn : (!fokSichtbar || timerVorn);
   // Die Tagesbilanz gehoert zu den Gewohnheiten - im Timer stuende sie ohne
-  // Bezug neben der Uhr.
-  fokBilanzText.hidden = timerVorn;
+  // Bezug neben der Uhr, und am PC steht sie am Abschnitt statt im Reiter-Kopf.
+  fokBilanzText.hidden = timerVorn || fokAmTag();
   if (timerVorn && fokSichtbar) zeichneTimer();
 }
 
@@ -427,7 +472,8 @@ function zeichneKarte(g) {
 
 function zeichneFokus() {
   aktualisiereSegmente();
-  if (!fokSichtbar) return;
+  if (!fokSichtbar && !fokHeuteAn) return;
+  fokPlatziere();
 
   fokInhalt.replaceChildren();
 
@@ -442,7 +488,7 @@ function zeichneFokus() {
     p.textContent = fokFehler;
     const nochmal = fokKnopf("Nochmal versuchen", "klein", ladeFokus);
     fokInhalt.append(p, nochmal);
-    fokBilanzText.textContent = "";
+    fokSetzeBilanz("");
     return;
   }
 
@@ -461,9 +507,9 @@ function zeichneFokus() {
   // nicht mit - dieselbe Regel wie in heute.js.
   const zaehlend = fokListe.gewohnheiten.filter(g => g.zustand !== "ruht");
   const erledigt = zaehlend.filter(g => g.zustand === "erledigt").length;
-  fokBilanzText.textContent = zaehlend.length
+  fokSetzeBilanz(zaehlend.length
     ? (erledigt === zaehlend.length ? "alles erledigt" : `${erledigt} von ${zaehlend.length}`)
-    : "";
+    : "");
 
   // Noch gar keine Gewohnheit - der Fall fuer jedes neue Konto. Statt einer
   // leeren Flaeche gleich der Weg zur ersten.
@@ -643,7 +689,28 @@ window.fokusZeigen = function () {
 window.fokusVerstecken = function () {
   fokSichtbar = false;
   fokTimerBox.hidden = true;
-  fokInhalt.hidden = true;
+  // Am PC bleibt die Liste in der Heute-Spalte stehen, auch wenn unten das
+  // Monatsraster vorn ist.
+  fokInhalt.hidden = fokAmTag() ? !fokHeuteAn : true;
+};
+
+/**
+ * Von kalender.js (zeichneUnten) gerufen: `an` heisst, die Heute-Spalte steht da
+ * (ab 1380 px, Streifen offen). Ob die Gewohnheiten darin erscheinen, haengt
+ * zusaetzlich an der Anmeldung und am Schalter in den Einstellungen. Beim
+ * Einschalten wird die Liste frisch geholt - wie beim Zeigen als Reiter.
+ */
+window.fokusHeute = function (an) {
+  const neu = !!an && fokBereit && fokErlaubt("gewohnheiten");
+  const war = fokHeuteAn;
+  fokHeuteAn = neu;
+  fokPlatziere();
+  if (!neu) {
+    if (fokAmTag()) fokInhalt.hidden = true;
+    return;
+  }
+  zeichneFokus();
+  if (!war) ladeFokus();
 };
 
 /**
@@ -657,10 +724,10 @@ window.fokusReiterzeile = function (sichtbar) {
   fokKopf.hidden = !sichtbar;
   for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
     const welcher = seg.dataset.fokReiter;
-    if (welcher !== "kalender") seg.hidden = !fokErlaubt(welcher);
+    if (welcher !== "kalender") seg.hidden = !fokTabErlaubt(welcher);
   }
   // Ein gerade abgeschalteter Reiter darf nicht vorn stehen bleiben.
-  if (fokSichtbar && !fokErlaubt(fokReiter)) setzeReiter(fokReiter);
+  if (fokSichtbar && !fokTabErlaubt(fokReiter)) setzeReiter(fokReiter);
 };
 
 // Fuer kalender.js: ohne Anmeldung gibt es die Fokus-Reiter gar nicht.
@@ -725,7 +792,7 @@ document.getElementById("fokTimerMehr")
 // Einstellungen): die Liste frisch holen, solange sie zu sehen ist. Verborgen
 // genuegt es nicht - beim naechsten Zeigen laedt fokusZeigen() ohnehin neu.
 gewBeiAenderung(was => {
-  if (!fokBereit || !fokSichtbar) return;
+  if (!fokBereit || !(fokSichtbar || fokHeuteAn)) return;
   if (was === "einstellungen") ladeFokus();
   else if (was !== "timer") ladeListe();
 });

@@ -105,7 +105,9 @@ Gehören seit Oktober 2026 fest zur App, für jedes Konto. Der frühere
 Fokus-Tracker (fokus.it-wolf.org) ist hier aufgegangen — die Adresse leitet
 hierher weiter, deine Gewohnheiten und Sitzungen sind dieselben.
 
-**Im Kalender-Streifen** stehen neben **Kalender** zwei Reiter:
+**Im Kalender-Streifen** stehen neben **Kalender** zwei Reiter (am PC, ab 1380 px,
+nur der Timer: dort stehen die Gewohnheiten als Abschnitt **ganz unten in der
+Heute-Spalte**, unter dem Tag):
 
 - **Gewohnheiten:** die von heute zum Abhaken (Haken rechts, bei Mengen
   **− Zahl +**). Daneben die **Flamme** — wie viele Tage erledigt sind. Der

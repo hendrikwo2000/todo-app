@@ -2378,7 +2378,7 @@ der alten App (cron-job.org) bekommt seitdem 410 und kann weg.
 | Teil | Datei |
 |---|---|
 | Daten, Regel-Spiegel, Offline-Warteschlange, einziger Schreibweg fuer Tage (`gewSchreibeTag`) | `gewohnheiten-daten.js` |
-| Streifen: Reiter Gewohnheiten und Timer | `fokus.js` |
+| Streifen: Reiter Gewohnheiten und Timer; am PC die Gewohnheiten als Abschnitt in der Heute-Spalte | `fokus.js` |
 | Fenster "Gewohnheiten" (Verlauf, Statistik, Fokuszeit) und die Verwalten-Liste in den Einstellungen | `gewohnheiten.js` |
 | Dialoge anlegen/bearbeiten und Tag nachtragen, Einstellungsabschnitte | `gewohnheiten-dialoge.js` |
 | Endpunkte | `functions/api/gewohnheiten/*`, `functions/api/fokus/*`, `functions/api/export.js` |
@@ -2453,6 +2453,52 @@ rechnet Kalenderfarben mit den Spiegeln in `gewohnheiten-daten.js`
 (`gewStatusVon`, `gewStillerTagZaehlt`, ...). Aendert sich eine Regel in
 `_lib/tag.js` oder `heute.js`, muss sie dort mit.
 
+### Am PC stehen die Gewohnheiten unter dem Tag (seit 18.10.2026)
+
+**Ab 1380 px (`istDrei()`, Heute-Spalte da) sind die Gewohnheiten kein Reiter,
+sondern ein Abschnitt ganz unten in der Heute-Spalte** (`#fokHeute` in
+`#kalHeute`, unter `#kalTagesliste`; Überschrift „🔥 Gewohnheiten heute" mit
+Bilanz „2 von 5"). Hendriks Wunsch: „lieber unter den heutigen Tag, ganz unten,
+als Extra Abschnitt - das passt auf dem PC gut, auf dem Handy und Tablet eher
+nicht". Auf Nachfrage bestätigt: am PC **nur** der Abschnitt, der Reiter
+„Gewohnheiten" entfällt dort (die Reiterzeile hat dann Kalender und Timer);
+unter 1380 px (Tablet, Handy, kleine Laptops) bleibt alles wie es war - Reiter im
+Streifen, Tagesansicht über den ToDos ohne Gewohnheiten.
+
+- **Dasselbe Element zieht um.** `fokPlatziere()` in `fokus.js` hängt
+  `#fokInhalt` je nach Breite in die Heute-Spalte oder hinter den Timer in
+  `#kalUnten`; Zeichnen (`zeichneFokus`), Karten, Abhaken, Offline-Warteschlange
+  und „Verlauf & mehr ›" bleiben dieselben. Aufgerufen bei jedem Zeichnen und von
+  `window.fokusHeute(an)`, das `kalender.js` (`zeichneUnten`) bei jedem Durchgang
+  mit `istDrei() && kalOffen` ruft. Erst dort entscheidet `fokus.js`, ob es die
+  Gewohnheiten gibt (angemeldet, Schalter an).
+- **Zustand `fokHeuteAn` neben `fokSichtbar`:** `fokSichtbar` heißt „unten steht
+  Fokus", `fokHeuteAn` „der Abschnitt in der Spalte steht". Der Abschnitt steht
+  auch, wenn unten das Raster vorn ist. Deshalb zeichnet `zeichneFokus` bei beiden,
+  und `fokusVerstecken` versteckt die Liste am PC nicht.
+- **Reiter:** `fokTabErlaubt()` sagt, ob es einen Reiter gibt (Gewohnheiten am PC
+  nie); `fokPassenderReiter` und `fokusReiterzeile` nutzen sie. Ein gemerktes
+  „unten Fokus, Reiter Gewohnheiten" landet am PC beim Timer. Die Reiterzeile
+  steht am PC nur, wenn der Timer an ist: `window.fokusImStreifen` (app.js) zählt
+  die Gewohnheiten dort nicht mit (`window.kalenderDreispaltig`).
+- **Schalter „Kalender-Streifen → Gewohnheiten"** (Einstellungen, pro Gerät) gilt
+  für beide Orte: am PC schaltet er den Abschnitt, sonst den Reiter.
+- **Lage:** `margin-top: auto` schiebt den Abschnitt ans Ende der Spalte, wenn der
+  Tag kurz ist; ist er lang, folgt er ihm, und die Spalte blättert (`.kal-liste`
+  hat `overflow-y: auto`). Die Spalte ist 286 px breit, die Karten umbrechen das
+  Mengenfeld wie am Handy unter den Namen (`.fok-heute .fok-gew.mit-menge`).
+- **„heute" im Kopf, weil die Spalte einen anderen Tag zeigen kann** (der im
+  Kalender gewählte); die Gewohnheiten sind immer die von heute.
+- Die Heute-Spalte ist seitdem verschachtelt: `#kalHeute` (grauer Kasten, Klasse
+  `.kal-liste`, `[hidden]` bei < 1380 px) enthält `#kalTagesliste` (Klasse
+  `.kal-tagblock`; das Wischen zwischen den Tagen verschiebt nur ihn) und
+  `#fokHeute`.
+- Getestet am 18.10.2026 im Claude-Browser bei 1500 px (mit Haken, Timer-Reiter
+  und Rückweg, allen vier Schalterkombinationen, Kurzfenster mit Blättern),
+  1100 px (Reiter wie zuvor, Umzug beim Verkleinern/Vergrößern über die Grenze)
+  und 390 px. Das Aussehen am echten Bildschirm ist nur gemessen, nicht gesehen:
+  der Screenshot des Browser-Panes war bei 1500 px zu klein für Einzelheiten.
+
 ### Oben bleibt, unten wechselt
 
 Der rechte Streifen ist **ein** Panel (der Kalender), und er hat zwei Etagen:
@@ -2461,7 +2507,7 @@ Der rechte Streifen ist **ein** Panel (der Kalender), und er hat zwei Etagen:
 | --- | --- | --- | --- |
 | oben | Tagesliste (`#kalTagesliste`) | `kalender.js` | **immer** |
 | unten | Monatsraster (`#kalRaster` & Co.) | `kalender.js` | Reiter „Kalender" |
-| unten | Gewohnheiten (`#fokInhalt`) | `fokus.js` | Reiter „Gewohnheiten" |
+| unten | Gewohnheiten (`#fokInhalt`) | `fokus.js` | Reiter „Gewohnheiten" (unter 1380 px; am PC steht die Liste unter dem Tag, siehe oben) |
 | unten | Timer (`#fokTimer`) | `fokus.js` | Reiter „Timer" |
 
 Von oben nach unten im Markup: Ansicht-Zeile (Zahnrad, Pille, ✕) → Tagesliste
