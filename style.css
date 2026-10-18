@@ -3823,29 +3823,23 @@ html.kal-split .fok-ring { max-height: 190px; }
 }
 
 /* ---------- Einstellungen: Reiter "ToDo" und "Gewohnheiten" ---------- */
-/* Reiterzeile und Inhalt in EINER Karte: so sieht man, dass die Abschnitte
-   darunter zum gewaehlten Reiter gehoeren. Der gewaehlte Reiter hat eine
-   Unterstreichung in der Akzentfarbe; sie liegt ueber der Trennlinie der
-   Zeile (margin-bottom: -1px). */
-.ein-reiterbox {
-  margin-top: 6px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
-}
-.ein-reiter {
-  display: flex;
-  background: var(--col-bg);
-  border-bottom: 1px solid var(--line);
-}
+/* Karteikarten-Reiter: der gewaehlte Reiter geht nahtlos in den Inhalt darunter
+   ueber, die anderen stehen dunkler und abgesetzt daneben. So sieht man ohne
+   Erklaerung, dass die Abschnitte unter dem Reiter zu ihm gehoeren.
+   Die Naht: Reiter und Inhalt ziehen 1px ineinander (margin-bottom: -1px). Beim
+   gewaehlten Reiter deckt seine untere Kante in der Farbe des Dialogs die
+   Oberlinie des Inhalts ab, bei den anderen liegt ihre Linie genau auf ihr. */
+.ein-reiterbox { margin-top: 10px; }
+.ein-reiter { display: flex; gap: 4px; }
 .ein-reiter-seg {
   flex: 1;
   min-width: 0;
+  position: relative;
   margin-bottom: -1px;
-  padding: 11px 8px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
+  padding: 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px 10px 0 0;
+  background: var(--col-bg);
   font: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -3853,11 +3847,26 @@ html.kal-split .fok-ring { max-height: 190px; }
   cursor: pointer;
 }
 .ein-reiter-seg[aria-selected="true"] {
+  z-index: 1;
+  border-bottom-color: var(--row);
+  background: var(--row);
   color: var(--text);
-  border-bottom-color: var(--accent);
   cursor: default;
 }
-.ein-reiterinhalt { display: flex; flex-direction: column; gap: 6px; padding: 6px 14px 4px; }
+@media (hover: hover) {
+  .ein-reiter-seg[aria-selected="false"]:hover { color: var(--text); }
+}
+.ein-reiterinhalt {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 6px 14px 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+/* Die obere Ecke unter dem gewaehlten Reiter bleibt eckig: dort laeuft seine
+   Aussenlinie in die des Inhalts. Der erste Reiter sitzt links, der zweite
+   rechts. */
+#einReiterTodo { border-top-left-radius: 0; }
+#einReiterGewohnheiten { border-top-right-radius: 0; }
 /* Eigene display-Regel schlaegt das hidden-Attribut - siehe .ein-abschnitt[hidden]. */
 .ein-reiterinhalt[hidden] { display: none; }
 /* Die Trennlinie steht ZWISCHEN zwei sichtbaren Abschnitten, nicht direkt unter

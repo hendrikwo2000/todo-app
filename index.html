@@ -409,14 +409,14 @@
           <span class="ein-kopf-text">Verwaltung</span>
         </a>
 
-        <!-- Zwei Reiter fuer das, was nicht global ist. Reiterzeile und Inhalt
-             stehen zusammen in EINER Karte (.ein-reiterbox): als lose Zeile
-             ueber den Abschnitten las sich die Reiterzeile wie ein eigener
-             Bereich, und man sah nicht, dass die Abschnitte darunter zu ihr
-             gehoeren. Die Reihenfolge der Knoepfe ist die der Inhalte; welcher
-             offen ist, setzt zeigeEinReiter() in app.js (beim Oeffnen immer
-             "ToDo"). Eigene Klassen statt gw-reiter-*: gewohnheiten.js greift
-             sich .gw-reiter-seg im Fenster "Gewohnheiten". -->
+        <!-- Zwei Reiter fuer das, was nicht global ist, als Karteikarten: der
+             gewaehlte Reiter geht nahtlos in den Inhalt darunter ueber (siehe
+             style.css). Als lose Zeile oder mit blosser Unterstreichung las
+             man die Abschnitte darunter nicht als zum Reiter gehoerig. Die
+             Reihenfolge der Knoepfe ist die der Inhalte; welcher offen ist,
+             setzt zeigeEinReiter() in app.js (beim Oeffnen immer "ToDo").
+             Eigene Klassen statt gw-reiter-*: gewohnheiten.js greift sich
+             .gw-reiter-seg im Fenster "Gewohnheiten". -->
         <div class="ein-reiterbox">
           <div class="ein-reiter" role="tablist" aria-label="Einstellungen">
             <button type="button" class="ein-reiter-seg" id="einReiterKnopfTodo" role="tab" data-ein-reiter="todo" aria-selected="true" aria-controls="einReiterTodo">ToDo</button>

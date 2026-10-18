@@ -330,8 +330,8 @@ Ansichten nach ihrer ID ein- und ausblendet.
 Einstellungen als Zeilen — Darstellung, Zoom (nur Touch), Benachrichtigungen,
 Konto, Verwaltung (nur Admin). Darunter **zwei Reiter**, `ToDo` und
 `Gewohnheiten` (`.ein-reiter`, umgeschaltet von `zeigeEinReiter()` in
-`app.js`; beim Öffnen immer `ToDo`), zusammen mit ihrem Inhalt in **einer
-Karte** (`.ein-reiterbox`, Reiter mit Akzent-Unterstreichung):
+`app.js`; beim Öffnen immer `ToDo`) als **Karteikarten**: der gewählte Reiter
+geht nahtlos in den gerahmten Inhalt darunter über (`.ein-reiterbox`):
 - **ToDo**: Google Kalender, Meine Listen, Geteilt mit mir.
 - **Gewohnheiten**: Fokus-Timer, Kalender-Streifen, Gewohnheiten.
 
@@ -342,10 +342,14 @@ ToDo-Reiter) war nicht gemeint und wurde verworfen. Die Reiterzeile hat eigene
 Klassen (`.ein-reiter-seg`), weil `gewohnheiten.js` sich `.gw-reiter-seg` im
 Fenster „Gewohnheiten" greift.
 
-**Die Karte gibt es, weil eine lose Reiterzeile nicht als Teil des Inhalts
-darunter gelesen wurde** (Hendrik nach dem ersten Stand am 18.10.2026: „nicht
-direkt ersichtlich, dass die Reiter zu den Einstellungen darunter gehören").
-Reiterzeile und Abschnitte stehen deshalb in einem gemeinsamen Rahmen.
+**Karteikarten statt loser Reiterzeile** (Hendrik nach dem ersten Stand am
+18.10.2026: „nicht direkt ersichtlich, dass die Reiter zu den Einstellungen
+darunter gehören"). Erster Versuch war eine Karte mit Akzent-Unterstreichung
+am Reiter — „der blaue Balken" gefiel ihm nicht; sein Vorbild war ein Spiel-Menü
+mit abgesetzten Reitern, deren gewählter in den Inhalt übergeht. Die Naht
+entsteht über `margin-bottom: -1px` an den Reitern; unter dem gewählten Reiter
+ist die obere Ecke des Inhalts eckig (`#einReiterTodo` links,
+`#einReiterGewohnheiten` rechts).
 
 **Ein Akkordeon über alles, beim Öffnen alles zu.** Konto (oben) und die
 Abschnitte beider Reiter bilden *ein* Akkordeon: immer nur einer offen
