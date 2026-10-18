@@ -1135,11 +1135,18 @@ input[type="date"]:focus {
 .lock-box .lock-link:hover { color: var(--accent); }
 .lock-box .lock-link[hidden] { display: none; }
 
-/* Mehrere Konten im Browser (konto.js): schon angemeldete Konten auf der
-   Anmeldemaske. Mit .lock-box davor aus demselben Grund wie bei .lock-link. */
+/* Kontoauswahl auf der Anmeldemaske (Mehrkonten, konto.js). Mit .lock-box
+   davor aus demselben Grund wie bei .lock-link. */
 .lock-konten { display: flex; flex-direction: column; gap: 6px; }
 .lock-konten[hidden] { display: none; }
-.lock-konten-titel { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+.lock-konto-name { display: flex; align-items: center; gap: 6px; }
+.lock-box .lock-konto-neu {
+  /* --muted statt --line: gestrichelt auf transparentem Grund war --line im
+     Dunkelmodus kaum noch zu sehen. */
+  border: 1px dashed var(--muted);
+  background: transparent;
+  color: var(--text);
+}
 .lock-box .lock-konto {
   display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
   border: 1px solid var(--line);
@@ -1149,7 +1156,8 @@ input[type="date"]:focus {
 }
 .lock-konto-mail { font-size: 12px; font-weight: 400; color: var(--muted); word-break: break-all; }
 @media (hover: hover) {
-  .lock-box .lock-konto:hover { border-color: var(--accent); filter: none; }
+  .lock-box .lock-konto:hover,
+  .lock-box .lock-konto-neu:hover { border-color: var(--accent); filter: none; }
 }
 
 /* Rückgängig-Hinweis */
@@ -1523,10 +1531,6 @@ input[type="date"]:focus {
 .ein-hinweis { font-size: 12px; color: var(--muted); margin: 0; }
 .ein-konto-name { font-size: 15px; font-weight: 600; margin: 0; }
 .ein-konto-mail { font-size: 12.5px; color: var(--muted); margin: 0; word-break: break-all; }
-/* Mehrere Konten im Browser - eigene [hidden]-Zeile, weil display:flex das
-   eingebaute hidden des Browsers schlaegt. */
-.ein-konten { display: flex; flex-direction: column; gap: 8px; }
-.ein-konten[hidden] { display: none; }
 /* Abmelden (harmlos, haeufig) steht jetzt fuer sich; die zwei
    unwiderruflichen Aktionen stehen sichtbar abgesetzt in einer eigenen,
    rot getoenten Box statt gleichrangig danebenzustehen. */
@@ -1584,14 +1588,12 @@ button.lz-name {
   font-family: inherit; color: inherit; text-align: left; cursor: pointer;
 }
 button.lz-name:hover { color: var(--accent); }
-.lz-name.aktiv::after,
-.lz-name.dieser-tab::after {
+.lz-name.aktiv::after {
   content: "aktiv"; margin-left: 8px;
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
   color: var(--accent); background: var(--accent-soft);
   padding: 1px 6px; border-radius: 6px;
 }
-.lz-name.dieser-tab::after { content: "dieser Tab"; }
 .lz-von { font-size: 12px; color: var(--muted); word-break: break-all; }
 /* flex: none - die Gruppe ist so breit wie ihre Knoepfe und wird durch das
    flex-grow des Namens an den rechten Rand geschoben. */

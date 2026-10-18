@@ -442,9 +442,10 @@ function turnstileToken() {
   return window.turnstile.getResponse(turnstileId) || "";
 }
 
-// `zusaetzlich`: ueber "+ Weiteres Konto" geoeffnet - die bisherigen Konten
-// bleiben angemeldet, und "Zurueck" fuehrt ohne Anmeldung wieder raus.
-function login({ zusaetzlich = false } = {}) {
+// `wechseln`: ueber "Konto wechseln" in den Einstellungen geoeffnet - die
+// Maske beginnt mit der Kontoauswahl, und "Zurueck" fuehrt ohne Wechsel
+// wieder raus.
+function login({ wechseln = false } = {}) {
   return new Promise(resolve => {
     const overlay  = document.getElementById("lock");
     const form     = document.getElementById("lockForm");
@@ -456,9 +457,23 @@ function login({ zusaetzlich = false } = {}) {
     const erfolg   = document.getElementById("lockErfolg");
     const button   = form.querySelector("button[type=submit]");
     const zurueck  = document.getElementById("lockZurueck");
+    const titel    = document.getElementById("lockTitle");
+    const kontenBox   = document.getElementById("lockKonten");
+    const kontenListe = document.getElementById("lockKontenListe");
     let schritt = "email";
     let aktuelleEmail = "";
     let wartetAufLink = null;
+    // Konten dieses Browsers (Mehrkonten, konto.js) - nur gefuellt, wenn ein
+    // Admin darunter ist. Dann beginnt die Maske mit der Auswahl, und ein
+    // neues Konto kommt dazu, statt die anderen abzumelden.
+    let konten = [];
+    let mitAuswahl = false;
+
+    const schliessen = () => {
+      hoerAufZuWarten();
+      overlay.classList.add("hidden");
+      resolve();
+    };
 
     const setzeMeldung = (text, gut) => {
       msg.textContent = text;
@@ -513,12 +528,68 @@ function login({ zusaetzlich = false } = {}) {
       }, 3000);
     };
 
+    // Kontoauswahl: alle Konten des Browsers zum Anklicken, darunter
+    // "+ Konto hinzufuegen". Kommt ueber "Konto wechseln" - oder von selbst,
+    // wenn das Konto dieses Tabs woanders abgemeldet wurde und noch andere
+    // da sind. Das Konto, das der Tab gerade zeigt, ist markiert; ein Klick
+    // darauf ist dasselbe wie "Zurueck".
+    const zeigeAuswahl = () => {
+      schritt = "auswahl";
+      hoerAufZuWarten();
+      erfolg.hidden = true;
+      form.hidden = false;
+      titel.textContent = wechseln ? "Konto wechseln" : "ToDo-Liste";
+      document.getElementById("lockHint").textContent = "Wähle ein Konto oder füge eins hinzu.";
+      kontenListe.innerHTML = "";
+      for (const k of konten) {
+        const knopf = document.createElement("button");
+        knopf.type = "button";
+        knopf.className = "lock-konto";
+        const n = document.createElement("span");
+        n.className = "lock-konto-name";
+        n.textContent = k.name || k.email;
+        if (k.aktiv) {
+          const pille = document.createElement("span");
+          pille.className = "pille";
+          pille.textContent = "aktuell";
+          n.appendChild(pille);
+        }
+        const m = document.createElement("span");
+        m.className = "lock-konto-mail";
+        m.textContent = k.email;
+        knopf.append(n, m);
+        knopf.addEventListener("click", () => {
+          if (!k.aktiv) wechsleKonto(k.id, konten.length);
+          else if (wechseln) schliessen();
+          else location.reload();
+        });
+        kontenListe.appendChild(knopf);
+      }
+      kontenBox.hidden = false;
+      name.hidden = true;
+      email.hidden = true;
+      code.hidden = true;
+      button.hidden = true;
+      zeigeTurnstile(false);
+      umschalt.hidden = true;
+      zurueck.hidden = !wechseln;
+      zurueck.onclick = schliessen;
+      setzeMeldung("");
+      overlay.classList.remove("hidden");
+    };
+
     const zeigeEmailSchritt = () => {
       schritt = "email";
       hoerAufZuWarten();
       erfolg.hidden = true;
       form.hidden = false;
-      document.getElementById("lockHint").textContent = zusaetzlich
+      kontenBox.hidden = true;
+      button.hidden = false;
+      titel.textContent = wechseln ? "Konto wechseln" : "ToDo-Liste";
+      // Mit Kontoauswahl kommt das neue Konto dazu, statt die anderen
+      // abzumelden - das soll man hier lesen koennen.
+      const dazu = mitAuswahl || wechseln;
+      document.getElementById("lockHint").textContent = dazu
         ? "Weiteres Konto anmelden – die anderen bleiben angemeldet."
         : "Mit deiner E-Mail-Adresse anmelden.";
       name.hidden = true;
@@ -528,8 +599,12 @@ function login({ zusaetzlich = false } = {}) {
       button.textContent = "Anmeldelink anfordern";
       // Wer ein weiteres Konto anmeldet, hat schon Zugang - die Warteliste
       // waere hier nur ein Abzweig ins Leere.
-      umschalt.hidden = zusaetzlich;
+      umschalt.hidden = dazu;
       umschalt.textContent = "Noch keinen Zugang? Eintragen";
+      // Zurueck fuehrt zur Auswahl, wenn es eine gibt; sonst (Wechseln ohne
+      // geladene Liste) ganz raus.
+      zurueck.hidden = !dazu;
+      zurueck.onclick = mitAuswahl ? zeigeAuswahl : schliessen;
       setzeMeldung("");
       overlay.classList.remove("hidden");
       email.focus();
@@ -549,7 +624,8 @@ function login({ zusaetzlich = false } = {}) {
       name.hidden = false;
       email.hidden = false;
       code.hidden = true;
-      document.getElementById("lockKonten").hidden = true;
+      kontenBox.hidden = true;
+      button.hidden = false;
       button.textContent = "Eintragen";
       zeigeTurnstile(true);
       umschalt.hidden = false;
@@ -567,7 +643,7 @@ function login({ zusaetzlich = false } = {}) {
       document.getElementById("lockHint").textContent =
         `Mail an ${aktuelleEmail} geschickt — kann eine halbe Minute dauern. ` +
         `Klick dort auf „Jetzt anmelden“, dann geht es hier von selbst weiter.`;
-      document.getElementById("lockKonten").hidden = true;
+      kontenBox.hidden = true;
       warteAufLink();
       name.hidden = true;
       email.hidden = true;
@@ -619,7 +695,10 @@ function login({ zusaetzlich = false } = {}) {
             // Unbekannte Adresse: direkt in den Wartelisten-Modus wechseln,
             // statt es dem Nutzer als Sackgasse zu praesentieren. Die Adresse
             // bleibt stehen, es fehlt nur noch der Name.
-            if (res.status === 404) {
+            if (res.status === 404 && (mitAuswahl || wechseln)) {
+              setzeMeldung(text);
+              email.focus();
+            } else if (res.status === 404) {
               zeigeWartelisteSchritt();
               setzeMeldung(text + " Trag dich ein, dann schalte ich dich frei.");
             } else {
@@ -705,31 +784,36 @@ function login({ zusaetzlich = false } = {}) {
       }
     };
 
-    zurueck.hidden = !zusaetzlich;
-    zurueck.onclick = () => {
-      hoerAufZuWarten();
-      overlay.classList.add("hidden");
-      resolve();
-    };
-    if (zusaetzlich) email.value = "";
+    if (wechseln) email.value = "";
+    // onclick statt addEventListener: login() laeuft oefter, die Knoepfe
+    // sollen trotzdem nur einen Handler haben.
+    document.getElementById("lockKontoNeu").onclick = zeigeEmailSchritt;
 
-    zeigeEmailSchritt();
-    zeigeAngemeldeteKonten();
+    (async () => {
+      // Erst nachsehen, welche Konten schon da sind - davon haengt ab, ob die
+      // Maske mit der Auswahl oder mit dem Adressfeld beginnt. Ohne Sitzung
+      // im Browser antwortet der Endpunkt sofort, ohne Datenbank.
+      const geladen = await ladeBrowserKonten();
+      konten = geladen.mehrkonten ? geladen.konten : [];
+      mitAuswahl = konten.length > 0;
+      if (mitAuswahl) zeigeAuswahl();
+      else zeigeEmailSchritt();
 
-    // /api/auth/link leitet bei einem abgelaufenen oder schon benutzten Link
-    // hierher zurueck. Ohne Hinweis stuende man wieder vor der Maske und
-    // wuesste nicht, warum der Klick nichts gebracht hat.
-    const grund = new URLSearchParams(location.search).get("login");
-    if (grund) {
-      setzeMeldung(grund === "abgelaufen"
-        ? "Der Link ist abgelaufen oder wurde schon benutzt. Fordere einen neuen an."
-        : grund === "zuviele"
-          ? "In diesem Browser sind schon zu viele Konten angemeldet – melde erst eins ab."
-          : "Die Anmeldung über den Link hat nicht geklappt.");
-      // Aus der Adresszeile nehmen, damit ein Neuladen den Hinweis nicht
-      // wiederholt.
-      history.replaceState(null, "", location.pathname);
-    }
+      // /api/auth/link leitet bei einem abgelaufenen oder schon benutzten Link
+      // hierher zurueck. Ohne Hinweis stuende man wieder vor der Maske und
+      // wuesste nicht, warum der Klick nichts gebracht hat.
+      const grund = new URLSearchParams(location.search).get("login");
+      if (grund) {
+        setzeMeldung(grund === "abgelaufen"
+          ? "Der Link ist abgelaufen oder wurde schon benutzt. Fordere einen neuen an."
+          : grund === "zuviele"
+            ? "In diesem Browser sind schon zu viele Konten angemeldet – melde erst eins ab."
+            : "Die Anmeldung über den Link hat nicht geklappt.");
+        // Aus der Adresszeile nehmen, damit ein Neuladen den Hinweis nicht
+        // wiederholt.
+        history.replaceState(null, "", location.pathname);
+      }
+    })();
   });
 }
 
@@ -780,79 +864,21 @@ async function ladeBrowserKonten() {
   }
 }
 
-// Eine Zeile je Konto, im Stil der Listen-Zeilen. Das Konto dieses Tabs ist
-// markiert und nicht anklickbar - es ist ja schon da.
-function baueKontoZeile(k, anzahl) {
-  const row = document.createElement("div");
-  row.className = "listen-zeile";
-  const kopf = document.createElement("div");
-  kopf.className = "lz-kopf";
-  const name = document.createElement(k.aktiv ? "span" : "button");
-  name.className = "lz-name" + (k.aktiv ? " dieser-tab" : "");
-  name.textContent = k.name || k.email;
-  kopf.appendChild(name);
-  const mail = document.createElement("span");
-  mail.className = "lz-von";
-  mail.textContent = k.email;
-  kopf.appendChild(mail);
-  row.appendChild(kopf);
-  if (!k.aktiv) {
-    const wechsel = () => wechsleKonto(k.id, anzahl);
-    name.type = "button";
-    name.title = `Zu ${k.name || k.email} wechseln`;
-    name.addEventListener("click", wechsel);
-    row.classList.add("waehlbar");
-    row.addEventListener("click", e => { if (!e.target.closest("button")) wechsel(); });
-  }
-  return row;
-}
-
-// Einstellungen -> Konto: Liste und "+ Weiteres Konto", nur wenn ein Admin
-// im Browser angemeldet ist (dieselbe Bedingung prueft der Server beim
-// Anmelden). Die Liste erst ab zwei Konten - eins steht ja schon darueber.
+// Einstellungen -> Konto: drei Wege - Konto wechseln, Abmelden, Konto
+// loeschen. "Konto wechseln" nur, wenn ein Admin im Browser angemeldet ist
+// (dieselbe Bedingung prueft der Server beim Anmelden); die Auswahl selbst
+// steckt in der Anmeldemaske (login({ wechseln: true })). Abmelden trifft mit
+// mehreren Konten nur das dieses Tabs - das sagt die Rueckfrage.
 async function zeigeKontenInEinstellungen() {
-  const box = document.getElementById("kontoMehrere");
-  const liste = document.getElementById("kontoListe");
-  const abmelden = document.getElementById("kontoAbmelden");
+  const wechselKnopf = document.getElementById("kontoWechseln");
+  // Sofort nach der eigenen Rolle, damit der Knopf nicht erst nachrutscht;
+  // die Liste korrigiert gleich danach (z. B. Testkonto-Tab neben Admin).
+  wechselKnopf.hidden = !istAdmin;
   const { konten, mehrkonten } = await ladeBrowserKonten();
-  box.hidden = !mehrkonten;
-  liste.innerHTML = "";
-  const mehrere = mehrkonten && konten.length > 1;
-  document.getElementById("kontoListeBox").hidden = !mehrere;
-  if (mehrere) for (const k of konten) liste.appendChild(baueKontoZeile(k, konten.length));
-  abmelden.textContent = mehrere ? "Dieses Konto abmelden" : "Abmelden";
-  document.getElementById("kontoAbmeldenText").textContent = mehrere
+  wechselKnopf.hidden = !mehrkonten;
+  document.getElementById("kontoAbmeldenText").textContent = konten.length > 1
     ? "Nur dieses Konto – die anderen in diesem Browser bleiben angemeldet."
     : "Du bekommst beim nächsten Mal wieder einen Anmeldelink per Mail.";
-}
-
-// Anmeldemaske: "Schon angemeldet" ueber dem Adressfeld - beim Hinzufuegen
-// eines Kontos, oder wenn das Konto dieses Tabs inzwischen woanders
-// abgemeldet wurde. Das Konto, das der Tab gerade zeigt, fehlt darin: dahin
-// fuehrt "Zurueck".
-async function zeigeAngemeldeteKonten() {
-  const box = document.getElementById("lockKonten");
-  const liste = document.getElementById("lockKontenListe");
-  box.hidden = true;
-  const { konten, mehrkonten } = await ladeBrowserKonten();
-  const andere = konten.filter(k => !k.aktiv);
-  if (!mehrkonten || !andere.length) return;
-  liste.innerHTML = "";
-  for (const k of andere) {
-    const knopf = document.createElement("button");
-    knopf.type = "button";
-    knopf.className = "lock-konto";
-    const n = document.createElement("span");
-    n.className = "lock-konto-name";
-    n.textContent = k.name || k.email;
-    const m = document.createElement("span");
-    m.className = "lock-konto-mail";
-    m.textContent = k.email;
-    knopf.append(n, m);
-    knopf.addEventListener("click", () => wechsleKonto(k.id, konten.length));
-    liste.appendChild(knopf);
-  }
-  box.hidden = false;
 }
 
 // Tab-Titel mit Kontoname, sobald mehrere Konten im Spiel sind - der Name
@@ -3762,9 +3788,9 @@ document.getElementById("neueListe").addEventListener("click", neueListeAnlegen)
 document.getElementById("kontoAbmelden")
   .addEventListener("click", () => zeigeEinAnsicht("abmelden"));
 document.getElementById("kontoAbmeldenJa").addEventListener("click", logout);
-document.getElementById("kontoHinzufuegen").addEventListener("click", () => {
+document.getElementById("kontoWechseln").addEventListener("click", () => {
   einstellungenPopup.hidden = true;
-  login({ zusaetzlich: true });
+  login({ wechseln: true });
 });
 document.getElementById("kontoAbmeldenZurueck")
   .addEventListener("click", () => zeigeEinAnsicht("haupt"));

@@ -154,12 +154,16 @@ anderen ab. **Nur freigeschaltet, wenn im Browser ein Admin angemeldet ist** —
 normale Nutzer sehen nichts davon und melden sich wie immer um (die neue
 Sitzung ersetzt die alte).
 
-Bedienung: Einstellungen → Konto → „+ Weiteres Konto“ öffnet die
-Anmeldemaske, ohne abzumelden. Danach steht dort die Liste der angemeldeten
-Konten; ein Klick wechselt **diesen** Tab. Ein neuer Tab startet mit dem
-zuletzt gewählten Konto. Die Anmeldemaske zeigt dieselben Konten unter
-„Schon angemeldet“, wenn sie über „+ Weiteres Konto“ aufgeht oder das Konto
-des Tabs woanders abgemeldet wurde. Höchstens `MAX_KONTEN` = 5.
+Bedienung: Im Konto-Abschnitt der Einstellungen gibt es genau drei Wege —
+**Konto wechseln** (nur mit Admin im Browser), **Abmelden**, **Konto
+löschen**. Die Kontoliste steht bewusst NICHT in den Einstellungen (Hendrik
+fand das irreführend), sondern in der Anmeldemaske: „Konto wechseln“ öffnet
+sie mit der Kontoauswahl wie bei Google — alle Konten des Browsers (das des
+Tabs als „aktuell“ markiert), darunter „+ Konto hinzufügen“, erst dessen
+Klick zeigt das Adressfeld. Ein Klick auf ein Konto wechselt **diesen** Tab,
+ein neuer Tab startet mit dem zuletzt gewählten. Dieselbe Auswahl (ohne
+„Zurück“) kommt von selbst, wenn das Konto des Tabs woanders abgemeldet
+wurde. Höchstens `MAX_KONTEN` = 5.
 
 **Server** (`functions/_lib/session.js`):
 

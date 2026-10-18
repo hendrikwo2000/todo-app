@@ -111,7 +111,8 @@
       return fetchOriginal(eingabe, optionen);
     }
     const headers = new Headers((optionen && optionen.headers) || (istRequest ? eingabe.headers : undefined));
-    headers.set(HEADER, String(tabKonto));
+    // Ein ausdruecklich gesetztes Konto gewinnt - die Huelle ergaenzt nur.
+    if (!headers.has(HEADER)) headers.set(HEADER, String(tabKonto));
     return fetchOriginal(eingabe, Object.assign({}, optionen, { headers }));
   };
 

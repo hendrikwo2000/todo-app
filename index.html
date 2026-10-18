@@ -375,14 +375,8 @@
             <p id="kontoName" class="ein-konto-name">Konto</p>
             <p id="kontoAdresse" class="ein-konto-mail"></p>
             <!-- Mehrere Konten im Browser (konto.js): nur sichtbar, wenn ein
-                 Admin darunter ist; die Liste erst ab zwei Konten. -->
-            <div id="kontoMehrere" class="ein-konten" hidden>
-              <div id="kontoListeBox" class="ein-konten" hidden>
-                <p class="ein-hinweis">In diesem Browser angemeldet:</p>
-                <div id="kontoListe" class="listen-liste"></div>
-              </div>
-              <button type="button" id="kontoHinzufuegen" class="btn">+ Weiteres Konto</button>
-            </div>
+                 Admin darunter ist. Die Auswahl steckt in der Anmeldemaske. -->
+            <button type="button" id="kontoWechseln" class="btn" hidden>Konto wechseln</button>
             <button type="button" id="kontoAbmelden" class="btn">Abmelden</button>
             <!-- Getrennt von Abmelden: Loeschen ist unwiderruflich, eine eigene
                  Box mit --del-soft hebt das ab, statt nur auf die rote Schrift
@@ -854,12 +848,11 @@
       <div class="lock-icon">🔒</div>
       <h2 id="lockTitle">ToDo-Liste</h2>
       <p class="lock-hint" id="lockHint">Mit deiner E-Mail-Adresse anmelden.</p>
-      <!-- Mehrere Konten im Browser (konto.js): schon angemeldete Konten zum
-           Anklicken. Nur sichtbar, wenn ein Admin darunter ist. -->
+      <!-- Kontoauswahl (Mehrkonten, konto.js): die Konten dieses Browsers
+           zum Anklicken. Nur, wenn ein Admin darunter ist. -->
       <div id="lockKonten" class="lock-konten" hidden>
-        <p class="lock-konten-titel">Schon angemeldet</p>
         <div id="lockKontenListe" class="lock-konten"></div>
-        <p class="lock-konten-titel">oder weiteres Konto:</p>
+        <button type="button" id="lockKontoNeu" class="lock-konto-neu">+ Konto hinzufügen</button>
       </div>
       <input type="text" id="lockName" placeholder="Dein Name" autocomplete="name" hidden>
       <input type="email" id="lockEmail" placeholder="E-Mail-Adresse" autocomplete="email">
