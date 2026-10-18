@@ -1387,13 +1387,17 @@ input[type="date"]:focus {
    ist. Mittig zentriert wanderte sie bei jeder Hoehenaenderung nach oben. Die
    Hoehe bekommt den Rest bis 20px (Polster des Dialogs) vor dem unteren Rand;
    ist der Inhalt hoeher, blaettert .ein-blaettern. Am Handy fuellt der Dialog
-   den Bildschirm, dort greift der Block darunter. */
-#einstellungenPopup {
+   den Bildschirm, dort greift der Block darunter. Dasselbe gilt fuer das
+   Fenster "Gewohnheiten" (#gewFenster): dort springt die Oberkante sonst beim
+   Wechsel zwischen Verlauf, Statistik, Fokuszeit und Verwalten. */
+#einstellungenPopup,
+#gewFenster {
   --ein-abstand-oben: 8vh;
   align-items: flex-start;
   padding-top: var(--ein-abstand-oben);
 }
-#einstellungenPopup .admin-popup-box.einstellungen {
+#einstellungenPopup .admin-popup-box.einstellungen,
+#gewFenster .admin-popup-box.gw-box {
   max-height: min(calc(100vh - var(--ein-abstand-oben) - 20px), 900px);
 }
 /* Das ✕ rechts - die linke Ecke gehoert dem Inhalt. */

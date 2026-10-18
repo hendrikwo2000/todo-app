@@ -364,8 +364,12 @@ zwei sichtbare (`~`): „Google Kalender" ist ohne Zugangsdaten ausgeblendet, mi
 **Der Dialog sitzt oben fest, nicht mittig** (`#einstellungenPopup`,
 `--ein-abstand-oben: 8vh`). Mittig zentriert wanderte seine Oberkante bei jedem
 Aufklappen und Reiterwechsel nach oben; jetzt wächst er nur nach unten, bis
-zum Rand (dann blättert `.ein-blaettern`). Am Handy gilt weiter Vollbild. Das
-Fenster „Gewohnheiten" (`#gewFenster`) ist davon nicht betroffen.
+zum Rand (dann blättert `.ein-blaettern`). Am Handy gilt weiter Vollbild.
+Dieselbe Regel gilt für das Fenster „Gewohnheiten" (`#gewFenster`): dort sprang
+die Oberkante beim Wechsel zwischen Verlauf, Statistik, Fokuszeit und Verwalten
+(Hendrik am 18.10.2026; Variante „bleibt Fenster, nur Oberkante fest" — „ganz
+in die Einstellungen" oder nur „Verwalten" dorthin hat er nicht gewählt). Die
+kleinen Dialoge (neue Gewohnheit, Tag nachtragen) bleiben mittig.
 
 **Das Zahnrad gibt es zweimal.** Einmal in der Kopfzeile der App
 (`#einstellungenBtn`), einmal im Kalender (`.kal-ansicht-zeile`) — am Handy
