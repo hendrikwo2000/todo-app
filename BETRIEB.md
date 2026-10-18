@@ -328,23 +328,21 @@ Ansichten nach ihrer ID ein- und ausblendet.
 
 **Aufbau der Hauptansicht (seit 18.10.2026):** oben die **globalen**
 Einstellungen als Zeilen — Darstellung, Zoom (nur Touch), Benachrichtigungen,
-Konto, Verwaltung (nur Admin). Darunter **zwei Reiter**, `ToDo` und
-`Gewohnheiten` (`.ein-reiter`, umgeschaltet von `zeigeEinReiter()` in
-`app.js`; beim Öffnen immer `ToDo`) als **Karteikarten**: der gewählte Reiter
-geht nahtlos in den gerahmten Inhalt darunter über (`.ein-reiterbox`):
+Konto, Verwaltung (nur Admin). Darunter **drei Reiter**, `ToDo`,
+`Gewohnheiten` und `Verlauf & mehr` (`.ein-reiter`, umgeschaltet von
+`zeigeEinReiter()` in `app.js`; beim Öffnen immer `ToDo`) als **Karteikarten**:
+der gewählte Reiter geht nahtlos in den gerahmten Inhalt darunter über
+(`.ein-reiterbox`):
 - **ToDo**: Google Kalender, Meine Listen, Geteilt mit mir.
 - **Gewohnheiten**: Fokus-Timer, Kalender-Streifen, Gewohnheiten, Verwalten
   (Liste mit Stift und Hoch/Runter, „Neue Gewohnheit", Archiv).
+- **Verlauf & mehr**: Verlauf (Monatskalender je Gewohnheit), Statistik,
+  Fokuszeit.
 
 Hendriks Vorgabe (gefragt): „Einstellungen öffnen, dann sieht man alle
 globalen Einstellungen … und dann ein Reiter zum Öffnen, damit es
 übersichtlicher wird". Mein erster Entwurf (Reiter ganz oben, alles andere im
-ToDo-Reiter) war nicht gemeint und wurde verworfen. Die Reiterzeile (`.ein-reiter`,
-`.ein-reiter-seg`) ist dieselbe wie im Fenster „Gewohnheiten"; `app.js` greift sich
-seine Reiter deshalb nur in `#einstellungenHaupt`, `gewohnheiten.js` seine nur im
-Fenster. Dort setzt `gewZeigeReiter` `data-reiter` ans Fenster, damit das CSS die
-Ecke unter dem vorderen Reiter eckig macht (bei den Einstellungen geht das über
-die IDs der beiden Inhalte).
+ToDo-Reiter) war nicht gemeint und wurde verworfen.
 
 **Karteikarten statt loser Reiterzeile** (Hendrik nach dem ersten Stand am
 18.10.2026: „nicht direkt ersichtlich, dass die Reiter zu den Einstellungen
@@ -353,7 +351,9 @@ am Reiter — „der blaue Balken" gefiel ihm nicht; sein Vorbild war ein Spiel-
 mit abgesetzten Reitern, deren gewählter in den Inhalt übergeht. Die Naht
 entsteht über `margin-bottom: -1px` an den Reitern; unter dem gewählten Reiter
 ist die obere Ecke des Inhalts eckig (`#einReiterTodo` links,
-`#einReiterGewohnheiten` rechts).
+`#einReiterVerlauf` rechts; der mittlere Reiter hat beide Ecken rund). Drei
+Reiter müssen am Handy nebeneinander passen: unter 560 px ist die Schrift
+13 px, und „Verlauf & mehr" passt bei 390 px gerade noch (nachgemessen).
 
 **Ein Akkordeon über alles, beim Öffnen alles zu.** Konto (oben) und die
 Abschnitte beider Reiter bilden *ein* Akkordeon: immer nur einer offen
@@ -368,22 +368,43 @@ zwei sichtbare (`~`): „Google Kalender" ist ohne Zugangsdaten ausgeblendet, mi
 **Der Dialog sitzt oben fest, nicht mittig** (`#einstellungenPopup`,
 `--ein-abstand-oben: 8vh`). Mittig zentriert wanderte seine Oberkante bei jedem
 Aufklappen und Reiterwechsel nach oben; jetzt wächst er nur nach unten, bis
-zum Rand (dann blättert `.ein-blaettern`). Am Handy gilt weiter Vollbild.
-Dieselbe Regel gilt für das Fenster „Gewohnheiten" (`#gewFenster`): dort sprang
-die Oberkante beim Wechsel zwischen den Reitern (Hendrik am 18.10.2026). Die
+zum Rand (dann blättert `.ein-blaettern`). Am Handy gilt weiter Vollbild. Die
 kleinen Dialoge (neue Gewohnheit, Tag nachtragen) bleiben mittig.
 
-**„Verwalten" steht in den Einstellungen, nicht mehr im Fenster** (Hendrik am
-18.10.2026, auf Rückfrage: eigener Abschnitt am Ende des Reiters „Gewohnheiten";
-das Fenster hat danach drei Reiter, Verlauf, Statistik, Fokuszeit). Vorher war
-es der vierte Reiter im Fenster, erreichbar über den Knopf „Verlauf, Statistik &
-Verwalten". Die Liste zeichnet weiter `gewZeichneVerwalten()` in
-`gewohnheiten.js`; `gewZeichneAktuell()` zeichnet sie bei jeder Änderung mit,
-auch wenn das Fenster zu ist. `gewEinstellungenZeigen()` (gewohnheiten-dialoge.js)
-holt dafür bei jedem Öffnen der Einstellungen den Bestand neu (die Liste kann an
-einem anderen Gerät geändert worden sein). Der Dialog zum Anlegen/Bearbeiten
-legt sich über die Einstellungen; Escape schließt erst ihn, dann die
-Einstellungen.
+**Es gibt kein Fenster „Gewohnheiten" mehr** (Hendrik am 18.10.2026, in drei
+Schritten, jeweils auf Rückfrage). Bis dahin war es ein eigenes Dialogfenster
+(`#gewFenster`) mit den Reitern Verlauf, Statistik, Fokuszeit, Verwalten, im
+Oktober gewählt, weil die Einstellungen „schon voll genug" waren. Dann wollte
+Hendrik „Verwalten" direkt in den Einstellungen, danach auch „Verlauf & mehr".
+Jetzt steht alles dort: Verwalten als Abschnitt im Reiter „Gewohnheiten",
+Verlauf, Statistik und Fokuszeit als Abschnitte im Reiter „Verlauf & mehr".
+Die Elemente behalten ihre IDs (`gewKalRaster`, `gewStatListe`, `gewDiagramm`,
+`gewVerwaltenListe` ...), gezeichnet wird weiter von `gewohnheiten.js`.
+
+- **Gezeichnet wird, was offen ist.** `gewZeichneAktuell()` zeichnet die
+  Verwalten-Liste immer (billig, auch bei geschlossenen Einstellungen, etwa
+  nach einem Dialog aus dem Streifen) und Verlauf, Statistik, Fokuszeit nur,
+  wenn ihr Abschnitt aufgeklappt ist (`gewAbschnittOffen`). Statistik und
+  Fokuszeit holen beim Zeichnen Daten vom Server; ein `toggle`-Listener
+  zeichnet beim Aufklappen.
+- **`gewEinstellungenZeigen()`** (gewohnheiten-dialoge.js) holt bei jedem Öffnen
+  der Einstellungen den Bestand neu (er kann an einem anderen Gerät geändert
+  worden sein) und setzt den Verlauf auf den aktuellen Monat zurück.
+- **Der Streifen springt hierher:** „Verlauf & mehr ›" (Liste) und „Fokuszeit pro
+  Woche ›" (unter dem Timer) rufen `window.oeffneEinstellungenBei(reiter,
+  abschnitt)` aus `app.js`: Einstellungen öffnen, Reiter wählen, Abschnitt
+  aufklappen.
+- **Escape und Zurück-Taste** arbeiten von innen nach außen: Tag- und
+  Bearbeiten-Dialog (`gewSchliesseOberste`), dann die Einstellungen, dann der
+  Kalender-Streifen. Dafür schluckt der Escape-Handler in `app.js` das Ereignis,
+  wenn er die Einstellungen schließt (`stopImmediatePropagation`), sonst
+  schlösse `kalender.js` im selben Tastendruck den Streifen gleich mit; und
+  `schliesseObersteEbene` (kalender.js, Zurück-Taste am Handy) kennt die
+  Einstellungen jetzt. Die Rand-Wischgeste des Streifens ist gesperrt, solange
+  die Einstellungen offen sind (`darfGeste`) — der Verlauf hat eine eigene
+  Wischgeste für den Monat.
+- **Die Farben des Verlaufs** (`--gw-leer`, das dunklere `--muted`) gelten nur im
+  Reiter „Verlauf & mehr" (`#einReiterVerlauf`) und in den Dialogen.
 
 **Der Stift im Verlauf** sitzt in der gewählten Pille (`.gw-pille-gewaehlt`, ein
 feiner Strich trennt Name und Stift) und ist ein gezeichnetes Symbol statt des
@@ -2367,7 +2388,7 @@ der alten App (cron-job.org) bekommt seitdem 410 und kann weg.
 |---|---|
 | Daten, Regel-Spiegel, Offline-Warteschlange, einziger Schreibweg fuer Tage (`gewSchreibeTag`) | `gewohnheiten-daten.js` |
 | Streifen: Reiter Gewohnheiten und Timer | `fokus.js` |
-| Fenster "Gewohnheiten" (Verlauf, Statistik, Fokuszeit) und die Verwalten-Liste in den Einstellungen | `gewohnheiten.js` |
+| Verlauf, Statistik, Fokuszeit und Verwalten (alles in den Einstellungen) | `gewohnheiten.js` |
 | Dialoge anlegen/bearbeiten und Tag nachtragen, Einstellungsabschnitte | `gewohnheiten-dialoge.js` |
 | Endpunkte | `functions/api/gewohnheiten/*`, `functions/api/fokus/*`, `functions/api/export.js` |
 | Regeln (Status, Flamme, heute dran/ruht/offen) | `functions/_lib/tag.js`, `heute.js`, `fokus.js` |
@@ -2387,19 +2408,17 @@ hier, `users.fokus_zugang` liest keiner von ihnen mehr. Ein neues Konto sieht
 im Reiter einen Leerzustand mit "＋ Gewohnheit anlegen" (`aktive: 0` in der
 Antwort von `gewohnheiten/heute`).
 
-**Fenster statt eigener Seite.** Verlauf (Monatskalender je Gewohnheit,
-Nachtragen per Tipp, Wischen wechselt den Monat), Statistik (7/30/90 Tage),
-Fokuszeit (Minuten pro Woche) stehen in `#gewFenster` (Verwalten - anlegen,
-bearbeiten, Reihenfolge, Archiv, loeschen - seit 18.10.2026 in den
-Einstellungen, siehe dort) - geoeffnet ueber
-"Verlauf & mehr ›" am Ende der Liste, "Fokuszeit pro Woche ›" unter dem Timer,
-den Stift an einer Karte oder die Einstellungen. Hendriks Entscheidung,
-gefragt; verworfen: eine eigene Seite (wirkte wie eine zweite App) und mehr
-Reiter im Streifen (kein Platz). Die Ansicht-Pille bleibt bei zwei Segmenten.
-Das Fenster steht ausserhalb des Kalender-Panels (transform-Falle), Escape und
-die Zurueck-Taste schliessen es von innen nach aussen (`gewSchliesseOberste`,
-eingehaengt in `schliesseObersteEbene` in kalender.js); solange es offen ist,
-gibt es keine Rand-Wischgeste (`darfGeste`).
+**Verlauf, Statistik, Fokuszeit und Verwalten stehen in den Einstellungen**
+(seit 18.10.2026; bis dahin in einem eigenen Fenster `#gewFenster`, siehe Kapitel
+„Einstellungen"). Verlauf (Monatskalender je Gewohnheit, Nachtragen per Tipp,
+Wischen wechselt den Monat), Statistik (7/30/90 Tage) und Fokuszeit (Minuten pro
+Woche) im Reiter „Verlauf & mehr", Verwalten (anlegen, bearbeiten, Reihenfolge,
+Archiv, loeschen) im Reiter „Gewohnheiten". Erreichbar ueber „Verlauf & mehr ›"
+am Ende der Liste und „Fokuszeit pro Woche ›" unter dem Timer (beide oeffnen die
+Einstellungen am passenden Abschnitt) oder direkt ueber das Zahnrad; der Stift
+an einer Karte oeffnet weiter den Bearbeiten-Dialog. Verworfen wurden damals
+eine eigene Seite (wirkte wie eine zweite App) und mehr Reiter im Streifen
+(kein Platz). Die Ansicht-Pille bleibt bei zwei Segmenten.
 
 **Einstellungen, vier Abschnitte** (seit 18.10.2026 im Reiter „Gewohnheiten",
 eingeklappt, in der Reihenfolge Timer, Streifen, Gewohnheiten, Verwalten; Aufbau
@@ -2412,9 +2431,8 @@ siehe Kapitel „Einstellungen"):
   und `window.fokusImStreifen()` (kalender.js, `fokusMoeglich`). Bis Oktober
   2026 war das EIN Schalter "Fokus im Kalender", davor ein 🔥 in der
   Kopfzeile.
-- **Gewohnheiten** - Zaehlweise der Flamme (insgesamt / in Reihe), Weg ins
-  Fenster (Knopf „Verlauf, Statistik & Fokuszeit"), Export als JSON
-  (`/api/export`, nur Gewohnheiten und Sitzungen).
+- **Gewohnheiten** - Zaehlweise der Flamme (insgesamt / in Reihe), Export als
+  JSON (`/api/export`, nur Gewohnheiten und Sitzungen).
 - **Verwalten** - Liste mit Stift und Hoch/Runter, „Neue Gewohnheit", Archiv.
 - **Fokus-Timer** - Standarddauer.
 
@@ -2435,7 +2453,7 @@ die lokale D1 (`wrangler d1 execute --local` stuerzt unter Windows ab).
 
 Die Heute-Liste kommt weiterhin **fertig gerechnet**
 (`GET /api/gewohnheiten/heute`): der Streifen entscheidet nichts selbst.
-Das Fenster braucht dagegen den ganzen Bestand (`GET /api/gewohnheiten`) und
+Der Verlauf braucht dagegen den ganzen Bestand (`GET /api/gewohnheiten`) und
 rechnet Kalenderfarben mit den Spiegeln in `gewohnheiten-daten.js`
 (`gewStatusVon`, `gewStillerTagZaehlt`, ...). Aendert sich eine Regel in
 `_lib/tag.js` oder `heute.js`, muss sie dort mit.
@@ -2641,8 +2659,9 @@ Die Zahl in der Mitte skaliert mit dem Ring statt mit dem Fenster
 Im Streifen: abhaken (einfach oder mit Menge über −/Zahl/+), Flammen sehen,
 Timer starten, pausieren, beenden, und ueber den Stift an der Karte gleich
 bearbeiten. Alles andere - anlegen, Verlauf, Statistik, Fokuszeit,
-Reihenfolge, Archiv - steht seit Oktober 2026 im Fenster "Gewohnheiten" (siehe
-oben), Zaehlweise, Dauer und Export in den Einstellungen. Bis dahin fuehrte ein
+Reihenfolge, Archiv - steht in den Einstellungen (Reiter "Gewohnheiten" und
+"Verlauf & mehr", siehe oben; bis 18.10.2026 in einem eigenen Fenster),
+ebenso Zaehlweise, Dauer und Export. Bis dahin fuehrte ein
 ↗ in der Kopfzeile des Bereichs zur Fokus-App.
 
 **Wiederoeffnen hat ein Rueckgaengig** (Snackbar, wie in der Fokus-App): aus

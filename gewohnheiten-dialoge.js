@@ -6,7 +6,7 @@
    - "Neue Gewohnheit" / "Gewohnheit bearbeiten" (#gewDialog)
    - "Tag nachtragen" aus dem Verlauf (#gewTagDialog)
    - die Abschnitte "Gewohnheiten" und "Fokus-Timer" in den Einstellungen
-     (der Abschnitt "Verwalten" daneben wird in gewohnheiten.js gezeichnet)
+     (Verwalten, Verlauf, Statistik und Fokuszeit daneben zeichnet gewohnheiten.js)
 
    Uebernommen aus der Fokus-App (Oktober 2026), mit denselben Regeln: die
    Art (Abhaken/Menge) und die Ziel-Art (Mindestens/Hoechstens) lassen sich
@@ -343,12 +343,14 @@ window.gewEinstellungenZeigen = async function () {
   gewFeld("gewDauer").value = String(gewEinstellungen.arbeitMin);
   gewZeichneDauer();
   gewZeichneEinstellungsSubtexte();
-  // Die Verwalten-Liste zeigt erst den gemerkten Stand (oder "Lädt …") und
-  // wird nach dem Laden neu gezeichnet - sie kann an einem anderen Geraet
-  // geaendert worden sein, darum wird der Bestand bei jedem Oeffnen geholt.
+  // Verwalten, Verlauf, Statistik und Fokuszeit zeigen erst den gemerkten Stand
+  // (oder "Lädt …") und werden nach dem Laden neu gezeichnet - der Bestand kann
+  // an einem anderen Geraet geaendert worden sein, darum wird er bei jedem
+  // Oeffnen geholt. Jedes Oeffnen beginnt beim aktuellen Monat.
+  gewVerlauf.monat = "";
   gewLaedt = !gewBestand.geladen;
   gewLadeFehler = "";
-  gewZeichneVerwalten();
+  gewZeichneAktuell();
 
   const [fokus, bestand] = await Promise.all([
     gewApi(`/api/fokus?heute=${todayStr()}`),
@@ -366,7 +368,7 @@ window.gewEinstellungenZeigen = async function () {
     gewZeichneDauer();
   }
   gewZeichneEinstellungsSubtexte();
-  gewZeichneVerwalten();
+  gewZeichneAktuell();
 };
 
 gewFeld("gewFlammenSwitch").addEventListener("change", async () => {
@@ -405,4 +407,3 @@ gewFeld("gewDauerSpeichern").addEventListener("click", async () => {
   snackInfo(`Standarddauer: ${gewEinstellungen.arbeitMin} Minuten`);
 });
 
-gewFeld("gewVerlaufOeffnen").addEventListener("click", () => gewFensterOeffnen("verlauf"));

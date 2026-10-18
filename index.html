@@ -306,9 +306,9 @@
        Hauptansicht (Listen + Konto), Zugriff-verwalten, Abmelde-Rueckfrage,
        Loesch-Bestaetigung. Die Listen-Zeilen fuellt JS.
        Hauptansicht oben: die globalen Einstellungen (Darstellung, Zoom,
-       Benachrichtigungen, Konto, Verwaltung). Darunter zwei Reiter, "ToDo"
-       und "Gewohnheiten", mit je eigenen Einstellungen (zeigeEinReiter() in
-       app.js).
+       Benachrichtigungen, Konto, Verwaltung). Darunter drei Reiter, "ToDo",
+       "Gewohnheiten" und "Verlauf & mehr" (Verlauf, Statistik, Fokuszeit), mit
+       je eigenem Inhalt (zeigeEinReiter() in app.js).
        In beiden Reitern sind die Abschnitte ein Akkordeon (<details>/<summary>,
        echtes Ein-Abschnitt-offen erzwingt resetAkkordeon()/JS beim Oeffnen
        bzw. beim Aufklappen eines anderen; das gilt samt Konto fuer die ganze
@@ -409,19 +409,17 @@
           <span class="ein-kopf-text">Verwaltung</span>
         </a>
 
-        <!-- Zwei Reiter fuer das, was nicht global ist, als Karteikarten: der
+        <!-- Drei Reiter fuer das, was nicht global ist, als Karteikarten: der
              gewaehlte Reiter geht nahtlos in den Inhalt darunter ueber (siehe
              style.css). Als lose Zeile oder mit blosser Unterstreichung las
              man die Abschnitte darunter nicht als zum Reiter gehoerig. Die
              Reihenfolge der Knoepfe ist die der Inhalte; welcher offen ist,
-             setzt zeigeEinReiter() in app.js (beim Oeffnen immer "ToDo").
-             Dieselben Klassen hat die Reiterzeile im Fenster "Gewohnheiten"
-             (style.css), darum greift sich app.js seine Reiter nur in
-             #einstellungenHaupt. -->
+             setzt zeigeEinReiter() in app.js (beim Oeffnen immer "ToDo"). -->
         <div class="ein-reiterbox">
           <div class="ein-reiter" role="tablist" aria-label="Einstellungen">
             <button type="button" class="ein-reiter-seg" id="einReiterKnopfTodo" role="tab" data-ein-reiter="todo" aria-selected="true" aria-controls="einReiterTodo">ToDo</button>
             <button type="button" class="ein-reiter-seg" id="einReiterKnopfGewohnheiten" role="tab" data-ein-reiter="gewohnheiten" aria-selected="false" aria-controls="einReiterGewohnheiten">Gewohnheiten</button>
+            <button type="button" class="ein-reiter-seg" id="einReiterKnopfVerlauf" role="tab" data-ein-reiter="verlauf" aria-selected="false" aria-controls="einReiterVerlauf">Verlauf &amp; mehr</button>
           </div>
 
           <div id="einReiterTodo" class="ein-reiterinhalt" role="tabpanel" aria-labelledby="einReiterKnopfTodo">
@@ -561,7 +559,6 @@
                   </label>
                 </div>
                 <p id="gewFlammenHinweis" class="ein-hinweis"></p>
-                <button type="button" id="gewVerlaufOeffnen" class="btn klein">Verlauf, Statistik &amp; Fokuszeit</button>
                 <!-- Ein normaler Link, kein JS: der Server setzt
                      Content-Disposition, der Browser laedt herunter. Zurueckspielen
                      gibt es bewusst nicht, siehe functions/api/export.js. -->
@@ -586,6 +583,80 @@
                 <div class="gw-abschnitt-titel">Archiv</div>
                 <div id="gewArchivListe" class="gw-liste"></div>
                 <p id="gewArchivLeer" class="ein-hinweis">Noch nichts archiviert. Archivieren geht über den Stift einer Gewohnheit.</p>
+              </div>
+            </details>
+
+          </div>
+
+          <!-- Seit 18.10.2026 hier statt in einem eigenen Fenster: Hendrik wollte
+               "Verlauf & mehr" direkt in den Einstellungen haben. Gezeichnet wird
+               erst, wenn ein Abschnitt aufgeklappt wird (gewohnheiten.js, Statistik
+               und Fokuszeit holen dabei Daten vom Server). Der Kalender-Streifen
+               oeffnet die Einstellungen von "Verlauf & mehr ›" und "Fokuszeit pro
+               Woche ›" aus direkt hier (oeffneEinstellungenBei in app.js). -->
+          <div id="einReiterVerlauf" class="ein-reiterinhalt" role="tabpanel" aria-labelledby="einReiterKnopfVerlauf" hidden>
+
+            <details class="ein-abschnitt" data-abschnitt="verlauf">
+              <summary class="ein-kopf">
+                <span class="ein-kopf-icon">📅</span>
+                <span class="ein-kopf-text">Verlauf</span>
+                <span class="ein-kopf-sub">Monatskalender</span>
+                <span class="ein-kopf-pfeil">▾</span>
+              </summary>
+              <div class="ein-inhalt gw-ansicht">
+                <div id="gewKalWahl" class="gw-pillen" aria-label="Gewohnheit"></div>
+                <div class="gw-kal-kopf">
+                  <button type="button" id="gewKalZurueck" class="gw-pfeil" aria-label="Vorheriger Monat">‹</button>
+                  <div id="gewKalMonat" class="gw-kal-monat"></div>
+                  <button type="button" id="gewKalVor" class="gw-pfeil" aria-label="Nächster Monat">›</button>
+                </div>
+                <div id="gewKalRaster" class="gw-kal-raster"></div>
+                <div class="gw-legende">
+                  <span><i class="gw-farbe-offen"></i>offen</span>
+                  <span id="gewLegendeTeilweise"><i class="gw-farbe-teilweise"></i>teilweise</span>
+                  <span><i class="gw-farbe-erledigt"></i>erledigt</span>
+                  <span id="gewLegendeUeberschritten" hidden><i class="gw-farbe-ueberschritten"></i>überschritten</span>
+                  <span id="gewLegendeGeplant" hidden><i class="gw-farbe-nicht-geplant"></i>nicht geplant</span>
+                </div>
+                <p class="ein-hinweis gw-mitte">Tippe auf einen Tag, um ihn nachzutragen. Wischen wechselt den Monat.</p>
+              </div>
+            </details>
+
+            <details class="ein-abschnitt" data-abschnitt="statistik">
+              <summary class="ein-kopf">
+                <span class="ein-kopf-icon">📊</span>
+                <span class="ein-kopf-text">Statistik</span>
+                <span class="ein-kopf-sub">7 / 30 / 90 Tage</span>
+                <span class="ein-kopf-pfeil">▾</span>
+              </summary>
+              <div class="ein-inhalt gw-ansicht">
+                <div id="gewStatZeitraum" class="gw-pillen">
+                  <button type="button" data-tage="7" aria-selected="false">7 Tage</button>
+                  <button type="button" data-tage="30" aria-selected="true">30 Tage</button>
+                  <button type="button" data-tage="90" aria-selected="false">90 Tage</button>
+                </div>
+                <div id="gewStatListe" class="gw-liste"></div>
+              </div>
+            </details>
+
+            <details class="ein-abschnitt" data-abschnitt="fokuszeit">
+              <summary class="ein-kopf">
+                <span class="ein-kopf-icon">⏱️</span>
+                <span class="ein-kopf-text">Fokuszeit</span>
+                <span class="ein-kopf-sub">Minuten pro Woche</span>
+                <span class="ein-kopf-pfeil">▾</span>
+              </summary>
+              <div class="ein-inhalt gw-ansicht">
+                <div class="gw-kacheln">
+                  <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinHeute">0</div><div class="gw-kachel-name">Min. heute</div></div>
+                  <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinWoche">0</div><div class="gw-kachel-name">Min. diese Woche</div></div>
+                  <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinSchnitt">0</div><div class="gw-kachel-name">Schnitt/Woche</div></div>
+                </div>
+                <div class="gw-abschnitt-titel">Fokusminuten pro Woche</div>
+                <div id="gewDiagramm" class="gw-diagramm"></div>
+                <div id="gewDiagrammNamen" class="gw-diagramm-namen"></div>
+                <p id="gewFokuszeitHinweis" class="ein-hinweis gw-mitte" hidden></p>
+                <p class="ein-hinweis gw-mitte">Den Timer startest du im Kalender-Streifen, Reiter „Timer“. Die Standarddauer steht im Reiter „Gewohnheiten“.</p>
               </div>
             </details>
 
@@ -654,73 +725,6 @@
       </div>
 
       </div><!-- /.ein-blaettern -->
-    </div>
-  </div>
-
-  <!-- Das Fenster "Gewohnheiten": Verlauf, Statistik, Fokuszeit.
-       Seit Oktober 2026 hier statt in der eigenen Fokus-App. Steht AUSSERHALB
-       des Kalender-Panels, aus demselben Grund wie die Kalender-Dialoge oben
-       (dessen transform verbiegt position:fixed). Gefuellt aus
-       gewohnheiten.js; die Dialoge danach stehen im DOM dahinter und legen
-       sich bei gleichem z-index darueber. -->
-  <div id="gewFenster" class="admin-popup gw-fenster" hidden>
-    <div class="admin-popup-box einstellungen gw-box" role="dialog" aria-labelledby="gewFensterTitel">
-      <header class="ein-kopfzeile gw-kopfzeile">
-        <h2 id="gewFensterTitel" class="gw-titel">Gewohnheiten</h2>
-        <button type="button" id="gewFensterZu" class="ein-schliessen"
-                aria-label="Gewohnheiten schließen" title="Schließen">✕</button>
-      </header>
-      <!-- Dieselben Karteikarten-Reiter wie in den Einstellungen (.ein-reiter);
-           der Rahmen um den Inhalt ist .gw-blaettern, welcher Reiter vorn ist,
-           steht als data-reiter am Fenster (gewZeigeReiter). -->
-      <div class="ein-reiter" role="tablist" aria-label="Ansicht">
-        <button type="button" class="ein-reiter-seg" data-gw-reiter="verlauf" role="tab" aria-selected="true">Verlauf</button>
-        <button type="button" class="ein-reiter-seg" data-gw-reiter="statistik" role="tab" aria-selected="false">Statistik</button>
-        <button type="button" class="ein-reiter-seg" data-gw-reiter="fokuszeit" role="tab" aria-selected="false">Fokuszeit</button>
-      </div>
-      <div class="ein-blaettern gw-blaettern">
-
-        <section id="gewVerlauf" class="gw-ansicht">
-          <div id="gewKalWahl" class="gw-pillen" aria-label="Gewohnheit"></div>
-          <div class="gw-kal-kopf">
-            <button type="button" id="gewKalZurueck" class="gw-pfeil" aria-label="Vorheriger Monat">‹</button>
-            <div id="gewKalMonat" class="gw-kal-monat"></div>
-            <button type="button" id="gewKalVor" class="gw-pfeil" aria-label="Nächster Monat">›</button>
-          </div>
-          <div id="gewKalRaster" class="gw-kal-raster"></div>
-          <div class="gw-legende">
-            <span><i class="gw-farbe-offen"></i>offen</span>
-            <span id="gewLegendeTeilweise"><i class="gw-farbe-teilweise"></i>teilweise</span>
-            <span><i class="gw-farbe-erledigt"></i>erledigt</span>
-            <span id="gewLegendeUeberschritten" hidden><i class="gw-farbe-ueberschritten"></i>überschritten</span>
-            <span id="gewLegendeGeplant" hidden><i class="gw-farbe-nicht-geplant"></i>nicht geplant</span>
-          </div>
-          <p class="ein-hinweis gw-mitte">Tippe auf einen Tag, um ihn nachzutragen. Wischen wechselt den Monat.</p>
-        </section>
-
-        <section id="gewStatistik" class="gw-ansicht" hidden>
-          <div id="gewStatZeitraum" class="gw-pillen">
-            <button type="button" data-tage="7" aria-selected="false">7 Tage</button>
-            <button type="button" data-tage="30" aria-selected="true">30 Tage</button>
-            <button type="button" data-tage="90" aria-selected="false">90 Tage</button>
-          </div>
-          <div id="gewStatListe" class="gw-liste"></div>
-        </section>
-
-        <section id="gewFokuszeit" class="gw-ansicht" hidden>
-          <div class="gw-kacheln">
-            <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinHeute">0</div><div class="gw-kachel-name">Min. heute</div></div>
-            <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinWoche">0</div><div class="gw-kachel-name">Min. diese Woche</div></div>
-            <div class="gw-kachel"><div class="gw-kachel-wert" id="gewMinSchnitt">0</div><div class="gw-kachel-name">Schnitt/Woche</div></div>
-          </div>
-          <div class="gw-abschnitt-titel">Fokusminuten pro Woche</div>
-          <div id="gewDiagramm" class="gw-diagramm"></div>
-          <div id="gewDiagrammNamen" class="gw-diagramm-namen"></div>
-          <p id="gewFokuszeitHinweis" class="ein-hinweis gw-mitte" hidden></p>
-          <p class="ein-hinweis gw-mitte">Den Timer startest du im Kalender-Streifen, Reiter „Timer“. Die Standarddauer steht in den Einstellungen.</p>
-        </section>
-
-      </div>
     </div>
   </div>
 

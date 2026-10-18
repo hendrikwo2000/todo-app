@@ -1387,17 +1387,13 @@ input[type="date"]:focus {
    ist. Mittig zentriert wanderte sie bei jeder Hoehenaenderung nach oben. Die
    Hoehe bekommt den Rest bis 20px (Polster des Dialogs) vor dem unteren Rand;
    ist der Inhalt hoeher, blaettert .ein-blaettern. Am Handy fuellt der Dialog
-   den Bildschirm, dort greift der Block darunter. Dasselbe gilt fuer das
-   Fenster "Gewohnheiten" (#gewFenster): dort springt die Oberkante sonst beim
-   Wechsel zwischen Verlauf, Statistik, Fokuszeit und Verwalten. */
-#einstellungenPopup,
-#gewFenster {
+   den Bildschirm, dort greift der Block darunter. */
+#einstellungenPopup {
   --ein-abstand-oben: 8vh;
   align-items: flex-start;
   padding-top: var(--ein-abstand-oben);
 }
-#einstellungenPopup .admin-popup-box.einstellungen,
-#gewFenster .admin-popup-box.gw-box {
+#einstellungenPopup .admin-popup-box.einstellungen {
   max-height: min(calc(100vh - var(--ein-abstand-oben) - 20px), 900px);
 }
 /* Das ✕ rechts - die linke Ecke gehoert dem Inhalt. */
@@ -3496,9 +3492,9 @@ html.kal-split .fok-ring { max-height: 190px; }
 .fok-menge input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 
 /* ====================================================================
-   Fenster "Gewohnheiten" (gewohnheiten.js) und seine Dialoge
-   (gewohnheiten-dialoge.js) - seit der Fusion mit der Fokus-App, Oktober
-   2026. Aus deren style.css uebernommen, alle Klassen mit "gw-" davor: die
+   Gewohnheiten in den Einstellungen (gewohnheiten.js: Verlauf, Statistik,
+   Fokuszeit, Verwalten) und ihre Dialoge (gewohnheiten-dialoge.js) - seit der
+   Fusion mit der Fokus-App, Oktober 2026; bis 18.10.2026 mit eigenem Fenster. Aus deren style.css uebernommen, alle Klassen mit "gw-" davor: die
    Fokus-App hatte eigene .kal-*, .hinweis, .popup-*, die hier etwas anderes
    meinen. Rahmen, Knoepfe, Schalter und Akkordeon kommen von den
    Einstellungen (.admin-popup, .ein-*, .switch, .btn).
@@ -3512,31 +3508,12 @@ html.kal-split .fok-ring { max-height: 190px; }
 /* Eigene Farbe fuer "leer/offen" im Kalender (aus der Fokus-App) und ein
    dunkleres Grau fuer Nebentexte: das --muted der ToDo-App erreicht auf
    --col-bg nur 4,05:1, die Fokus-App hatte es am 10.08.2026 auf 4,72:1
-   angehoben. Gilt nur im Fenster und seinen Dialogen. */
-.gw-fenster, .gw-dialog { --gw-leer: #e7e9f0; --muted: #616978; }
-:root[data-theme="dark"] .gw-fenster,
+   angehoben. Gilt nur im Reiter "Verlauf & mehr" und in den Dialogen. */
+#einReiterVerlauf, .gw-dialog { --gw-leer: #e7e9f0; --muted: #616978; }
+:root[data-theme="dark"] #einReiterVerlauf,
 :root[data-theme="dark"] .gw-dialog { --gw-leer: #313641; --muted: #8b93a5; }
 
-/* ---------- Rahmen ---------- */
-.gw-kopfzeile { justify-content: space-between; align-items: center; }
-.gw-box .gw-kopfzeile h2.gw-titel { margin: 0; font-size: 18px; text-align: left; }
-/* Die Reiterzeile des Fensters ist die der Einstellungen (.ein-reiter, weiter
-   unten): Karteikarten, der vordere geht in den Rahmen um den Inhalt
-   (.gw-blaettern) ueber. Unter dem vorderen Reiter ist dessen Ecke eckig -
-   gewZeigeReiter setzt dafuer data-reiter am Fenster. Mit drei gleich breiten
-   Reitern sitzt der erste links, der letzte rechts, der mittlere in der Mitte
-   (beide Ecken rund). */
-.gw-fenster .ein-reiter { margin-top: 10px; }
-.gw-blaettern {
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-}
-#gewFenster[data-reiter="verlauf"] .gw-blaettern { border-top-left-radius: 0; }
-#gewFenster[data-reiter="fokuszeit"] .gw-blaettern { border-top-right-radius: 0; }
-@media (max-width: 560px) {
-  .gw-blaettern { padding: 12px; }
-}
+/* ---------- Ansichten ---------- */
 .gw-ansicht { display: flex; flex-direction: column; gap: 12px; padding-bottom: 6px; }
 .gw-ansicht[hidden] { display: none; }
 .gw-mitte { text-align: center; }
@@ -3546,20 +3523,6 @@ html.kal-split .fok-ring { max-height: 190px; }
   margin: 10px 0 0;
   font-size: 12px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .04em; color: var(--muted);
-}
-
-/* Am Handy ueber den ganzen Bildschirm - dieselbe Schwelle und dieselben
-   Masse wie die Einstellungen. */
-@media (max-width: 560px) {
-  #gewFenster { padding: 0; }
-  #gewFenster .admin-popup-box.gw-box {
-    width: 100%;
-    height: 100%;
-    max-height: none;
-    border: 0;
-    border-radius: 0;
-    padding: max(14px, var(--oben)) 18px max(18px, env(safe-area-inset-bottom));
-  }
 }
 
 /* ---------- Pillen (Gewohnheit waehlen, Zeitraum) ---------- */
@@ -3869,6 +3832,13 @@ html.kal-split .fok-ring { max-height: 190px; }
   font-weight: 600;
   color: var(--muted);
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Drei Reiter am Handy: "Verlauf & mehr" soll noch hineinpassen. */
+@media (max-width: 560px) {
+  .ein-reiter-seg { padding: 10px 4px; font-size: 13px; }
 }
 .ein-reiter-seg[aria-selected="true"] {
   z-index: 1;
@@ -3887,10 +3857,10 @@ html.kal-split .fok-ring { max-height: 190px; }
   border-radius: 12px;
 }
 /* Die obere Ecke unter dem gewaehlten Reiter bleibt eckig: dort laeuft seine
-   Aussenlinie in die des Inhalts. Der erste Reiter sitzt links, der zweite
-   rechts. */
+   Aussenlinie in die des Inhalts. Der erste Reiter sitzt links, der letzte
+   rechts, der mittlere ("Gewohnheiten") hat beide Ecken rund. */
 #einReiterTodo { border-top-left-radius: 0; }
-#einReiterGewohnheiten { border-top-right-radius: 0; }
+#einReiterVerlauf { border-top-right-radius: 0; }
 /* Eigene display-Regel schlaegt das hidden-Attribut - siehe .ein-abschnitt[hidden]. */
 .ein-reiterinhalt[hidden] { display: none; }
 /* Die Trennlinie steht ZWISCHEN zwei sichtbaren Abschnitten, nicht direkt unter

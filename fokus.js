@@ -209,14 +209,16 @@ function fokKnopf(text, klasse, aufruf) {
   return k;
 }
 
-// Der leise Weg ins Fenster "Gewohnheiten" - am Ende der Liste und unter dem
-// Timer, jeweils mit dem passenden Reiter vorn.
-function fokMehrKnopf(text, reiter) {
+// Der leise Weg zu Verlauf, Statistik und Fokuszeit - am Ende der Liste und
+// unter dem Timer. Sie stehen in den Einstellungen (Reiter "Verlauf & mehr"),
+// der Aufruf klappt den passenden Abschnitt auf. Bis 18.10.2026 war es ein
+// eigenes Fenster.
+function fokMehrKnopf(text, abschnitt) {
   const k = document.createElement("button");
   k.type = "button";
   k.className = "fok-mehr-knopf";
   k.textContent = text;
-  k.onclick = () => window.gewFensterOeffnen?.(reiter);
+  k.onclick = () => window.oeffneEinstellungenBei?.("verlauf", abschnitt);
   return k;
 }
 
@@ -717,9 +719,9 @@ document.addEventListener("visibilitychange", async () => {
 // kalender.js und rufen von dort window.fokusReiter() - genauso wie Escape
 // und die Wischgeste.
 
-// Unter dem Timer: der Weg zu seiner Wochenstatistik im Fenster.
+// Unter dem Timer: der Weg zu seiner Wochenstatistik in den Einstellungen.
 document.getElementById("fokTimerMehr")
-  .addEventListener("click", () => window.gewFensterOeffnen?.("fokuszeit"));
+  .addEventListener("click", () => window.oeffneEinstellungenBei?.("verlauf", "fokuszeit"));
 
 // Aenderungen von anderswo (Fenster, Dialoge, nachgelieferte Offline-Eintraege,
 // Einstellungen): die Liste frisch holen, solange sie zu sehen ist. Verborgen

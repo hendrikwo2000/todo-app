@@ -116,11 +116,12 @@ hierher weiter, deine Gewohnheiten und Sitzungen sind dieselben.
   geloggte Zeit lässt sich nicht mehr ändern). Läuft eine Sitzung, steht die
   Restzeit am Reiter. Am Ende gibt es einen Ton.
 
-**„Verlauf & mehr ›“** unter den Gewohnheiten öffnet das Fenster
-**Gewohnheiten**:
+**„Verlauf & mehr ›“** unter den Gewohnheiten öffnet die Einstellungen (⚙️)
+im Reiter **Verlauf & mehr**:
 
 - **Verlauf:** ein Monatskalender je Gewohnheit. Ein Tipp auf einen Tag
-  trägt ihn nach, Wischen wechselt den Monat
+  trägt ihn nach, Wischen wechselt den Monat. Der Stift in der gewählten Pille
+  bearbeitet die Gewohnheit
 - **Statistik:** wie oft geschafft, über 7, 30 oder 90 Tage
 - **Fokuszeit:** Fokusminuten pro Woche
 
@@ -130,8 +131,7 @@ hierher weiter, deine Gewohnheiten und Sitzungen sind dieselben.
 - **Kalender-Streifen:** Gewohnheiten und Timer einzeln ein- oder ausblenden
   (gilt für dieses Gerät)
 - **Gewohnheiten:** ob die Flamme alle erledigten Tage zählt oder nur die am
-  Stück; Export als Datei; Knopf zum Fenster mit Verlauf, Statistik und
-  Fokuszeit
+  Stück; Export als Datei
 - **Verwalten:** neue Gewohnheit anlegen (abhaken oder mit Zielmenge,
   mindestens oder höchstens, täglich / feste Wochentage / X Mal die Woche),
   bearbeiten, Reihenfolge ändern, archivieren und löschen

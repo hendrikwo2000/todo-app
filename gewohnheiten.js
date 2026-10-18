@@ -1,40 +1,33 @@
 "use strict";
 
 /* ====================================================================
-   Fenster "Gewohnheiten" – Verlauf, Statistik, Fokuszeit
+   Gewohnheiten in den Einstellungen – Verlauf, Statistik, Fokuszeit, Verwalten
 
    Seit Oktober 2026 steht hier, was bis dahin die eigene Fokus-App
    (fokus.it-wolf.org) konnte und der Streifen nicht: der Monatskalender je
-   Gewohnheit samt Nachtragen, die Erfuellungsquote und die Fokusminuten pro
-   Woche. Das Verwalten (anlegen, aendern, ordnen, archivieren, loeschen) war
-   bis 18.10.2026 ein vierter Reiter hier; es steht jetzt als Abschnitt
-   "Verwalten" direkt in den Einstellungen (Reiter "Gewohnheiten"), wird aber
-   weiter in dieser Datei gezeichnet (gewZeichneVerwalten).
+   Gewohnheit samt Nachtragen, die Erfuellungsquote, die Fokusminuten pro
+   Woche und das Verwalten (anlegen, aendern, ordnen, archivieren, loeschen).
 
-   Hendriks Entscheidung (gefragt): ein EIGENES Fenster, geoeffnet aus dem
-   Streifen ("Verlauf & mehr", Stift an der Karte) oder aus den
-   Einstellungen. Der Streifen bleibt zum schnellen Abhaken, und die
-   Ansicht-Pille in der Kopfzeile bleibt bei zwei Segmenten (ein drittes hatte
-   er schon einmal verworfen). Verworfen wurden eine eigene Seite (wirkte wie
-   eine zweite App) und weitere Reiter im Streifen (dort fehlt der Platz).
+   Bis 18.10.2026 war das ein EIGENES Fenster (Hendriks Entscheidung im
+   Oktober, gefragt; verworfen wurden eine eigene Seite - wirkte wie eine
+   zweite App - und weitere Reiter im Streifen). Dann wollte er alles direkt in
+   den Einstellungen haben: der Reiter "Verlauf & mehr" (Verlauf, Statistik,
+   Fokuszeit) und, im Reiter "Gewohnheiten", der Abschnitt "Verwalten". Der
+   Streifen bleibt zum schnellen Abhaken, seine Links "Verlauf & mehr ›" und
+   "Fokuszeit pro Woche ›" oeffnen die Einstellungen an der passenden Stelle
+   (oeffneEinstellungenBei in app.js). Die Ansicht-Pille in der Kopfzeile bleibt
+   bei zwei Segmenten (ein drittes hatte er schon einmal verworfen).
+
+   Gezeichnet wird, was gerade offen ist (gewZeichneAktuell): Statistik und
+   Fokuszeit holen beim Zeichnen Daten vom Server, der Verlauf braucht den
+   Bestand. Die Verwalten-Liste zeichnet sich immer mit - sie kostet nichts.
 
    Daten und Regeln kommen aus gewohnheiten-daten.js, die Dialoge (Gewohnheit
    anlegen/bearbeiten, Tag nachtragen) aus gewohnheiten-dialoge.js.
-
-   Das Fenster steht in index.html AUSSERHALB des Kalender-Panels - dasselbe
-   transform-Problem wie bei den Kalender-Dialogen (position:fixed richtete
-   sich sonst am Panel aus).
    ==================================================================== */
 
-const gewFenster = document.getElementById("gewFenster");
-const gewAnsichten = {
-  verlauf: document.getElementById("gewVerlauf"),
-  statistik: document.getElementById("gewStatistik"),
-  fokuszeit: document.getElementById("gewFokuszeit"),
-};
 const gewKalRaster = document.getElementById("gewKalRaster");
 
-let gewReiter = "verlauf";
 // Welche Gewohnheit und welcher Monat im Verlauf zu sehen sind. Die Gewohnheit
 // faellt beim Zeichnen auf die erste aktive zurueck, wenn sie leer ist oder
 // ins Archiv zeigt.
@@ -45,8 +38,6 @@ let gewStatTage = 30;
 let gewLaedt = false;
 let gewLadeFehler = "";
 
-function gewIstOffen() { return !gewFenster.hidden; }
-
 // Ein grauer Hinweis an Stelle des Inhalts - leer, lädt, Fehler.
 function gewHinweis(text) {
   const p = document.createElement("p");
@@ -55,58 +46,24 @@ function gewHinweis(text) {
   return p;
 }
 
-/* -------------------------------------------------------------- Oeffnen */
+/* ------------------------------------------------------------- Zeichnen */
 
-/**
- * Das Fenster oeffnen, mit dem genannten Reiter vorn. Jedes Oeffnen holt den
- * Bestand frisch - der Streifen hat inzwischen vielleicht abgehakt, und ein
- * Tag kann gewechselt haben.
- */
-async function gewFensterOeffnen(reiter = "verlauf", gewohnheitId = null) {
-  // Aus den Einstellungen heraus: die schliessen, sonst laegen zwei
-  // Vollbilder uebereinander und Escape muesste zweimal.
-  if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
-  if (gewohnheitId) gewVerlauf.gewohnheitId = gewohnheitId;
-  // Jedes Oeffnen beginnt beim aktuellen Monat.
-  gewVerlauf.monat = "";
-  gewFenster.hidden = false;
-  gewLaedt = !gewBestand.geladen;
-  gewLadeFehler = "";
-  gewZeigeReiter(reiter);
-
-  const r = await gewLadeBestand();
-  gewLaedt = false;
-  gewLadeFehler = r.ok ? "" : r.fehler;
-  if (r.offline) snackInfo("Offline — letzter bekannter Stand");
-  if (gewIstOffen()) gewZeichneAktuell();
-}
-
-function gewFensterSchliessen() {
-  gewFenster.hidden = true;
-}
-
-function gewZeigeReiter(name) {
-  gewReiter = gewAnsichten[name] ? name : "verlauf";
-  for (const [k, el] of Object.entries(gewAnsichten)) el.hidden = k !== gewReiter;
-  for (const seg of gewFenster.querySelectorAll(".ein-reiter-seg")) {
-    seg.setAttribute("aria-selected", String(seg.dataset.gwReiter === gewReiter));
-  }
-  // Fuer das CSS: unter dem vorderen Reiter ist die Ecke des Rahmens eckig.
-  gewFenster.dataset.reiter = gewReiter;
-  // Jeder Reiter beginnt oben - sonst stuende die Statistik halb gescrollt da,
-  // weil man im Verlauf nach unten gewischt hatte.
-  gewFenster.querySelector(".gw-blaettern").scrollTop = 0;
-  gewZeichneAktuell();
+// Steht der Abschnitt gerade aufgeklappt auf dem Schirm? Nur dann lohnt sich das
+// Zeichnen (und die Anfrage ans Netz).
+function gewAbschnittOffen(name) {
+  if (einstellungenPopup.hidden) return false;
+  const d = document.querySelector(`#einstellungenHaupt details[data-abschnitt="${name}"]`);
+  return !!d && d.open;
 }
 
 function gewZeichneAktuell() {
-  // Die Verwalten-Liste steht in den Einstellungen, immer im DOM - sie wird bei
-  // jeder Aenderung mitgezeichnet, auch wenn das Fenster zu ist.
+  // Die Verwalten-Liste steht immer im DOM und wird bei jeder Aenderung
+  // mitgezeichnet - auch wenn die Einstellungen zu sind (Dialog aus dem
+  // Streifen heraus).
   gewZeichneVerwalten();
-  if (!gewIstOffen()) return;
-  if (gewReiter === "statistik") gewZeichneStatistik();
-  else if (gewReiter === "fokuszeit") gewZeichneFokuszeit();
-  else gewZeichneVerlauf();
+  if (gewAbschnittOffen("verlauf")) gewZeichneVerlauf();
+  if (gewAbschnittOffen("statistik")) gewZeichneStatistik();
+  if (gewAbschnittOffen("fokuszeit")) gewZeichneFokuszeit();
 }
 
 // Waehrend des ersten Ladens bzw. nach einem Fehler: statt des Inhalts ein
@@ -177,7 +134,7 @@ function gewZeichneVerlauf() {
     document.getElementById("gewKalVor").disabled = true;
     document.getElementById("gewLegendeGeplant").hidden = true;
     document.getElementById("gewLegendeUeberschritten").hidden = true;
-    gewKalRaster.replaceChildren(gewHinweis("Noch keine Gewohnheit angelegt – in den Einstellungen unter „Verwalten“ geht es los."));
+    gewKalRaster.replaceChildren(gewHinweis("Noch keine Gewohnheit angelegt – im Reiter „Gewohnheiten“ unter „Verwalten“ geht es los."));
     return;
   }
 
@@ -598,7 +555,7 @@ async function gewArchivieren(g, archivieren) {
   await gewLadeBestand();
   gewZeichneAktuell();
   gewMeldeAenderung("bestand");
-  snackInfo(archivieren ? "Archiviert — in den Einstellungen unter „Verwalten“ wieder zu holen" : "Wieder aktiv");
+  snackInfo(archivieren ? "Archiviert — unter „Verwalten“ wieder zu holen" : "Wieder aktiv");
   return true;
 }
 
@@ -626,18 +583,18 @@ async function gewLoeschen(g) {
 
 /* ----------------------------------------------------------- Verdrahtung */
 
-for (const seg of gewFenster.querySelectorAll(".ein-reiter-seg")) {
-  seg.addEventListener("click", () => gewZeigeReiter(seg.dataset.gwReiter));
+// Verlauf, Statistik und Fokuszeit werden erst gezeichnet, wenn ihr Abschnitt
+// aufgeklappt wird; danach bei jeder Aenderung, solange er offen ist.
+for (const name of ["verlauf", "statistik", "fokuszeit"]) {
+  document.querySelector(`#einstellungenHaupt details[data-abschnitt="${name}"]`)
+    .addEventListener("toggle", e => { if (e.target.open) gewZeichneAktuell(); });
 }
-document.getElementById("gewFensterZu").addEventListener("click", gewFensterSchliessen);
-// Klick neben den Kasten schliesst, wie bei den Einstellungen. Am Handy fuellt
-// das Fenster den Bildschirm, dort bleibt das ✕.
-gewFenster.addEventListener("click", e => { if (e.target === gewFenster) gewFensterSchliessen(); });
 document.getElementById("gewNeuKnopf").addEventListener("click", () => gewOeffneDialog(null));
 
 /**
  * Schliesst die oberste offene Ebene der Gewohnheiten und sagt, ob es eine
- * gab: erst den Tag-Dialog, dann den Bearbeiten-Dialog, dann das Fenster.
+ * gab: erst den Tag-Dialog, dann den Bearbeiten-Dialog. Die Einstellungen
+ * darunter schliessen Escape (app.js) und die Zurueck-Taste (kalender.js).
  * Escape (unten) und die Zurueck-Taste am Handy (schliesseObersteEbene in
  * kalender.js) arbeiten sich damit von innen nach aussen.
  */
@@ -646,7 +603,6 @@ function gewSchliesseOberste() {
     const el = document.getElementById(id);
     if (!el.hidden) { el.hidden = true; return true; }
   }
-  if (gewIstOffen()) { gewFensterSchliessen(); return true; }
   return false;
 }
 
@@ -663,9 +619,7 @@ document.addEventListener("keydown", e => {
   }
 }, true);
 
-window.gewIstOffen = gewIstOffen;
 window.gewSchliesseOberste = gewSchliesseOberste;
-window.gewFensterOeffnen = gewFensterOeffnen;
 
 /**
  * Aenderungen von anderswo. "tag" und "bestand" kommen mit frischem Bestand
@@ -674,11 +628,9 @@ window.gewFensterOeffnen = gewFensterOeffnen;
  * Flamme brauchen den Bestand frisch vom Server.
  */
 gewBeiAenderung(async was => {
-  // Das Fenster ODER die Einstellungen (mit der Verwalten-Liste) offen?
-  const einstellungenOffen = !einstellungenPopup.hidden;
-  if (!gewIstOffen() && !einstellungenOffen) return;
+  if (einstellungenPopup.hidden) return;
   if (was === "timer") {
-    if (gewIstOffen() && gewReiter === "fokuszeit") gewZeichneFokuszeit();
+    if (gewAbschnittOffen("fokuszeit")) gewZeichneFokuszeit();
     return;
   }
   if (was === "nachgeliefert" || was === "einstellungen") await gewLadeBestand();
