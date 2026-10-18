@@ -668,47 +668,27 @@ naechsten Oeffnen der App wieder.
 ### WhatsApp-Morgenliste
 
 Seit 13.10.2026 geht beim ersten Pruefen des Tages zusaetzlich eine WhatsApp
-mit den **Namen** der faelligen und ueberfaelligen ToDos an Hendrik, seit
-14.10.2026 dazu mit den **roten Google-Terminen** des Tages. Der Push bleibt
-unveraendert (3x taeglich, nur die Zahl, nur ToDos).
+mit den **Namen** der faelligen und ueberfaelligen ToDos an Hendrik. Vom
+14. bis 18.10.2026 standen dort auch die **roten Google-Termine** des Tages;
+die sind wieder raus (siehe unten). Der Push bleibt unveraendert (3x taeglich,
+nur die Zahl, nur ToDos).
 
 - **Gleiche Regel wie der Push:** nicht erledigt, `due` gesetzt, `due <= heute`
   (Berlin), ueber alle Listen, in denen das Konto Mitglied ist, auch geteilte.
   ToDos ohne Termin und erledigte kommen nie vor. Ueberfaellige tragen das
   Datum ("seit 10.10."), hoechstens 8 Eintraege, danach "+ N weitere". Lange
   Texte werden auf 80 Zeichen gekuerzt, Zeilenumbrueche zu Leerzeichen.
-- **Rote Termine (seit 14.10.2026):** Termine des Tages aus dem Hauptkalender
-  des verknuepften Google-Kontos (Googles Kennung `primary`, dieselbe Auswahl
-  wie im Kalender-Panel, abonnierte Kalender bleiben draussen), deren **eigene
-  Terminfarbe "Tomate" (`colorId` 11)** ist - das einzige Rot unter Googles
-  elf Termin-Farben, Flamingo ist rosa. Verglichen wird die id, nicht der
-  Hexwert. Wer die Farbe des KALENDERS auf Rot stellt, loest nichts aus (dann
-  waere jeder Termin rot); Termine ohne eigene Farbe zaehlen nie. Am 14.10.2026
-  gegen Hendriks echten Kalender geprueft: alle seine roten Termine tragen 11.
-  "Fuer den Tag" heisst: der Termin liegt ganz oder teilweise auf dem heutigen
-  **Berliner** Kalendertag (`terminLiegtAmTag()` in `google.js`): ganztaegige
-  mit exklusivem Ende, terminierte in Berliner Tage umgerechnet, ein Termin der
-  um Mitternacht endet zaehlt nicht mehr zum neuen Tag. Die Abfrage holt ein
-  grosszuegiges Zeitfenster (der Berliner Tag liegt je nach Sommer-/Winterzeit
-  in UTC verschoben), gefiltert wird danach genau.
-- **Zwei Ausloeser, jeder reicht:** ein faelliges ToDo ODER ein roter Termin
-  heute. Hendrik hat das am 14.10.2026 so entschieden (vorher: nur ToDos).
-  Ohne beides geht nichts raus.
-- **Aufbau der Nachricht:** erst der ToDo-Block (`📋 N ToDos faellig (TT.MM.)`),
-  dann nach einer Leerzeile `🔴 N rote Termine heute` mit einer Zeile je
-  Termin: `• 14:30 Titel`, ganztaegig `• Titel (ganztägig)`, mehrtaegig mit
-  Beginn vor heute `• Titel (läuft)`. Ganztaegige zuerst, dann nach Beginn,
-  hoechstens 8, danach "+ N weitere". Gibt es nur rote Termine, steht das Datum
-  in deren Kopfzeile.
-- **Kalender nicht lesbar:** Google-Fehler (Zugriff widerrufen, Google
-  nicht erreichbar, Token-Umtausch scheitert) halten die ToDo-Liste nie auf.
-  Geht die Nachricht ohnehin raus, steht am Ende `⚠️ Kalender nicht lesbar`,
-  damit ein fehlender roter Termin nicht als "heute nichts" gelesen wird. An
-  Tagen ohne ToDos bleibt es still (sonst waere jeder Google-Ausfall eine
-  Nachricht), der Grund steht nur in der Antwort des Endpunkts. Die
-  Verknuepfung wird dabei NICHT geloescht - das macht nur die App selbst, wenn
-  Hendrik den Kalender oeffnet. Ohne `GOOGLE_CLIENT_ID`/`-SECRET` oder ohne
-  verknuepftes Konto passiert nichts Besonderes: keine Termine, keine Warnzeile.
+- **Rote Google-Termine: entfernt am 18.10.2026.** Hendrik wollte, dass die
+  Funktion nur fuer ihn gilt und nicht in der Datenschutzerklaerung auftaucht.
+  Ein ehrlicher Text haette sonst sagen muessen, dass Titel von Google-Terminen
+  an CallMeBot gehen, und das gefaehrdet die Google-Verifizierung. Seitdem
+  holt der Server Termine NUR noch, wenn jemand den Kalender in der App
+  benutzt, nie im Hintergrund. Weg sind `roteTermineAm()`, `terminLiegtAmTag()`
+  und `FARBE_ROT` aus `google.js` und die Kalender-Zeilen in `whatsapp.js` und
+  `pruefen.js`. Im Git-Verlauf (Commit vor dem 18.10.2026) liegen sie noch.
+- **Ausloeser:** ein faelliges ToDo. Ohne geht nichts raus.
+- **Aufbau der Nachricht:** `📋 N ToDos faellig (TT.MM.)` und eine Zeile je
+  ToDo. Gibt es nur ein ToDo, steht `📋 1 ToDo faellig`.
 - **Nur der Morgenlauf:** `istMorgenlauf()` prueft die Berliner Stunde (< 10).
   Der Aufruf um 7 Uhr zaehlt, 12 und 17 Uhr nicht. Winterzeit ist egal, weil
   cron-job.org in Europe/Berlin plant.
@@ -722,10 +702,9 @@ unveraendert (3x taeglich, nur die Zahl, nur ToDos).
   einem Terminal, in dem Wrangler angemeldet ist). **Danach einen leeren
   Commit pushen**, sonst sieht die laufende Bereitstellung die Werte nicht
   (siehe Falle bei den Benachrichtigungen oben).
-- **Antwort des Endpunkts** enthaelt `whatsapp`: `gesendet (N ToDos, M rote
-  Termine)`, `nichts faellig`, `uebersprungen (nicht der Morgenlauf)`,
-  `nicht eingerichtet` oder `fehlgeschlagen: <Grund>`; bei einem
-  Kalenderproblem haengt `; Kalender nicht lesbar: <Grund>` hinten dran. Ein Fehler beim Senden
+- **Antwort des Endpunkts** enthaelt `whatsapp`: `gesendet (N ToDos)`,
+  `nichts faellig`, `uebersprungen (nicht der Morgenlauf)`,
+  `nicht eingerichtet` oder `fehlgeschlagen: <Grund>`. Ein Fehler beim Senden
   stoert den Push nie, der Aufruf bleibt HTTP 200 (cron-job.org meldet ihn
   deshalb nicht als Fehlschlag, die Antwort muss man ansehen).
 - **Zum Ausloesen von Hand:** `...pruefen?whatsapp=jetzt` mit dem Geheimnis

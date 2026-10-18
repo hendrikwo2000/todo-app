@@ -19,10 +19,10 @@
  * Zusaetzlich geht beim ersten Lauf des Tages (Berliner Zeit vor 10 Uhr) eine
  * WhatsApp an das Konto in WHATSAPP_NUTZER (E-Mail): mit den NAMEN der
  * faelligen und ueberfaelligen ToDos (gleiche Regel wie oben: nicht erledigt,
- * mit Termin (due), heute oder frueher) und den ROTEN Terminen des Tages aus
- * dem verknuepften Google-Kalender. Jedes der beiden reicht als Ausloeser.
- * Ohne WHATSAPP_NUTZER passiert nichts. Ein Fehler dabei stoert den Push nie,
- * und ein nicht lesbarer Kalender haelt die ToDo-Liste nicht auf.
+ * mit Termin (due), heute oder frueher). Bis 18.10.2026 standen dort auch die
+ * roten Google-Termine des Tages; das ist raus, damit keine Google-Daten an
+ * CallMeBot gehen (Google-Verifizierung). Ohne WHATSAPP_NUTZER passiert
+ * nichts. Ein Fehler dabei stoert den Push nie.
  * ?whatsapp=jetzt erzwingt den Versand auch ausserhalb des Morgenlaufs
  * (braucht dasselbe Geheimnis wie der Rest).
  *
@@ -36,7 +36,6 @@
 
 import { json } from "../../_lib/listen.js";
 import { sendeWebPush } from "../../_lib/webpush.js";
-import { fehltEinrichtung, kontoFuer, frischesZugriffToken, roteTermineAm } from "../../_lib/google.js";
 import { baueMorgenNachricht, istMorgenlauf, sendeWhatsapp } from "../../_lib/whatsapp.js";
 import { istAbendlauf, offeneGewohnheitenJeNutzer, erinnerungsText } from "../../_lib/erinnerung.js";
 
@@ -45,26 +44,6 @@ import { istAbendlauf, offeneGewohnheitenJeNutzer, erinnerungsText } from "../..
 // ToDo mit due=heute wuerde rund um Mitternacht mal gezaehlt, mal nicht.
 function heuteBerlin() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
-}
-
-// Rote Termine von heute aus dem Google-Konto des WhatsApp-Nutzers. Wirft nie:
-// ein Google-Problem (Zugriff widerrufen, Google nicht erreichbar) darf die
-// ToDo-Liste nicht aufhalten. Ohne Google-Einrichtung oder ohne verknuepftes
-// Konto ist "keine Termine" die richtige Antwort, kein Fehler.
-async function leseRoteTermine(env, heute) {
-  if (fehltEinrichtung(env)) return { termine: [], fehler: null };
-  try {
-    const nutzer = await env.DB.prepare(
-      "SELECT id FROM users WHERE lower(email) = lower(?)"
-    ).bind(env.WHATSAPP_NUTZER).first();
-    const konto = nutzer && await kontoFuer(env, nutzer.id);
-    if (!konto) return { termine: [], fehler: null };
-
-    const token = await frischesZugriffToken(env, konto);
-    return { termine: await roteTermineAm(token, heute), fehler: null };
-  } catch (e) {
-    return { termine: [], fehler: e.message };
-  }
 }
 
 // Gibt zurueck, was passiert ist (steht in der JSON-Antwort fuer cron-job.org).
@@ -84,14 +63,11 @@ async function sendeMorgenliste(env, heute, erzwingen) {
       ORDER BY t.due, t.position, t.id`
   ).bind(env.WHATSAPP_NUTZER, heute).all();
 
-  const rot = await leseRoteTermine(env, heute);
-  const hinweis = rot.fehler ? `; Kalender nicht lesbar: ${rot.fehler}` : "";
-
-  const text = baueMorgenNachricht(faellig.results, rot.termine, heute, { kalenderFehler: !!rot.fehler });
-  if (!text) return "nichts faellig" + hinweis;
+  const text = baueMorgenNachricht(faellig.results, heute);
+  if (!text) return "nichts faellig";
 
   await sendeWhatsapp(env, text);
-  return `gesendet (${faellig.results.length} ToDos, ${rot.termine.length} rote Termine)` + hinweis;
+  return `gesendet (${faellig.results.length} ToDos)`;
 }
 
 async function pruefeUndSende(env, { erzwingeWhatsapp = false, erzwingeAbend = false, trocken = false } = {}) {
