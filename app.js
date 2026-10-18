@@ -45,12 +45,18 @@ let werkzeugeFuer = null;  // id des ToDos, das am Finger gerade Bleistift und M
 // Feste Palette fuer die Bereichsfarbe (Punkt am Namen + Streifen am
 // Bereich). Muss zu FARBEN_ERLAUBT in functions/api/todos.js passen.
 const FARBEN = [
-  { id: "blau",    name: "Blau"   },
-  { id: "tuerkis", name: "Türkis" },
-  { id: "gruen",   name: "Grün"   },
-  { id: "lila",    name: "Lila"   },
-  { id: "pink",    name: "Pink"   },
-  { id: "grau",    name: "Grau"   },
+  { id: "blau",       name: "Blau"       },
+  { id: "tuerkis",    name: "Türkis"     },
+  { id: "gruen",      name: "Grün"       },
+  { id: "lila",       name: "Lila"       },
+  { id: "pink",       name: "Pink"       },
+  { id: "grau",       name: "Grau"       },
+  { id: "himmelblau", name: "Himmelblau" },
+  { id: "limette",    name: "Limette"    },
+  { id: "braun",      name: "Braun"      },
+  { id: "magenta",    name: "Magenta"    },
+  { id: "indigo",     name: "Indigo"     },
+  { id: "anthrazit",  name: "Anthrazit"  },
 ];
 
 // Wiederholungsmuster fuer ToDos. Muss zu WIEDERHOLUNG_ERLAUBT in

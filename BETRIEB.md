@@ -1960,6 +1960,18 @@ seinen echten Einträgen; die Alternativen „Ohne Bereich“ als Streifen oben 
   passiert. Das Ziehen ist nur mit nachgebauten Drag-Ereignissen geprüft, nicht
   mit echter Maus.
 
+**Bereichsfarben: zwölf zur Wahl (18.10.2026).** Zu Blau, Türkis, Grün, Lila,
+Pink und Grau kamen Himmelblau, Limette, Braun, Magenta, Indigo und Anthrazit.
+**Rot, Orange und Gelb fehlen mit Absicht:** sie bedeuten am ToDo „dringend“
+und „hat Termin“, ein Bereich in genau dieser Farbe wäre doppeldeutig (Hendrik
+hat gefragt und für „bleiben frei“ entschieden). Eine neue Farbe braucht sechs
+Stellen: `FARBEN` in `app.js`, `FARBEN_ERLAUBT` in `functions/api/todos.js` (der
+Server lehnt alles andere mit 400 ab), je einen hellen und dunklen Wert als
+`--farbe-…` und die Regeln `.column[data-farbe]`, `.farbe-punkt`, `.farbe-swatch`
+und `.kal-punkt` in `style.css`. Die Auswahl (`.farbe-popup`) ist 208 px breit:
+sieben Punkte je Reihe, bei zwölf Farben plus „Keine“ zwei Reihen. Im
+Dunkelmodus stand Indigo erst zu nah an Blau, er hat jetzt `#595dcc`.
+
 **Ungeprüft:** echtes iPad und echtes Handy (nachgestellt mit 1180 × 820 bzw.
 375 × 812 im Testbrowser), echte Google-Termine (nachgebaute Antwort aus der
 lokalen Testhilfe `testdaten-lokal.js`, nicht im Repo), der Zug am

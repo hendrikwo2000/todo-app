@@ -26,6 +26,12 @@
   --farbe-lila: #8b5fd1;
   --farbe-pink: #d1568f;
   --farbe-grau: #8a93a8;
+  --farbe-himmelblau: #2d8fd8;
+  --farbe-limette: #7aa51c;
+  --farbe-braun: #9a6b48;
+  --farbe-magenta: #b53fb0;
+  --farbe-indigo: #3d3f9e;
+  --farbe-anthrazit: #3f4656;
   color-scheme: light;
 }
 
@@ -53,6 +59,12 @@
   --farbe-lila: #a48ae8;
   --farbe-pink: #e881b0;
   --farbe-grau: #9aa3b8;
+  --farbe-himmelblau: #5fb3ee;
+  --farbe-limette: #a6cf47;
+  --farbe-braun: #c49873;
+  --farbe-magenta: #d77ad3;
+  --farbe-indigo: #595dcc;
+  --farbe-anthrazit: #747d91;
   color-scheme: dark;
 }
 
@@ -413,6 +425,12 @@ input[type="date"]:focus {
 .column[data-farbe="lila"]    { border-left-color: var(--farbe-lila); }
 .column[data-farbe="pink"]    { border-left-color: var(--farbe-pink); }
 .column[data-farbe="grau"]    { border-left-color: var(--farbe-grau); }
+.column[data-farbe="himmelblau"] { border-left-color: var(--farbe-himmelblau); }
+.column[data-farbe="limette"] { border-left-color: var(--farbe-limette); }
+.column[data-farbe="braun"]  { border-left-color: var(--farbe-braun); }
+.column[data-farbe="magenta"] { border-left-color: var(--farbe-magenta); }
+.column[data-farbe="indigo"] { border-left-color: var(--farbe-indigo); }
+.column[data-farbe="anthrazit"] { border-left-color: var(--farbe-anthrazit); }
 
 /* Punkt neben dem Bereichsnamen oeffnet die Farbauswahl. Ohne gewaehlte
    Farbe ein neutraler Ring, mit Farbe eine gefuellte Flaeche - derselbe Ton
@@ -433,6 +451,12 @@ input[type="date"]:focus {
 .farbe-punkt.farbe-lila    { background: var(--farbe-lila);    border-color: var(--farbe-lila); }
 .farbe-punkt.farbe-pink    { background: var(--farbe-pink);    border-color: var(--farbe-pink); }
 .farbe-punkt.farbe-grau    { background: var(--farbe-grau);    border-color: var(--farbe-grau); }
+.farbe-punkt.farbe-himmelblau { background: var(--farbe-himmelblau); border-color: var(--farbe-himmelblau); }
+.farbe-punkt.farbe-limette  { background: var(--farbe-limette); border-color: var(--farbe-limette); }
+.farbe-punkt.farbe-braun    { background: var(--farbe-braun); border-color: var(--farbe-braun); }
+.farbe-punkt.farbe-magenta  { background: var(--farbe-magenta); border-color: var(--farbe-magenta); }
+.farbe-punkt.farbe-indigo   { background: var(--farbe-indigo); border-color: var(--farbe-indigo); }
+.farbe-punkt.farbe-anthrazit { background: var(--farbe-anthrazit); border-color: var(--farbe-anthrazit); }
 
 .farbe-popup {
   position: absolute;
@@ -441,7 +465,7 @@ input[type="date"]:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  width: 132px;
+  width: 208px;   /* sieben 22-px-Punkte je Reihe: 12 Farben + Keine = zwei Reihen */
   padding: 8px;
   border-radius: 10px;
   border: 1px solid var(--line);
@@ -463,6 +487,12 @@ input[type="date"]:focus {
 .farbe-swatch.farbe-lila    { background: var(--farbe-lila); }
 .farbe-swatch.farbe-pink    { background: var(--farbe-pink); }
 .farbe-swatch.farbe-grau    { background: var(--farbe-grau); }
+.farbe-swatch.farbe-himmelblau { background: var(--farbe-himmelblau); }
+.farbe-swatch.farbe-limette { background: var(--farbe-limette); }
+.farbe-swatch.farbe-braun   { background: var(--farbe-braun); }
+.farbe-swatch.farbe-magenta { background: var(--farbe-magenta); }
+.farbe-swatch.farbe-indigo  { background: var(--farbe-indigo); }
+.farbe-swatch.farbe-anthrazit { background: var(--farbe-anthrazit); }
 .farbe-swatch.farbe-keine {
   display: flex;
   align-items: center;
@@ -2150,6 +2180,12 @@ html:not(.breit) #kalZu { display: none; }
 .kal-punkt.farbe-lila    { background: var(--farbe-lila); }
 .kal-punkt.farbe-pink    { background: var(--farbe-pink); }
 .kal-punkt.farbe-grau    { background: var(--farbe-grau); }
+.kal-punkt.farbe-himmelblau { background: var(--farbe-himmelblau); }
+.kal-punkt.farbe-limette { background: var(--farbe-limette); }
+.kal-punkt.farbe-braun   { background: var(--farbe-braun); }
+.kal-punkt.farbe-magenta { background: var(--farbe-magenta); }
+.kal-punkt.farbe-indigo  { background: var(--farbe-indigo); }
+.kal-punkt.farbe-anthrazit { background: var(--farbe-anthrazit); }
 
 /* ---------- Handy: Raster ueber die ganze Ansicht ---------- */
 /* Unterhalb der Split-Grenze (kein html.breit) gibt es seit 24.09.2026 keine

@@ -28,7 +28,10 @@ import { nutzerOderFehler } from "../_lib/zugang.js";
 // Feste Palette fuer die Bereichsfarbe (siehe FARBEN in app.js, muss dazu
 // passen). Alles ausserhalb dieser Liste wird abgelehnt statt ungeprueft in
 // die Datenbank zu wandern.
-const FARBEN_ERLAUBT = new Set(["blau", "tuerkis", "gruen", "lila", "pink", "grau"]);
+const FARBEN_ERLAUBT = new Set([
+  "blau", "tuerkis", "gruen", "lila", "pink", "grau",
+  "himmelblau", "limette", "braun", "magenta", "indigo", "anthrazit",
+]);
 
 // Erlaubte Wiederholungsmuster (siehe WIEDERHOLUNGEN in app.js, muss dazu
 // passen). Alles ausserhalb dieser Liste wird abgelehnt statt ungeprueft in
