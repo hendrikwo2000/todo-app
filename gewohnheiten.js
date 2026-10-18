@@ -11,12 +11,14 @@
    "Verwalten" direkt in den Einstellungen (Reiter "Gewohnheiten"), wird aber
    weiter in dieser Datei gezeichnet (gewZeichneVerwalten).
 
-   Hendriks Entscheidung (gefragt): ein EIGENES Fenster, geoeffnet aus dem
-   Streifen ("Verlauf & mehr", Stift an der Karte) oder aus den
-   Einstellungen. Der Streifen bleibt zum schnellen Abhaken, und die
-   Ansicht-Pille in der Kopfzeile bleibt bei zwei Segmenten (ein drittes hatte
-   er schon einmal verworfen). Verworfen wurden eine eigene Seite (wirkte wie
-   eine zweite App) und weitere Reiter im Streifen (dort fehlt der Platz).
+   Hendriks Entscheidung (gefragt): ein EIGENES Fenster, geoeffnet nur noch aus
+   den Einstellungen (Eintrag "Verlauf & mehr" im Reiter "Gewohnheiten"; die
+   Links bei den Gewohnheiten und beim Timer gibt es seit 18.10.2026 nicht mehr).
+   Abhaken und der Timer stehen in fokus.js, und die Ansicht-Pille in der
+   Kopfzeile bleibt bei zwei Segmenten (ein drittes hatte er schon einmal
+   verworfen). Verworfen wurden eine eigene Seite (wirkte wie eine zweite App)
+   und weitere Reiter im Streifen (dort fehlte der Platz; seit 18.10.2026 gibt
+   es im Streifen gar keine Reiter mehr).
 
    Daten und Regeln kommen aus gewohnheiten-daten.js, die Dialoge (Gewohnheit
    anlegen/bearbeiten, Tag nachtragen) aus gewohnheiten-dialoge.js.

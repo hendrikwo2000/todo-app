@@ -52,16 +52,19 @@
       <button id="addTodoBtn" class="btn add-cat" title="ToDo anlegen – landet ohne Bereich, bis du es zuordnest">＋ ToDo</button>
       <button id="addCatBtn" class="btn add-cat">＋ Bereich</button>
       <span id="saveStatus" class="save-status"></span>
+      <!-- Der Timer als Knopf (seit 18.10.2026, vorher ein Reiter ueber dem
+           Kalender): zeigt die Restzeit, solange eine Sitzung laeuft, und oeffnet
+           ein kleines Fenster (#timerPopup). Zweimal im Dokument wie das Zahnrad -
+           am Handy verdeckt der Kalender die Kopfzeile. Sichtbarkeit: fokus.js. -->
+      <button type="button" class="btn timer-knopf" title="Fokus-Timer" hidden><span aria-hidden="true">⏱</span><span class="timer-zeit"></span></button>
       <button id="einstellungenBtn" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
       <!-- Umschalter Liste/Kalender, aussen rechts. Die Ecke gehoert ihm und
            nicht dem Zahnrad, weil er im Umschalt-Modus im Kalender noch einmal
            auftaucht - und zwar an genau derselben Bildschirmstelle. Stuende
            dort das Zahnrad daneben, spraenge die Pille beim Umschalten.
 
-           Zwei Segmente: 📋 = Streifen zu, 📅 = Streifen auf. WAS unten im
-           Streifen steht (Tag, Gewohnheiten, Timer), entscheiden die Reiter
-           dort - hier oben waere ein drittes Symbol nur eine zweite Stelle
-           fuer dieselbe Frage. -->
+           Zwei Segmente: 📋 = Streifen zu, 📅 = Streifen auf. Ein drittes
+           Symbol hier oben waere nur eine zweite Stelle fuer dieselbe Frage. -->
       <div id="ansichtSchalter" class="ansicht-schalter" role="group" aria-label="Ansicht">
         <button type="button" class="ansicht-seg" data-ansicht="liste"
                 aria-pressed="true" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
@@ -90,6 +93,22 @@
          bei offenem Kalender den gewaehlten Tag, sonst heute; einklappbar am
          Kopf. Inhalt aus kalender.js (zeichneTagOben). -->
     <section id="tagOben" class="tag-oben" aria-label="Tagesansicht" hidden></section>
+
+    <!-- Die Gewohnheiten dazu, einklappbar und standardmaessig zu, mit der Bilanz
+         im Kopf (Hendrik am 18.10.2026: auf Tablet und Handy unter dem Tag, aber
+         nur auf Wunsch aufgeklappt). Steht und faellt mit #tagOben: derselbe
+         Zeitpunkt, dieselben Geraete (zeichneTagOben ruft fokusOben). Am PC
+         stehen sie stattdessen in der Heute-Spalte (#fokHeute). fokus.js. -->
+    <section id="fokOben" class="fok-oben zu" aria-label="Gewohnheiten heute" hidden>
+      <button type="button" id="fokObenKopf" class="fok-oben-kopf" aria-expanded="false">
+        <span aria-hidden="true">🔥</span>
+        <span>Gewohnheiten</span>
+        <span class="kal-heute-chip">heute</span>
+        <span id="fokObenBilanz" class="fok-oben-bilanz"></span>
+        <span class="fok-oben-pfeil" aria-hidden="true">▾</span>
+      </button>
+      <div id="fokObenKoerper" class="fok-oben-koerper"></div>
+    </section>
 
     <!-- Ablage, um ein ToDo wieder aus seinem Bereich zu loesen. Erscheint
          nur waehrend eines Zuges und nur, wenn das gezogene ToDo ueberhaupt
@@ -129,6 +148,7 @@
          unten sitzt, saesse es sonst mitten im Panel statt in der Ecke, in der
          man ein Schliesskreuz sucht. -->
     <div class="kal-ansicht-zeile">
+      <button type="button" class="btn timer-knopf" title="Fokus-Timer" hidden><span aria-hidden="true">⏱</span><span class="timer-zeit"></span></button>
       <button type="button" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
       <div class="ansicht-schalter" role="group" aria-label="Ansicht">
         <button type="button" class="ansicht-seg" data-ansicht="liste"
@@ -144,9 +164,9 @@
          (#tagOben), am Handy zusaetzlich in der Tages-Karte.
          Die Spalte (#kalHeuteSpalte) hat zwei Teile: den Tag (#kalTagesliste, von
          kalender.js gezeichnet) und ganz unten die Gewohnheiten (#fokHeute).
-         Die Gewohnheiten sind NUR hier ein Abschnitt (Hendrik am 18.10.2026:
-         am PC unter dem Tag, am Handy und Tablet bleiben sie ein Reiter im
-         Streifen). fokus.js verschiebt dafuer #fokInhalt hierher und zurueck. -->
+         Am PC stehen die Gewohnheiten als Abschnitt hier (Hendrik am
+         18.10.2026); am Tablet und Handy unter der Tagesansicht (#fokOben).
+         fokus.js verschiebt dafuer #fokInhalt hierher und dorthin. -->
     <div id="kalHeuteSpalte" class="kal-liste">
       <div id="kalTagesliste" class="kal-tagblock"></div>
       <section id="fokHeute" class="fok-heute" aria-label="Gewohnheiten heute" hidden>
@@ -157,36 +177,16 @@
           </span>
           <span id="fokHeuteBilanz" class="fok-heute-bilanz"></span>
         </h3>
+        <!-- Die Liste (#fokInhalt): fokus.js haengt sie je nach Breite hierher
+             oder in #fokOben. -->
+        <div id="fokInhalt" class="fok-inhalt" hidden></div>
       </section>
     </div>
 
-    <!-- Die Reiterzeile schaltet den UNTEREN Teil um: Monatsraster,
-         Gewohnheiten oder Timer. Die Tagesliste darueber bleibt dabei stehen.
-         Steht nur da, wenn es beim Fokus etwas umzuschalten gibt: mindestens
-         einer der beiden Schalter im Abschnitt "Kalender-Streifen" der
-         Einstellungen ist an. Ohne das zeigt der Streifen still nur den
-         Kalender - eine Reiterleiste mit genau einem Reiter waere Zierrat.
-         Jeder der beiden Fokus-Reiter blendet sich fuer sich aus (fokus.js).
-         Sichtbarkeit steuert zeichneUnten() in kalender.js.
-         Bis Oktober 2026 stand rechts ein ↗ zur eigenen Fokus-App - die ist
-         in dieser App aufgegangen, ihr Inhalt steht im Fenster
-         "Gewohnheiten" (Knopf am Ende der Liste). -->
-    <div id="fokKopf" class="fok-kopf" hidden>
-      <div class="fok-reiter" role="tablist" aria-label="Ansicht oben">
-        <button type="button" class="fok-reiter-seg" data-fok-reiter="kalender"
-                role="tab" aria-selected="true">Kalender</button>
-        <button type="button" class="fok-reiter-seg" data-fok-reiter="gewohnheiten"
-                role="tab" aria-selected="false">Gewohnheiten</button>
-        <button type="button" class="fok-reiter-seg" data-fok-reiter="timer"
-                role="tab" aria-selected="false">Timer</button>
-      </div>
-      <span id="fokBilanz" class="fok-bilanz"></span>
-    </div>
-
-    <!-- Der Kalender-Block. Ein eigener Container, damit er GENAU so hoch ist
-         wie der Fokus-Block darunter (beide flex:1) - sonst kamen Kopf und
-         Wochentage zur Rasterhoehe dazu, der Kalender war 50 px hoeher, und
-         die Tagesliste sprang beim Umschalten der Reiter. -->
+    <!-- Der Kalender-Block: Kopf, Filter, Wochentage, Raster. Bis 18.10.2026
+         stand darueber eine Reiterzeile (Kalender | Gewohnheiten | Timer) und
+         darunter ein Fokus-Teil, der an die Stelle des Rasters trat - beides
+         gibt es nicht mehr. -->
     <div id="kalOben" class="kal-oben">
     <!-- Kopf und Raster gehoeren zusammen: ein Monatsname mit Blaetterpfeilen
          ueber den Gewohnheiten navigiert durch nichts. Das ✕ sitzt deshalb
@@ -230,37 +230,6 @@
     </div>
     </div><!-- /#kalOben -->
 
-    <!-- Der Fokus-Teil. Steht an derselben Stelle wie der Kalender-Block und
-         tritt an dessen Platz, sobald ein Fokus-Reiter gewaehlt ist. Beide
-         zusammen bilden den UNTEREN Teil des Streifens. -->
-    <div id="kalUnten" class="kal-unten" hidden>
-      <!-- Timer-Reiter. Die Struktur steht fest im HTML, fokus.js setzt im
-           Sekundentakt nur Text und Ring-Versatz - ein SVG pro Sekunde neu zu
-           bauen waere Verschwendung. Die Knopfreihe wechselt dagegen ihren
-           Inhalt (Start bzw. Pause/Stopp) und wird neu gefuellt. -->
-      <div id="fokTimer" class="fok-timer" hidden>
-        <div class="fok-ring">
-          <svg viewBox="0 0 120 120" aria-hidden="true">
-            <circle class="fok-ring-spur" cx="60" cy="60" r="52"></circle>
-            <circle id="fokRingFuellung" class="fok-ring-fuellung" cx="60" cy="60" r="52"></circle>
-          </svg>
-          <div class="fok-ring-mitte">
-            <span id="fokZeit" class="fok-zeit"></span>
-            <span id="fokGeplant" class="fok-geplant"></span>
-          </div>
-        </div>
-        <!-- Knoepfe und der Weg zur Wochenstatistik als eine Spalte: im
-             flachen Streifen stellt sich der Timer quer (Ring links), und
-             dann stehen beide zusammen rechts statt nebeneinander. -->
-        <div class="fok-steuerung">
-          <div id="fokKnoepfe" class="fok-knoepfe"></div>
-          <button type="button" id="fokTimerMehr" class="fok-mehr-knopf">Fokuszeit pro Woche ›</button>
-        </div>
-      </div>
-
-      <!-- Gewohnheiten-Reiter, gefuellt aus fokus.js. -->
-      <div id="fokInhalt" class="fok-inhalt" hidden></div>
-    </div>
   </aside>
 
 
@@ -533,12 +502,12 @@
             <details class="ein-abschnitt" data-abschnitt="streifen">
               <summary class="ein-kopf">
                 <span class="ein-kopf-icon">🧩</span>
-                <span class="ein-kopf-text">Kalender-Streifen</span>
+                <span class="ein-kopf-text">Anzeige</span>
                 <span class="ein-kopf-sub" id="subStreifen"></span>
                 <span class="ein-kopf-pfeil">▾</span>
               </summary>
               <div class="ein-inhalt">
-                <p class="ein-hinweis">Was neben dem Kalender zu sehen ist: die Gewohnheiten (am PC als Abschnitt unter dem Tag, sonst als Reiter) und der Timer (Reiter). Gilt für dieses Gerät.</p>
+                <p class="ein-hinweis">Was du in der App siehst: die Gewohnheiten (am PC unter dem Tag in der Heute-Spalte, am Tablet und Handy aufklappbar unter der Tagesansicht) und den Timer-Knopf ⏱ oben. Gilt für dieses Gerät.</p>
                 <div class="gw-ein-zeile">
                   <span class="ein-kopf-text">Gewohnheiten</span>
                   <label class="switch">
@@ -682,6 +651,36 @@
       </div>
 
       </div><!-- /.ein-blaettern -->
+    </div>
+  </div>
+
+  <!-- Der Fokus-Timer als kleines Fenster (Knopf ⏱ in der Kopfzeile, fokus.js).
+       Steht AUSSERHALB des Kalender-Panels, aus demselben Grund wie die anderen
+       Dialoge (dessen transform verbiegt position:fixed). Die Struktur steht fest
+       im HTML, fokus.js setzt im Sekundentakt nur Text und Ring-Versatz - ein
+       SVG pro Sekunde neu zu bauen waere Verschwendung. Nur die Knopfreihe
+       wechselt ihren Inhalt (Start bzw. Pause/Stopp) und wird neu gefuellt. -->
+  <div id="timerPopup" class="admin-popup timer-popup" hidden>
+    <div class="admin-popup-box timer-box" role="dialog" aria-labelledby="timerTitel">
+      <header class="ein-kopfzeile timer-kopfzeile">
+        <h2 id="timerTitel" class="timer-titel">Fokus-Timer</h2>
+        <button type="button" id="timerZu" class="ein-schliessen"
+                aria-label="Timer schließen" title="Schließen">✕</button>
+      </header>
+      <p id="fokTimerHinweis" class="ein-hinweis timer-hinweis">Lädt …</p>
+      <div id="fokTimer" class="fok-timer" hidden>
+        <div class="fok-ring">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="fok-ring-spur" cx="60" cy="60" r="52"></circle>
+            <circle id="fokRingFuellung" class="fok-ring-fuellung" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="fok-ring-mitte">
+            <span id="fokZeit" class="fok-zeit"></span>
+            <span id="fokGeplant" class="fok-geplant"></span>
+          </div>
+        </div>
+        <div id="fokKnoepfe" class="fok-knoepfe"></div>
+      </div>
     </div>
   </div>
 

@@ -47,7 +47,6 @@ const kalTagesliste  = document.getElementById("kalTagesliste");
 const kalHeuteSpalte = document.getElementById("kalHeuteSpalte");
 const kalFilter      = document.getElementById("kalFilter");
 const kalFilterKnopf = document.getElementById("kalFilterKnopf");
-const kalOben        = document.getElementById("kalOben");
 const kalLock        = document.getElementById("lock");
 
 // Die beiden Dialoge liegen ausserhalb des Panels (siehe index.html) - unter
@@ -121,17 +120,12 @@ function gemerkteBreite() {
   const roh = Number(localStorage.getItem(BREITE_KEY));
   return roh > 0 && roh <= BREITE_MAX ? roh : 0;
 }
-// Gemerkte Ansicht: "liste" (Streifen zu), "kalender" oder "fokus". EIN
-// Schluessel fuer beide Modi - wer den Streifen am Rechner zuklappt, will ihn
-// beim naechsten Laden auch nicht sehen, und am Handy gilt dasselbe.
-// Alte Werte ("tag" aus der Dreiteilung) werden beim Lesen als "kalender"
-// verstanden - alles ausser "liste" und "fokus" heisst Kalender.
+// Gemerkte Ansicht: "liste" (Streifen zu) oder "kalender". EIN Schluessel fuer
+// beide Modi - wer den Streifen am Rechner zuklappt, will ihn beim naechsten
+// Laden auch nicht sehen, und am Handy gilt dasselbe. Alte Werte ("tag" aus der
+// Dreiteilung, "fokus" aus der Zeit mit der Reiterzeile) werden beim Lesen als
+// "kalender" verstanden - alles ausser "liste" heisst Kalender.
 const ANSICHT_KEY = "kalAnsicht";
-
-// Was steht im UNTEREN Teil des Streifens: "kalender" (Monatsraster) oder
-// "fokus" (Gewohnheiten bzw. Timer). Die Tagesliste steht seit 09.10.2026
-// nicht mehr darueber, sondern als eigene Spalte daneben bzw. ueber den ToDos.
-let kalUntenModus = "kalender";
 
 /**
  * Drei Aufbauten, entschieden allein an der Fensterbreite (seit 09.10.2026):
@@ -688,7 +682,7 @@ function zeichneKalender() {
   if (istDrei()) zeichneTagesliste(tage, tageTermine, ueberfaellige, heute);
   else kalTagesliste.replaceChildren();
   zeichneTagKarte(tage, tageTermine, ueberfaellige, heute);
-  zeichneUnten();
+  zeichneHeuteSpalte();
   // Die Tagesansicht ueber den ToDos folgt dem gewaehlten Tag (iPad, kleinere
   // Fenster) - eigene Funktion, weil sie auch bei zugeklapptem Kalender
   // gezeichnet wird.
@@ -745,6 +739,8 @@ function zeichneTagOben() {
   // bei offenem Kalender gar nicht im Dokumentfluss) und erst mit einer Liste.
   const zeigen = tagOben() && !(kalOffen && !istSplit()) && !!aktiveListe;
   tagObenEl.hidden = !zeigen;
+  // Die Gewohnheiten darunter (#fokOben) stehen und fallen mit der Tagesansicht.
+  window.fokusOben?.(zeigen);
   if (!zeigen) { tagObenEl.replaceChildren(); return; }
 
   const heute = todayStr();
@@ -3156,7 +3152,7 @@ function setzePanel(offen, sofort) {
     if (!ausPopstate) history.back();
   }
 
-  try { localStorage.setItem(ANSICHT_KEY, offen ? kalUntenModus : "liste"); }
+  try { localStorage.setItem(ANSICHT_KEY, offen ? "kalender" : "liste"); }
   catch (e) { /* voller Speicher - dann eben ungemerkt */ }
 
   // Die Tagesansicht ueber den ToDos zeigt bei offenem Kalender den gewaehlten
@@ -3187,60 +3183,20 @@ window.addEventListener("popstate", () => {
 });
 
 /**
- * Was steht unten: das Monatsraster oder Fokus. Die Sichtbarkeit haengt an
- * genau dieser Stelle, damit "immer genau eines" nicht an zwei Orten
- * entschieden wird. Die Tagesliste bleibt davon unberuehrt.
+ * Die Heute-Spalte im Panel (ab 1380 px) und die Gewohnheiten darin. Bis
+ * 18.10.2026 hiess das zeichneUnten() und schaltete den unteren Teil des
+ * Streifens zwischen Raster und Fokus (Reiterzeile Kalender | Gewohnheiten |
+ * Timer) um - die Reiterzeile gibt es nicht mehr (Hendrik: stoerte ueber dem
+ * Kalender), der Streifen zeigt immer das Raster.
  *
- * Fokus gibt es nur mit Zugang UND eingeschaltetem Schalter in den
- * Einstellungen. Faellt eines der beiden weg, faellt ein gemerktes "fokus"
- * still auf den Kalender zurueck - sonst stuende der Streifen leer da.
+ * Die Tagesliste im Panel gibt es nur als eigene Heute-Spalte. Darunter steht der
+ * Tag ueber den ToDos (zeichneTagOben) bzw. am Handy in der Tages-Karte. Die
+ * Gewohnheiten stehen am PC als Abschnitt ganz unten in der Spalte, solange der
+ * Streifen offen ist; ob es sie gibt (angemeldet, Schalter), prueft fokus.js.
  */
-function fokusMoeglich() {
-  return !!window.fokusHatZugang?.() && window.fokusImStreifen?.() !== false;
-}
-
-function zeichneUnten() {
-  const mitFokus = fokusMoeglich();
-  if (kalUntenModus === "fokus" && !mitFokus) kalUntenModus = "kalender";
-  const fokus = kalUntenModus === "fokus";
-
-  // Zwei Bloecke, genau einer sichtbar. Was INNERHALB des Kalender-Blocks
-  // erscheint (Filter ja/nein), entscheidet zeichneFilter() selbst - vorher
-  // wurden hier vier Einzelteile geschaltet, und jedes musste seine eigene
-  // Entscheidung gegen diese hier verteidigen.
-  kalOben.hidden = fokus;
-  kalUnten.hidden = !fokus;
-  if (fokus) window.fokusZeigen?.();
-  else window.fokusVerstecken?.();
-
-  // Die Tagesliste im Panel gibt es nur als eigene Heute-Spalte (ab 1380 px).
-  // Darunter steht der Tag ueber den ToDos (zeichneTagOben) bzw. am Handy
-  // in der Tages-Karte.
+function zeichneHeuteSpalte() {
   kalHeuteSpalte.hidden = !istDrei();
-
-  // Die Reiterzeile ueberlebt den Wechsel zum Kalender - sie ist der Weg
-  // zurueck. Ohne Fokus (kein Zugang oder abgeschaltet) waere sie ein Reiter
-  // allein.
-  window.fokusReiterzeile?.(mitFokus);
-  // Die Gewohnheiten stehen am PC (ab 1380 px) als Abschnitt unter dem Tag in der
-  // Heute-Spalte, solange der Streifen offen ist - unabhaengig davon, ob unten
-  // Raster oder Timer steht. Ob es sie gibt (Zugang, Schalter), prueft fokus.js.
   window.fokusHeute?.(istDrei() && kalOffen);
-  // Steht der Kalender vorn, markiert ihn niemand sonst: setzeReiter() in
-  // fokus.js laeuft nur, wenn dort etwas gezeichnet wird.
-  if (!fokus) {
-    for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
-      seg.setAttribute("aria-selected", String(seg.dataset.fokReiter === "kalender"));
-    }
-  }
-}
-
-// Den oberen Teil umschalten, ohne den Streifen selbst anzufassen.
-function setzeUnten(modus) {
-  if (kalUntenModus === modus) return;
-  kalUntenModus = modus;
-  zeichneUnten();
-  setzePanel(kalOffen, true);
 }
 
 // Gemerkte Ansicht wiederherstellen, einmalig. Haengt am ersten Zeichnen und
@@ -3255,15 +3211,13 @@ function stelleAnsichtHer() {
   const gemerkt = localStorage.getItem(ANSICHT_KEY);
   // Ohne gemerkten Zustand entscheidet der Platz: am Rechner steht der
   // Streifen gleich daneben, am Handy naehme er der Liste den Bildschirm weg.
-  // Alte Werte ("tag") heissen "kalender" - alles ausser "liste"/"fokus".
+  // Alte Werte ("tag", "fokus") heissen "kalender" - alles ausser "liste".
   const auf = gemerkt ? gemerkt !== "liste" : istSplit();
   if (!auf) { setzePanel(false, true); return; }
-  // Ein gemerktes "fokus" gilt nur mit Zugang - zeichneUnten() faengt das ab.
-  kalUntenModus = gemerkt === "fokus" ? "fokus" : "kalender";
   frischOeffnen();
   kalOffen = true;
   setzePanel(true, true);
-  zeichneUnten();
+  zeichneHeuteSpalte();
 }
 
 // Jedes Oeffnen startet beim heutigen Tag.
@@ -3274,22 +3228,18 @@ function frischOeffnen() {
   springeZuHeute();
 }
 
-function oeffneKalender(modus) {
-  if (modus) kalUntenModus = modus;
+function oeffneKalender() {
   if (!kalOffen) frischOeffnen();
   else zeichneKalender();
   kalOffen = true;
   setzePanel(true);
-  zeichneUnten();
+  zeichneHeuteSpalte();
 }
 
-// Fuer fokus.js: ob der Fokus-Teil gerade ueberhaupt zu sehen ist. Der
-// Sekundentakt des Timers zeichnet sonst ins Verborgene.
 window.kalenderIstOffen = () => kalOffen;
 // Fuer fokus.js: steht die Heute-Spalte da (ab 1380 px)? Dann wohnen die
-// Gewohnheiten dort und nicht als Reiter im Streifen.
+// Gewohnheiten dort und nicht unter der Tagesansicht ueber den ToDos.
 window.kalenderDreispaltig = istDrei;
-window.kalenderZeigtFokus = () => kalOffen && kalUntenModus === "fokus";
 
 function schliesseKalender() {
   if (!kalOffen) return;
@@ -3662,22 +3612,8 @@ document.addEventListener("touchcancel", gesteBeenden);
 for (const seg of document.querySelectorAll(".ansicht-seg")) {
   seg.addEventListener("click", () => {
     if (seg.dataset.ansicht === "liste") { schliesseKalender(); return; }
-    if (kalOffen) { setzeUnten("kalender"); return; }
-    oeffneKalender("kalender");
-  });
-}
-
-// Die Reiter oben. Sie schalten BEIDES: ob oben das Raster oder Fokus steht
-// (das hier) und welcher Fokus-Reiter (fokus.js).
-// Reihenfolge zaehlt: setzeUnten("fokus") laesst fokusZeigen() beim ersten Mal
-// auf den Gewohnheiten aufsetzen - die Wahl des Nutzers muss also DANACH
-// kommen, sonst wird ein Tipp auf "Timer" still ueberschrieben.
-for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
-  seg.addEventListener("click", () => {
-    const welcher = seg.dataset.fokReiter;
-    if (welcher === "kalender") { setzeUnten("kalender"); return; }
-    setzeUnten("fokus");
-    window.fokusReiter?.(welcher, true);
+    if (kalOffen) return;
+    oeffneKalender();
   });
 }
 document.getElementById("kalZu").addEventListener("click", schliesseKalender);
@@ -3796,9 +3732,11 @@ for (const karte of kalTagKarten) {
 // Formular (von der Wiederholen-Seite erst zurueck ins Formular, aus dem
 // Farbmenue erst das Menue), Monatswahl, Filter, zuletzt die Tages-Karte.
 function schliesseObersteEbene() {
-  // Ganz oben liegt, wenn offen, das Fenster "Gewohnheiten" samt seinen
-  // Dialogen (gewohnheiten.js) - es steht ueber dem Streifen. Escape faengt es
-  // selbst ab; hierher kommt vor allem die Zurueck-Taste am Handy.
+  // Ganz oben liegt, wenn offen, das Timer-Fenster (fokus.js), darunter das
+  // Fenster "Gewohnheiten" samt seinen Dialogen (gewohnheiten.js) - beide stehen
+  // ueber dem Streifen. Escape faengt sie selbst ab; hierher kommt vor allem die
+  // Zurueck-Taste am Handy.
+  if (window.fokusSchliesseOberste?.()) return true;
   if (window.gewSchliesseOberste?.()) return true;
   if (frageAufloesen) { beantworteFrage(null); return true; }
   if (formularOffen) {

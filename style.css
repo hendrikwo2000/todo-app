@@ -1724,6 +1724,7 @@ html.kal-split .snackbar { left: calc(50% - var(--kal-breite) / 2); }
    Monatspfeilen; seit das Raster unten steht, waere es dort mitten im Panel
    statt in der Ecke). */
 html.breit .kal-ansicht-zeile > .ein-knopf,
+html.breit .kal-ansicht-zeile > .timer-knopf,
 html.breit .kal-ansicht-zeile > .ansicht-schalter { display: none; }
 /* Ohne Pille braucht die Zeile auch deren Hoehe nicht: min-height und
    padding-top sind dazu da, den Umschalter auf die Mittellinie der
@@ -2155,19 +2156,11 @@ html:not(.breit) #kalZu { display: none; }
   text-align: left;
 }
 
-/* Der Fokus-Bereich: Gewohnheiten oder Timer. Er steht an der Stelle des
-   Monatsrasters und tritt an dessen Platz - die Tagesliste DARUNTER bleibt
-   dabei stehen. Bis zum 13.08.2026 wohnten hier alle drei Inhalte und
-   verdraengten sich gegenseitig; ein Blick auf die Gewohnheiten kostete damit
-   den Blick auf "was ist heute faellig".
-
-   flex:1 gibt ihm denselben Anteil wie der Tagesliste - beide teilen sich, was
-   unter dem Kopf uebrig bleibt. min-height:0, damit die Kinder blaettern
+/* Der Kalender-Block im Streifen: Kopf, Filter, Wochentage, Raster. Bis
+   18.10.2026 teilte er sich den Platz mit einem Fokus-Teil (Gewohnheiten bzw.
+   Timer), den eine Reiterzeile umschaltete - beides gibt es nicht mehr, der
+   Streifen zeigt immer das Raster. min-height:0, damit die Kinder blaettern
    duerfen statt den Streifen aufzublaehen. */
-/* Der Kalender-Block: Kopf, Filter, Wochentage, Raster. Traegt dieselbe
-   flex-Angabe wie .kal-unten darunter, damit beide GENAU gleich hoch sind -
-   sonst kaemen Kopf und Wochentage zur Rasterhoehe dazu und die Tagesliste
-   spraenge beim Umschalten der Reiter (gemessen: 50 px). */
 .kal-oben {
   flex: 1;
   min-height: 0;
@@ -2177,21 +2170,6 @@ html:not(.breit) #kalZu { display: none; }
 }
 .kal-oben[hidden] { display: none; }
 
-.kal-unten {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  /* Damit der Timer weiss, wie flach es hier zugeht (siehe @container unten). */
-  container-type: size;
-  container-name: unten;
-}
-/* display:flex oben bzw. unten schluege sonst das eingebaute [hidden] des
-   Browsers. Dieselbe Falle wie bei .offline-banner, und genau hier ist sie
-   schon einmal zugeschnappt: die Gewohnheiten blieben neben dem Timer
-   stehen. */
-.kal-unten[hidden] { display: none; }
 .kal-liste[hidden] { display: none; }
 
 /* Die Tagesliste im Panel gibt es seit 09.10.2026 nur noch als Heute-Spalte
@@ -2252,20 +2230,18 @@ html:not(.breit) #kalZu { display: none; }
 html.dreispaltig.kal-split body { padding-right: calc(var(--kal-breite) + var(--heute-breite)); }
 html.dreispaltig.kal-split .kalender { width: calc(var(--kal-breite) + var(--heute-breite)); }
 html.dreispaltig.kal-split .snackbar { left: calc(50% - (var(--kal-breite) + var(--heute-breite)) / 2); }
-/* Zeilen: ✕ ueber beiden Spalten, dann die Reiterzeile (falls es Fokus gibt),
-   dann der Kalender- bzw. Fokus-Block. row-gap 0 und Abstaende an den Zeilen
-   selbst: eine ausgeblendete Reiterzeile liesse sonst eine doppelte Luecke. */
+/* Zeilen: ✕ ueber beiden Spalten, darunter der Kalender-Block rechts und die
+   Heute-Spalte links. Bis 18.10.2026 stand dazwischen eine Reiterzeile in einer
+   eigenen Zeile. row-gap 0 und Abstaende an den Zeilen selbst. */
 html.dreispaltig .kalender {
   display: grid;
   grid-template-columns: calc(var(--heute-breite) - 14px) minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   column-gap: 14px;
   row-gap: 0;
 }
 html.dreispaltig .kal-ansicht-zeile { grid-column: 1 / -1; grid-row: 1; margin-bottom: 9px; }
-html.dreispaltig .fok-kopf { grid-column: 2; grid-row: 2; margin-bottom: 9px; }
-html.dreispaltig .kal-oben,
-html.dreispaltig .kal-unten { grid-column: 2; grid-row: 3; }
+html.dreispaltig .kal-oben { grid-column: 2; grid-row: 2; }
 /* Die Heute-Spalte sieht aus wie eine Spalte im Board: grauer Kasten bis
    unten. */
 html.dreispaltig .kalender .kal-liste {
@@ -3199,108 +3175,68 @@ body.zieht, body.zieht .todo {
 .kal-frage-knoepfe .btn { justify-content: center; min-height: 46px; font-size: 15px; }
 
 /* ====================================================================
-   Fokus im Streifen
+   Fokus: die Gewohnheiten unter dem Tag und der Timer als Knopf
 
-   Kein eigenes Panel (bis 13.08.2026 war es eines, mit gemessener Hoehe unter
-   dem Kalender): Gewohnheiten und Timer fuellen #kalUnten und treten damit an
-   die Stelle des MONATSRASTERS. Die Tagesliste darunter bleibt stehen -
-   dazwischen wechselt nichts mehr. Deshalb steht hier nur noch, wie ihr Inhalt
-   aussieht, nicht mehr wo er liegt.
+   Bis 18.10.2026 standen beide als Reiter (Kalender | Gewohnheiten | Timer) ueber
+   dem Kalender-Raster im Streifen und traten an dessen Stelle. Die Reiterzeile
+   gibt es nicht mehr (Hendrik: stoerte ueber dem Kalender). Die Gewohnheiten
+   stehen jetzt dort, wo der Tag steht - Heute-Spalte am PC (.fok-heute), Abschnitt
+   unter der Tagesansicht am Tablet und Handy (.fok-oben) -, der Timer ist ein Knopf
+   in der Kopfzeile mit einem kleinen Fenster. Hier steht, wie das aussieht.
    ==================================================================== */
-/* ---------- Kopfzeile des Fokus-Bereichs ---------- */
-.fok-kopf {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: none;
-}
-.fok-kopf[hidden] { display: none; }
-.fok-bilanz {
-  font-size: 12.5px;
-  color: var(--muted);
-  /* Schiebt den Link nach aussen, ohne dass es dafuer einen eigenen Abstand
-     braucht - und steht selbst direkt hinter den Reitern. */
-  margin-right: auto;
-}
 
-/* ---------- Reiter ---------- */
-/* Gewohnheiten und Timer teilen sich die Flaeche, statt uebereinander zu
-   stehen: nebeneinander blieb fuer den Timer nur eine Zeile, und eine Zeile
-   liest sich vom Schreibtisch aus nicht. */
-.fok-reiter {
+/* ---------- Timer-Knopf in der Kopfzeile ---------- */
+/* Zweimal im Dokument (App-Kopfzeile und Kalender), wie das Zahnrad. Laeuft eine
+   Sitzung, steht die Restzeit daran und er faerbt sich. */
+.timer-knopf {
   display: inline-flex;
-  flex: none;
-  padding: 2px;
-  gap: 2px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--col-bg);
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  font-size: 16px;
+  line-height: 1;
 }
-.fok-reiter-seg {
-  border: 0;
-  border-radius: 8px;
-  padding: 4px 10px;
-  background: none;
-  font: inherit;
-  font-size: 12.5px;
-  color: var(--muted);
-  cursor: pointer;
-  transition: background .15s, color .15s;
+.timer-knopf[hidden] { display: none; }
+.timer-zeit { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.timer-zeit:empty { display: none; }
+.timer-knopf.laeuft { color: var(--accent); border-color: var(--accent); }
+/* Am Handy steht bei laufender Sitzung nur die Zeit, ohne das Symbol: mit beidem
+   schrumpfte der Listenname in der Kopfzeile auf "Meine ...". */
+@media (max-width: 480px) {
+  .timer-knopf.laeuft > [aria-hidden] { display: none; }
+  .timer-knopf.laeuft { padding-inline: 7px; }
 }
-.fok-reiter-seg[aria-selected="true"] {
-  background: var(--row);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .10);
-  color: var(--text);
-  font-weight: 600;
-  cursor: default;
-}
-/* Laufende Sitzung: der Timer-Reiter traegt die Restzeit und faerbt sich, auch
-   wenn gerade ein anderer Reiter vorn ist. Frueher stand die Zeit am 🔥 in der
-   Kopfzeile - die gibt es nicht mehr, und hier steht sie naeher an der Sache.
-   Sichtbar ist sie damit nur bei offenem Streifen; ist er zu, meldet sich das
-   Sitzungsende weiterhin ueber den Tab-Titel und den Ton. */
-.fok-reiter-seg.laeuft {
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-.fok-bilanz[hidden] { display: none; }
+/* In der App-Kopfzeile schiebt der Knopf die rechte Gruppe nach aussen, wie sonst
+   das Zahnrad (#einstellungenBtn). Zwei auto-Raender wuerden sich den freien
+   Platz teilen - darum gibt das Zahnrad seinen ab, solange der Knopf da ist. */
+.topbar > .timer-knopf { margin-left: auto; }
+.topbar > .timer-knopf:not([hidden]) + #einstellungenBtn { margin-left: 0; }
 
-/* ---------- Timer ---------- */
-/* Nimmt den ganzen Platz unter den Reitern ein: der Ring zentriert sich in dem,
-   was uebrig bleibt, die Knoepfe stehen darunter. */
+/* ---------- Timer-Fenster ---------- */
+.admin-popup-box.timer-box { width: min(340px, 100%); padding: 12px 24px 24px; gap: 8px; }
+.timer-kopfzeile { justify-content: space-between; align-items: center; }
+.admin-popup-box.timer-box h2.timer-titel { margin: 0; font-size: 18px; text-align: left; }
+.timer-hinweis { text-align: center; padding: 18px 0; }
+.timer-hinweis[hidden] { display: none; }
 .fok-timer {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 18px;
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 8px 0;
+  padding: 4px 0 2px;
 }
 .fok-timer[hidden] { display: none; }
-/* Wird es trotz allem zu eng (sehr flacher Bereich, sehr grosse Schrift),
-   blaettert der Timer in sich, statt aus dem Streifen zu laufen. */
-.fok-timer { overflow-y: auto; }
 
 .fok-ring {
   position: relative;
-  /* Der Ring nimmt die HOEHE, die unter den Reitern uebrig bleibt, und leitet
-     seine Breite daraus ab (aspect-ratio). An der Fensterhoehe zu haengen ging
-     schief: am Handy blieben unter dem Monatsraster 205 px, der Ring nahm sich
-     280 und schob die Knoepfe aus dem Bild.
-     max-height deckelt ihn, wo viel Platz ist - sonst wuechse er auf einem
-     hohen Bildschirm ins Alberne. */
-  flex: 1 1 auto;
-  min-height: 0;
-  width: auto;
-  max-width: 100%;
-  max-height: 280px;
-  aspect-ratio: 1;
+  flex: none;
+  /* Feste Groesse: im Fenster gibt es keine Hoehe, aus der der Ring sie
+     ableiten koennte (container-type: size braucht eine ausdrueckliche). */
+  width: min(220px, 62vw);
+  height: min(220px, 62vw);
   /* Damit die Zeit in der Mitte mit dem Ring skaliert statt mit dem Fenster. */
   container-type: size;
 }
-html.kal-split .fok-ring { max-height: 190px; }
 /* display:block ist Pflicht: als inline-Element steht das SVG auf der
    Textgrundlinie, und die Luecke darunter machte den Kreis fuenf Pixel hoeher
    als breit - aus dem Ring wurde ein Ei. */
@@ -3347,19 +3283,50 @@ html.kal-split .fok-ring { max-height: 190px; }
   padding: 0 12px;
 }
 .fok-knoepfe { display: flex; gap: 8px; flex: none; }
-
-/* Flacher Bereich (am Handy bleiben unter dem Monatsraster oft nur gut 200 px):
-   dann stellt sich der Timer quer. Der Ring nimmt die volle Hoehe und die
-   Knoepfe daneben die Breite - uebereinander bliebe fuer den Ring ein Rest von
-   rund 90 px, und darin ist eine Uhrzeit nicht mehr zu lesen. */
-@container unten (max-height: 280px) {
-  .fok-timer { flex-direction: row; justify-content: center; gap: 14px; }
-  .fok-ring { height: 100%; width: auto; max-height: none; max-width: 58%; flex: 0 1 auto; }
-  .fok-knoepfe { flex-direction: column; }
-}
-/* Fingergerecht, hier ist Platz dafuer - anders als in der alten Zeile. */
+/* Fingergerecht, hier ist Platz dafuer. */
 .fok-knoepfe .btn { min-height: 44px; padding: 6px 18px; }
 .fok-start { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ---------- Gewohnheiten unter der Tagesansicht (Tablet, Handy) ---------- */
+/* Eigener grauer Kasten direkt unter dem der Tagesansicht (.tag-oben, derselbe
+   Grund), einklappbar und standardmaessig zu - zu zeigt nur der Kopf mit der
+   Bilanz. margin-top zieht ihn 8 px an die Tagesansicht heran (deren
+   margin-bottom ist 16 px). Hendrik am 18.10.2026. */
+.fok-oben {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: -8px 0 16px;
+  padding: 10px 12px 12px;
+  border-radius: 12px;
+  background: var(--col-bg);
+}
+.fok-oben[hidden] { display: none; }
+.fok-oben.zu { padding-bottom: 10px; }
+.fok-oben-kopf {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.fok-oben-kopf:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.fok-oben-bilanz { margin-left: auto; font-size: 12px; font-weight: 400; }
+.fok-oben-pfeil { font-size: 13px; transition: transform .15s; }
+.fok-oben.zu .fok-oben-pfeil { transform: rotate(-90deg); }
+.fok-oben-koerper { display: flex; flex-direction: column; gap: 7px; }
+.fok-oben.zu .fok-oben-koerper { display: none; }
+.fok-oben .fok-inhalt { flex: none; overflow: visible; padding-bottom: 0; }
 
 /* ---------- Gewohnheiten ---------- */
 .fok-inhalt {
@@ -3484,32 +3451,6 @@ html.kal-split .fok-ring { max-height: 190px; }
   border-color: var(--green);
   color: #fff;
 }
-
-/* Der Weg ins Fenster "Gewohnheiten": leise, als Textknopf - am Ende der
-   Gewohnheitenliste und unter dem Timer. Bis Oktober 2026 stand an seiner
-   Stelle ein ↗ zur eigenen Fokus-App in der Kopfzeile. */
-.fok-mehr-knopf {
-  align-self: center;
-  flex: none;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  font-size: 12.5px;
-  padding: 6px 8px;
-  cursor: pointer;
-}
-@media (hover: hover) {
-  .fok-mehr-knopf:hover { text-decoration: underline; }
-}
-/* Knoepfe und Weg zur Wochenstatistik als eine Spalte - im flachen Streifen
-   (Container-Abfrage oben) steht sie dann rechts neben dem Ring. */
-.fok-steuerung { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
-/* Die Fokus-Reiter blenden sich einzeln aus (Einstellungen, "Kalender-
-   Streifen"). Ohne eigene display-Regel braeuchte es die Zeile nicht - sie
-   steht trotzdem da, damit eine spaetere display-Regel das [hidden] nicht
-   still aushebelt. */
-.fok-reiter-seg[hidden] { display: none; }
 
 /* Schmale Karten: bei wenig Platz rutscht das Mengenfeld unter den Namen,
    sonst bleiben fuer den Text nur noch ein paar Dutzend Pixel und die Namen

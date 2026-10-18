@@ -401,7 +401,7 @@ Escape-/Zurück-Behandlung gelöst waren.
 feiner Strich trennt Name und Stift) und ist ein gezeichnetes Symbol statt des
 Schriftzeichens ✎, das zwischen den Pillen klein und fremd wirkte (Hendrik am
 18.10.2026). Dasselbe Symbol (`GEW_STIFT_SVG`) tragen die Zeilen der
-Verwalten-Liste. Die Karten im Kalender-Streifen (`fokus.js`) haben weiter das
+Verwalten-Liste. Die Karten der Gewohnheiten (`fokus.js`) haben weiter das
 Schriftzeichen.
 
 **Das Zahnrad gibt es zweimal.** Einmal in der Kopfzeile der App
@@ -2378,7 +2378,7 @@ der alten App (cron-job.org) bekommt seitdem 410 und kann weg.
 | Teil | Datei |
 |---|---|
 | Daten, Regel-Spiegel, Offline-Warteschlange, einziger Schreibweg fuer Tage (`gewSchreibeTag`) | `gewohnheiten-daten.js` |
-| Streifen: Reiter Gewohnheiten und Timer; am PC die Gewohnheiten als Abschnitt in der Heute-Spalte | `fokus.js` |
+| Gewohnheiten (Heute-Spalte am PC, sonst unter der Tagesansicht) und Timer (Knopf mit Fenster) | `fokus.js` |
 | Fenster "Gewohnheiten" (Verlauf, Statistik, Fokuszeit) und die Verwalten-Liste in den Einstellungen | `gewohnheiten.js` |
 | Dialoge anlegen/bearbeiten und Tag nachtragen, Einstellungsabschnitte | `gewohnheiten-dialoge.js` |
 | Endpunkte | `functions/api/gewohnheiten/*`, `functions/api/fokus/*`, `functions/api/export.js` |
@@ -2396,16 +2396,18 @@ zu (`gewBeiAenderung`) und zeichnen sich neu.
 **Jedes Konto bekommt Gewohnheiten und Timer** (Hendriks Entscheidung,
 gefragt). Die Endpunkte pruefen `todo_zugang` ueber `_lib/zugang.js` wie alles
 hier, `users.fokus_zugang` liest keiner von ihnen mehr. Ein neues Konto sieht
-im Reiter einen Leerzustand mit "＋ Gewohnheit anlegen" (`aktive: 0` in der
+im Abschnitt einen Leerzustand mit "＋ Gewohnheit anlegen" (`aktive: 0` in der
 Antwort von `gewohnheiten/heute`).
 
 **Fenster statt eigener Seite.** Verlauf (Monatskalender je Gewohnheit,
 Nachtragen per Tipp, Wischen wechselt den Monat), Statistik (7/30/90 Tage),
 Fokuszeit (Minuten pro Woche) stehen in `#gewFenster` (Verwalten - anlegen,
 bearbeiten, Reihenfolge, Archiv, loeschen - seit 18.10.2026 in den
-Einstellungen, siehe dort) - geoeffnet ueber
-"Verlauf & mehr ›" am Ende der Liste, "Fokuszeit pro Woche ›" unter dem Timer,
-den Stift an einer Karte oder die Einstellungen. Hendriks Entscheidung,
+Einstellungen, siehe dort) - geoeffnet ueber den
+Eintrag "Verlauf & mehr" in den Einstellungen (Reiter "Gewohnheiten"). Die Links
+"Verlauf & mehr ›" bei den Gewohnheiten und "Fokuszeit pro Woche ›" beim Timer
+gibt es seit 18.10.2026 nicht mehr (Hendrik: steht in den Einstellungen). Den
+Stift an einer Karte oeffnet der Bearbeiten-Dialog. Hendriks Entscheidung,
 gefragt; verworfen: eine eigene Seite (wirkte wie eine zweite App) und mehr
 Reiter im Streifen (kein Platz). Die Ansicht-Pille bleibt bei zwei Segmenten.
 Das Fenster steht ausserhalb des Kalender-Panels (transform-Falle), Escape und
@@ -2416,12 +2418,15 @@ gibt es keine Rand-Wischgeste (`darfGeste`).
 **Einstellungen, vier Abschnitte** (seit 18.10.2026 im Reiter „Gewohnheiten",
 eingeklappt, in der Reihenfolge Timer, Streifen, Gewohnheiten, Verwalten; Aufbau
 siehe Kapitel „Einstellungen"):
-- **Kalender-Streifen** - zwei Schalter, Gewohnheiten und Timer je fuer sich,
+- **Anzeige** - zwei Schalter, Gewohnheiten und Timer je fuer sich,
   pro Geraet in `localStorage.streifenGewohnheiten` / `streifenTimer`
   (Standard an; wer den alten gemeinsamen Schalter `fokusPanel` aus hatte,
-  startet mit beiden aus). Bewusst nicht "Bereiche" genannt: so heissen hier
-  die Spalten des Boards. Gelesen ueber `window.fokusBereiche()` (fokus.js)
-  und `window.fokusImStreifen()` (kalender.js, `fokusMoeglich`). Bis Oktober
+  startet mit beiden aus). Der Schalter "Gewohnheiten" gilt fuer beide Orte der
+  Liste (Heute-Spalte bzw. unter der Tagesansicht), "Timer" fuer den Knopf in
+  der Kopfzeile. Gelesen ueber `window.fokusBereiche()` (fokus.js); ein
+  umgelegter Schalter ruft `window.fokusEinstellungGeaendert()`. Bis 18.10.2026
+  hiess der Abschnitt "Kalender-Streifen", weil beides Reiter im Streifen waren
+  (bewusst nicht "Bereiche": so heissen hier die Spalten des Boards). Bis Oktober
   2026 war das EIN Schalter "Fokus im Kalender", davor ein 🔥 in der
   Kopfzeile.
 - **Gewohnheiten** - Zaehlweise der Flamme (insgesamt / in Reihe), Export als
@@ -2453,168 +2458,107 @@ rechnet Kalenderfarben mit den Spiegeln in `gewohnheiten-daten.js`
 (`gewStatusVon`, `gewStillerTagZaehlt`, ...). Aendert sich eine Regel in
 `_lib/tag.js` oder `heute.js`, muss sie dort mit.
 
-### Am PC stehen die Gewohnheiten unter dem Tag (seit 18.10.2026)
+### Gewohnheiten unter dem Tag, Timer als Knopf (seit 18.10.2026)
 
-**Ab 1380 px (`istDrei()`, Heute-Spalte da) sind die Gewohnheiten kein Reiter,
-sondern ein Abschnitt ganz unten in der Heute-Spalte** (`#fokHeute` in
-`#kalHeuteSpalte`, unter `#kalTagesliste`; Überschrift „🔥 Gewohnheiten heute" mit
-Bilanz „2 von 5"). Hendriks Wunsch: „lieber unter den heutigen Tag, ganz unten,
-als Extra Abschnitt - das passt auf dem PC gut, auf dem Handy und Tablet eher
-nicht". Auf Nachfrage bestätigt: am PC **nur** der Abschnitt, der Reiter
-„Gewohnheiten" entfällt dort (die Reiterzeile hat dann Kalender und Timer);
-unter 1380 px (Tablet, Handy, kleine Laptops) bleibt alles wie es war - Reiter im
-Streifen, Tagesansicht über den ToDos ohne Gewohnheiten.
+**Die Reiterzeile über dem Kalender gibt es nicht mehr.** Bis dahin stand im
+Streifen eine Zeile **Kalender | Gewohnheiten | Timer** (`#fokKopf`), und unter ihr
+trat ein Fokus-Teil (`#kalUnten`) an die Stelle des Rasters. Hendrik: „stört mich,
+dass über dem Kalender der Reiter Timer ist, und am Handy noch Gewohnheiten". Der
+Streifen zeigt seitdem immer das Raster (`#kalOben`). Zwei Rückfragen entschieden,
+wohin die beiden Inhalte ziehen:
 
-- **Dasselbe Element zieht um.** `fokPlatziere()` in `fokus.js` hängt
-  `#fokInhalt` je nach Breite in die Heute-Spalte oder hinter den Timer in
-  `#kalUnten`; Zeichnen (`zeichneFokus`), Karten, Abhaken, Offline-Warteschlange
-  und „Verlauf & mehr ›" bleiben dieselben. Aufgerufen bei jedem Zeichnen und von
-  `window.fokusHeute(an)`, das `kalender.js` (`zeichneUnten`) bei jedem Durchgang
-  mit `istDrei() && kalOffen` ruft. Erst dort entscheidet `fokus.js`, ob es die
-  Gewohnheiten gibt (angemeldet, Schalter an).
-- **Zustand `fokHeuteAn` neben `fokSichtbar`:** `fokSichtbar` heißt „unten steht
-  Fokus", `fokHeuteAn` „der Abschnitt in der Spalte steht". Der Abschnitt steht
-  auch, wenn unten das Raster vorn ist. Deshalb zeichnet `zeichneFokus` bei beiden,
-  und `fokusVerstecken` versteckt die Liste am PC nicht.
-- **Reiter:** `fokTabErlaubt()` sagt, ob es einen Reiter gibt (Gewohnheiten am PC
-  nie); `fokPassenderReiter` und `fokusReiterzeile` nutzen sie. Ein gemerktes
-  „unten Fokus, Reiter Gewohnheiten" landet am PC beim Timer. Die Reiterzeile
-  steht am PC nur, wenn der Timer an ist: `window.fokusImStreifen` (app.js) zählt
-  die Gewohnheiten dort nicht mit (`window.kalenderDreispaltig`).
-- **Schalter „Kalender-Streifen → Gewohnheiten"** (Einstellungen, pro Gerät) gilt
-  für beide Orte: am PC schaltet er den Abschnitt, sonst den Reiter.
-- **Lage:** `margin-top: auto` schiebt den Abschnitt ans Ende der Spalte, wenn der
-  Tag kurz ist; ist er lang, folgt er ihm, und die Spalte blättert (`.kal-liste`
-  hat `overflow-y: auto`). Die Spalte ist 286 px breit, die Karten umbrechen das
-  Mengenfeld wie am Handy unter den Namen (`.fok-heute .fok-gew.mit-menge`).
-- **„heute" im Kopf, weil die Spalte einen anderen Tag zeigen kann** (der im
-  Kalender gewählte); die Gewohnheiten sind immer die von heute.
-- Die Heute-Spalte ist seitdem verschachtelt: `#kalHeuteSpalte` (grauer Kasten, Klasse
-  `.kal-liste`, `[hidden]` bei < 1380 px) enthält `#kalTagesliste` (Klasse
-  `.kal-tagblock`; das Wischen zwischen den Tagen verschiebt nur ihn) und
-  `#fokHeute`.
-- Getestet am 18.10.2026 im Claude-Browser bei 1500 px (mit Haken, Timer-Reiter
-  und Rückweg, allen vier Schalterkombinationen, Kurzfenster mit Blättern),
-  1100 px (Reiter wie zuvor, Umzug beim Verkleinern/Vergrößern über die Grenze)
-  und 390 px. Das Aussehen am echten Bildschirm ist nur gemessen, nicht gesehen:
-  der Screenshot des Browser-Panes war bei 1500 px zu klein für Einzelheiten.
+- **Timer:** ein Knopf ⏱ in der Kopfzeile (statt eines Abschnitts neben den
+  Gewohnheiten), mit kleinem Fenster.
+- **Gewohnheiten:** am PC ein Abschnitt ganz unten in der Heute-Spalte (Hendriks
+  Wunsch am selben Tag davor: „lieber unter den heutigen Tag, ganz unten, als Extra
+  Abschnitt - das passt auf dem PC gut, auf dem Handy und Tablet eher nicht"); am
+  Tablet und Handy ein **einklappbarer** Abschnitt unter der Tagesansicht, standardmäßig
+  zu (statt ganz unten auf der ToDo-Seite oder eines zweiten Knopfs).
 
-### Oben bleibt, unten wechselt
+Mit der Reiterzeile sind entfallen: `kalUntenModus`, `setzeUnten()`,
+`fokusMoeglich()`, `window.fokusZeigen/Verstecken/Reiterzeile/HatZugang/Reiter/
+ImStreifen`, `window.kalenderZeigtFokus`, die Klassen `.fok-reiter*`, `.fok-kopf`,
+`.kal-unten`, die Reiter-Klick-Handler und die dritte Grid-Zeile der
+Dreispaltigkeit. `zeichneUnten()` heißt jetzt `zeichneHeuteSpalte()`. Ein gemerktes
+`"fokus"` in `kalAnsicht` gilt beim Lesen als `"kalender"`; `setzePanel()` schreibt
+nur noch `"kalender"` oder `"liste"`.
 
-Der rechte Streifen ist **ein** Panel (der Kalender), und er hat zwei Etagen:
+#### Die Gewohnheiten (`#fokInhalt`, gezeichnet von `zeichneFokus()` in `fokus.js`)
 
-| Etage | Inhalt | wer zeichnet | wann |
+Ein Element, **zwei mögliche Orte**; `fokPlatziere()` hängt es um:
+
+| Wo | Wann | Container | Gerufen von |
 | --- | --- | --- | --- |
-| oben | Tagesliste (`#kalTagesliste`) | `kalender.js` | **immer** |
-| unten | Monatsraster (`#kalRaster` & Co.) | `kalender.js` | Reiter „Kalender" |
-| unten | Gewohnheiten (`#fokInhalt`) | `fokus.js` | Reiter „Gewohnheiten" (unter 1380 px; am PC steht die Liste unter dem Tag, siehe oben) |
-| unten | Timer (`#fokTimer`) | `fokus.js` | Reiter „Timer" |
+| Heute-Spalte | ab 1380 px (`istDrei()`), Streifen offen | `#fokHeute` in `#kalHeuteSpalte`, unter `#kalTagesliste`, `margin-top: auto` | `window.fokusHeute(an)`, aus `zeichneHeuteSpalte()` in `kalender.js` |
+| unter der Tagesansicht | darunter, Tagesansicht zu sehen (Board sichtbar) | `#fokOben` (grauer Kasten wie `#tagOben`, 8 px darunter), Kopf mit Bilanz | `window.fokusOben(an)`, aus `zeichneTagOben()` in `kalender.js` |
 
-Von oben nach unten im Markup: Ansicht-Zeile (Zahnrad, Pille, ✕) → Tagesliste
-→ Reiterzeile → Kalender-Kopf → Chip → Filter → Wochentage → Raster →
-`#kalUnten` (Fokus).
+- **Zustände `fokHeuteAn` / `fokObenAn`** sagen, welcher Abschnitt gerade steht
+  (angemeldet, Schalter „Gewohnheiten" an, passender Ort sichtbar). Beim Einschalten
+  wird die Liste frisch geholt (`ladeFokus()`).
+- **Unter der Tagesansicht** steht der Abschnitt standardmäßig **zu**, mit der Bilanz
+  („2 von 5") im Kopf; ein Tipp auf den Kopf klappt ihn auf, die Wahl bleibt pro Gerät
+  gemerkt (`localStorage.fokObenOffen`). Er steht und fällt mit der Tagesansicht: am
+  Handy bei offenem Kalender ist beides weg.
+- **In der Heute-Spalte** steht er immer offen, mit „heute" im Kopf, weil die Spalte
+  einen anderen Tag zeigen kann (den im Kalender gewählten) - die Gewohnheiten sind
+  immer die von heute. Die Spalte ist 286 px breit; die Karten umbrechen das Mengenfeld
+  wie am Handy unter den Namen (`.fok-heute .fok-gew.mit-menge`). Ist der Tag kurz,
+  schiebt `margin-top: auto` den Abschnitt an den Fuß der Spalte; ist er lang, folgt
+  er ihm, und die Spalte blättert (`.kal-liste` hat `overflow-y: auto`).
+- Die Heute-Spalte ist verschachtelt: `#kalHeuteSpalte` (grauer Kasten, Klasse
+  `.kal-liste`, `[hidden]` unter 1380 px) enthält `#kalTagesliste` (Klasse
+  `.kal-tagblock`; das Wischen zwischen den Tagen verschiebt nur ihn) und `#fokHeute`.
+  **Falle, am 18.10.2026 zugeschnappt:** die erste Fassung hieß `#kalHeute` - die ID
+  trägt aber der „Heute"-Knopf im Kalender-Kopf, und `getElementById("kalHeute")`
+  fand die Spalte: jeder Klick darin sprang auf heute, der Knopf tat nichts. Bei neuen
+  IDs im Panel erst nach der ID suchen.
+- Die Links „Verlauf & mehr ›" am Ende der Liste und „Fokuszeit pro Woche ›" beim Timer
+  sind weg (Hendrik: stehen in den Einstellungen).
 
-**Die Tagesliste gehört keiner Ansicht** — sie ist der Grund, warum es den
-Streifen gibt („was ist heute fällig"), und steht deshalb ganz oben. Bis zum
-13.08.2026 stand sie mit den Fokus-Inhalten im selben Bereich und wurde von
-ihnen verdrängt; ein Blick auf die Gewohnheiten kostete damit genau die
-Antwort, für die man aufgemacht hatte.
+#### Der Timer: Knopf und kleines Fenster
 
-Der Weg dahin ging über drei Umbauten an einem Tag: Fokus war erst ein
-**zweites Panel** unter dem Kalender (eigene Höhenmessung `--fok-hoehe`,
-eigener Hintergrund, eigenes Öffnen/Schließen), wurde dann zu einem von drei
-Inhalten in einem gemeinsamen unteren Bereich (~120 Zeilen CSS und JS weniger),
-und schließlich zum Partner des Rasters — mit der Tagesliste als festem Kopf
-darüber.
+- **Knopf** `.timer-knopf` ⏱ **zweimal im Dokument**, wie das Zahnrad: in der
+  App-Kopfzeile (links vom Zahnrad) und in der Kopfzeile des Kalenders (am Handy
+  verdeckt der Kalender die App-Kopfzeile; im breiten Fenster ist der zweite wie das
+  Zahnrad dort ausgeblendet, `html.breit`). Sichtbar, wenn angemeldet und „Timer" unter
+  „Anzeige" an ist (`aktualisiereKnoepfe()`). Läuft eine Sitzung, trägt er die Restzeit
+  und färbt sich (`.laeuft`); am Handy steht dann nur die Zeit ohne Symbol, sonst
+  schrumpfte der Listenname in der Kopfzeile auf „Meine ...".
+- **Fenster** `#timerPopup` (ein `.admin-popup`, ausserhalb des Panels wegen der
+  transform-Falle): Ring, Restzeit, Start/Pause/Stopp. Die Struktur steht fest im HTML,
+  `fokus.js` setzt im Sekundentakt nur Text und `stroke-dashoffset`; nur die Knopfreihe
+  wird bei einem Zustandswechsel neu gefüllt (sonst flackerte sie im Takt). Der Ring hat
+  eine feste Grösse (`min(220px, 62vw)`), weil `container-type: size` eine
+  ausdrückliche braucht - die alte Höhenableitung aus dem Streifen (`flex: 1`,
+  `@container unten`) ist weg. Vor der ersten Antwort der API steht „Lädt …" statt
+  „Start" (`fokTimerGeladen`).
+- **Wann geladen wird:** `ladeFokus()` holt Sitzung, Standarddauer und Liste beim
+  ersten Zeichnen nach der Anmeldung (damit der Knopf eine laufende Sitzung von einem
+  anderen Gerät zeigt), beim Öffnen des Fensters und beim Zurückkehren in den Tab.
+- **Schließen:** ✕, Klick daneben, Escape (eigener Handler in der Einfangphase mit
+  `stopImmediatePropagation`, damit nicht im selben Tastendruck der Streifen dahinter
+  zugeht; eine offene Rückfrage „Sitzung beenden?" hat Vorrang) und die Zurück-Taste am
+  Handy (`window.fokusSchliesseOberste`, eingehängt in `schliesseObersteEbene` in
+  `kalender.js`).
 
-**Die Höhen rechnet niemand aus:** Tagesliste und `#kalUnten` tragen beide
-`flex: 1; min-height: 0`, teilen sich also, was übrig bleibt. Im Fokus-Modus
-wird das etwa hälftig (gemessen bei 900 px Panelhöhe: 409 zu 395).
+#### Was vom Streifen übrig ist
 
-Im **Kalender-Modus** gilt die Sonderregel aus dem Kalender-Abschnitt: die
-Tagesliste hat eine Mindesthöhe, und das Raster gibt bis zu seiner eigenen
-Untergrenze nach. Am Handy heißt das 357 zu 239 px statt vorher 197 zu 358 —
-ein normaler Tag passt damit ohne Scrollen.
-
-**Wer umschaltet:** `kalUntenModus` in `kalender.js` (`"kalender"` / `"fokus"`),
-gesetzt über `setzeUnten()`. `zeichneUnten()` ist die **einzige** Stelle, an
-der Sichtbarkeit entschieden wird — sonst stünde „genau eines" an zwei Orten.
-`fokus.js` liefert nur den Inhalt und wird über `window.fokusZeigen()` /
-`window.fokusVerstecken()` gerufen; `window.fokusHatZugang()` sagt umgekehrt,
-ob es Fokus überhaupt gibt.
-
-**Was mit dem Raster kommt und geht, steht in EINEM Container**: `#kalOben`
-umfasst Kalender-Kopf, Quellen-Filter, Wochentage und Raster. Der Kopf muss
-mit — ein Monatsname mit Blätterpfeilen über den Gewohnheiten navigiert durch
-nichts.
-
-**Der Container ist nicht nur Ordnung, er ist die Höhengleichheit**: `.kal-oben`
-und `.kal-unten` tragen beide `flex: 1`, sind damit exakt gleich hoch, und die
-Tagesliste darüber springt beim Reiterwechsel nicht mehr. Vorher schaltete
-`zeichneUnten()` vier Einzelteile, und jedes musste seine eigene Sichtbarkeit
-gegen diese Schleife verteidigen (dafür gab es ein `data-leer`-Attribut, das
-mit dem Container weggefallen ist).
-
-**Das ✕ sitzt deshalb nicht mehr im Kalender-Kopf**, sondern in der
-Ansicht-Zeile ganz oben: mit dem Raster wanderte es sonst mitten ins Panel
-statt in die Ecke, in der man ein Schließkreuz sucht. Folge davon — die
-Ansicht-Zeile ist im Split nicht mehr `display: none`, stattdessen verstecken
-sich dort nur Zahnrad und Pille (die stehen in der App-Kopfzeile daneben). Und
-weil ohne Pille auch deren Höhe wegfällt, setzt `html.breit` dort `min-height`
-und `padding-top` auf 0 — sonst gingen 18 px an eine leere Zeile, die dem
-Tagesbereich fehlen.
-
-**Der Quellen-Filter liegt hinter einem Trichter** im Kalender-Kopf
-(`#kalFilterKnopf`, Inline-SVG statt Emoji: die Zeile trägt sonst nur
-Textzeichen, und für „Filter" gibt es kein Emoji, das jeder gleich liest).
-Als Dauerzeile kostete er 37 px, die dem Tagesbereich fehlten; vier Pillen
-neben den Monatsnamen zu setzen geht am Handy nicht.
-
-`filterOffen` in `kalender.js` wird **nicht gemerkt** — jedes Öffnen startet
-zu (`frischOeffnen()`). Damit man trotzdem sieht, dass etwas abgewählt ist,
-färbt sich der Trichter (`.aktiv`): sonst suchte man den Grund für fehlende
-Einträge im Raster.
-
-**Und wieder die `[hidden]`-Falle**: `.kal-oben` und `.kal-unten` (beide flex)
-brauchen ihre eigene `[hidden] { display: none }`-Zeile, sonst bleiben sie
-sichtbar,
-obwohl das Attribut gesetzt ist. Dieselbe Familie wie bei `.offline-banner`.
-
-**Die Reiterzeile (`#fokKopf`) gehört dem Streifen, nicht dem Fokus-Inhalt.**
-Sie trägt drei Reiter — **Kalender | Gewohnheiten | Timer** —, sitzt zwischen
-Tagesliste und Umschaltbereich und steht auch dann da, wenn gerade das Raster
-vorn ist: sie ist der Weg zwischen allen dreien. Ihre Klick-Handler liegen deshalb geschlossen in `kalender.js` und
-rufen von dort `window.fokusReiter()`; ihre Sichtbarkeit steuert
-`zeichneUnten()` über `window.fokusReiterzeile()`.
-
-**Reihenfolge im Klick-Handler ist keine Kosmetik:** erst `setzeUnten("fokus")`,
-dann `window.fokusReiter(welcher, true)`. `fokusZeigen()` setzt beim ersten
-Öffnen auf „Gewohnheiten" zurück — käme die Wahl des Nutzers davor, würde ein
-Tipp auf „Timer" still überschrieben.
-
-**Ob es die Reiter gibt**, entscheidet `fokusMoeglich()` aus zwei Teilen:
-angemeldet und geladen (`window.fokusHatZugang()`, seit Oktober 2026 kein
-eigener Zugang mehr) UND mindestens einer der beiden Schalter im Abschnitt
-„Kalender-Streifen" der Einstellungen (`window.fokusImStreifen()`). Fällt eines
-weg, fällt ein gemerktes `"fokus"` still auf den Kalender zurück — eine
-Reiterleiste mit genau einem Reiter wäre Zierrat. Welcher der beiden
-Fokus-Reiter erscheint, entscheidet `window.fokusBereiche()` je Reiter.
-
-**Falle, hier zweimal zugeschnappt:** `.kal-liste` und `.fok-inhalt` haben
-`display: flex`, das schlägt das eingebaute `[hidden]` des Browsers. Ohne
-`.kal-liste[hidden]` bzw. `.fok-inhalt[hidden] { display: none }` bleiben sie
-sichtbar, obwohl das Attribut gesetzt ist — genau so standen die Gewohnheiten
-eine Zeit lang neben dem Timer. Dieselbe Familie wie bei `.offline-banner`.
-
-**Entfallen am 09.10.2026** (es gibt kein Vollbild mehr): **Im Vollbild** (⤢) gab es den unteren Teil nicht; `zeichneUnten()` prüft
-`kalVollbild` mit. Der Modus bleibt gemerkt und steht beim Verlassen wieder da.
-
-**Am Handy schaltet ein senkrechter Wisch über dem Raster das Vollbild: nach
-OBEN groß, nach UNTEN wieder klein** (`ZOOM_WEG` = 60 px in `kalender.js`).
-Seit dem 20.08.2026 andersherum als vorher — die Richtung folgt jetzt dem, was
-wandert: das Raster sitzt unten im Streifen und muss nach oben, um den
-Bildschirm zu füllen. Die alte Lesart („wie ein Rollo, das man über die
-Tagesliste zieht") war in sich stimmig, aber niemand zieht ein Rollo von unten.
+- **Der Kalender-Block** `#kalOben` umfasst Kopf, Quellen-Filter, Wochentage und
+  Raster, mit `flex: 1; min-height: 0`.
+- **Das ✕ sitzt in der Ansicht-Zeile** ganz oben, nicht im Kalender-Kopf: sonst
+  wanderte es mit dem Raster mitten ins Panel. Die Ansicht-Zeile ist im Split nicht
+  `display: none`, stattdessen verstecken sich dort Zahnrad, Timer-Knopf und Pille (die
+  stehen in der App-Kopfzeile daneben). Weil ohne Pille auch deren Höhe wegfällt,
+  setzt `html.breit` dort `min-height` und `padding-top` auf 0.
+- **Die Dreispaltigkeit** hat zwei Grid-Zeilen: ✕ über beiden Spalten, darunter Kalender
+  rechts und Heute-Spalte links.
+- **Der Quellen-Filter liegt hinter einem Trichter** im Kalender-Kopf
+  (`#kalFilterKnopf`, Inline-SVG statt Emoji). `filterOffen` wird nicht gemerkt - jedes
+  Öffnen startet zu (`frischOeffnen()`); damit man sieht, dass etwas abgewählt ist,
+  färbt sich der Trichter (`.aktiv`).
+- **Die `[hidden]`-Falle** gilt für alles hier mit `display: flex`: `.kal-oben`,
+  `.kal-liste`, `.fok-inhalt`, `.fok-heute`, `.fok-oben`, `.fok-timer`, `.timer-knopf`
+  brauchen je ihre eigene `[hidden] { display: none }`-Zeile.
 
 ### Der Umschalter: nur noch auf oder zu
 
@@ -2623,8 +2567,7 @@ Tagesliste zieht") war in sich stimmig, aber niemand zieht ein Rollo von unten.
 * **📋** — Streifen zu
 * **📅** — Streifen auf
 
-**WAS unten steht, sagt die Pille nicht mehr** — das entscheiden die Reiter im
-Streifen selbst. Bis zum 13.08.2026 gab es hier ein drittes Segment (🔥) für
+**Die Pille sagt nur „Streifen auf oder zu".** Bis zum 13.08.2026 gab es hier ein drittes Segment (🔥) für
 den Fokus; drei Knöpfe in der Kopfzeile waren einer zu viel, und die Frage
 „Tag oder Fokus" an zwei Stellen zu stellen ist eine zu viel. Davor gab es
 zwischenzeitlich sogar eine zweite Bedienform fürs breite Fenster (📋 weg, 📅
@@ -2632,17 +2575,9 @@ und 🔥 als unabhängige Ein/Aus-Knöpfe) — die war richtig, solange Kalender
 Fokus zwei getrennte Panels waren, und ist mit dem gemeinsamen Streifen
 gefallen. **Beides nicht erneut vorschlagen.**
 
-Gemerkt wird in **einem** Schlüssel, `kalAnsicht`: `"liste"`, `"tag"` oder
-`"fokus"`. Der alte Wert `"kalender"` wird beim Lesen als `"tag"` verstanden,
-sonst stünde nach dem Update der Streifen zu. `fokAnsicht` gibt es nicht mehr.
-
-**Ein gemerktes `"fokus"` überlebt den Reload nicht** (unverändert seit dem
-Streifen-Umbau, kein Fehler des Reiter-Umbaus): beim ersten Zeichnen steht
-`fokZugang` noch nicht fest — der kommt erst mit dem Bootstrap aus
-`/api/todos` —, `zeichneUnten()` fällt deshalb auf den Kalender zurück und
-`setzePanel()` schreibt „kalender" gleich in den Speicher. Der Streifen startet
-also immer mit dem Monatsraster. Zu beheben wäre es, indem
-`stelleAnsichtHer()` erst nach dem Bootstrap läuft.
+Gemerkt wird in **einem** Schlüssel, `kalAnsicht`: `"liste"` oder `"kalender"`.
+Alte Werte (`"tag"` aus der Dreiteilung, `"fokus"` aus der Zeit mit der Reiterzeile)
+zählen beim Lesen als `"kalender"`. `fokAnsicht` gibt es nicht mehr.
 
 Gesetzt wird `aria-pressed` **nur** in `setzePanel()` (kalender.js).
 
@@ -2655,51 +2590,13 @@ musste es sein, solange Tagesliste und Fokus sich denselben Platz teilten.
 **Seit die Tagesliste immer dasteht, gibt es nichts wegzuschalten:** ein leerer
 Tagesbereich wäre kein Zustand, den jemand haben will.
 
-Auch „Heute" muss den Tag nicht mehr nach vorn holen: der Knopf sitzt im
-Kalender-Kopf, den es im Fokus-Modus gar nicht gibt.
-
-### Zwei Reiter: Gewohnheiten oder Timer
-
-Beide teilen sich den Fokus-Bereich, statt übereinander zu stehen (seit
-13.08.2026). Nebeneinander blieb für den Timer nur eine Zeile, und eine Zeile
-liest sich nicht vom Schreibtisch aus. Jetzt füllt er den ganzen Bereich: ein
-Fortschrittsring, die Restzeit in der Mitte, die Knöpfe daneben oder darunter.
-
-**Beim Öffnen stehen die Gewohnheiten vorn — außer es läuft eine Sitzung**,
-dann der Timer (`fokReiter` wird in `ladeFokus()` gesetzt). Sobald man selbst
-auf einen Reiter tippt, gilt diese Wahl, bis der Fokus-Teil das nächste Mal neu
-aufgerufen wird (`fokReiterGewaehlt`).
-
-**Die SVG-Struktur des Rings steht fest in `index.html`**, `fokus.js` setzt im
-Sekundentakt nur Text und `stroke-dashoffset`. Ein SVG pro Sekunde neu zu bauen
-wäre Verschwendung. Die Knopfreihe wechselt dagegen ihren Inhalt (Start bzw.
-Pause/Stopp) und wird bei jedem Zustandswechsel neu gefüllt — aber nur dann,
-sonst flackerte sie im Takt.
-
-`display: block` am SVG ist Pflicht: als Inline-Element steht es auf der
-Textgrundlinie, und die Lücke darunter machte den Kreis fünf Pixel höher als
-breit — aus dem Ring wurde ein Ei.
-
-**Der Ring richtet sich nach dem Platz, nicht nach dem Fenster.** Er nimmt die
-Höhe, die unter den Reitern übrig bleibt (`flex: 1 1 auto`), und leitet seine
-Breite daraus ab (`aspect-ratio: 1`). An `vh` zu hängen ging schief: am Handy
-bleiben unter dem Monatsraster gut 200 px, der Ring nahm sich 280 und schob die
-Knöpfe 88 px aus dem Bild.
-
-**Unter 280 px Bereichshöhe stellt sich der Timer quer** (`@container unten`):
-Ring links über die volle Höhe, Knöpfe rechts untereinander. Übereinander
-blieben für den Ring rund 90 px, und darin ist eine Uhrzeit nicht mehr zu
-lesen. Am Handy misst er so 150 statt 88 px.
-
-Die Zahl in der Mitte skaliert mit dem Ring statt mit dem Fenster
-(`font-size: clamp(20px, 22cqmin, 44px)`, dafür ist `.fok-ring` selbst ein
-`container-type: size`).
+Auch „Heute" holt nichts mehr nach vorn: der Streifen zeigt immer das Raster.
 
 ### Was der Fokus-Teil kann — und was nicht
 
-Im Streifen: abhaken (einfach oder mit Menge über −/Zahl/+), Flammen sehen,
-Timer starten, pausieren, beenden, und ueber den Stift an der Karte gleich
-bearbeiten. Alles andere - anlegen, Verlauf, Statistik, Fokuszeit,
+Bei den Gewohnheiten: abhaken (einfach oder mit Menge über −/Zahl/+), Flammen
+sehen und ueber den Stift an der Karte gleich bearbeiten; im Timer-Fenster starten,
+pausieren, beenden. Alles andere - anlegen, Verlauf, Statistik, Fokuszeit,
 Reihenfolge, Archiv - steht seit Oktober 2026 im Fenster "Gewohnheiten" (siehe
 oben), Zaehlweise, Dauer und Export in den Einstellungen. Bis dahin fuehrte ein
 ↗ in der Kopfzeile des Bereichs zur Fokus-App.
@@ -2718,17 +2615,12 @@ Server (`functions/_lib/fokus.js`). Die Dauer ist die Standarddauer aus den
 Einstellungen (Abschnitt "Fokus-Timer"). Beenden fragt ab einer Minute nach
 — eine geloggte Sitzung ist nachträglich nicht mehr änderbar.
 
-**Bei laufender Sitzung trägt der Timer-REITER die Restzeit** („Timer 44:52",
-`.fok-reiter-seg.laeuft` in der Akzentfarbe), auch wenn gerade ein anderer
-Reiter vorn ist. Gesetzt in `aktualisiereSegmente()`, im Sekundentakt.
-
-Bis zum 13.08.2026 stand die Zeit am 🔥-Knopf der Kopfzeile — mitsamt einer
-CSS-Konstruktion, die sie am Handy zu einem 6-px-Glutpunkt schrumpfte
-(`font-size: 0`) und die Flamme allein dimmte, weil sich die Deckkraft eines
-Elternteils auf einem Kind nicht zurücknehmen lässt. Mit der Flamme ist das
-alles weg. **Der Preis, bewusst:** bei zugeklapptem Streifen sieht man die
-Restzeit nirgends mehr. Das Sitzungsende meldet sich weiterhin über den
-Tab-Titel und den Ton, nur der laufende Countdown ist dann unsichtbar.
+**Bei laufender Sitzung trägt der Timer-KNOPF in der Kopfzeile die Restzeit**
+(`.timer-knopf.laeuft` in der Akzentfarbe, im Sekundentakt von
+`aktualisiereKnoepfe()`). Bis 18.10.2026 stand sie am Timer-Reiter im Streifen, davor
+am 🔥-Knopf der Kopfzeile. **Der Preis, bewusst:** weg ist nur die Zeit im Streifen -
+der Knopf steht immer da, sogar bei zugeklapptem Streifen. Das Sitzungsende meldet
+sich zusätzlich über den Tab-Titel und den Ton.
 
 Am Sitzungsende gibt es **Ton, Tab-Titel und - bei eingeschalteten
 Benachrichtigungen (`badgeErlaubt`) - eine Browser-Benachrichtigung**. Die

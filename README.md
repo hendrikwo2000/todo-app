@@ -105,22 +105,25 @@ Gehören seit Oktober 2026 fest zur App, für jedes Konto. Der frühere
 Fokus-Tracker (fokus.it-wolf.org) ist hier aufgegangen — die Adresse leitet
 hierher weiter, deine Gewohnheiten und Sitzungen sind dieselben.
 
-**Im Kalender-Streifen** stehen neben **Kalender** zwei Reiter (am PC, ab 1380 px,
-nur der Timer: dort stehen die Gewohnheiten als Abschnitt **ganz unten in der
-Heute-Spalte**, unter dem Tag):
+**Gewohnheiten** stehen dort, wo der Tag steht - zum Abhaken (Haken rechts, bei
+Mengen **− Zahl +**), mit der **Flamme** (wie viele Tage erledigt sind). Der **✎**
+hinter dem Namen öffnet die Gewohnheit zum Bearbeiten. Abhaken geht auch ohne Netz;
+es wird nachgetragen, sobald du wieder online bist.
 
-- **Gewohnheiten:** die von heute zum Abhaken (Haken rechts, bei Mengen
-  **− Zahl +**). Daneben die **Flamme** — wie viele Tage erledigt sind. Der
-  **✎** hinter dem Namen öffnet die Gewohnheit zum Bearbeiten. Abhaken geht
-  auch ohne Netz; es wird nachgetragen, sobald du wieder online bist.
-- **Timer:** **▶ Start** beginnt eine Sitzung mit deiner Standarddauer,
-  **⏸** hält sie an, **⏹** beendet sie (ab einer Minute mit Rückfrage —
-  geloggte Zeit lässt sich nicht mehr ändern). Läuft eine Sitzung, steht die
-  Restzeit am Reiter. Am Ende gibt es einen Ton.
+- **Am PC** (ab 1380 px Fensterbreite) als Abschnitt **ganz unten in der
+  Heute-Spalte**, neben dem Kalender.
+- **Am Tablet und Handy** als Abschnitt **unter der Tagesansicht** über den ToDos,
+  einklappbar - er startet zu und zeigt im Kopf, wie viele heute erledigt sind
+  („2 von 5").
 
-**„Verlauf & mehr ›“** unter den Gewohnheiten (oder der Eintrag „Verlauf & mehr“
-in den Einstellungen, Reiter „Gewohnheiten") öffnet das Fenster
-**Gewohnheiten**:
+**Der Timer** ist der Knopf **⏱** oben neben dem Zahnrad. Ein Tipp öffnet ein
+kleines Fenster: **▶ Start** beginnt eine Sitzung mit deiner Standarddauer, **⏸**
+hält sie an, **⏹** beendet sie (ab einer Minute mit Rückfrage — geloggte Zeit lässt
+sich nicht mehr ändern). Läuft eine Sitzung, steht die Restzeit am Knopf. Am Ende
+gibt es einen Ton.
+
+**„Verlauf & mehr“** in den Einstellungen (⚙️, Reiter „Gewohnheiten") öffnet das
+Fenster **Gewohnheiten**:
 
 - **Verlauf:** ein Monatskalender je Gewohnheit. Ein Tipp auf einen Tag
   trägt ihn nach, Wischen wechselt den Monat
@@ -130,7 +133,7 @@ in den Einstellungen, Reiter „Gewohnheiten") öffnet das Fenster
 **In den Einstellungen (⚙️), Reiter „Gewohnheiten":**
 
 - **Fokus-Timer:** die Standarddauer
-- **Kalender-Streifen:** Gewohnheiten und Timer einzeln ein- oder ausblenden
+- **Anzeige:** Gewohnheiten und Timer-Knopf einzeln ein- oder ausblenden
   (gilt für dieses Gerät)
 - **Gewohnheiten:** ob die Flamme alle erledigten Tage zählt oder nur die am
   Stück; Export als Datei

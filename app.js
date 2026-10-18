@@ -833,10 +833,13 @@ async function aktualisiereGoogleAbschnitt() {
   document.getElementById("subGoogle").textContent = googleVerbunden ? "verbunden" : "nicht verbunden";
 }
 
-// ---------- Kalender-Streifen: Gewohnheiten und Timer ----------
-// Ob die beiden Fokus-Reiter im Streifen stehen - zwei Schalter, jeder fuer
-// sich (seit der Fusion mit der Fokus-App, Oktober 2026; davor war es EIN
-// Schalter "Fokus im Kalender" fuer beide). Reine Anzeige-Entscheidung, deshalb
+// ---------- Anzeige: Gewohnheiten und Timer ----------
+// Ob die Gewohnheiten (unter dem Tag) und der Timer-Knopf zu sehen sind - zwei
+// Schalter, jeder fuer sich (seit der Fusion mit der Fokus-App, Oktober 2026;
+// davor war es EIN Schalter "Fokus im Kalender" fuer beide; bis 18.10.2026 hiess
+// der Abschnitt "Kalender-Streifen", weil beides Reiter im Streifen waren,
+// Hendrik fand die Reiterzeile ueber dem Kalender stoerend). Reine
+// Anzeige-Entscheidung, deshalb
 // pro Geraet in localStorage und nicht in der Datenbank: wer am Rechner die
 // Gewohnheiten mitlaufen laesst, will sie am Handy nicht zwangslaeufig auch.
 // Standard ist AN. Wer den alten Schalter aus hatte, startet mit beiden aus.
@@ -850,13 +853,8 @@ const streifenAn = {
   gewohnheiten: liesStreifenSchalter(STREIFEN_KEYS.gewohnheiten),
   timer: liesStreifenSchalter(STREIFEN_KEYS.timer),
 };
-// fokus.js fragt hier nach, welche Reiter es gibt; kalender.js, ob es die
-// Reiterzeile ueberhaupt zeichnen soll.
+// fokus.js fragt hier nach, was angezeigt werden soll.
 window.fokusBereiche = () => ({ ...streifenAn });
-// Am PC (Heute-Spalte da) gibt es die Gewohnheiten nicht als Reiter, sondern als
-// Abschnitt unter dem Tag - die Reiterzeile braucht dort nur der Timer.
-window.fokusImStreifen = () => streifenAn.timer
-  || (streifenAn.gewohnheiten && !window.kalenderDreispaltig?.());
 
 function zeigeStreifenSchalter() {
   streifenGewohnheitenSwitch.checked = streifenAn.gewohnheiten;
@@ -871,10 +869,10 @@ function schalteStreifen(welcher, an) {
   streifenAn[welcher] = an;
   localStorage.setItem(STREIFEN_KEYS[welcher], an ? "an" : "aus");
   zeigeStreifenSchalter();
-  // Der Streifen raeumt selbst um: ausgeschaltet faellt ein offener Reiter auf
-  // den anderen bzw. auf den Kalender zurueck (zeichneUnten in kalender.js,
-  // fokusReiterzeile in fokus.js).
+  // Die Gewohnheiten raeumen selbst um (zeichneHeuteSpalte und zeichneTagOben in
+  // kalender.js), der Timer-Knopf wird von fokus.js ein- bzw. ausgeblendet.
   window.kalenderNeuZeichnen?.();
+  window.fokusEinstellungGeaendert?.();
 }
 
 // ---------- Zoom mit zwei Fingern ----------

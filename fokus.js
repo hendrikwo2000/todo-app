@@ -1,91 +1,86 @@
 "use strict";
 
 /* ====================================================================
-   Fokus-Panel – Gewohnheiten von heute und der Fokus-Timer
+   Fokus – Gewohnheiten von heute und der Fokus-Timer
 
-   Zeigt im Kalender-Streifen die Gewohnheiten der Tagesansicht zum Abhaken
-   und den Timer zum Starten, Pausieren und Beenden. Alles Weitere - Verlauf,
-   Statistik, Fokuszeit pro Woche, anlegen, aendern, ordnen, archivieren -
-   steht im Fenster "Gewohnheiten" (gewohnheiten.js). Der Knopf "Verlauf &
-   mehr" am Ende der Liste oeffnet es, der Stift an einer Karte gleich den
-   Bearbeiten-Dialog.
+   Zwei Dinge, die bis 18.10.2026 im Kalender-Streifen unter einer Reiterzeile
+   standen (Kalender | Gewohnheiten | Timer). Die Reiterzeile gibt es nicht mehr -
+   Hendrik: sie stoerte ueber dem Kalender. Der Streifen zeigt immer das Raster.
+
+   - Die GEWOHNHEITEN stehen zum Abhaken dort, wo der Tag steht: am PC (ab 1380 px,
+     mit Heute-Spalte) als Abschnitt ganz unten in der Heute-Spalte (#fokHeute),
+     am Tablet und Handy als Abschnitt unter der Tagesansicht ueber den ToDos
+     (#fokOben), einklappbar und standardmaessig zu, mit der Bilanz im Kopf. Das
+     Element #fokInhalt zieht je nach Breite zwischen beiden um (fokPlatziere);
+     gezeichnet wird immer mit zeichneFokus().
+   - Der TIMER ist ein Knopf in der Kopfzeile (.timer-knopf, zweimal im Dokument:
+     App-Kopfzeile und Kalender, wie das Zahnrad). Er zeigt die Restzeit, solange
+     eine Sitzung laeuft; ein Tipp oeffnet ein kleines Fenster (#timerPopup) mit
+     Ring und Start/Pause/Stopp.
+
+   Alles Weitere - Verlauf, Statistik, Fokuszeit pro Woche, anlegen, aendern, ordnen,
+   archivieren - steht in den Einstellungen bzw. im Fenster "Gewohnheiten"
+   (gewohnheiten.js); der Stift an einer Karte oeffnet gleich den Bearbeiten-Dialog.
+   Die Links "Verlauf & mehr ›" unter den Gewohnheiten und "Fokuszeit pro Woche ›"
+   beim Timer gibt es nicht mehr (Hendrik, 18.10.2026: ist in den Einstellungen).
 
    WOHER DIE DATEN KOMMEN
    Seit Oktober 2026 aus dieser App selbst (functions/api/gewohnheiten/* und
    functions/api/fokus/*). Bis dahin reichte ein Durchreicher die Anfragen an
    die eigene Fokus-App (fokus.it-wolf.org) weiter - die ist in der ToDo-App
    aufgegangen. Die Heute-Liste kommt weiter fertig gerechnet an
-   (gewohnheiten/heute); dieses Panel entscheidet nichts selbst, es zeichnet
+   (gewohnheiten/heute); dieses Skript entscheidet nichts selbst, es zeichnet
    nur. Geschrieben wird ueber gewSchreibeTag() in gewohnheiten-daten.js,
    denselben Weg, den das Fenster benutzt - samt Offline-Warteschlange.
 
-   AM PC ANDERS (seit 18.10.2026, Hendriks Wunsch): ab 1380 px, wo die
-   Heute-Spalte neben dem Kalender steht, sind die Gewohnheiten dort ein Abschnitt
-   GANZ UNTEN unter dem Tag (#fokHeute) und nicht mehr ein Reiter - die Reiterzeile
-   hat dann nur Kalender und Timer. Am Handy und Tablet (wo die Tagesansicht ueber
-   den ToDos steht und die Gewohnheiten dort den Platz der ToDos nehmen wuerden)
-   bleibt alles beim Reiter. Technisch zieht #fokInhalt zwischen beiden Orten um
-   (fokPlatziere); gezeichnet wird weiter mit zeichneFokus().
-
-   WO ES STEHT
-   Kein eigenes Panel: Fokus fuellt #kalUnten und tritt damit an die Stelle des
-   MONATSRASTERS - unten wechseln sich Raster und Fokus ab. Ganz oben steht
-   dabei unveraendert die Tagesliste; sie gehoert keiner der beiden Ansichten,
-   denn sie ist die Antwort, fuer die man den Streifen aufmacht ("was ist heute
-   faellig"). Bis zum 13.08.2026 teilten sich alle drei denselben Platz - ein
-   Blick auf die Gewohnheiten kostete damit genau diese Antwort.
-
-   Wer das umschaltet, entscheidet kalender.js (kalUntenModus, Werte
-   "kalender"/"fokus"). Diese Datei liefert nur den Inhalt und wird ueber
-   window.fokusZeigen() / window.fokusVerstecken() ein- und ausgeblendet;
-   window.fokusHatZugang() sagt umgekehrt, ob es Fokus ueberhaupt gibt.
-
-   Die REITERZEILE (Kalender | Gewohnheiten | Timer) steht zwar hier im Markup,
-   gehoert aber dem Streifen: sie schaltet auch das Raster ein und aus. Ihre
-   Klick-Handler liegen deshalb geschlossen in kalender.js und rufen von dort
-   window.fokusReiter(); ihre Sichtbarkeit steuert window.fokusReiterzeile().
-   Ob es die beiden Fokus-Reiter gibt, steht seit Oktober 2026 als zwei
-   Schalter in den Einstellungen ("Bereiche", window.fokusBereiche in app.js)
-   - jeder Reiter fuer sich. Davor war es ein Schalter fuer beide.
-
-   Frueher war das ein zweites Panel unter dem Kalender, mit eigener
-   Hoehenmessung und eigenem Umschalter. Beide Teile stritten sich um denselben
-   Platz - drei Umbauten am 13.08.2026 haben daraus erst einen Bereich mit drei
-   Inhalten und dann die heutige Zweiteilung gemacht.
+   Wer was ruft: kalender.js sagt ueber window.fokusHeute() (Heute-Spalte) und
+   window.fokusOben() (Tagesansicht), wann die Gewohnheiten zu sehen sind; app.js
+   meldet geaenderte Schalter ueber window.fokusEinstellungGeaendert(); die
+   Anmeldung kommt ueber window.fokusNeuZeichnen().
    ==================================================================== */
 
-const fokKopf        = document.getElementById("fokKopf");
-const fokTimerBox    = document.getElementById("fokTimer");
-const fokInhalt      = document.getElementById("fokInhalt");
-const fokBilanzText  = document.getElementById("fokBilanz");
-const fokZeitText    = document.getElementById("fokZeit");
-const fokGeplantText = document.getElementById("fokGeplant");
-const fokKnopfReihe  = document.getElementById("fokKnoepfe");
-const fokRing        = document.getElementById("fokRingFuellung");
-// Der Abschnitt in der Heute-Spalte (nur ab 1380 px) und seine Bilanz-Zeile.
-const fokHeuteBox    = document.getElementById("fokHeute");
-const fokHeuteBilanz = document.getElementById("fokHeuteBilanz");
+const fokTimerBox     = document.getElementById("fokTimer");
+const fokTimerPopup   = document.getElementById("timerPopup");
+const fokTimerHinweis = document.getElementById("fokTimerHinweis");
+const fokInhalt       = document.getElementById("fokInhalt");
+const fokZeitText     = document.getElementById("fokZeit");
+const fokGeplantText  = document.getElementById("fokGeplant");
+const fokKnopfReihe   = document.getElementById("fokKnoepfe");
+const fokRing         = document.getElementById("fokRingFuellung");
+// Die Timer-Knoepfe: einer in der App-Kopfzeile, einer im Kalender.
+const fokTimerKnoepfe = document.querySelectorAll(".timer-knopf");
+// Der Abschnitt in der Heute-Spalte (PC) und der unter der Tagesansicht (Tablet,
+// Handy).
+const fokHeuteBox     = document.getElementById("fokHeute");
+const fokHeuteBilanz  = document.getElementById("fokHeuteBilanz");
+const fokObenBox      = document.getElementById("fokOben");
+const fokObenKopf     = document.getElementById("fokObenKopf");
+const fokObenKoerper  = document.getElementById("fokObenKoerper");
+const fokObenBilanz   = document.getElementById("fokObenBilanz");
 
 // Umfang des Fortschrittsrings (r=52 im SVG). Ueber stroke-dasharray/-offset
 // wird daraus der gefuellte Anteil.
 const RING_UMFANG = 2 * Math.PI * 52;
 
-// Ob der Fokus-Teil gerade sichtbar ist. Der gemerkte Zustand liegt nicht mehr
-// hier, sondern in kalAnsicht (kalender.js) - es ist eine Ansicht von dreien.
-let fokSichtbar = false;
-// Ob die Gewohnheiten gerade als Abschnitt in der Heute-Spalte stehen (PC, Streifen
-// offen, Gewohnheiten eingeschaltet). Unabhaengig von fokSichtbar: der Abschnitt
-// steht auch da, wenn unten das Monatsraster vorn ist.
-let fokHeuteAn = false;
 // Ob die App angemeldet und geladen ist. Bis Oktober 2026 hing hier der
 // Fokus-Zugang des Kontos; seit der Fusion bekommt jedes Konto Gewohnheiten
 // und Timer. Gesetzt beim ersten render() (window.fokusNeuZeichnen).
 let fokBereit = false;
-// Welcher Reiter gilt: "gewohnheiten" oder "timer".
-let fokReiter = "gewohnheiten";
-// Hat der Nutzer den Reiter selbst gewaehlt? Dann bleibt seine Wahl stehen -
-// sonst darf eine laufende Sitzung beim Oeffnen den Timer nach vorn holen.
-let fokReiterGewaehlt = false;
+// Ob die Gewohnheiten gerade als Abschnitt in der Heute-Spalte stehen (PC,
+// Streifen offen, Gewohnheiten eingeschaltet) bzw. unter der Tagesansicht
+// (Tablet, Handy, Tagesansicht zu sehen).
+let fokHeuteAn = false;
+let fokObenAn = false;
+// Der Abschnitt unter der Tagesansicht ist einklappbar und startet zu; die Wahl
+// bleibt pro Geraet gemerkt.
+const FOK_OBEN_KEY = "fokObenOffen";
+let fokObenOffen = false;
+try { fokObenOffen = localStorage.getItem(FOK_OBEN_KEY) === "1"; }
+catch (e) { /* kein Speicher - dann eben zu */ }
+// Das Timer-Fenster offen? Und hat die Antwort der API schon einmal geklappt -
+// davor bote "Start" etwas an, das vielleicht gar nicht stimmt.
+let fokTimerOffen = false;
+let fokTimerGeladen = false;
 let fokListe = null;        // Antwort von gewohnheiten/heute
 let fokSitzung = null;      // { geplanteMin, verstrichenSek, pausiert } oder null
 let fokStandardMin = 25;
@@ -95,46 +90,40 @@ let fokLaedt = false;
 let fokFehler = "";
 
 // ---------- Bereiche ----------
-// Welche der beiden Fokus-Reiter es gibt - zwei Schalter in den Einstellungen
-// (app.js). Ohne Antwort von dort: beide.
-function fokErlaubt(reiter) {
+// Was angezeigt wird - zwei Schalter in den Einstellungen ("Anzeige", app.js).
+// Ohne Antwort von dort: beides.
+function fokErlaubt(was) {
   const b = window.fokusBereiche?.() || { gewohnheiten: true, timer: true };
-  return reiter === "timer" ? b.timer !== false : b.gewohnheiten !== false;
+  return was === "timer" ? b.timer !== false : b.gewohnheiten !== false;
 }
 
-// Wohnen die Gewohnheiten gerade in der Heute-Spalte statt in einem Reiter? Das
-// entscheidet allein die Breite (istDrei in kalender.js).
+// Wohnen die Gewohnheiten gerade in der Heute-Spalte (PC) statt unter der
+// Tagesansicht? Das entscheidet allein die Breite (istDrei in kalender.js).
 function fokAmTag() {
   return !!window.kalenderDreispaltig?.();
 }
 
-// Gibt es den REITER? Wie fokErlaubt, nur dass es die Gewohnheiten am PC nicht
-// als Reiter gibt - dort stehen sie unter dem Tag.
-function fokTabErlaubt(reiter) {
-  if (reiter === "gewohnheiten" && fokAmTag()) return false;
-  return fokErlaubt(reiter);
-}
-
-// Der gewuenschte Reiter, wenn es ihn gibt - sonst der andere.
-function fokPassenderReiter(wunsch) {
-  if (fokTabErlaubt(wunsch)) return wunsch;
-  return wunsch === "timer" ? "gewohnheiten" : "timer";
-}
-
 // Die Gewohnheiten-Liste (#fokInhalt) an ihren Platz bringen: am PC in die
-// Heute-Spalte, sonst zurueck unter den Reiter im Streifen. Dasselbe Element
+// Heute-Spalte, sonst in den Abschnitt unter der Tagesansicht. Dasselbe Element
 // zieht um, damit alle Verweise darauf (und das Zeichnen) unveraendert bleiben.
 function fokPlatziere() {
   const amTag = fokAmTag();
-  if (amTag && fokInhalt.parentElement !== fokHeuteBox) fokHeuteBox.appendChild(fokInhalt);
-  else if (!amTag && fokInhalt.parentElement === fokHeuteBox) fokTimerBox.after(fokInhalt);
+  const ziel = amTag ? fokHeuteBox : fokObenKoerper;
+  if (fokInhalt.parentElement !== ziel) ziel.appendChild(fokInhalt);
   fokHeuteBox.hidden = !(amTag && fokHeuteAn);
+  fokObenBox.hidden = amTag || !fokObenAn;
+  fokObenBox.classList.toggle("zu", !fokObenOffen);
+  fokObenKopf.setAttribute("aria-expanded", String(fokObenOffen));
+  // Am PC steht die Liste immer da, solange der Abschnitt steht - sonst nur
+  // aufgeklappt.
+  fokInhalt.hidden = amTag ? !fokHeuteAn : !(fokObenAn && fokObenOffen);
 }
 
-// Die Tagesbilanz ("2 von 5") steht im Reiter-Kopf und am PC am Abschnitt.
+// Die Tagesbilanz ("2 von 5") steht am Abschnitt - am PC in der Heute-Spalte,
+// sonst im Kopf des einklappbaren Abschnitts, damit man sie zugeklappt sieht.
 function fokSetzeBilanz(text) {
-  fokBilanzText.textContent = text;
   fokHeuteBilanz.textContent = text;
+  fokObenBilanz.textContent = text;
 }
 
 // ---------- Zugriff auf die API ----------
@@ -182,9 +171,7 @@ async function ladeFokus() {
   if (t.ok) {
     uebernimmSitzung(t.daten.offen);
     fokStandardMin = t.daten.einstellungen?.arbeitMin || 25;
-    // Laeuft gerade etwas, ist der Timer das, weswegen man aufmacht - solange
-    // man nicht selbst schon auf einen Reiter getippt hat.
-    if (fokSitzung && !fokReiterGewaehlt && fokErlaubt("timer")) fokReiter = "timer";
+    fokTimerGeladen = true;
   }
   zeichneFokus();
 }
@@ -253,17 +240,6 @@ function fokKnopf(text, klasse, aufruf) {
   return k;
 }
 
-// Der leise Weg ins Fenster "Gewohnheiten" - am Ende der Liste und unter dem
-// Timer, jeweils mit dem passenden Reiter vorn.
-function fokMehrKnopf(text, reiter) {
-  const k = document.createElement("button");
-  k.type = "button";
-  k.className = "fok-mehr-knopf";
-  k.textContent = text;
-  k.onclick = () => window.gewFensterOeffnen?.(reiter);
-  return k;
-}
-
 /**
  * Zeit, Ring und Knopfreihe des Timers.
  *
@@ -301,26 +277,6 @@ function zeichneTimer() {
       fokSitzung.pausiert ? "▶ Weiter" : "⏸ Pause", "", schaltePause));
     fokKnopfReihe.appendChild(fokKnopf("⏹ Stopp", "", () => beendeSitzung(false)));
   }
-}
-
-/**
- * Reiter umschalten. `vomNutzer` unterscheidet den Klick von der automatischen
- * Wahl beim Oeffnen - nur der Klick friert die Entscheidung ein.
- */
-function setzeReiter(welcher, vomNutzer) {
-  fokReiter = fokPassenderReiter(welcher);
-  if (vomNutzer) fokReiterGewaehlt = true;
-  for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
-    seg.setAttribute("aria-selected", String(seg.dataset.fokReiter === fokReiter));
-  }
-  const timerVorn = fokReiter === "timer";
-  fokTimerBox.hidden = !fokSichtbar || !timerVorn || !!fokFehler;
-  // Am PC steht die Liste in der Heute-Spalte und gehoert keinem Reiter.
-  fokInhalt.hidden = fokAmTag() ? !fokHeuteAn : (!fokSichtbar || timerVorn);
-  // Die Tagesbilanz gehoert zu den Gewohnheiten - im Timer stuende sie ohne
-  // Bezug neben der Uhr, und am PC steht sie am Abschnitt statt im Reiter-Kopf.
-  fokBilanzText.hidden = timerVorn || fokAmTag();
-  if (timerVorn && fokSichtbar) zeichneTimer();
 }
 
 function minutenText(n) {
@@ -470,19 +426,43 @@ function zeichneKarte(g) {
   return karte;
 }
 
+// Der Timer-Knopf in den Kopfzeilen: nur da, wenn der Timer eingeschaltet ist,
+// und mit der Restzeit, solange eine Sitzung laeuft.
+function aktualisiereKnoepfe() {
+  const da = fokBereit && fokErlaubt("timer");
+  for (const k of fokTimerKnoepfe) {
+    k.hidden = !da;
+    k.classList.toggle("laeuft", !!fokSitzung);
+    k.querySelector(".timer-zeit").textContent = fokSitzung ? fokZeit(restSek()) : "";
+    k.title = fokSitzung ? "Fokus-Timer läuft – antippen" : "Fokus-Timer";
+  }
+}
+
+// Inhalt des Timer-Fensters: der Timer selbst, sobald die API einmal geantwortet
+// hat, vorher ein Hinweis.
+function zeigeTimerInhalt() {
+  fokTimerBox.hidden = !fokTimerGeladen;
+  fokTimerHinweis.hidden = fokTimerGeladen;
+  if (!fokTimerGeladen) {
+    fokTimerHinweis.textContent = fokLaedt ? "Lädt …" : "Der Timer lässt sich gerade nicht laden.";
+    return;
+  }
+  zeichneTimer();
+}
+
 function zeichneFokus() {
-  aktualisiereSegmente();
-  if (!fokSichtbar && !fokHeuteAn) return;
+  // Zuerst der Timer (Knopf, offenes Fenster): er gehoert nicht zu den
+  // Gewohnheiten und soll auch dann nachziehen, wenn keine zu sehen sind.
+  aktualisiereKnoepfe();
+  if (fokTimerOffen) zeigeTimerInhalt();
+  if (!fokHeuteAn && !fokObenAn) return;
   fokPlatziere();
 
   fokInhalt.replaceChildren();
 
   if (fokFehler) {
-    // Bei einem Fehler bleibt der Timer weg (setzeReiter prueft fokFehler mit)
-    // und die Meldung steht im Inhaltsbereich: ein Start-Knopf koennte hier nur
-    // in eine zweite Fehlermeldung laufen.
-    setzeReiter("gewohnheiten");
-    fokInhalt.hidden = false;
+    // Die Meldung steht im Inhaltsbereich; mit dem Knopf kommt man zu einem
+    // neuen Versuch.
     const p = document.createElement("p");
     p.className = "fok-hinweis";
     p.textContent = fokFehler;
@@ -491,8 +471,6 @@ function zeichneFokus() {
     fokSetzeBilanz("");
     return;
   }
-
-  setzeReiter(fokReiter);
 
   if (!fokListe) {
     const p = document.createElement("p");
@@ -540,8 +518,6 @@ function zeichneFokus() {
     p.textContent = `Diese Woche schon geschafft: ${fokListe.wochenFertig.join(", ")}`;
     fokInhalt.appendChild(p);
   }
-
-  fokInhalt.appendChild(fokMehrKnopf("Verlauf & mehr ›", "verlauf"));
 }
 
 // ---------- Schreiben ----------
@@ -672,84 +648,94 @@ function meldeFertig(minuten) {
 
 // ---------- Zeigen / Verstecken ----------
 /**
- * Von kalender.js gerufen, wenn der untere Teil des Streifens auf Fokus
- * umschaltet. Jedes Zeigen beginnt bei den Gewohnheiten (oder beim Timer,
- * wenn es nur den gibt); ob eine laufende Sitzung den Timer nach vorn holt,
- * entscheidet ladeFokus() gleich danach.
- */
-window.fokusZeigen = function () {
-  if (fokSichtbar) { zeichneFokus(); return; }
-  fokSichtbar = true;
-  fokReiterGewaehlt = false;
-  fokReiter = fokPassenderReiter("gewohnheiten");
-  zeichneFokus();
-  ladeFokus();
-};
-
-window.fokusVerstecken = function () {
-  fokSichtbar = false;
-  fokTimerBox.hidden = true;
-  // Am PC bleibt die Liste in der Heute-Spalte stehen, auch wenn unten das
-  // Monatsraster vorn ist.
-  fokInhalt.hidden = fokAmTag() ? !fokHeuteAn : true;
-};
-
-/**
- * Von kalender.js (zeichneUnten) gerufen: `an` heisst, die Heute-Spalte steht da
- * (ab 1380 px, Streifen offen). Ob die Gewohnheiten darin erscheinen, haengt
+ * Von kalender.js (zeichneHeuteSpalte) gerufen: `an` heisst, die Heute-Spalte steht
+ * da (ab 1380 px, Streifen offen). Ob die Gewohnheiten darin erscheinen, haengt
  * zusaetzlich an der Anmeldung und am Schalter in den Einstellungen. Beim
- * Einschalten wird die Liste frisch geholt - wie beim Zeigen als Reiter.
+ * Einschalten wird die Liste frisch geholt.
  */
 window.fokusHeute = function (an) {
   const neu = !!an && fokBereit && fokErlaubt("gewohnheiten");
   const war = fokHeuteAn;
   fokHeuteAn = neu;
   fokPlatziere();
-  if (!neu) {
-    if (fokAmTag()) fokInhalt.hidden = true;
-    return;
-  }
+  if (!neu) return;
   zeichneFokus();
   if (!war) ladeFokus();
 };
 
 /**
- * Die Reiterzeile steht auch dann da, wenn unten gerade der KALENDER vorn
- * ist - sie ist der Weg zwischen allen dreien. Ueber ihre Sichtbarkeit
- * entscheidet deshalb der Streifen (zeichneUnten in kalender.js) und nicht das
- * Zeigen/Verstecken des Fokus-Inhalts. Welche der beiden Fokus-Reiter darin
- * stehen, sagen die Schalter in den Einstellungen.
+ * Von kalender.js (zeichneTagOben) gerufen: `an` heisst, die Tagesansicht ueber den
+ * ToDos steht da (Tablet, Handy, Fenster unter 1380 px, Board sichtbar). Der
+ * Abschnitt darunter steht und faellt mit ihr.
  */
-window.fokusReiterzeile = function (sichtbar) {
-  fokKopf.hidden = !sichtbar;
-  for (const seg of document.querySelectorAll(".fok-reiter-seg")) {
-    const welcher = seg.dataset.fokReiter;
-    if (welcher !== "kalender") seg.hidden = !fokTabErlaubt(welcher);
-  }
-  // Ein gerade abgeschalteter Reiter darf nicht vorn stehen bleiben.
-  if (fokSichtbar && !fokTabErlaubt(fokReiter)) setzeReiter(fokReiter);
+window.fokusOben = function (an) {
+  const neu = !!an && fokBereit && fokErlaubt("gewohnheiten");
+  const war = fokObenAn;
+  fokObenAn = neu;
+  fokPlatziere();
+  if (!neu) return;
+  zeichneFokus();
+  if (!war) ladeFokus();
 };
 
-// Fuer kalender.js: ohne Anmeldung gibt es die Fokus-Reiter gar nicht.
-window.fokusHatZugang = () => fokBereit;
-
-// Die Reiter-Klicks liegen in kalender.js, weil "Kalender" dort hingehoert und
-// ein halb geteilter Umschalter zwei Wahrheiten haette. Von dort kommt der
-// Aufruf.
-window.fokusReiter = setzeReiter;
+// Ein Tipp auf den Kopf klappt den Abschnitt unter der Tagesansicht auf und zu;
+// die Wahl bleibt pro Geraet gemerkt.
+fokObenKopf.addEventListener("click", () => {
+  fokObenOffen = !fokObenOffen;
+  try { localStorage.setItem(FOK_OBEN_KEY, fokObenOffen ? "1" : "0"); }
+  catch (e) { /* voller Speicher - dann eben ungemerkt */ }
+  fokPlatziere();
+});
 
 /**
- * Restzeit einer laufenden Sitzung am Timer-Reiter. Frueher stand sie am 🔥 in
- * der Kopfzeile; die gibt es nicht mehr, und ein zugeklappter Streifen zeigt
- * jetzt gar keine Restzeit - dafuer laeuft die Meldung am Sitzungsende und der
- * Tab-Titel weiter.
+ * Aus app.js, wenn ein Schalter unter "Anzeige" umgelegt wurde: der Timer-Knopf
+ * kommt oder geht. Die Gewohnheiten raeumen selbst um (kalender.js zeichnet neu).
  */
-function aktualisiereSegmente() {
-  const reiter = document.querySelector('.fok-reiter-seg[data-fok-reiter="timer"]');
-  if (!reiter) return;
-  reiter.classList.toggle("laeuft", !!fokSitzung);
-  reiter.textContent = fokSitzung ? `Timer ${fokZeit(restSek())}` : "Timer";
+window.fokusEinstellungGeaendert = function () {
+  aktualisiereKnoepfe();
+  if (fokTimerOffen && !fokErlaubt("timer")) schliesseTimer();
+};
+
+// ---------- Timer-Fenster ----------
+function oeffneTimer() {
+  fokTimerOffen = true;
+  fokTimerPopup.hidden = false;
+  // Die Knopfreihe neu bauen: beim letzten Mal stand sie vielleicht anders.
+  letzteKnopfLage = "";
+  zeigeTimerInhalt();
+  // Den Stand frisch holen - an einem anderen Geraet kann eine Sitzung laufen.
+  ladeFokus();
 }
+
+function schliesseTimer() {
+  fokTimerOffen = false;
+  fokTimerPopup.hidden = true;
+}
+
+for (const k of fokTimerKnoepfe) k.addEventListener("click", oeffneTimer);
+document.getElementById("timerZu").addEventListener("click", schliesseTimer);
+fokTimerPopup.addEventListener("click", e => { if (e.target === fokTimerPopup) schliesseTimer(); });
+
+// Escape schliesst zuerst das Timer-Fenster. In der Einfangphase und mit
+// stopImmediatePropagation, wie bei den Dialogen der Gewohnheiten
+// (gewohnheiten.js): sonst schlossen die Escape-Handler in app.js und kalender.js
+// im selben Tastendruck noch den Streifen dahinter. Steht eine Rueckfrage
+// (bestaetigen(), "Sitzung beenden?") offen, hat die Vorrang - sie faengt Escape
+// selbst ab.
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape" || !fokTimerOffen) return;
+  if (document.querySelector(".eingabe-popup")) return;
+  schliesseTimer();
+  e.preventDefault();
+  e.stopImmediatePropagation();
+}, true);
+
+// Fuer die Zurueck-Taste am Handy (schliesseObersteEbene in kalender.js).
+window.fokusSchliesseOberste = function () {
+  if (!fokTimerOffen) return false;
+  schliesseTimer();
+  return true;
+};
 
 // ---------- Takt ----------
 // Ein Schlag pro Sekunde, nur bei laufender Sitzung. Er zeichnet nur;
@@ -761,8 +747,8 @@ setInterval(() => {
     beendeSitzung(true);
     return;
   }
-  aktualisiereSegmente();
-  if (fokSichtbar && fokReiter === "timer" && window.kalenderZeigtFokus?.()) zeichneTimer();
+  aktualisiereKnoepfe();
+  if (fokTimerOffen) zeichneTimer();
 }, 1000);
 
 // Zurueck im Tab: der Fertig-Hinweis im Titel hat seinen Zweck erfuellt. Eine
@@ -770,44 +756,40 @@ setInterval(() => {
 // gedrosselte Hintergrund-Timer koennen den Schlag oben verschlafen haben.
 // Und zurueck in der App ist der wahrscheinlichste Moment, in dem wieder Netz
 // da ist - das "online"-Ereignis kommt nicht in jedem Browser zuverlaessig.
+// Die Sitzung wird immer neu geholt: der Knopf in der Kopfzeile steht ja
+// dauernd da und soll keine laengst beendete Sitzung anzeigen.
 document.addEventListener("visibilitychange", async () => {
   if (document.hidden) return;
   document.title = FOK_TITEL;
   if (!fokBereit) return;
   await gewLiefereNach();
-  if (fokSichtbar) ladeFokus();
+  ladeFokus();
 });
-
-// ---------- Verdrahtung ----------
-// Die Reiter schalten auch den Kalender ein und aus, und diese Entscheidung
-// gehoert dem Streifen. Die Klick-Handler stehen deshalb geschlossen in
-// kalender.js und rufen von dort window.fokusReiter() - genauso wie Escape
-// und die Wischgeste.
-
-// Unter dem Timer: der Weg zu seiner Wochenstatistik im Fenster.
-document.getElementById("fokTimerMehr")
-  .addEventListener("click", () => window.gewFensterOeffnen?.("fokuszeit"));
 
 // Aenderungen von anderswo (Fenster, Dialoge, nachgelieferte Offline-Eintraege,
 // Einstellungen): die Liste frisch holen, solange sie zu sehen ist. Verborgen
-// genuegt es nicht - beim naechsten Zeigen laedt fokusZeigen() ohnehin neu.
+// genuegt es nicht - beim naechsten Zeigen laedt fokusHeute()/fokusOben() ohnehin neu.
+// Eine geaenderte Standarddauer oder Zaehlweise holt auch den Timer neu.
 gewBeiAenderung(was => {
-  if (!fokBereit || !(fokSichtbar || fokHeuteAn)) return;
-  if (was === "einstellungen") ladeFokus();
-  else if (was !== "timer") ladeListe();
+  if (!fokBereit) return;
+  if (was === "einstellungen") { ladeFokus(); return; }
+  if (was !== "timer" && (fokHeuteAn || fokObenAn)) ladeListe();
 });
 
 /**
  * Aus render() in app.js, wie window.kalenderNeuZeichnen. Der erste Aufruf
- * heisst: angemeldet, Daten da - ab jetzt gibt es die Fokus-Reiter. Der
- * Anstoss an den Streifen laeuft nicht in eine Schleife: beim naechsten Mal
+ * heisst: angemeldet, Daten da - ab jetzt gibt es Gewohnheiten und Timer-Knopf.
+ * Der Anstoss an den Streifen laeuft nicht in eine Schleife: beim naechsten Mal
  * steigt die Funktion oben aus.
  */
 window.fokusNeuZeichnen = function () {
   if (fokBereit) return;
   fokBereit = true;
-  aktualisiereSegmente();
+  aktualisiereKnoepfe();
   // Was beim letzten Mal ohne Netz liegen geblieben ist, geht jetzt raus.
   gewLiefereNach();
+  // Sitzung und Standarddauer gleich holen: der Knopf in der Kopfzeile zeigt
+  // sonst erst nach dem ersten Oeffnen, dass eine Sitzung laeuft.
+  ladeFokus();
   window.kalenderNeuZeichnen?.();
 };
