@@ -2100,6 +2100,10 @@ Einträgen gewählt:
   Chips. Tagesliste, Tages-Karte und Termin-Fenster sind unverändert. Wer die Kante
   zurückhaben will: `border-left-color` aus der Serie-Regel nehmen. Verworfen:
   tägliche Serien ganz aus dem Raster nehmen.
+  **Ausnahme seit 19.10.2026 (Hendrik): rote Serien bleiben volle Chips.** `istRot()`
+  in `kalender.js` prüft `colorId === "11"` (Tomate) oder den Hexwert `#d50000` /
+  `#dc2127`; nur dann entfällt die Klasse `serie`. Mandarine und Flamingo zählen nicht
+  als Rot. Soll eine weitere Farbe dazu: Hexwert in `ROT_HEX` oder colorId in `istRot()`.
 - **Bereichsfarbe als Farbton statt Streifen.** `.column[data-farbe="…"]` setzt
   `--col-ton` (11 % Farbe in `--col-bg`, im Dunkelmodus 15 %, über `--ton-anteil`),
   `.column` nimmt `var(--col-ton, var(--col-bg))`. Das ist Absicht und kein

@@ -654,6 +654,17 @@ function baueSpurenplan() {
 
 // Google liefert Farben als "#7986cb". Vor dem Einsetzen in einen style-Wert
 // pruefen: alles andere waere fremder Text in unserem CSS.
+// Ist der Termin "rot"? Gemeint ist Googles Tomate (colorId 11) - dieselbe
+// Farbe, nach der auch die Morgenliste der ToDo-Erinnerung die roten Termine
+// auswaehlt. Ueber die colorId, weil der Hexwert je nach Palette variiert
+// (#d50000 in der App von Google, #dc2127 aus der Palette-Schnittstelle); der
+// Hexwert deckt Termine ab, die ihre Farbe nur ueber den Kalender haben.
+// Mandarine (Orange) und Flamingo (Rosa) zaehlen bewusst nicht dazu.
+const ROT_HEX = new Set(["#d50000", "#dc2127"]);
+function istRot(termin) {
+  return termin.colorId === "11" || ROT_HEX.has(String(termin.farbe || "").toLowerCase());
+}
+
 function farbWert(hex) {
   return /^#[0-9a-f]{3,8}$/i.test(String(hex || "")) ? hex : null;
 }
@@ -1371,7 +1382,9 @@ function baueTagesZelle(tag, spalte, ctx) {
       // Serientermine bleiben im Raster als Text stehen, ohne Farbflaeche
       // (seit 19.10.2026): taegliche und woechentliche Serien fuellten sonst
       // jede Zelle und uebertoenten die Einzeltermine. Siehe .kal-balken.serie.
-      + (eintrag.termin.serieId ? " serie" : "");
+      // Ausnahme: rote Serien (Tomate) bleiben volle Chips - Rot heisst bei
+      // Hendrik "wichtig", das soll auch eine Serie nicht verstecken.
+      + (eintrag.termin.serieId && !istRot(eintrag.termin) ? " serie" : "");
     balken.style.setProperty("--spanne", String(spanne));
     // Getoent statt satt (seit 09.10.2026): heller Grund, farbige Kante,
     // dunkle Schrift - alles aus dieser einen Farbe, gemischt im CSS (siehe
