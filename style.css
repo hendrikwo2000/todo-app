@@ -425,8 +425,21 @@ input[type="date"]:focus {
    behaelt .column.drop-target (Ablage beim Ziehen) seine Flaeche.
    Ohne Wahl bleibt der Bereich grau - "Ohne Bereich" hat ohnehin keinen Kopf
    und bekommt keinen. */
-.column[data-farbe] { --ton-anteil: 11%; }
+.column[data-farbe] { --ton-anteil: 11%; --karte-deckkraft: 55%; }
 :root[data-theme="dark"] .column[data-farbe] { --ton-anteil: 15%; }
+/* Die Karten in einem Farbbereich lassen etwas vom Farbton durchscheinen (Hendrik,
+   19.10.2026: "bei Schule sieht man die Farbe kaum, eher viel weiss"). Gemischt
+   wird als deckende Farbe (Kartenfarbe zu --karte-deckkraft, Rest Farbton) und
+   nicht per Transparenz: der Schleier der Hover-Knoepfe (.actions) braucht
+   dieselbe deckende Farbe, sonst stuende dort ein hellerer Fleck. Erledigte
+   Karten sind ohnehin durchsichtig (.is-done). */
+.column[data-farbe] .todo:not(.is-done) {
+  --karte-grund: color-mix(in srgb, var(--row) var(--karte-deckkraft), var(--col-ton));
+  background: var(--karte-grund);
+}
+.column[data-farbe] .todo:not(.is-done) .actions {
+  background: linear-gradient(to right, transparent 0, var(--karte-grund) 24%);
+}
 .column[data-farbe="blau"]    { --col-ton: color-mix(in srgb, var(--farbe-blau) var(--ton-anteil), var(--col-bg)); }
 .column[data-farbe="tuerkis"] { --col-ton: color-mix(in srgb, var(--farbe-tuerkis) var(--ton-anteil), var(--col-bg)); }
 .column[data-farbe="gruen"]   { --col-ton: color-mix(in srgb, var(--farbe-gruen) var(--ton-anteil), var(--col-bg)); }
@@ -813,7 +826,7 @@ input[type="date"]:focus {
 .todo.is-done .check { width: 16px; height: 16px; }
 .todo.is-done .check:checked { background: var(--muted); border-color: var(--muted); }
 .todo.is-done .check:checked::after { left: 4px; top: 1px; height: 8px; }
-.todo.is-done .actions { background: var(--col-bg); padding-left: 12px; }
+.todo.is-done .actions { background: var(--col-ton, var(--col-bg)); padding-left: 12px; }
 
 .todo-note {
   font-size: 13px;
@@ -3731,9 +3744,9 @@ button.zt-knoten { cursor: pointer; }
 .fok-gew.ruht { opacity: .72; }
 
 .fok-gew-haupt { flex: 1 1 auto; min-width: 0; }
-/* Name und Stift in einer Zeile. Abgeschnitten wird der Name (das <span>),
-   nie der Stift - ein langer Name darf die Karte nicht auseinanderziehen,
-   Haken und Mengenfeld sollen an ihrer Stelle bleiben. */
+/* Ein langer Name wird abgeschnitten (das <span>) und zieht die Karte nicht
+   auseinander, Haken und Mengenfeld bleiben an ihrer Stelle. Einen Stift gibt es
+   hier seit 19.10.2026 nicht mehr (Bearbeiten geht in den Einstellungen). */
 .fok-gew-name {
   display: flex;
   align-items: center;
@@ -3746,33 +3759,6 @@ button.zt-knoten { cursor: pointer; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-/* Der Bearbeiten-Stift. Groessere Trefferflaeche als sichtbar (negativer Rand
-   oben/unten), sonst waere jede Karte allein seinetwegen hoeher. */
-.fok-stift {
-  flex: none;
-  width: 30px; height: 30px;
-  margin: -6px 0;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--muted);
-  font: inherit; font-size: 14px; line-height: 1;
-  cursor: pointer;
-}
-@media (hover: hover) {
-  .fok-stift:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
-}
-/* Mit Maus erscheint der Stift erst beim Darueberfahren (seit 19.10.2026) - bei
-   drei, vier Gewohnheiten stand sonst an jeder Karte ein Symbol. Der Platz
-   bleibt belegt, der Name springt nicht. Per Tastatur (focus-visible) ist er
-   da. Am Touchscreen (hover: none) bleibt er sichtbar: ein Tipp kann nicht
-   "darueberfahren", der Stift waere sonst unerreichbar. */
-@media (hover: hover) {
-  .fok-gew .fok-stift { opacity: 0; }
-  .fok-gew:hover .fok-stift,
-  .fok-gew .fok-stift:focus-visible { opacity: 1; }
 }
 /* Offline abgehakt, noch nicht beim Server (gewohnheiten-daten.js). */
 .fok-wartet { white-space: nowrap; color: var(--orange); font-weight: 600; }

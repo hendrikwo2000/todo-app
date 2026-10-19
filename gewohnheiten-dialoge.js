@@ -14,7 +14,7 @@
    Server prueft beides verbindlich, hier ist es nur die Anzeige.
 
    Geoeffnet werden die Dialoge aus dem Fenster (gewohnheiten.js) und aus dem
-   Streifen (fokus.js: Stift an der Karte, "Gewohnheit anlegen").
+   Streifen (fokus.js: "Gewohnheit anlegen").
    ==================================================================== */
 
 const gewDialog = document.getElementById("gewDialog");
@@ -182,21 +182,8 @@ gewFeld("gewName").addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); gewFeld("gewSpeichern").click(); }
 });
 
-/**
- * Aus dem Streifen: der Stift an einer Karte. Die Heute-Liste kennt Rhythmus
- * und Wochentage nicht, der Dialog braucht aber alles - deshalb erst den
- * Bestand holen, falls er noch nicht da ist.
- */
-window.gewOeffneBearbeiten = async function (id) {
-  if (!gewBestand.geladen || !gewBestand.gewohnheiten.some(g => g.id === id)) {
-    const r = await gewLadeBestand();
-    if (!r.ok) { snackInfo(r.fehler || "Keine Verbindung."); return; }
-  }
-  const g = gewBestand.gewohnheiten.find(x => x.id === id);
-  if (!g) { snackInfo("Diese Gewohnheit gibt es nicht mehr."); return; }
-  gewOeffneDialog(g);
-};
-
+// Aus dem Streifen: "Gewohnheit anlegen" in fokus.js. Bearbeiten laeuft nur noch
+// ueber die Einstellungen - der Stift an den Karten ist seit 19.10.2026 weg.
 window.gewOeffneNeu = function () {
   gewOeffneDialog(null);
 };

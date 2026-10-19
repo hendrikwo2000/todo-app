@@ -2820,10 +2820,18 @@ function baueTerminZeile(t, zeitZeigen) {
   // Herkunft nur bei WEITEREN Kalendern. Beim eigenen Hauptkalender stuende
   // hier der eigene Name - der sagt nichts, was man nicht schon weiss.
   const herkunft = (kal && !kal.primaer) ? kalenderName(kal) : "";
-  const dauer = document.createElement("span");
-  dauer.className = "kal-termin-dauer";
-  dauer.textContent = [zeitLabel(t), herkunft].filter(Boolean).join(" · ");
-  text.appendChild(dauer);
+  // Ganztaegige tragen schon das Kalender-Symbol in der Zeitspalte - "Ganztaegig"
+  // noch einmal darunter kostete bei zwei Terminen zwei Zeilen (Hendrik,
+  // 19.10.2026). Sie sind damit einzeilig; fuer Screenreader sagt es das
+  // aria-label. Der Rest (Zeitspanne, fremder Kalender) bleibt unveraendert.
+  const dauerText = [t.ganztags ? "" : zeitLabel(t), herkunft].filter(Boolean).join(" · ");
+  if (dauerText) {
+    const dauer = document.createElement("span");
+    dauer.className = "kal-termin-dauer";
+    dauer.textContent = dauerText;
+    text.appendChild(dauer);
+  }
+  if (t.ganztags) zeile.setAttribute("aria-label", [t.titel, "ganztägig", herkunft].filter(Boolean).join(", "));
 
   zeile.appendChild(text);
   return zeile;

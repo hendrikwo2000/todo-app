@@ -17,8 +17,9 @@
    beiden um (fokPlatziere); gezeichnet wird immer mit zeichneFokus().
 
    Alles Weitere - Verlauf, Statistik, anlegen, aendern, ordnen, archivieren -
-   steht in den Einstellungen bzw. im Fenster "Gewohnheiten" (gewohnheiten.js);
-   der Stift an einer Karte oeffnet gleich den Bearbeiten-Dialog. Der Link
+   steht in den Einstellungen bzw. im Fenster "Gewohnheiten" (gewohnheiten.js).
+   Die Karten haben keinen Stift mehr (Hendrik, 19.10.2026: Bearbeiten geht in
+   den Einstellungen). Der Link
    "Verlauf & mehr ›" unter den Gewohnheiten ist weg (Hendrik, 18.10.2026: ist
    in den Einstellungen).
 
@@ -199,22 +200,6 @@ function mengeText(g) {
   return `${g.menge} von ${g.ziel}${einheit}`;
 }
 
-/**
- * Der Stift, der eine Gewohnheit zum Bearbeiten oeffnet. Sitzt direkt hinter
- * dem Namen und nicht am rechten Rand: dort waere er der Nachbar des Hakens,
- * und der wird jeden Tag getroffen. Dieselbe Form wie im Fenster.
- */
-function fokStift(g) {
-  const k = document.createElement("button");
-  k.type = "button";
-  k.className = "fok-stift";
-  k.textContent = "✎";
-  k.title = "Bearbeiten";
-  k.setAttribute("aria-label", `${g.name} bearbeiten`);
-  k.onclick = () => window.gewOeffneBearbeiten?.(g.id);
-  return k;
-}
-
 function zeichneKarte(g) {
   const karte = document.createElement("div");
   karte.className = `fok-gew ${g.zustand}` + (g.typ === "menge" ? " mit-menge" : "");
@@ -226,7 +211,7 @@ function zeichneKarte(g) {
   name.className = "fok-gew-name";
   const nameText = document.createElement("span");
   nameText.textContent = g.name;
-  name.append(nameText, fokStift(g));
+  name.append(nameText);
   haupt.appendChild(name);
 
   const zeile = document.createElement("div");

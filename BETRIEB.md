@@ -1694,7 +1694,8 @@ beim ersten. **Ganztägige** stehen oben im selben Abschnitt „Termine“ und
 tragen statt der Zeit ein Kalender-Symbol (nur beim ersten) — vorher hatten
 sie eine eigene Überschrift und eine leere Zeitspalte, Hendrik: „am Anfang
 viel Platz“. Gilt in der Karte und in der Tagesliste am Rechner (dieselbe
-Funktion).
+Funktion). Seit 19.10.2026 haben Ganztägige keine zweite Zeile „Ganztägig“ mehr
+(siehe „Ruhigeres Bild“).
 
 **Karussell für Monat und Tag** (`blaettere()`, `gleite()`): Das Raster ist
 ein Streifen aus drei Monaten (`#kalRasterBahn` → `.kal-raster-streifen` →
@@ -1988,13 +1989,34 @@ Einträgen gewählt:
   heute zeigt (`setzeGewohnheitenChip()` setzt `tag-ist-heute` an `#fokHeute`, aus
   `zeichneHeuteSpalte` und `aktualisiereAuswahl`). Bei einem anderen gewählten Tag
   bleibt es, weil die Gewohnheiten immer für heute gelten. Die Kachel am Tablet und
-  Handy (`#fokOben`) blieb unverändert. Der Stift an den Gewohnheits-Karten
-  (`.fok-stift`) erscheint mit Maus erst beim Darüberfahren oder per Tastaturfokus
-  (`@media (hover: hover)`), am Touchscreen bleibt er sichtbar.
-- **Falle beim Testen:** im Testbrowser setzt `hover` kein `:hover` (der Stift blieb
-  unsichtbar); geprüft sind der Fokusweg und die Regeln im Stylesheet. Für die
-  Serien braucht `testdaten-lokal.js` eine `serieId` an den Terminen (steht jetzt
-  drin). sw.js v47.
+  Handy (`#fokOben`) blieb beim „heute“ unverändert.
+- **Stift an den Gewohnheiten: weg (Nachrunde am selben Tag).** Erst nur beim
+  Darüberfahren sichtbar, dann wollte Hendrik ihn ganz weg: Bearbeiten geht in den
+  Einstellungen (`gewohnheiten.js`, `gewOeffneDialog`). Entfernt sind `fokStift()`
+  in `fokus.js`, `window.gewOeffneBearbeiten` in `gewohnheiten-dialoge.js` und alle
+  `.fok-stift`-Regeln, auch in der Kachel am Tablet und Handy, weil dort dieselbe
+  Karte gezeichnet wird.
+- **Karten im Farbbereich lassen den Farbton durchscheinen** (Hendrik: „bei Schule
+  sieht man die Farbe kaum, eher viel weiß“). `.column[data-farbe] .todo` mischt
+  `--row` zu `--karte-deckkraft` (55 %) mit `--col-ton` zu einer deckenden Farbe
+  (`--karte-grund`), keine echte Transparenz: der Schleier der Hover-Knöpfe
+  (`.actions`) braucht dieselbe deckende Farbe, sonst stünde dort ein hellerer
+  Fleck. Erledigte Karten (`.is-done`) bleiben durchsichtig, ihr Schleier nimmt
+  jetzt ebenfalls `--col-ton` (nach dem Farbton-Umbau stand dort noch das Grau).
+  Bereiche ohne Farbe haben weiter weiße Karten. Regler: `--karte-deckkraft`
+  (70 % wirkte kaum, 55 % deutlich, aber noch als Karte lesbar).
+- **Ganztägige Termine einzeilig.** In `baueTerminZeile()` entfällt die zweite
+  Zeile „Ganztägig“: das Kalender-Symbol in der Zeitspalte sagt es schon, und bei
+  zwei Terminen standen vorher zwei Zeilen mit demselben Wort (37 statt 57 px je
+  Zeile). Ein fremder Kalender steht weiter darunter, Termine mit Uhrzeit sind
+  unverändert („12:15 – 13:15“ bleibt, das hatte Hendrik am 10.10. so entschieden).
+  Für Screenreader trägt die Zeile ein `aria-label` („Titel, ganztägig“). Gilt
+  überall, wo `baueTerminZeile()` läuft: Heute-Spalte, Tagesansicht oben, Tages-Karte.
+- **Falle beim Testen:** `testdaten-lokal.js` braucht eine `serieId` an den Terminen
+  für die Serien (steht jetzt drin). Nach jedem Neuladen den Stil
+  `*{transition:none}` neu einhängen, sonst fotografiert man Zwischenfarben (ein
+  grauer Schleier über allem). Scharfe Bilder gibt es nur bei schmalem Fenster
+  (560 px); bei 1600 × 900 zeigt der Screenshot nur einen Ausschnitt. sw.js v48.
 
 **Ungeprüft:** echtes iPad und echtes Handy (nachgestellt mit 1180 × 820 bzw.
 375 × 812 im Testbrowser), echte Google-Termine (nachgebaute Antwort aus der
@@ -2605,8 +2627,9 @@ Einstellungen, siehe dort) - geoeffnet ueber den
 Eintrag "Verlauf & mehr" in den Einstellungen (Reiter "Gewohnheiten"). Die Links
 "Verlauf & mehr ›" bei den Gewohnheiten und "Fokuszeit pro Woche ›" beim Timer
 gibt es seit 18.10.2026 nicht mehr (Hendrik: steht in den Einstellungen). Den
-Stift an einer Karte oeffnet der Bearbeiten-Dialog. Hendriks Entscheidung,
-gefragt; verworfen: eine eigene Seite (wirkte wie eine zweite App) und mehr
+Stift an einer Karte, der den Bearbeiten-Dialog oeffnete, gibt es seit 19.10.2026
+auch nicht mehr (Hendrik: Bearbeiten geht in den Einstellungen). Der Dialog war
+damals Hendriks Entscheidung, gefragt; verworfen: eine eigene Seite (wirkte wie eine zweite App) und mehr
 Reiter im Streifen (kein Platz). Die Ansicht-Pille bleibt bei zwei Segmenten.
 Das Fenster steht ausserhalb des Kalender-Panels (transform-Falle), Escape und
 die Zurueck-Taste schliessen es von innen nach aussen (`gewSchliesseOberste`,
@@ -2804,7 +2827,8 @@ Auch „Heute" holt nichts mehr nach vorn: der Streifen zeigt immer das Raster.
 ### Was der Fokus-Teil kann — und was nicht
 
 Bei den Gewohnheiten: abhaken (einfach oder mit Menge über −/Zahl/+), Flammen
-sehen und ueber den Stift an der Karte gleich bearbeiten. Alles andere steht seit
+sehen. Einen Stift zum Bearbeiten gibt es an der Karte seit 19.10.2026 nicht mehr.
+Alles andere steht seit
 Oktober 2026 in den Einstellungen (anlegen, Reihenfolge, Archiv, Zaehlweise) und
 im Fenster "Gewohnheiten" (Verlauf, Statistik). Bis dahin fuehrte ein ↗ in der
 Kopfzeile des Bereichs zur Fokus-App. Der Timer: siehe Kapitel "Zeiterfassung".
