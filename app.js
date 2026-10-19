@@ -1731,7 +1731,8 @@ function textEingabe(optionen) {
 
 // Eigener Rueckfrage-Dialog als Ersatz fuer das nackte confirm() des Browsers.
 // Gibt ein Promise<boolean> zurueck. Selber Kasten wie textEingabe(), nur ohne
-// Eingabefeld und mit "gefahr"-Knopf statt "primary".
+// Eingabefeld und mit "gefahr"-Knopf statt "primary" (`neutral: true` nimmt
+// "primary", fuer eine Rueckfrage ohne etwas Zerstoerendes, z. B. Umbuchen).
 function bestaetigen(optionen) {
   const o = optionen || {};
   const okText = o.okText || "Löschen";
@@ -1760,7 +1761,7 @@ function bestaetigen(optionen) {
 
     const ok = document.createElement("button");
     ok.type = "button";
-    ok.className = "btn gefahr";
+    ok.className = o.neutral ? "btn primary" : "btn gefahr";
     ok.textContent = okText;
     box.appendChild(ok);
 

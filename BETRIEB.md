@@ -3106,6 +3106,15 @@ ASCII-Skizzen gefragt):
   Der Filter trifft auch Themennamen (dann das ganze Thema). Das Thema wird nicht
   mit gebucht, es kommt live vom ToDo - für ein gelöschtes ToDo fehlt es. Aus
   Versehen als „Termin" gelesen: Hendriks „Tehma" war das Thema.
+- **Umhängen bei laufender Uhr fragt nach** (Hendrik am selben Abend: „geht das
+  sofort, das soll mit einer Meldung oder gar nicht gehen"): stand die Uhr schon
+  auf einem ToDo und er wählt im Dropdown ein anderes (oder „Ohne ToDo"), kommt
+  vorher `bestaetigen()` („Zeit umbuchen?", die bisherige Dauer, von › auf).
+  Meine Wahl zwischen „Meldung" und „gar nicht": Rückfrage, damit das
+  Korrigieren eines Fehlgriffs möglich bleibt. **Ohne ToDo bis dahin bleibt
+  sofort**, so war es gewollt („dann wird von Beginn an die Zeit darauf
+  gebucht"). `bestaetigen()` hat dafür die Option `neutral: true` (blauer statt
+  roter Knopf).
 
 ### Daten
 

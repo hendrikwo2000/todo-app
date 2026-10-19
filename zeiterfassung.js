@@ -672,10 +672,27 @@ async function ztStarte() {
 /**
  * Der laufenden Uhr ein ToDo geben - ab ihrem Start (Hendrik: "dann wird von
  * Beginn an die Zeit darauf gebucht"). Auch zurueck auf "ohne".
+ * Stand die Uhr schon auf einem anderen ToDo, hing die ganze bisherige Zeit
+ * dort - sie wuerde stillschweigend umziehen (Hendrik, 19.10.2026: "geht das
+ * sofort, das soll mit einer Meldung oder gar nicht gehen"). Deshalb vorher eine
+ * Rueckfrage. Ohne ToDo bis dahin bleibt es ohne, so war es gedacht.
  */
 async function ztOrdneZu(fund) {
   const b = ztBuchungAus(fund);
   if ((b.todoId || null) === (ztLaeuft?.todoId || null)) return;
+  if (ztLaeuft?.todoId) {
+    const ok = await bestaetigen({
+      titel: "Zeit umbuchen?",
+      text: `Die bisherigen ${ztDauer(ztVerstrichen())} von „${ztNameVon(ztLaeuft)}“ zählen dann ${fund ? `auf „${fund.todo.text}“` : "auf kein ToDo"}.`,
+      okText: "Umbuchen",
+      icon: "🔁",
+      neutral: true,
+    });
+    if (!ok) return;
+    // Waehrenddessen gestoppt (anderes Geraet, Abhaken) oder umgehaengt: dann
+    // gibt es nichts mehr umzubuchen.
+    if (!ztLaeuft) { ztZeichne(); return; }
+  }
   const antwort = await ztSchreibe("/laufend", b, "PUT");
   if (!antwort.ok) {
     snackInfo(antwort.daten.error || "Zuordnen fehlgeschlagen.");
