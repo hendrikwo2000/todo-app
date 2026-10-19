@@ -3800,6 +3800,7 @@ function schliesseObersteEbene() {
   // darunter das Fenster "Gewohnheiten" samt seinen Dialogen (gewohnheiten.js) -
   // alle stehen ueber dem Streifen. Escape fangen sie selbst ab; hierher kommt
   // vor allem die Zurueck-Taste am Handy.
+  if (window.hilfeSchliesseOberste?.()) return true;   // Hilfe (hilfe.js)
   if (window.zeitSchliesseOberste?.()) return true;
   if (window.gewSchliesseOberste?.()) return true;
   if (frageAufloesen) { beantworteFrage(null); return true; }

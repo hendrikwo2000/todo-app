@@ -4825,4 +4825,8 @@ function meldeZuvieleKonten() {
   render();
   aktualisiereOfflineAnzeige();
   versucheAusstehendeZuSynchronisieren();
+  // Neues Konto, noch keine einzige Liste: einmal die Hilfe mit "Erste
+  // Schritte" zeigen (hilfe.js). Nur mit Server-Antwort - offline ohne Cache
+  // ist die Liste auch leer, aber das ist kein erster Start.
+  if (canSave && serverErreichbar && !listen.length) window.hilfeBeimErstenStart?.();
 })();

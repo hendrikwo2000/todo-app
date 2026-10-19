@@ -590,6 +590,31 @@ Knöpfe, und ein Knopf im Knopf macht die inneren für Vorleseprogramme
 unerreichbar. Stattdessen ist der **Name** bei wählbaren Zeilen ein echter
 `<button>` — große Fläche für den Finger, sauberer Weg mit der Tastatur.
 
+### Hilfe (seit 19.10.2026)
+
+Zeile „❓ Hilfe ›“ unter „Konto“ (`#hilfeOeffnen`), öffnet das Fenster
+`#hilfeFenster` (`hilfe.js`). Anlass war die Analyse vom 19.10.2026: viele
+Funktionen stecken hinter Klick, Doppelklick, Ziehen oder Wischen, und die
+Farben erklärte nirgends jemand. Hendriks Wahl: Zeile bei den globalen Zeilen,
+eigenes Fenster wie „Verlauf & Statistik“ (schließt die Einstellungen, oben
+fest, am Handy Vollbild), sieben aufklappbare Abschnitte als EIN Akkordeon.
+
+- **Der Text steht fest in `index.html`.** Wer eine Bedienung ändert (Geste,
+  Symbol, Farbe, Ort einer Einstellung), passt die Hilfe im selben Commit mit
+  an — sonst erklärt sie bald etwas, das es nicht mehr gibt. Gesten stehen
+  immer für beide Geräte da („Doppelklick (am Handy zweimal tippen)“).
+- **Erster Start:** `hilfeBeimErstenStart()` am Ende von `init()` in `app.js`,
+  nur wenn die Server-Antwort KEINE Liste enthält (neues Konto) und auf diesem
+  Gerät noch nicht gezeigt (`localStorage.hilfeGezeigt`). Öffnet mit „Erste
+  Schritte“ offen. Bestehende Konten sehen davon nie etwas — meine
+  Entscheidung, Hendrik hat sie mit dem Entwurf abgenickt.
+- **Escape** in der Einfangphase mit `stopImmediatePropagation` (wie die
+  Fenster der Zeiterfassung), sonst schlösse derselbe Druck den Kalender
+  dahinter. Die Zurück-Taste am Handy erreicht die Hilfe über
+  `schliesseObersteEbene()` in `kalender.js`.
+- Die Farbmuster im Abschnitt „Farben“ benutzen dieselben Variablen wie die
+  Karten (`--red`, `--yellow`, `--accent`) und folgen damit beiden Themen.
+
 ## Benachrichtigungen
 
 Zwei Bausteine, unabhaengig voneinander nutzbar: eine echte Push-Meldung

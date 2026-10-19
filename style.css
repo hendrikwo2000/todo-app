@@ -1510,6 +1510,7 @@ input[type="date"]:focus {
 #einstellungenPopup,
 #gewFenster,
 #zeitFenster,
+#hilfeFenster,
 #timerPopup,
 #ztDialog,
 #gewDialog {
@@ -1520,6 +1521,7 @@ input[type="date"]:focus {
 #einstellungenPopup .admin-popup-box.einstellungen,
 #gewFenster .admin-popup-box.gw-box,
 #zeitFenster .admin-popup-box.gw-box,
+#hilfeFenster .admin-popup-box.gw-box,
 #timerPopup .admin-popup-box.timer-box,
 #ztDialog .gw-dialog-box,
 #gewDialog .gw-dialog-box {
@@ -3871,7 +3873,8 @@ button.zt-knoten { cursor: pointer; }
 #gewFenster[data-reiter="statistik"] .gw-blaettern { border-top-right-radius: 0; }
 /* Das Fenster "Statistik" hat keine Reiterzeile - der Abstand, den sonst sie
    zum Titel haelt, kommt hier an den Rahmen. */
-#zeitFenster .gw-blaettern { margin-top: 10px; }
+#zeitFenster .gw-blaettern,
+#hilfeFenster .gw-blaettern { margin-top: 10px; }
 @media (max-width: 560px) {
   .gw-blaettern { padding: 12px; }
 }
@@ -3889,9 +3892,10 @@ button.zt-knoten { cursor: pointer; }
 /* Am Handy ueber den ganzen Bildschirm - dieselbe Schwelle und dieselben
    Masse wie die Einstellungen. */
 @media (max-width: 560px) {
-  #gewFenster, #zeitFenster { padding: 0; }
+  #gewFenster, #zeitFenster, #hilfeFenster { padding: 0; }
   #gewFenster .admin-popup-box.gw-box,
-  #zeitFenster .admin-popup-box.gw-box {
+  #zeitFenster .admin-popup-box.gw-box,
+  #hilfeFenster .admin-popup-box.gw-box {
     width: 100%;
     height: 100%;
     max-height: none;
@@ -4255,3 +4259,30 @@ button.zt-knoten { cursor: pointer; }
 @media (hover: hover) {
   .ein-zeile-knopf:hover .ein-kopf-text { color: var(--accent); }
 }
+
+/* ---------- Hilfe (seit 19.10.2026, hilfe.js) ----------
+   Rahmen und Akkordeon von den Einstellungen geliehen (.ein-abschnitt,
+   .ein-kopf), hier nur der Lesetext und die Farbmuster. */
+/* Ohne Kurztext (.ein-kopf-sub) davor stuende der Pfeil direkt am Titel. */
+.hilfe-blaettern .ein-kopf-pfeil { margin-left: auto; }
+.hilfe-text { font-size: 14px; line-height: 1.45; color: var(--text); }
+.hilfe-text ol, .hilfe-text ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.hilfe-text p { margin: 0; }
+.hilfe-text .hilfe-zwischen { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-top: 4px; }
+.hilfe-symbole { display: grid; grid-template-columns: 28px 1fr; gap: 4px 6px; margin: 0; }
+.hilfe-symbole dt { text-align: center; }
+.hilfe-symbole dd { margin: 0; }
+/* Echte Streifenfarben der ToDo-Karten (siehe .todo.dated/.todo.urgent), damit
+   die Erklaerung genau so aussieht wie das, was sie erklaert. */
+.hilfe-muster { display: flex; flex-direction: column; gap: 6px; }
+.hilfe-karte {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
+  background: var(--row);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  padding: 7px 11px;
+}
+.hilfe-karte.rot  { border-left-color: var(--red); }
+.hilfe-karte.gelb { border-left-color: var(--yellow); }
+.hilfe-karte b { min-width: 42px; }
