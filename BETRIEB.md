@@ -2143,6 +2143,38 @@ Einträgen gewählt:
 lokalen Testhilfe `testdaten-lokal.js`, nicht im Repo), der Zug am
 Breiten-Griff mit der Maus.
 
+### Nachbartage und Monatswechsel am Rechner (19.10.2026)
+
+- **Randtage statt Leerzellen.** `fuelleRaster()` füllt die Zellen vor dem Ersten und
+  nach dem Letzten mit den Tagen der Nachbarmonate (Klasse `nachbar`, `data-nachbar`
+  = -1/+1). Es kommt keine Zeile dazu: ein Monat, der in vier Zeilen passt, bleibt
+  bei vier. Die Randtage tragen Termine und ToDos wie jeder andere Tag, nur mit
+  `opacity: .45` auf Zahl, Balken und ToDo-Liste (nicht auf der Zelle: Rahmen und
+  Heute-Ring bleiben). Vorher blieben sie bewusst leer, weil ein Tag ohne Einträge
+  „frei“ aussieht – das stimmt jetzt, weil `zeitraumDesMonats()` eine Woche mehr
+  Rand holt (die Randtage des Vor- und Folgemonats liegen noch einen Monat weiter
+  draußen).
+- **Spuren je Woche** zählen die Randtage mit: die Zeile über dem Monatswechsel
+  steht in beiden Monaten da und muss gleich hoch sein. Mehrtägige Balken reißen an
+  der Grenze Randtage/Monat ab und beginnen neu (`weiter-rechts`/`weiter-links`),
+  sonst wäre der Teil über den Tagen des Monats auch blass.
+- **Tipp auf einen Randtag** blättert in dessen Monat und wählt den Tag
+  (`blaettere("monat", schritt, tag)` → `zeigeMonat(…, tag)`); am Handy öffnet sich
+  dabei wie bei jedem Tipp die Tages-Karte. Verworfen: Tag öffnen, Monat bleibt.
+- **Mausrad** über Kopf und Raster (`#kalOben`, nicht über der Tagesliste, nicht über
+  dem Quellen-Menü, nicht mit Strg): nach unten = nächster Monat. Aufsummiert bis
+  `RAD_SCHWELLE` (50 px; ein Rasten sind ~100), danach `RAD_SPERRE` (380 ms) Ruhe,
+  damit das Trackpad mit seiner Trägheit nicht fünf Monate auf einmal blättert.
+- **Pfeil links/rechts** blättert den Monat, außer in Eingabefeldern, am Ziehgriff
+  (hat eigene Pfeiltasten), mit Modifikator oder wenn irgendein Fenster offen ist
+  (`ebeneOffen()`, dieselben Ebenen wie `darfGeste()`).
+- **Pfeile ‹ ›** im Kopf am Rechner größer (`@media (hover: hover)`), am Handy
+  unverändert. sw.js v54.
+- **Geprüft** lokal mit `testdaten-lokal.js` (plus Termine über der Monatsgrenze): Raster
+  Okt/Feb/Dez/Jan/Aug (4 bis 6 Zeilen), Rad, Tasten, Tipp auf Randtage am Rechner und
+  bei 390 px. **Ungeprüft:** echtes Mausrad und Trackpad (nur nachgebaute
+  `WheelEvent`), echte Google-Termine.
+
 ## Google Kalender
 
 Verknüpftes Google-Konto je Nutzer, **ausschließlich lesend**

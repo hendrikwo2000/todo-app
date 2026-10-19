@@ -366,9 +366,13 @@ function isoVonDate(d) {
 // Nachbarn haengen beim Wischen schon im Raster (siehe zeichneRaster) - ohne
 // ihre Termine glitte ein halb leerer Monat herein, und die Balken klappten
 // erst nach dem Loslassen auf. Bis zum 25.09.2026 war es eine Woche Rand.
+// Seit 19.10.2026 wieder eine Woche Rand: die Zellen vor dem Ersten und nach
+// dem Letzten zeigen die Tage des Nachbarmonats, und auch das Raster des
+// Vor- bzw. Folgemonats hat solche Randtage - die liegen noch einen Monat
+// weiter draussen. Mehr als sechs Tage sind es nie.
 function zeitraumDesMonats() {
-  const von = new Date(kalJahr, kalMonatNr - 1, 1);
-  const bis = new Date(kalJahr, kalMonatNr + 2, 0);
+  const von = new Date(kalJahr, kalMonatNr - 1, 1 - 7);
+  const bis = new Date(kalJahr, kalMonatNr + 2, 7);
   return { von: isoVonDate(von), bis: isoVonDate(bis) };
 }
 
@@ -1226,14 +1230,22 @@ function fuelleRaster(raster, jahr, monat, mitte, tage, spuren, heute, kwAn) {
   const ersterWochentag = (new Date(jahr, monat, 1).getDay() + 6) % 7;
   const tageImMonat = new Date(jahr, monat + 1, 0).getDate();
   const wocheVon = tag => Math.floor((ersterWochentag + tag - 1) / 7);
+  const zeilen = Math.ceil((ersterWochentag + tageImMonat) / 7);
+  // Tagesnummern ausserhalb von 1 bis tageImMonat sind die Randtage der
+  // ersten und letzten Zeile (0, -1, ... bzw. tageImMonat + 1, ...): Date
+  // rechnet sie in den Nachbarmonat um. nachbarVon: -1 Vormonat, 1 Folgemonat,
+  // 0 gehoert zu diesem Monat.
+  const isoVon = tag => isoVonDate(new Date(jahr, monat, tag));
+  const nachbarVon = tag => (tag < 1 ? -1 : tag > tageImMonat ? 1 : 0);
 
   // Wie viele Spuren jede WOCHE braucht. Je Woche gerechnet, nicht je Tag:
   // innerhalb einer Zeile muessen die Balken derselben Spur auf gleicher Hoehe
   // liegen, sonst versetzt sich die Linie von Tag zu Tag. Ruhige Wochen
-  // bleiben dafuer flach.
+  // bleiben dafuer flach. Die Randtage zaehlen mit: die Zeile ueber dem
+  // Monatswechsel steht in beiden Monaten da und muss in beiden gleich hoch sein.
   const spurenJeWoche = [];
-  for (let tag = 1; tag <= tageImMonat; tag++) {
-    const reihen = plan[isoTag(jahr, monat, tag)] || [];
+  for (let tag = 1 - ersterWochentag; tag <= zeilen * 7 - ersterWochentag; tag++) {
+    const reihen = plan[isoVon(tag)] || [];
     const w = wocheVon(tag);
     spurenJeWoche[w] = Math.max(spurenJeWoche[w] || 0, reihen.length);
   }
@@ -1259,7 +1271,6 @@ function fuelleRaster(raster, jahr, monat, mitte, tage, spuren, heute, kwAn) {
   // Die Zeilen teilen sich die Hoehe des Rasters (grid-auto-rows im CSS). Eine
   // Mindesthoehe je Zeile (--kal-zeilen) brauchte nur der gestapelte Streifen,
   // den es seit 09.10.2026 nicht mehr gibt.
-  const zeilen = Math.ceil((ersterWochentag + tageImMonat) / 7);
   for (let zeile = 0; zeile < zeilen; zeile++) {
     // Wochenzahl aus dem Montag der Zeile - der darf ruhig im Vor- oder
     // Folgemonat liegen, Date rechnet das von selbst um.
@@ -1272,23 +1283,23 @@ function fuelleRaster(raster, jahr, monat, mitte, tage, spuren, heute, kwAn) {
 
     for (let spalte = 0; spalte < 7; spalte++) {
       const tag = zeile * 7 + spalte - ersterWochentag + 1;
-      // Leerzellen vor dem Monatsersten und nach dem Letzten. Bewusst LEER
-      // statt blasser Nachbartage: ein Tag ohne Punkte sieht frei aus - das
-      // darf er nur, wenn es stimmt.
-      if (tag < 1 || tag > tageImMonat) {
-        raster.appendChild(document.createElement("span"));
-        continue;
-      }
+      // Vor dem Monatsersten und nach dem Letzten stehen die Tage der
+      // Nachbarmonate, blass (seit 19.10.2026, Hendriks Wunsch: so sieht man,
+      // ob dort noch Platz ist). Bis dahin blieben die Zellen LEER, weil ein
+      // Tag ohne Eintraege frei aussieht und das nur stimmen darf, wenn es
+      // stimmt - deshalb tragen die Randtage ihre Termine und ToDos genauso
+      // und zeitraumDesMonats() holt sie mit.
       raster.appendChild(baueTagesZelle(tag, spalte, {
-        jahr, monat, tage, plan, ueberzaehlig, spurenJeWoche, wocheVon, heute, tageImMonat,
+        tage, plan, ueberzaehlig, spurenJeWoche, wocheVon, heute, isoVon, nachbarVon,
       }));
     }
   }
 }
 
 function baueTagesZelle(tag, spalte, ctx) {
-  const { jahr, monat, tage, plan, ueberzaehlig, spurenJeWoche, wocheVon, heute, tageImMonat } = ctx;
-  const iso = isoTag(jahr, monat, tag);
+  const { tage, plan, ueberzaehlig, spurenJeWoche, wocheVon, heute, isoVon, nachbarVon } = ctx;
+  const iso = isoVon(tag);
+  const nachbar = nachbarVon(tag);
   const todosDesTages = tage[iso] || [];
   const reihen = plan[iso] || [];
   const termineImRaster = reihen.filter(Boolean).length;
@@ -1296,6 +1307,12 @@ function baueTagesZelle(tag, spalte, ctx) {
   zelle.type = "button";
   zelle.className = "kal-tag";
   zelle.dataset.tag = iso;
+  // Randtag eines Nachbarmonats: blass gezeichnet (siehe .kal-tag.nachbar),
+  // ein Tipp blaettert in dessen Monat (siehe der Klick auf kalRaster).
+  if (nachbar) {
+    zelle.classList.add("nachbar");
+    zelle.dataset.nachbar = String(nachbar);
+  }
   if (iso === heute) zelle.classList.add("heute");
   if (iso === kalAuswahl) zelle.classList.add("gewaehlt");
   // Rot faerbt nur faelliges ToDo-Datum, nie ein vergangener Termin. HEUTE
@@ -1305,7 +1322,9 @@ function baueTagesZelle(tag, spalte, ctx) {
 
   const zahl = document.createElement("span");
   zahl.className = "kal-zahl";
-  zahl.textContent = String(tag);
+  // Aus dem Datum, nicht aus `tag`: bei einem Randtag ist `tag` 0, -1 ... bzw.
+  // groesser als der Monat lang ist.
+  zahl.textContent = String(Number(iso.slice(8, 10)));
   zelle.appendChild(zahl);
 
   // Die Punktreihe unter der Tageszahl (ein Punkt je ToDo, "+" ab vier) ist
@@ -1325,7 +1344,11 @@ function baueTagesZelle(tag, spalte, ctx) {
     const balken = document.createElement("span");
 
     // Leere Spur oder Fortsetzung eines Balkens, der links begonnen hat.
-    const fortsetzung = eintrag && eintrag.weiterLinks && spalte > 0;
+    // An der Grenze zwischen Randtagen und Monat reisst der Balken ab und
+    // beginnt neu: die Randtage sind blass, der Balken ragt ueber seine
+    // Zelle hinaus und wuerde sonst auch ueber den Tagen des Monats blass.
+    const fortsetzung = eintrag && eintrag.weiterLinks && spalte > 0
+      && nachbarVon(tag - 1) === nachbar;
     if (!eintrag || fortsetzung) {
       balken.className = "kal-balken kal-balken-luecke";
       stapel.appendChild(balken);
@@ -1334,15 +1357,17 @@ function baueTagesZelle(tag, spalte, ctx) {
 
     // Wie viele Tage reicht der Abschnitt in DIESER Zeile noch?
     let spanne = 1;
-    while (spalte + spanne <= 6 && tag + spanne <= tageImMonat) {
-      const naechste = plan[isoTag(jahr, monat, tag + spanne)] || [];
+    while (spalte + spanne <= 6 && nachbarVon(tag + spanne) === nachbar) {
+      const naechste = plan[isoVon(tag + spanne)] || [];
       if (!naechste[s] || naechste[s].termin.id !== eintrag.termin.id) break;
       spanne++;
     }
 
+    // Weiter nach rechts, wenn die Zeile oder der Abschnitt (Randtage/Monat) endet.
+    const endetVorTermin = spalte + spanne > 6 || nachbarVon(tag + spanne) !== nachbar;
     balken.className = "kal-balken"
       + (eintrag.weiterLinks ? " weiter-links" : "")
-      + (eintrag.weiterRechts && spalte + spanne > 6 ? " weiter-rechts" : "")
+      + (eintrag.weiterRechts && endetVorTermin ? " weiter-rechts" : "")
       // Serientermine bleiben im Raster als Text stehen, ohne Farbflaeche
       // (seit 19.10.2026): taegliche und woechentliche Serien fuellten sonst
       // jede Zelle und uebertoenten die Einzeltermine. Siehe .kal-balken.serie.
@@ -3110,9 +3135,19 @@ function schliesseEingaben() {
 // erste Tag mit einem ToDo gewaehlt - Google-Termine zaehlten dabei nicht mit,
 // und in einem Monat ohne ToDos blieb der Tagesbereich leer, obwohl das
 // Raster voller Termine stand.
-function zeigeMonat(jahr, monat) {
+//
+// `tag` (ein Randtag des Nachbarmonats, auf den getippt wurde) geht vor: der
+// Tag wird gewaehlt, am Handy oeffnet sich wie bei jedem Tipp seine Karte.
+function zeigeMonat(jahr, monat, tag) {
   kalJahr = jahr;
   kalMonatNr = monat;
+  if (tag) {
+    kalAuswahl = tag;
+    schliesseEingaben();
+    if (!istSplit()) { oeffneTagKarte(); return; }   // zeichnet selbst
+    zeichneKalender();
+    return;
+  }
   const heute = todayStr();
   const imMonat = heute.startsWith(`${jahr}-${String(monat + 1).padStart(2, "0")}`);
   // Am Handy gibt es neben dem Raster keine Tagesliste, die leer aussehen
@@ -3123,9 +3158,9 @@ function zeigeMonat(jahr, monat) {
   zeichneKalender();
 }
 
-function monatVerschieben(schritt) {
+function monatVerschieben(schritt, tag) {
   const d = new Date(kalJahr, kalMonatNr + schritt, 1);
-  zeigeMonat(d.getFullYear(), d.getMonth());
+  zeigeMonat(d.getFullYear(), d.getMonth(), tag);
 }
 
 // Einen Kalendertag weiter oder zurueck. Laeuft der neue Tag aus dem Monat
@@ -3529,9 +3564,10 @@ function gleite(el, x, fertig) {
 }
 
 // Einen Monat bzw. Tag weiter - mit Gleiten, wo es einen Streifen gibt.
-function blaettere(modus, schritt) {
+// `tag` nur beim Monat: der Randtag, auf den getippt wurde (siehe zeigeMonat).
+function blaettere(modus, schritt, tag) {
   const umschalten = () => {
-    if (modus === "monat") monatVerschieben(schritt);
+    if (modus === "monat") monatVerschieben(schritt, tag);
     else {
       wechsleTag(schritt);
       kalTagKarte.querySelector(".kal-tagkarte-liste").scrollTop = 0;
@@ -3717,6 +3753,74 @@ document.getElementById("kalVor").addEventListener("click", () => blaettere("mon
 // "Heute" ist ein Tipp auf einen Tag wie jeder andere. Umschalten muss er
 // nicht mehr: er sitzt im Kalender-Kopf, den es im Fokus-Modus gar nicht gibt.
 document.getElementById("kalHeute").addEventListener("click", springeZuHeute);
+
+/* ---------- Monatswechsel am Rechner: Mausrad und Pfeiltasten ---------- */
+// Seit 19.10.2026 (Hendrik: am PC sei Blaettern per Mausrad ueber dem Kalender
+// am einfachsten). Beides laeuft ueber blaettere(), also mit demselben Gleiten
+// wie Wisch und Pfeile.
+
+// Liegt etwas ueber oder vor dem Raster, das die Tasten bzw. das Rad selbst
+// braucht? Dieselben Ebenen wie in darfGeste(), nur ohne die Frage nach dem
+// Split: Rad und Tasten gibt es gerade im Split.
+function ebeneOffen() {
+  if (formularOffen || wahlOffen || tagKarteOffen || filterOffen || frageAufloesen) return true;
+  if (!einstellungenPopup.hidden) return true;
+  const hilfe = document.getElementById("hilfeFenster");
+  if (hilfe && !hilfe.hidden) return true;
+  if (window.gewEinFensterOffen?.() || window.zeitFensterOffen?.()) return true;
+  if (kalLock && !kalLock.classList.contains("hidden")) return true;
+  return !!(draggedId || draggedCat || draggedThema);
+}
+
+// Ein Rasten am Mausrad = ein Monat. Das Trackpad liefert dagegen dutzende
+// kleine Schritte (und Traegheit hinterher): deshalb wird aufsummiert, erst ab
+// RAD_SCHWELLE blaettert es, und nach jedem Monat ruht das Rad kurz. Eine
+// Pause von RAD_RUHE ohne Ereignis beginnt eine neue Bewegung.
+const RAD_SCHWELLE = 50;    // px (ein Rasten sind meist 100)
+const RAD_SPERRE = 380;     // ms nach einem Wechsel
+const RAD_RUHE = 200;       // ms ohne Ereignis = neue Bewegung
+let radSumme = 0;
+let radLetzte = 0;
+let radGesperrtBis = 0;
+
+document.getElementById("kalOben").addEventListener("wheel", e => {
+  // Strg+Rad zoomt die Seite, das Quellen-Menue scrollt selbst.
+  if (!kalOffen || e.ctrlKey || e.target.closest("#kalFilter") || ebeneOffen()) return;
+  // Zeilen- und Seitenmodus (Firefox, manche Maeuse) auf Pixel umrechnen.
+  const faktor = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
+  const dy = e.deltaY * faktor;
+  const dx = e.deltaX * faktor;
+  const delta = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
+  if (!delta) return;
+  // Das Raster scrollt nicht - die Seite dahinter darf nicht mitwandern.
+  e.preventDefault();
+
+  const jetzt = e.timeStamp;
+  if (jetzt - radLetzte > RAD_RUHE) radSumme = 0;
+  radLetzte = jetzt;
+  if (jetzt < radGesperrtBis) return;
+  radSumme += delta;
+  if (Math.abs(radSumme) < RAD_SCHWELLE) return;
+  const schritt = radSumme > 0 ? 1 : -1;   // nach unten = naechster Monat
+  radSumme = 0;
+  radGesperrtBis = jetzt + RAD_SPERRE;
+  blaettere("monat", schritt);
+}, { passive: false });
+
+// Pfeil links/rechts blaettert den Monat - aber nur, wenn die Taste sonst
+// niemand braucht: nicht in Eingabefeldern, am Ziehgriff (der hat eigene
+// Pfeiltasten), mit Modifikator (Alt+Pfeil ist "Zurueck" im Browser) oder
+// hinter einem offenen Fenster.
+document.addEventListener("keydown", e => {
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  if (!kalOffen || e.defaultPrevented) return;
+  if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+  const ziel = e.target;
+  if (ziel && ziel.closest && ziel.closest("input, textarea, select, [contenteditable], [role='separator'], [role='slider']")) return;
+  if (ebeneOffen()) return;
+  e.preventDefault();
+  blaettere("monat", e.key === "ArrowRight" ? 1 : -1);
+});
 kalFilterKnopf.addEventListener("click", () => {
   filterOffen = !filterOffen;
   zeichneFilter();
@@ -3733,7 +3837,11 @@ document.addEventListener("click", e => {
 kalRaster.addEventListener("click", e => {
   if (klickSchlucken) { klickSchlucken = false; return; }
   const zelle = zelleUnter(e.clientX, e.clientY) || e.target.closest(".kal-tag");
-  if (zelle) waehleTag(zelle.dataset.tag);
+  if (!zelle) return;
+  // Ein Randtag blaettert in seinen Monat und waehlt ihn dort (seit
+  // 19.10.2026, Hendriks Wahl gegen "Tag oeffnen, Monat bleibt").
+  if (zelle.dataset.nachbar) blaettere("monat", Number(zelle.dataset.nachbar), zelle.dataset.tag);
+  else waehleTag(zelle.dataset.tag);
 });
 
 // Welcher Tag liegt unter dieser Stelle? Nach der LAGE gefragt, nicht nach

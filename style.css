@@ -2106,6 +2106,11 @@ html.kal-split #kalWahl {
 }
 .kal-schliessen { font-size: 15px; margin-left: 4px; }
 .kal-pfeil:hover, .kal-schliessen:hover { color: var(--accent); background: var(--hover); }
+/* Monatspfeile am Rechner groesser (seit 19.10.2026: "zu klein"). Nur mit
+   echtem Zeiger - am Handy wischt man, und die Kopfzeile ist dort eng. */
+@media (hover: hover) {
+  #kalZurueck, #kalVor { font-size: 30px; padding: 0 12px 3px; color: var(--text); }
+}
 
 /* Der Ueberfaellig-Chip stand hier bis zum 13.08.2026: ein eigener Einstieg
    ueber dem Raster, weil Ueberfaelliges quer ueber Vormonate liegt. Seit es
@@ -2239,6 +2244,16 @@ html.kal-split #kalWahl {
    weiterhin heute von gestern. */
 .kal-tag.faellig .kal-zahl { color: var(--red); font-weight: 700; }
 .kal-zahl { line-height: 1; text-align: center; }
+
+/* Tage des Vor- und Folgemonats in den Randzellen (seit 19.10.2026): da, aber
+   nicht im Fokus. Zahl, Balken und ToDos blass statt die ganze Zelle - der
+   Rahmen und der blaue Heute-Ring sollen stehen bleiben, und der Balken eines
+   Termins ragt ueber seine Zelle hinaus (er reisst an der Monatsgrenze ab,
+   siehe baueTagesZelle). Die Platzhalter-Spuren sind unsichtbar, deshalb
+   nicht mitgedimmt. */
+.kal-tag.nachbar .kal-zahl,
+.kal-tag.nachbar .kal-balken:not(.kal-balken-luecke),
+.kal-tag.nachbar .kal-tag-todos { opacity: .45; }
 
 /* Punkt = ToDo-Marke in der Tageszeile im Raster und im Quellen-Filter. Die
    Punktreihe unter der Tageszahl ist am 09.10.2026 entfallen (siehe
