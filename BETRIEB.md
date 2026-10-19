@@ -795,18 +795,73 @@ beim automatischen Nachreichen über `versucheAusstehendeZuSynchronisieren()`
 nach einem `online`-Event, `visibilitychange` oder App-Start) — bewusst
 keine zweite, parallele Implementierung.
 
-**Bekannter Kompromiss:** `PUT /api/todos` bleibt wie beschrieben „letzter
-Speichervorgang gewinnt" (s. o.) — Offline-Nutzung verlängert dieses
-Zeitfenster von Sekunden auf Stunden oder Tage. Bei geteilten Listen mit
-mehreren aktiven Personen steigt dadurch das Risiko, eine fremde
-Zwischenänderung zu überschreiben, ohne dass das Backend das erkennen
-könnte (keine Versionsspalte). Nach jedem automatischen Sync zeigt eine
-Snackbar, welche Liste synchronisiert wurde, damit es wenigstens auffällt.
+~~**Bekannter Kompromiss:** „letzter Speichervorgang gewinnt"~~ — seit
+19.10.2026 behoben, siehe „Mehrere Geräte" direkt unten. Ein Pending-Eintrag
+trägt seitdem auch Basis, Stand und Unterpunkte mit (vorher fehlten die
+Unterpunkte, und das Nachreichen löschte alle Unterpunkte der Liste).
 
 Eine neue Liste anlegen, umbenennen, löschen, teilen oder Mitglieder
 verwalten bleibt bewusst online-only (eigene, sofortige Requests ohne
 lokalen Fallback) — der Server vergibt dabei IDs und prüft Limits, das lässt
 sich nicht sinnvoll offline vorwegnehmen.
+
+## Mehrere Geräte (seit 19.10.2026)
+
+**Der Fehler, der es auslöste:** Die ToDos kamen nur beim Start vom Server,
+und `PUT /api/todos` ersetzt den kompletten Inhalt einer Liste. Ein PC-Tab,
+der seit dem Morgen offen stand, kannte nichts, was das Handy seitdem
+angelegt hatte — und löschte es beim nächsten Abhaken still vom Server. In
+der Analyse vom 19.10.2026 mit zwei Tabs nachgestellt.
+
+**Zwei Teile, der zweite ist das eigentliche Netz:**
+
+1. **Nachladen beim Zurückkommen** (`ladeFrischNach()` in `app.js`): bei
+   `visibilitychange` (Tab, Handy-App wieder vorne) und `focus` (PC, Tab war
+   sichtbar, nur ein anderes Programm vorne) holt die App `GET /api/todos`
+   neu. Hendriks Wahl: kein Takt im Hintergrund. Nie mitten im Tippen
+   (`tipptGerade()` — `render()` würde das offene Feld neu bauen), dann
+   neuer Versuch nach 4 s. Hat sich während der Abfrage hier etwas geändert
+   (Zähler `aenderungen`, zählt jeden `save()`-Aufruf), wird die Antwort
+   verworfen. Ohne Neuigkeiten kein Neuzeichnen.
+2. **Stand-Abgleich beim Speichern:** `boards.stand` (Migration
+   `migration-stand.sql`) zählt jedes `PUT` hoch. `GET` liefert ihn je Liste
+   (`listen[].stand`), `save()` schickt ihn mit. Passt er nicht mehr, kommt
+   **409 mit dem aktuellen Inhalt** zurück (gleiche Form wie `GET`, über
+   dieselben `…Aus()`-Funktionen in `todos.js`). Die App mischt dreiseitig
+   (`mischeDreiWege()`): Basis = letzter gemeinsamer Stand (`basis[listeId]`,
+   gesetzt bei `GET` und nach jedem erfolgreichen `PUT`), dazu hier und dort.
+   Feld für Feld: was nur eine Seite geändert hat, gilt; ändern beide
+   dasselbe Feld, gewinnt dieses Gerät (Hendriks Wahl). Gelöscht bleibt
+   gelöscht, außer die andere Seite hat den Eintrag geändert. Bis zu drei
+   Versuche, danach wie offline (Pending). Hat das Mischen sichtbar etwas
+   gebracht: Snackbar „Änderungen von einem anderen Gerät übernommen."
+
+**Fallen beim Mischen:**
+
+- `undefined` und `null` gelten als gleich (`gleicherWert()`). Lokal
+  angelegte ToDos haben z. B. `order: undefined`, der Server liefert `null` —
+  ohne die Gleichsetzung sähe jedes frische ToDo „geändert" aus und überstimmte
+  die andere Seite.
+- `ersetzeInhalt()` tauscht die Felder im bestehenden Objekt, statt
+  `daten[id]` neu zuzuweisen — `state` zeigt bei der aktiven Liste auf genau
+  dieses Objekt.
+- Haben beide Geräte dasselbe wiederkehrende ToDo abgehakt, legte jedes einen
+  Nachfolger an. Von den beim Mischen NEU entstandenen gleichen Nachfolgern
+  (Bereich, Titel, Rhythmus, Termin) bleibt einer; schon vorher doppelt
+  Gespeichertes fasst das Mischen nicht an.
+
+**Grenzen, bewusst:** Ohne mitgeschickten Stand (alte App aus dem Cache,
+Pending-Einträge von vor dem 19.10.2026, frisch angelegte Liste vor dem
+ersten Speichern) prüft der Server nicht — altes Verhalten. Zwischen dem
+Lesen des Stands und dem Schreiben im `PUT` liegt ein Fenster von
+Millisekunden. Neuer Tag um Mitternacht kommt weiter erst beim nächsten
+Zurückkommen.
+
+**Nebenfund, gleich behoben:** `save()` merkte sich einen Speicherwunsch
+während eines laufenden Speicherns nur als Ja/Nein und speicherte danach die
+AKTIVE Liste. Wer in der Heute-Spalte ein ToDo einer anderen Liste abhakte,
+während gespeichert wurde, verlor dessen Speichern. Jetzt eine Menge
+(`nachzuholen`) mit der richtigen Liste.
 
 ## Warteliste und Verwaltung
 
@@ -1128,6 +1183,16 @@ wiederkehrende ToDos: ein normales ToDo mit Zukunftstermin bleibt wie
 gewohnt sofort sichtbar (samt „Morgen"-Anzeige und roter Dringlichkeit ab
 morgen) — sonst wäre auch die Vorschau auf morgen fällige, nicht
 wiederkehrende ToDos weg.
+
+**Wieder aufgehakt (seit 19.10.2026).** Vorher blieb der Nachfolger beim
+Wiederöffnen stehen, und das nächste Abhaken legte einen zweiten an — bis
+zum Fälligkeitstag unsichtbar, dann doppelt. Jetzt (Hendriks Wahl): beim
+Öffnen wird der Nachfolger zurückgenommen, wenn er unverändert ist
+(`folgeUnveraendert()`: Termin = `folgeTermin()`, Notiz, Thema, Checkliste
+gleich und nichts abgehakt). Hat man ihn schon bearbeitet, bleibt er, und
+beim erneuten Abhaken entsteht kein zweiter (`naechsteAusgabe()`: offenes
+ToDo derselben Serie — Bereich, Titel, Rhythmus — mit späterem Termin). Eine
+Verknüpfung im Datenmodell gibt es weiter nicht, daher dieser Abgleich.
 
 ## Unterpunkte
 

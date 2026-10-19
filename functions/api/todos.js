@@ -14,11 +14,16 @@
  * Inhalt aendern (Mitbearbeiten war die Vorgabe), nur die Verwaltung der Liste
  * selbst bleibt dem owner (siehe functions/api/listen/).
  *
- * Bewusst NICHT konfliktfrei: schreibt eine Liste, wird ihr kompletter Inhalt
- * ersetzt. Bearbeiten zwei Leute dieselbe Liste im selben Moment, gewinnt der
- * spaetere Speichervorgang. Fuer wenige Leute, die selten zeitgleich tippen,
- * ist das vertretbar; echtes gleichzeitiges Bearbeiten waere ein ToDo-fuer-
- * ToDo-Abgleich statt "alles auf einmal" - ein spaeterer Schritt.
+ * Gespeichert wird weiter "alles auf einmal" (kompletter Inhalt der Liste).
+ * Seit 19.10.2026 aber nicht mehr blind: jede Liste hat einen Stand-Zaehler
+ * (boards.stand). Die App schickt den Stand mit, auf dem ihre Aenderung beruht;
+ * hat inzwischen ein anderes Geraet gespeichert, kommt 409 samt aktuellem
+ * Inhalt zurueck, und die App mischt beide Staende (mischeDreiWege in app.js),
+ * bevor sie erneut speichert. Vorher loeschte ein lange offener Tab beim
+ * naechsten Speichern still, was ein anderes Geraet inzwischen angelegt hatte.
+ * Ohne mitgeschickten Stand (alte App-Version aus dem Cache) gilt das alte
+ * Verhalten. Zwischen dem Lesen des Stands und dem Schreiben liegt ein Fenster
+ * von Millisekunden - fuer eine Handvoll Geraete vertretbar.
  */
 
 import { umstiegAufDomainCookie } from "../_lib/session.js";
@@ -37,6 +42,64 @@ const FARBEN_ERLAUBT = new Set([
 // passen). Alles ausserhalb dieser Liste wird abgelehnt statt ungeprueft in
 // die Datenbank zu wandern.
 const WIEDERHOLUNG_ERLAUBT = new Set(["taeglich", "woechentlich", "monatlich", "jaehrlich"]);
+
+// Zeilen aus der Datenbank in die Form, die die App kennt. Von GET (alle
+// Listen) und vom 409 im PUT (eine Liste) gemeinsam benutzt, damit beide
+// Antworten garantiert gleich aussehen - die App vergleicht sie feldweise.
+function bereichAus(l) { return { id: l.id, name: l.name, farbe: l.farbe || null }; }
+function themaAus(th) { return { id: th.id, categoryId: th.list_id, name: th.name }; }
+function todoAus(t) {
+  return {
+    id: t.id,
+    categoryId: t.list_id,
+    themaId: t.thema_id,       // null = frei im Bereich
+    text: t.text,
+    note: t.note,
+    due: t.due,
+    done: t.done === 1,        // SQLite kennt keinen Boolean
+    order: t.position,         // null bei terminierten ToDos, wie bisher
+    createdAt: t.created_at,
+    completedAt: t.completed_at,
+    wiederholung: t.wiederholung || null,
+  };
+}
+function unterpunktAus(u) { return { id: u.id, todoId: u.todo_id, text: u.text, done: u.done === 1 }; }
+
+// Kompletter Inhalt EINER Liste, wie GET ihn liefert. Nur nach der
+// Zugriffspruefung aufrufen.
+async function inhaltDerListe(env, boardId) {
+  const [bereiche, themen, todos, unterpunkte] = await env.DB.batch([
+    env.DB.prepare(
+      "SELECT id, name, farbe FROM lists WHERE board_id = ? ORDER BY position, name"
+    ).bind(boardId),
+    env.DB.prepare(
+      `SELECT th.id, th.list_id, th.name FROM themen th
+         JOIN lists l ON l.id = th.list_id
+        WHERE l.board_id = ?
+        ORDER BY th.list_id, th.position, th.name`
+    ).bind(boardId),
+    env.DB.prepare(
+      `SELECT t.id, t.list_id, t.thema_id, t.text, t.note, t.due, t.done,
+              t.position, t.created_at, t.completed_at, t.wiederholung
+         FROM todos t
+         JOIN lists l ON l.id = t.list_id
+        WHERE l.board_id = ?`
+    ).bind(boardId),
+    env.DB.prepare(
+      `SELECT u.id, u.todo_id, u.text, u.done FROM unterpunkte u
+         JOIN todos t ON t.id = u.todo_id
+         JOIN lists l ON l.id = t.list_id
+        WHERE l.board_id = ?
+        ORDER BY u.todo_id, u.position`
+    ).bind(boardId),
+  ]);
+  return {
+    categories: bereiche.results.map(bereichAus),
+    themen: themen.results.map(themaAus),
+    todos: todos.results.map(todoAus),
+    unterpunkte: unterpunkte.results.map(unterpunktAus),
+  };
+}
 
 export async function onRequestGet({ request, env }) {
   const { nutzerId, nutzer, fehler } = await nutzerOderFehler(request, env);
@@ -101,34 +164,22 @@ export async function onRequestGet({ request, env }) {
     for (const b of listen) daten[b.id] = { categories: [], themen: [], todos: [], unterpunkte: [] };
     for (const l of bereiche.results) {
       (daten[l.board_id] || (daten[l.board_id] = { categories: [], themen: [], todos: [] }))
-        .categories.push({ id: l.id, name: l.name, farbe: l.farbe || null });
+        .categories.push(bereichAus(l));
     }
     for (const th of themen.results) {
       const eimer = daten[th.board_id];
       if (!eimer) continue;
-      eimer.themen.push({ id: th.id, categoryId: th.list_id, name: th.name });
+      eimer.themen.push(themaAus(th));
     }
     for (const t of todos.results) {
       const eimer = daten[t.board_id];
       if (!eimer) continue;
-      eimer.todos.push({
-        id: t.id,
-        categoryId: t.list_id,
-        themaId: t.thema_id,       // null = frei im Bereich
-        text: t.text,
-        note: t.note,
-        due: t.due,
-        done: t.done === 1,        // SQLite kennt keinen Boolean
-        order: t.position,         // null bei terminierten ToDos, wie bisher
-        createdAt: t.created_at,
-        completedAt: t.completed_at,
-        wiederholung: t.wiederholung || null,
-      });
+      eimer.todos.push(todoAus(t));
     }
     for (const u of unterpunkte.results) {
       const eimer = daten[u.board_id];
       if (!eimer) continue;
-      eimer.unterpunkte.push({ id: u.id, todoId: u.todo_id, text: u.text, done: u.done === 1 });
+      eimer.unterpunkte.push(unterpunktAus(u));
     }
 
     return json({
@@ -149,6 +200,9 @@ export async function onRequestGet({ request, env }) {
         geteilt: b.role === "owner" ? !!b.share_token : undefined,
         token: b.role === "owner" ? (b.share_token || null) : undefined,
         mitglieder: b.role === "owner" ? (mitglieder[b.id] || 0) : undefined,
+        // Auf diesem Stand beruht der Inhalt - die App schickt ihn beim
+        // Speichern zurueck (siehe onRequestPut).
+        stand: b.stand || 0,
       })),
       daten,
     },
@@ -207,6 +261,25 @@ export async function onRequestPut({ request, env }) {
   // Darf der Nutzer diese Liste bearbeiten? owner und member ja, sonst nicht.
   const rolle = await rolleIn(env, boardId, nutzerId);
   if (!rolle) return json({ error: "Kein Zugriff auf diese Liste" }, 403);
+
+  // Beruht die Aenderung auf einem veralteten Stand, nicht ueberschreiben,
+  // sondern den aktuellen Inhalt zurueckgeben - die App mischt und speichert
+  // erneut. Erst NACH der Zugriffspruefung, sonst laese hier jeder fremde Listen.
+  let standJetzt;
+  try {
+    const zeile = await env.DB.prepare("SELECT stand FROM boards WHERE id = ?").bind(boardId).first();
+    standJetzt = (zeile && zeile.stand) || 0;
+    if (typeof zustand.stand === "number" && zustand.stand !== standJetzt) {
+      return json({
+        error: "Die Liste wurde inzwischen auf einem anderen Gerät geändert.",
+        konflikt: true,
+        stand: standJetzt,
+        inhalt: await inhaltDerListe(env, boardId),
+      }, 409);
+    }
+  } catch (e) {
+    return json({ error: "Datenbankfehler beim Lesen" }, 500);
+  }
 
   // Nur DIESE Liste ersetzen. batch() laeuft als eine Transaktion - entweder
   // steht am Ende alles drin oder nichts. Kindtabellen ausdruecklich zuerst,
@@ -298,11 +371,15 @@ export async function onRequestPut({ request, env }) {
     );
   }
 
+  // Im selben Durchgang hochzaehlen: entweder neuer Inhalt UND neuer Stand,
+  // oder keins von beiden.
+  anweisungen.push(env.DB.prepare("UPDATE boards SET stand = stand + 1 WHERE id = ?").bind(boardId));
+
   try {
     await env.DB.batch(anweisungen);
   } catch (e) {
     return json({ error: "Datenbankfehler beim Speichern" }, 500);
   }
 
-  return json({ ok: true });
+  return json({ ok: true, stand: standJetzt + 1 });
 }

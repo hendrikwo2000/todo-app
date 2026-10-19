@@ -1920,7 +1920,16 @@ function mischePendingEin() {
   for (const boardId of Object.keys(pending)) {
     if (daten[boardId]) {
       const p = pending[boardId];
-      daten[boardId] = { categories: p.categories, themen: p.themen || [], todos: p.todos };
+      // Unterpunkte kennen erst Eintraege seit 19.10.2026 - aeltere behalten
+      // die vom Server, statt sie zu leeren.
+      daten[boardId] = { categories: p.categories, themen: p.themen || [], todos: p.todos,
+                         unterpunkte: p.unterpunkte || daten[boardId].unterpunkte || [] };
+      // Auf welchem Stand die Aenderung beruht: so erkennt der Server, dass
+      // inzwischen jemand anderes gespeichert hat, und es wird gemischt statt
+      // ueberschrieben. Aeltere Eintraege ohne diese Angaben speichern wie frueher.
+      if (p.basis) basis[boardId] = p.basis;
+      const meta = listen.find(b => b.id === boardId);
+      if (meta && typeof p.stand === "number") meta.stand = p.stand;
     }
   }
 }
@@ -1941,16 +1950,22 @@ function pendingFuerKonto() {
 
 // Aktuellen Stand von `boardId` als noch nicht gespeichert vormerken -
 // immer der komplette Inhalt, nie ein Diff, weil PUT /api/todos ohnehin nur
-// den kompletten Inhalt kennt (siehe save()).
+// den kompletten Inhalt kennt (siehe save()). Basis und Stand reisen mit: kommt
+// die Aenderung erst Stunden spaeter beim Server an, braucht das Mischen den
+// Stand, auf dem sie beruht (siehe "Mehrere Geraete" unten).
 function setzePending(boardId, boardName) {
   if (!eigeneEmail) return;
   const map = pendingLesen();
   if (!map[eigeneEmail]) map[eigeneEmail] = {};
   const inhalt = daten[boardId] || { categories: [], themen: [], todos: [] };
+  const meta = listen.find(b => b.id === boardId);
   map[eigeneEmail][boardId] = {
     categories: inhalt.categories,
     themen: inhalt.themen || [],
     todos: inhalt.todos,
+    unterpunkte: inhalt.unterpunkte || [],
+    basis: basis[boardId] || null,
+    stand: meta && typeof meta.stand === "number" ? meta.stand : null,
     name: boardName,
     seit: new Date().toISOString(),
   };
@@ -1964,6 +1979,123 @@ function loeschePending(boardId) {
     delete map[eigeneEmail][boardId];
     pendingSchreiben(map);
   }
+}
+
+// ---------- Mehrere Geraete: Stand, Basis, Mischen (seit 19.10.2026) ----------
+// Gespeichert wird immer der komplette Inhalt einer Liste. Damit ein lange
+// offener Tab nicht still loescht, was ein anderes Geraet inzwischen angelegt
+// hat, schickt save() den Stand mit, auf dem der Inhalt beruht (listen[].stand).
+// Ist er veraltet, antwortet der Server mit 409 und dem aktuellen Inhalt; dann
+// wird dreiseitig gemischt: Basis (letzter gemeinsamer Stand) gegen hier gegen
+// dort. Was nur eine Seite geaendert hat, gilt; aendern beide dasselbe Feld,
+// gewinnt dieses Geraet (es speichert zuletzt) - Hendriks Wahl "Feld fuer Feld".
+const basis = {};   // { [listeId]: letzter bekannter Serverinhalt }
+
+function kopie(x) { return JSON.parse(JSON.stringify(x)); }
+
+function inhaltFuerServer(boardId) {
+  const d = daten[boardId] || {};
+  return {
+    categories: d.categories || [],
+    themen: d.themen || [],
+    todos: d.todos || [],
+    unterpunkte: d.unterpunkte || [],
+  };
+}
+
+// undefined und null sind fuer den Server dasselbe (er speichert beides als
+// NULL) - ohne diese Gleichsetzung saehe jedes frisch angelegte ToDo wie
+// "geaendert" aus und ueberstimmte die andere Seite.
+function gleicherWert(a, b) {
+  return JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
+}
+function gleichesObjekt(a, b) {
+  const felder = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const k of felder) if (!gleicherWert(a[k], b[k])) return false;
+  return true;
+}
+
+// Eine Sammlung (Bereiche, Themen, ToDos oder Unterpunkte) nach id mischen.
+// Geloescht bleibt geloescht - ausser die andere Seite hat den Eintrag
+// inzwischen geaendert; dann ueberlebt er, Datenverlust ist der teurere Fehler.
+// Reihenfolge: die hiesige, Neues von dort haengt hinten an.
+function mischeSammlung(basisListe, hier, dort) {
+  const nachId = arr => new Map((arr || []).map(x => [x.id, x]));
+  const B = nachId(basisListe), H = nachId(hier), D = nachId(dort);
+  const eins = id => {
+    const b = B.get(id), h = H.get(id), d = D.get(id);
+    if (h && d) {
+      if (!b) return { ...d, ...h };
+      const x = {};
+      for (const k of new Set([...Object.keys(b), ...Object.keys(h), ...Object.keys(d)])) {
+        x[k] = gleicherWert(h[k], b[k]) ? d[k] : h[k];
+      }
+      return x;
+    }
+    if (h) return b && gleichesObjekt(h, b) ? null : h;   // dort geloescht
+    if (d) return b && gleichesObjekt(d, b) ? null : d;   // hier geloescht
+    return null;
+  };
+  const ergebnis = [];
+  for (const x of hier || []) { const m = eins(x.id); if (m) ergebnis.push(m); }
+  for (const x of dort || []) if (!H.has(x.id)) { const m = eins(x.id); if (m) ergebnis.push(m); }
+  return ergebnis;
+}
+
+function mischeDreiWege(basisInhalt, hier, dort) {
+  const b = basisInhalt || {};
+  const erg = {
+    categories: mischeSammlung(b.categories, hier.categories, dort.categories),
+    themen: mischeSammlung(b.themen, hier.themen, dort.themen),
+    todos: mischeSammlung(b.todos, hier.todos, dort.todos),
+    unterpunkte: mischeSammlung(b.unterpunkte, hier.unterpunkte, dort.unterpunkte),
+  };
+  // Haben beide Geraete dasselbe wiederkehrende ToDo abgehakt, hat jedes seinen
+  // eigenen Nachfolger angelegt - von den NEU entstandenen bleibt einer. Was
+  // schon vorher doppelt in der Liste stand, fasst das hier nicht an.
+  const alt = new Set((b.todos || []).map(t => t.id));
+  const gruppen = new Map();
+  for (const t of erg.todos) {
+    if (t.done || !t.wiederholung || !t.due) continue;
+    const k = JSON.stringify([t.categoryId, t.text, t.wiederholung, t.due]);
+    if (!gruppen.has(k)) gruppen.set(k, []);
+    gruppen.get(k).push(t);
+  }
+  const weg = new Set();
+  for (const g of gruppen.values()) {
+    if (g.length < 2) continue;
+    const neu = g.filter(t => !alt.has(t.id));
+    const behalten = neu.length === g.length ? 1 : 0;   // alles neu: einer bleibt
+    neu.slice(behalten).forEach(t => weg.add(t.id));
+  }
+  if (weg.size) erg.todos = erg.todos.filter(t => !weg.has(t.id));
+  const todoIds = new Set(erg.todos.map(t => t.id));
+  erg.unterpunkte = erg.unterpunkte.filter(u => todoIds.has(u.todoId));
+  return erg;
+}
+
+// Inhalt einer Liste austauschen, OHNE das Objekt zu ersetzen - `state` zeigt
+// bei der aktiven Liste auf genau dieses Objekt (siehe zeigeAktiveListe).
+function ersetzeInhalt(boardId, inhalt) {
+  const d = daten[boardId] || (daten[boardId] = {});
+  d.categories = inhalt.categories;
+  d.themen = inhalt.themen;
+  d.todos = inhalt.todos;
+  d.unterpunkte = inhalt.unterpunkte;
+}
+
+// Antwort auf ein 409: den Stand von dort einmischen. Gibt zurueck, ob sich
+// hier sichtbar etwas geaendert hat (dann lohnt Neuzeichnen und ein Hinweis).
+function uebernimmFremdenStand(boardId, antwort) {
+  const dort = antwort.inhalt;
+  const hier = inhaltFuerServer(boardId);
+  const gemischt = mischeDreiWege(basis[boardId], hier, dort);
+  const anders = JSON.stringify(gemischt) !== JSON.stringify(hier);
+  ersetzeInhalt(boardId, gemischt);
+  basis[boardId] = kopie(dort);
+  const meta = listen.find(b => b.id === boardId);
+  if (meta) meta.stand = antwort.stand;
+  return anders;
 }
 
 function zeigeOffline(sichtbar) {
@@ -2001,6 +2133,8 @@ async function versucheAusstehendeZuSynchronisieren() {
   if (synchronisiert.length) {
     snackInfo("Offline-Änderungen synchronisiert: " + synchronisiert.join(", "));
   }
+  // Die uebrigen Listen koennen inzwischen anderswo geaendert worden sein.
+  ladeFrischNach();
 }
 
 // ---------- Laden & Speichern ----------
@@ -2022,6 +2156,9 @@ function wiederherstellenAusCache() {
   document.getElementById("kontoAdresse").textContent = eigeneEmail;
   setzeSeitentitel();
   zeigeEinstellungenKnopf();
+  // Der Spiegel ist der letzte gemeinsame Stand mit dem Server - fuer Listen
+  // mit ausstehenden Aenderungen ersetzt mischePendingEin() das gleich.
+  for (const id of Object.keys(daten)) basis[id] = kopie(daten[id]);
   mischePendingEin();
   const gemerkt = localStorage.getItem(AKTIVE_LISTE_KEY);
   aktiveListe = (gemerkt && listen.some(b => b.id === gemerkt))
@@ -2062,85 +2199,168 @@ async function loadState() {
 
     const antwort = (await res.json()) || {};
     canSave = true;
-    istAdmin = antwort.admin === true;
-    eigeneEmail = antwort.email || "";
-    eigenerName = antwort.name || "";
-    // Name als Ueberschrift im Konto-Abschnitt, Adresse darunter.
-    document.getElementById("kontoName").textContent = eigenerName || "Konto";
-    document.getElementById("kontoAdresse").textContent = eigeneEmail;
-    setzeSeitentitel();
     // Erst jetzt anzeigen: vorher stuenden die Knoepfe auch auf dem
     // Sperrbildschirm.
     zeigeEinstellungenKnopf();
     zeigeHinweise();
-
-    listen = Array.isArray(antwort.listen) ? antwort.listen : [];
-    daten = antwort.daten && typeof antwort.daten === "object" ? antwort.daten : {};
-    // Jede Liste bekommt eine saubere Huelle - auch eine ohne Bereiche.
-    for (const b of listen) {
-      const d = daten[b.id] || (daten[b.id] = { categories: [], themen: [], todos: [], unterpunkte: [] });
-      if (!Array.isArray(d.categories)) d.categories = [];
-      if (!Array.isArray(d.themen)) d.themen = [];
-      if (!Array.isArray(d.todos)) d.todos = [];
-      if (!Array.isArray(d.unterpunkte)) d.unterpunkte = [];
-    }
-
-    // Noch nicht hochgeladene Aenderungen aus einer vorigen Offline-Phase
-    // haben Vorrang vor diesem frischen, aber aelteren Serverstand - sonst
-    // wuerde der gerade gelungene GET sie stillschweigend ueberschreiben.
-    // Das eigentliche Nachreichen uebernimmt
-    // versucheAusstehendeZuSynchronisieren() nicht-blockierend nach dem
-    // ersten render() (siehe init()).
-    mischePendingEin();
-    speichereCacheLokal();
-
-    // Aktive Liste: die gemerkte, sonst die erste, sonst keine.
-    const gemerkt = localStorage.getItem(AKTIVE_LISTE_KEY);
-    aktiveListe = (gemerkt && listen.some(b => b.id === gemerkt))
-      ? gemerkt
-      : (listen.length ? listen[0].id : null);
+    uebernimmServerAntwort(antwort);
     zeigeAktiveListe();
     return;
   }
 }
 
-let saving = false, pendingSave = false;
+// Eine Antwort von GET /api/todos einsetzen - beim Start (loadState) und beim
+// Zurueckkommen in einen lange offenen Tab (ladeFrischNach).
+function uebernimmServerAntwort(antwort) {
+  letztesNachladen = Date.now();
+  istAdmin = antwort.admin === true;
+  eigeneEmail = antwort.email || "";
+  eigenerName = antwort.name || "";
+  // Name als Ueberschrift im Konto-Abschnitt, Adresse darunter.
+  document.getElementById("kontoName").textContent = eigenerName || "Konto";
+  document.getElementById("kontoAdresse").textContent = eigeneEmail;
+  setzeSeitentitel();
+
+  listen = Array.isArray(antwort.listen) ? antwort.listen : [];
+  daten = antwort.daten && typeof antwort.daten === "object" ? antwort.daten : {};
+  // Jede Liste bekommt eine saubere Huelle - auch eine ohne Bereiche.
+  for (const b of listen) {
+    const d = daten[b.id] || (daten[b.id] = { categories: [], themen: [], todos: [], unterpunkte: [] });
+    if (!Array.isArray(d.categories)) d.categories = [];
+    if (!Array.isArray(d.themen)) d.themen = [];
+    if (!Array.isArray(d.todos)) d.todos = [];
+    if (!Array.isArray(d.unterpunkte)) d.unterpunkte = [];
+  }
+  // Letzter gemeinsamer Stand mit dem Server, Grundlage fuers Mischen.
+  for (const k of Object.keys(basis)) delete basis[k];
+  for (const id of Object.keys(daten)) basis[id] = kopie(daten[id]);
+
+  // Noch nicht hochgeladene Aenderungen aus einer vorigen Offline-Phase
+  // haben Vorrang vor diesem frischen, aber aelteren Serverstand - sonst
+  // wuerde der gerade gelungene GET sie stillschweigend ueberschreiben.
+  // Das eigentliche Nachreichen uebernimmt
+  // versucheAusstehendeZuSynchronisieren() nicht-blockierend nach dem
+  // ersten render() (siehe init()).
+  mischePendingEin();
+  speichereCacheLokal();
+
+  // Aktive Liste: die gemerkte, sonst die erste, sonst keine.
+  const gemerkt = localStorage.getItem(AKTIVE_LISTE_KEY);
+  aktiveListe = (gemerkt && listen.some(b => b.id === gemerkt))
+    ? gemerkt
+    : (listen.length ? listen[0].id : null);
+}
+
+// ---------- Frischer Stand beim Zurueckkommen (seit 19.10.2026) ----------
+// Die ToDos kamen frueher nur beim Start vom Server. Ein Tab, der seit dem
+// Morgen offen stand, kannte nichts, was das Handy seitdem angelegt hatte.
+// Jetzt holt die App den Stand neu, sobald man zurueckkommt (Tab, Fenster
+// oder Handy-App wieder vorne) - Hendriks Wahl, kein Takt im Hintergrund.
+// Nie mitten im Tippen: render() baute das offene Feld neu und der Text waere
+// weg. Dann wird es nach ein paar Sekunden erneut versucht. Das Netz unter
+// allem bleibt der Stand-Abgleich in save() - auch wenn hier etwas durchrutscht,
+// geht nichts mehr verloren.
+let aenderungen = 0;       // zaehlt jeden save()-Aufruf, siehe ladeFrischNach
+let letztesNachladen = 0;
+let nachladenTimer = null;
+
+function tipptGerade() {
+  const el = document.activeElement;
+  const feld = el && el.matches && el.matches(
+    "input:not([type=checkbox]):not([type=radio]):not([type=button]), textarea, select, [contenteditable]");
+  return !!(feld || editingId || editingCat || editingThema || addingCat || draggedId || draggedCat);
+}
+
+async function ladeFrischNach() {
+  clearTimeout(nachladenTimer);
+  if (!canSave || document.hidden || saving || synchronisiereLaeuft) return;
+  // Erst muss Liegengebliebenes raus - das laeuft beim Zurueckkommen ohnehin
+  // an und ruft danach selbst wieder hierher.
+  if (Object.keys(pendingFuerKonto()).length) return;
+  if (tipptGerade()) { nachladenTimer = setTimeout(ladeFrischNach, 4000); return; }
+  // visibilitychange und focus kommen oft im selben Moment.
+  if (Date.now() - letztesNachladen < 3000) return;
+  letztesNachladen = Date.now();
+  const zaehlerVorher = aenderungen;
+  let antwort;
+  try {
+    const res = await fetch(API_BASE, { cache: "no-store" });
+    if (!res.ok) return;
+    antwort = await res.json();
+  } catch (e) { return; }
+  if (!antwort || !Array.isArray(antwort.listen)) return;
+  // Waehrend der Abfrage hier etwas geaendert: den eigenen Stand behalten,
+  // save() gleicht ihn ohnehin mit dem Server ab.
+  if (aenderungen !== zaehlerVorher || saving || tipptGerade()) return;
+  const vorher = JSON.stringify([listen, daten]);
+  const warAktiv = aktiveListe;
+  uebernimmServerAntwort(antwort);
+  // IMMER neu verbinden, auch ohne Neuigkeiten: `daten` sind jetzt neue
+  // Objekte, und `state` zeigte sonst weiter auf die alten - ein danach
+  // angelegtes ToDo landete dort und wurde nie gespeichert (im Test gefunden).
+  zeigeAktiveListe();
+  if (JSON.stringify([listen, daten]) === vorher) return;   // nichts Neues
+  if (aktiveListe !== warAktiv) editingId = editingCat = addingCat = null;
+  zeichneListen();
+  aktualisiereMenue();
+  render();
+}
+
+let saving = false;
+// Listen, die gespeichert werden wollten, waehrend schon gespeichert wurde.
+// Frueher ein einziges Ja/Nein, das danach immer die AKTIVE Liste speicherte -
+// hakte man in der Heute-Spalte ein ToDo einer anderen Liste ab, ging dessen
+// Speichern so verloren.
+const nachzuholen = new Set();
 // boardId: Standard ist die aktive Liste, aber dieselbe Funktion reicht nach
 // einem Reconnect auch andere, offline geaenderte Listen nach (siehe
 // versucheAusstehendeZuSynchronisieren) - eine einzige Stelle, die den
 // Pending-Zustand pflegt, statt einer zweiten, parallelen Implementierung.
 // Rueckgabe "ok" | "verboten" | "fehler" | undefined (uebersprungen).
 async function save(boardId = aktiveListe) {
+  aenderungen++;
   if (!canSave || !boardId) return;
-  if (saving) { pendingSave = true; return; }
+  if (saving) { nachzuholen.add(boardId); return; }
   saving = true;
   setStatus("Speichere …", "");
   const boardMeta = listen.find(b => b.id === boardId);
   const boardName = boardMeta ? boardMeta.name : "Liste";
-  const ziel = daten[boardId] || { categories: [], themen: [], todos: [], unterpunkte: [] };
-  const body = JSON.stringify({
-    boardId,
-    categories: ziel.categories,
-    themen: ziel.themen || [],
-    todos: ziel.todos,
-    unterpunkte: ziel.unterpunkte || [],
-  });
   let ergebnis = "fehler";
+  let fremdeUebernommen = false;
   try {
-    let res = await fetch(API_BASE, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body,
-    });
-    // Sitzung inzwischen abgelaufen (z. B. ein sehr lange offener Tab) -
-    // einmal neu anmelden und den Speicherversuch wiederholen.
-    if (res.status === 401) {
-      await login();
-      res = await fetch(API_BASE, {
+    let res, gesendet;
+    // Bis zu dreimal: abgelehnt (409) heisst, ein anderes Geraet war schneller -
+    // dessen Stand einmischen und mit dem gemischten Inhalt erneut versuchen.
+    for (let versuch = 0; ; versuch++) {
+      gesendet = inhaltFuerServer(boardId);
+      const meta = listen.find(b => b.id === boardId);
+      const body = JSON.stringify({
+        boardId,
+        // Fehlt bei einer frisch angelegten Liste bis zum ersten Speichern -
+        // der Server prueft dann nicht (wie bei alten App-Versionen).
+        stand: meta && typeof meta.stand === "number" ? meta.stand : undefined,
+        ...gesendet,
+      });
+      const senden = () => fetch(API_BASE, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body,
       });
+      res = await senden();
+      // Sitzung inzwischen abgelaufen (z. B. ein sehr lange offener Tab) -
+      // einmal neu anmelden und den Speicherversuch wiederholen.
+      if (res.status === 401) {
+        await login();
+        res = await senden();
+      }
+      if (res.status !== 409 || versuch >= 2) break;
+      const d = await res.json().catch(() => null);
+      if (!d || !d.inhalt) break;
+      if (uebernimmFremdenStand(boardId, d)) fremdeUebernommen = true;
+    }
+    if (fremdeUebernommen) {
+      render();
+      snackInfo("Änderungen von einem anderen Gerät übernommen.");
     }
     if (res.status === 403) {
       // Kein Zugriff mehr - Liste wurde geloescht oder die Freigabe entzogen.
@@ -2157,6 +2377,11 @@ async function save(boardId = aktiveListe) {
     } else {
       serverErreichbar = true;
       setStatus("Gespeichert ✓", "ok");
+      // Das Gesendete ist jetzt der gemeinsame Stand mit dem Server.
+      const d = await res.json().catch(() => ({}));
+      const meta = listen.find(b => b.id === boardId);
+      if (meta && typeof d.stand === "number") meta.stand = d.stand;
+      basis[boardId] = kopie(gesendet);
       loeschePending(boardId);
       speichereCacheLokal();
       ergebnis = "ok";
@@ -2171,7 +2396,11 @@ async function save(boardId = aktiveListe) {
   } finally {
     saving = false;
     aktualisiereOfflineAnzeige();
-    if (pendingSave) { pendingSave = false; save(); }
+    if (nachzuholen.size) {
+      const naechste = nachzuholen.values().next().value;
+      nachzuholen.delete(naechste);
+      save(naechste);
+    }
   }
   return ergebnis;
 }
@@ -2288,6 +2517,29 @@ function addTodoOhneBereich() {
   openAdd(id, null);
 }
 
+// Der offene Nachfolger eines wiederkehrenden ToDos: dieselbe Serie (Bereich,
+// Titel, Rhythmus), spaeter faellig, noch nicht erledigt - der frueheste davon.
+// Eine Verknuepfung im Datenmodell gibt es nicht (jede Ausgabe ist ein normales
+// ToDo, siehe BETRIEB.md "Wiederkehrende ToDos"), daher der Abgleich.
+function naechsteAusgabe(t, inhalt) {
+  return (inhalt.todos || [])
+    .filter(x => x.id !== t.id && !x.done && x.wiederholung === t.wiederholung
+              && x.categoryId === t.categoryId && x.text === t.text && x.due && x.due > t.due)
+    .sort((a, b) => a.due.localeCompare(b.due))[0] || null;
+}
+
+// Sieht der Nachfolger noch genau so aus, wie toggleDone ihn angelegt hat?
+// Termin, Notiz, Thema und Checkliste (Texte gleich, nichts abgehakt).
+function folgeUnveraendert(t, folge, inhalt) {
+  if (folge.due !== folgeTermin(t.due, t.wiederholung)) return false;
+  if ((folge.note || null) !== (t.note || null)) return false;
+  if ((folge.themaId || null) !== (t.themaId || null)) return false;
+  const vorlage = unterpunkteVon(t.id, inhalt).map(u => u.text);
+  const jetzt = unterpunkteVon(folge.id, inhalt);
+  return jetzt.every(u => !u.done)
+    && JSON.stringify(jetzt.map(u => u.text)) === JSON.stringify(vorlage);
+}
+
 // boardId ist der Weg des Kalenders: er zeigt ToDos aus allen Listen und hakt
 // sie dort ab, wo sie liegen - ohne die aktive Liste umzuschalten. Ohne Angabe
 // bleibt alles wie bisher.
@@ -2310,12 +2562,25 @@ function toggleDone(id, boardId = aktiveListe) {
     // Wahl, 18.10.2026) - wer fertig ist, arbeitet nicht mehr daran.
     window.zeitBeiAbhaken?.(t.id);
   }
+  // Wiederkehrendes ToDo wieder geoeffnet (z. B. Fehlklick): den eben angelegten
+  // Nachfolger zuruecknehmen, als waere nichts gewesen - aber nur, solange er
+  // unveraendert ist. Hat man ihn schon bearbeitet, bleibt er stehen (Hendriks
+  // Wahl, 19.10.2026). Vorher blieb er immer stehen, und das naechste Abhaken
+  // legte einen zweiten an.
+  if (!t.done && t.wiederholung && t.due) {
+    const folge = naechsteAusgabe(t, inhalt);
+    if (folge && folgeUnveraendert(t, folge, inhalt)) {
+      inhalt.todos = inhalt.todos.filter(x => x.id !== folge.id);
+      inhalt.unterpunkte = (inhalt.unterpunkte || []).filter(u => u.todoId !== folge.id);
+    }
+  }
   // Wiederkehrendes ToDo abgehakt: sofort die naechste Ausgabe anlegen. Baut
   // das neue ToDo direkt (nicht ueber addTodoTo()) - die Funktion raeumt
   // nebenbei ein offenes Schnell-Anlege-Feld weg, was hier ein voellig
   // unbeteiligtes, gerade offenes Eingabefeld anderswo auf dem Board
-  // schliessen wuerde.
-  if (t.done && t.wiederholung && t.due) {
+  // schliessen wuerde. Steht schon ein offener Nachfolger da (geoeffnet und
+  // wieder abgehakt, nachdem man ihn bearbeitet hatte), keinen zweiten.
+  if (t.done && t.wiederholung && t.due && !naechsteAusgabe(t, inhalt)) {
     const neuesTodo = {
       id: uid(),
       categoryId: t.categoryId,
@@ -4472,9 +4737,15 @@ window.addEventListener("online", () => {
   aktualisiereOfflineAnzeige();
   versucheAusstehendeZuSynchronisieren();
 });
+// Zurueck in der App: erst Liegengebliebenes hochladen, dann den Stand der
+// anderen Geraete holen (siehe ladeFrischNach). focus deckt den PC ab, an dem
+// der Tab die ganze Zeit sichtbar war und nur ein anderes Programm vorne lag.
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") versucheAusstehendeZuSynchronisieren();
+  if (document.visibilityState !== "visible") return;
+  versucheAusstehendeZuSynchronisieren();
+  ladeFrischNach();
 });
+window.addEventListener("focus", ladeFrischNach);
 
 // ---------- Rueckkehr nach der Anmeldung (?weiter=) ----------
 /**

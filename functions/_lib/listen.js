@@ -30,7 +30,7 @@ export function json(body, status = 200, cookies = []) {
 // "von Max"-Schild) und, nur bei eigenen, dem Teilen-Token.
 export async function listenFuer(env, userId) {
   const rows = await env.DB.prepare(
-    `SELECT b.id, b.name, b.owner_id, b.share_token, m.role, m.position,
+    `SELECT b.id, b.name, b.owner_id, b.share_token, b.stand, m.role, m.position,
             u.name AS owner_name
        FROM board_members m
        JOIN boards b ON b.id = m.board_id

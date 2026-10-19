@@ -73,7 +73,10 @@ CREATE TABLE boards (
   owner_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
   share_token TEXT UNIQUE,
-  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  -- Zaehlt jedes Speichern hoch; ein veralteter Stand wird abgelehnt (409).
+  -- Siehe migration-stand.sql.
+  stand       INTEGER NOT NULL DEFAULT 0
 );
 
 -- --------------------------------------------------------- Mitgliedschaft ---
