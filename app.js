@@ -1821,7 +1821,7 @@ function starteTitelUmbenennen() {
   };
   input.addEventListener("keydown", e => {
     if (e.key === "Enter") { e.preventDefault(); abschluss(true); }
-    else if (e.key === "Escape") { e.preventDefault(); abschluss(false); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); abschluss(false); }
   });
   input.addEventListener("blur", () => abschluss(true));
   input.addEventListener("click", e => e.stopPropagation());
@@ -3211,7 +3211,7 @@ function renderColumn(cat) {
       const input = head.querySelector(".cat-edit");
       input.addEventListener("keydown", e => {
         if (e.key === "Enter") saveCategoryName(cat.id);
-        else if (e.key === "Escape") cancelRenameCategory();
+        else if (e.key === "Escape") { e.stopPropagation(); cancelRenameCategory(); }
       });
       head.querySelector('[data-act="del"]').addEventListener("click", () => deleteCategory(cat.id));
     } else {
@@ -3438,7 +3438,7 @@ function renderThemaGruppe(cat, th, open) {
     const input = head.querySelector(".thema-edit");
     input.addEventListener("keydown", e => {
       if (e.key === "Enter") saveThemaName(th.id);
-      else if (e.key === "Escape") cancelRenameThema();
+      else if (e.key === "Escape") { e.stopPropagation(); cancelRenameThema(); }
     });
     head.querySelector('[data-act="del-thema"]').addEventListener("click", () => deleteThema(th.id));
   } else {
@@ -3639,13 +3639,13 @@ function baueAddWidget(cat, themaId) {
 
   textInput.addEventListener("keydown", e => {
     if (e.key === "Enter") addTodoTo(cat.id, themaId, textInput.value, dateInput.value, noteInput.value);
-    else if (e.key === "Escape") closeAdd();
+    else if (e.key === "Escape") { e.stopPropagation(); closeAdd(); }
   });
 
   // Notizfeld: Strg/Cmd+Enter uebernimmt, Escape bricht ab (Enter = Zeilenumbruch).
   noteInput.addEventListener("keydown", e => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) addTodoTo(cat.id, themaId, textInput.value, dateInput.value, noteInput.value);
-    else if (e.key === "Escape") closeAdd();
+    else if (e.key === "Escape") { e.stopPropagation(); closeAdd(); }
   });
 
   calBtn.addEventListener("click", () => openDatePicker(dateInput));
@@ -3985,9 +3985,9 @@ function renderTodo(t) {
 
     textInput.addEventListener("keydown", e => {
       if (e.key === "Enter") saveEdit(t.id);
-      if (e.key === "Escape") cancelEdit();
+      if (e.key === "Escape") { e.stopPropagation(); cancelEdit(); }
     });
-    noteInput.addEventListener("keydown", e => { if (e.key === "Escape") cancelEdit(); });
+    noteInput.addEventListener("keydown", e => { if (e.key === "Escape") { e.stopPropagation(); cancelEdit(); } });
     wrap.querySelector('[data-act="save"]').addEventListener("click", () => saveEdit(t.id));
     wrap.querySelector('[data-act="cancel"]').addEventListener("click", cancelEdit);
     li.appendChild(wrap);
@@ -4183,12 +4183,18 @@ einstellungenPopup.addEventListener("click", e => {
   if (e.target === einstellungenPopup) einstellungenPopup.hidden = true;
 });
 
+// Hat Escape hier etwas geschlossen, ist der Tastendruck verbraucht: kalender.js
+// haengt am selben Knoten (und kommt danach), es klappte sonst im selben Druck noch
+// den Kalender zu. Dasselbe gilt fuer die Eingabefelder oben und unten: ihr Escape
+// stoppt die Weitergabe, sonst wuerde "Feld abbrechen" auch den Kalender schliessen.
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
-  if (!listenMenue.hidden) schliesseMenue();
-  if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
-  if (farbePickerFuer) { farbePickerFuer = null; render(); }
-  if (themaWerkzeugeFuer) { themaWerkzeugeFuer = null; farbePickerFuer = null; render(); }
+  let verbraucht = false;
+  if (!listenMenue.hidden) { schliesseMenue(); verbraucht = true; }
+  if (!einstellungenPopup.hidden) { einstellungenPopup.hidden = true; verbraucht = true; }
+  if (farbePickerFuer) { farbePickerFuer = null; render(); verbraucht = true; }
+  if (themaWerkzeugeFuer) { themaWerkzeugeFuer = null; farbePickerFuer = null; render(); verbraucht = true; }
+  if (verbraucht) e.stopImmediatePropagation();
 });
 
 // Spalten umsortieren: Board ist die Ablagezone fuer Bereichs-Drags.

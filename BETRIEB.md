@@ -631,6 +631,20 @@ fest, am Handy Vollbild), sieben aufklappbare Abschnitte als EIN Akkordeon.
 - Die Farbmuster im Abschnitt „Farben“ benutzen dieselben Variablen wie die
   Karten (`--red`, `--yellow`, `--accent`) und folgen damit beiden Themen.
 
+### Escape schließt nur das Innerste (seit 19.10.2026)
+
+Vorher schloss derselbe Tastendruck neben Einstellungen, Listenmenü, Farbauswahl,
+Bereichs-Werkzeugen oder einem Eingabefeld auch den Kalender dahinter: `app.js`
+und `kalender.js` hängen beide am `document`, `kalender.js` kommt danach. Jetzt
+gilt: **Hat Escape etwas geschlossen, ist es verbraucht.** Der Handler in `app.js`
+ruft dann `stopImmediatePropagation()` auf (Einfangphase unnötig, weil `app.js`
+vor `kalender.js` lädt — bei geänderter Skript-Reihenfolge prüfen), die Eingabefelder
+(ToDo bearbeiten: Titel und Notiz, Anlegefeld: Titel und Notiz, Bereich und
+Thema umbenennen, Listentitel umbenennen) rufen `e.stopPropagation()`. Ein
+neues Eingabefeld mit eigenem Escape braucht dieselbe Zeile.
+**Offener Rest:** Escape bei Fokus auf einem Knopf, Datums- oder Auswahlfeld
+*im* ToDo-Bearbeiten bricht das Bearbeiten nicht ab und schließt weiter den Kalender.
+
 ## Benachrichtigungen
 
 Zwei Bausteine, unabhaengig voneinander nutzbar: eine echte Push-Meldung
