@@ -4287,6 +4287,13 @@ button.zt-knoten { cursor: pointer; }
 .hilfe-zeile:first-child { border-top: 0; padding-top: 2px; }
 .hilfe-zeile dt { font-weight: 700; }
 .hilfe-zeile dd { margin: 0; }
+/* Der hohle Farbpunkt am Bereichsnamen (siehe .farbe-punkt), klein im Fliesstext,
+   damit man ihn in der App wiedererkennt. */
+.hilfe-punkt {
+  display: inline-block; width: 11px; height: 11px; box-sizing: border-box;
+  border: 2px solid var(--check-border); border-radius: 50%;
+  vertical-align: -1px;
+}
 /* Nur eine Zaehler-Pille links (Farben): schmale Spalte, damit die Erklaerung
    direkt daneben steht und nicht am anderen Ende der Zeile. */
 .hilfe-schmal .hilfe-zeile { grid-template-columns: 2.75rem minmax(0, 1fr); }
