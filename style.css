@@ -380,7 +380,7 @@ input[type="date"]:focus {
 .column {
   flex: none;
   min-width: 0;
-  background: var(--col-bg);
+  background: var(--col-ton, var(--col-bg));
   border-radius: 12px;
   padding: 9px;
   display: flex;
@@ -415,26 +415,34 @@ input[type="date"]:focus {
   cursor: grab;
 }
 
-/* Bereichsfarbe: schmaler Streifen an der Box, gewaehlt ueber den Punkt am
-   Namen (siehe .farbe-punkt). Ohne Wahl bleibt der Bereich wie bisher ohne
-   Streifen - "Ohne Bereich" hat ohnehin keinen Kopf und bekommt keinen. */
-.column[data-farbe] { border-left-width: 4px; border-left-style: solid; }
-.column[data-farbe="blau"]    { border-left-color: var(--farbe-blau); }
-.column[data-farbe="tuerkis"] { border-left-color: var(--farbe-tuerkis); }
-.column[data-farbe="gruen"]   { border-left-color: var(--farbe-gruen); }
-.column[data-farbe="lila"]    { border-left-color: var(--farbe-lila); }
-.column[data-farbe="pink"]    { border-left-color: var(--farbe-pink); }
-.column[data-farbe="grau"]    { border-left-color: var(--farbe-grau); }
-.column[data-farbe="himmelblau"] { border-left-color: var(--farbe-himmelblau); }
-.column[data-farbe="limette"] { border-left-color: var(--farbe-limette); }
-.column[data-farbe="braun"]  { border-left-color: var(--farbe-braun); }
-.column[data-farbe="magenta"] { border-left-color: var(--farbe-magenta); }
-.column[data-farbe="indigo"] { border-left-color: var(--farbe-indigo); }
-.column[data-farbe="anthrazit"] { border-left-color: var(--farbe-anthrazit); }
+/* Bereichsfarbe: zarter Farbton hinter dem ganzen Bereich, gewaehlt ueber den
+   Punkt am Namen (siehe .farbe-punkt). Bis 19.10.2026 war es ein 4 px breiter
+   Streifen an der Box; der stand direkt neben dem Ampel-Streifen der Karten,
+   und der linke Rand war doppelt gestreift (Hendriks Wahl: Farbton statt
+   Streifen). Die Ampel ist seitdem der einzige Streifen.
+   Gemischt wird mit --col-bg, im dunklen Modus mit etwas mehr Farbe. Der Ton
+   kommt ueber --col-ton in .column an und ist kein eigenes background: so
+   behaelt .column.drop-target (Ablage beim Ziehen) seine Flaeche.
+   Ohne Wahl bleibt der Bereich grau - "Ohne Bereich" hat ohnehin keinen Kopf
+   und bekommt keinen. */
+.column[data-farbe] { --ton-anteil: 11%; }
+:root[data-theme="dark"] .column[data-farbe] { --ton-anteil: 15%; }
+.column[data-farbe="blau"]    { --col-ton: color-mix(in srgb, var(--farbe-blau) var(--ton-anteil), var(--col-bg)); }
+.column[data-farbe="tuerkis"] { --col-ton: color-mix(in srgb, var(--farbe-tuerkis) var(--ton-anteil), var(--col-bg)); }
+.column[data-farbe="gruen"]   { --col-ton: color-mix(in srgb, var(--farbe-gruen) var(--ton-anteil), var(--col-bg)); }
+.column[data-farbe="lila"]    { --col-ton: color-mix(in srgb, var(--farbe-lila) var(--ton-anteil), var(--col-bg)); }
+.column[data-farbe="pink"]    { --col-ton: color-mix(in srgb, var(--farbe-pink) var(--ton-anteil), var(--col-bg)); }
+.column[data-farbe="grau"]    { --col-ton: color-mix(in srgb, var(--farbe-grau) var(--ton-anteil), var(--col-bg)); }
+.column[data-farbe="himmelblau"] { --col-ton: color-mix(in srgb, var(--farbe-himmelblau) var(--ton-anteil), var(--col-bg)); }
+.column[data-farbe="limette"] { --col-ton: color-mix(in srgb, var(--farbe-limette) var(--ton-anteil), var(--col-bg)); }
+.column[data-farbe="braun"]   { --col-ton: color-mix(in srgb, var(--farbe-braun) var(--ton-anteil), var(--col-bg)); }
+.column[data-farbe="magenta"] { --col-ton: color-mix(in srgb, var(--farbe-magenta) var(--ton-anteil), var(--col-bg)); }
+.column[data-farbe="indigo"]  { --col-ton: color-mix(in srgb, var(--farbe-indigo) var(--ton-anteil), var(--col-bg)); }
+.column[data-farbe="anthrazit"] { --col-ton: color-mix(in srgb, var(--farbe-anthrazit) var(--ton-anteil), var(--col-bg)); }
 
 /* Punkt neben dem Bereichsnamen oeffnet die Farbauswahl. Ohne gewaehlte
-   Farbe ein neutraler Ring, mit Farbe eine gefuellte Flaeche - derselbe Ton
-   wie der Streifen an der Box. */
+   Farbe ein neutraler Ring, mit Farbe eine gefuellte Flaeche - dieselbe
+   Farbe, aus der der Farbton des Bereichs gemischt ist. */
 .farbe-punkt {
   flex: none;
   width: 12px; height: 12px;
@@ -2339,6 +2347,11 @@ html.kal-split #kalWahl {
    ohne deren Linie und Abstand: die Linie steht schon am Abschnitt selbst. */
 .fok-heute .kal-gruppe { margin: 0; padding-top: 0; border-top: 0; }
 .fok-heute .kal-heute-chip { text-transform: none; letter-spacing: 0; }
+/* Das "heute" an der Ueberschrift sagt nur etwas, wenn die Spalte darueber
+   einen ANDEREN Tag zeigt - die Gewohnheiten gelten immer fuer heute. Zeigt
+   sie heute selbst, steht das Wort schon am Datum (kalender.js setzt die
+   Klasse in zeichneHeuteSpalte). */
+.fok-heute.tag-ist-heute .kal-heute-chip { display: none; }
 .fok-heute-bilanz {
   font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none;
   color: var(--muted);
@@ -2671,6 +2684,15 @@ html.dreispaltig .kalender .kal-liste {
   background: color-mix(in srgb, var(--balken-farbe) 24%, var(--bg));
   color: color-mix(in srgb, var(--balken-farbe) 60%, #fff);
 }
+/* Serientermine (seit 19.10.2026, Hendriks Wahl "Serien leiser"): nur Text in
+   der Terminfarbe, ohne Flaeche und ohne Kante - so fallen Einzeltermine auf,
+   die sonst zwischen taeglichen und woechentlichen Serien untergingen. Der
+   3-px-Rand bleibt (durchsichtig), damit der Text buendig mit den Chips steht.
+   Die Schriftfarbe bleibt, wie sie war: ihr gemessener Kontrast gilt weiter.
+   Die zweite Zeile ist noetig, weil die Darkmode-Flaeche oben spezifischer ist. */
+.kal-balken.serie:not(.kal-balken-luecke) { background: transparent; border-left-color: transparent; }
+:root[data-theme="dark"] .kal-balken.serie:not(.kal-balken-luecke) { background: transparent; }
+.kal-balken.serie .kal-balken-text { font-weight: 500; }
 /* 3 px statt 4: links steht seit 09.10.2026 die farbige Kante, und der
    gewonnene Pixel je Seite ist bei schmalen Zellen ein Buchstabe mehr. */
 .kal-balken-text {
@@ -3741,6 +3763,16 @@ button.zt-knoten { cursor: pointer; }
 }
 @media (hover: hover) {
   .fok-stift:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+}
+/* Mit Maus erscheint der Stift erst beim Darueberfahren (seit 19.10.2026) - bei
+   drei, vier Gewohnheiten stand sonst an jeder Karte ein Symbol. Der Platz
+   bleibt belegt, der Name springt nicht. Per Tastatur (focus-visible) ist er
+   da. Am Touchscreen (hover: none) bleibt er sichtbar: ein Tipp kann nicht
+   "darueberfahren", der Stift waere sonst unerreichbar. */
+@media (hover: hover) {
+  .fok-gew .fok-stift { opacity: 0; }
+  .fok-gew:hover .fok-stift,
+  .fok-gew .fok-stift:focus-visible { opacity: 1; }
 }
 /* Offline abgehakt, noch nicht beim Server (gewohnheiten-daten.js). */
 .fok-wartet { white-space: nowrap; color: var(--orange); font-weight: 600; }

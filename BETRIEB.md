@@ -1968,6 +1968,34 @@ Regel steht in `@media (min-width: 561px)`: am Handy ist das Fenster Vollbild
 Die Höhe braucht keine eigene Zeile, `max-height: 100%` von `.kal-popup-box` reicht
 dann bis 20 px vor den unteren Rand.
 
+**Ruhigeres Bild (19.10.2026).** Hendrik wollte Board, Heute-Spalte und Kalender
+übersichtlicher, bei gleichem Inhalt. Er hat aus Vorschauen an seinen echten
+Einträgen gewählt:
+
+- **Serientermine im Raster leiser.** `kalender.js` setzt an Balken mit
+  `termin.serieId` die Klasse `serie`. `.kal-balken.serie` hat keine Fläche und
+  keine Kante (der 3-px-Rand bleibt durchsichtig, damit der Text bündig mit den
+  Chips steht), Schrift 500 statt 600, Farbe unverändert. Einzeltermine bleiben
+  Chips. Tagesliste, Tages-Karte und Termin-Fenster sind unverändert. Wer die Kante
+  zurückhaben will: `border-left-color` aus der Serie-Regel nehmen. Verworfen:
+  tägliche Serien ganz aus dem Raster nehmen.
+- **Bereichsfarbe als Farbton statt Streifen.** `.column[data-farbe="…"]` setzt
+  `--col-ton` (11 % Farbe in `--col-bg`, im Dunkelmodus 15 %, über `--ton-anteil`),
+  `.column` nimmt `var(--col-ton, var(--col-bg))`. Das ist Absicht und kein
+  `background` an der Farbregel: `.column.drop-target` behält so seine Fläche. Der
+  Ampel-Streifen an den Karten ist seitdem der einzige Streifen am linken Rand.
+- **Heute-Spalte.** Das „heute“ an „Gewohnheiten“ entfällt, wenn die Spalte darüber
+  heute zeigt (`setzeGewohnheitenChip()` setzt `tag-ist-heute` an `#fokHeute`, aus
+  `zeichneHeuteSpalte` und `aktualisiereAuswahl`). Bei einem anderen gewählten Tag
+  bleibt es, weil die Gewohnheiten immer für heute gelten. Die Kachel am Tablet und
+  Handy (`#fokOben`) blieb unverändert. Der Stift an den Gewohnheits-Karten
+  (`.fok-stift`) erscheint mit Maus erst beim Darüberfahren oder per Tastaturfokus
+  (`@media (hover: hover)`), am Touchscreen bleibt er sichtbar.
+- **Falle beim Testen:** im Testbrowser setzt `hover` kein `:hover` (der Stift blieb
+  unsichtbar); geprüft sind der Fokusweg und die Regeln im Stylesheet. Für die
+  Serien braucht `testdaten-lokal.js` eine `serieId` an den Terminen (steht jetzt
+  drin). sw.js v47.
+
 **Ungeprüft:** echtes iPad und echtes Handy (nachgestellt mit 1180 × 820 bzw.
 375 × 812 im Testbrowser), echte Google-Termine (nachgebaute Antwort aus der
 lokalen Testhilfe `testdaten-lokal.js`, nicht im Repo), der Zug am

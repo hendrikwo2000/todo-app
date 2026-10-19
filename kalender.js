@@ -1342,7 +1342,11 @@ function baueTagesZelle(tag, spalte, ctx) {
 
     balken.className = "kal-balken"
       + (eintrag.weiterLinks ? " weiter-links" : "")
-      + (eintrag.weiterRechts && spalte + spanne > 6 ? " weiter-rechts" : "");
+      + (eintrag.weiterRechts && spalte + spanne > 6 ? " weiter-rechts" : "")
+      // Serientermine bleiben im Raster als Text stehen, ohne Farbflaeche
+      // (seit 19.10.2026): taegliche und woechentliche Serien fuellten sonst
+      // jede Zelle und uebertoenten die Einzeltermine. Siehe .kal-balken.serie.
+      + (eintrag.termin.serieId ? " serie" : "");
     balken.style.setProperty("--spanne", String(spanne));
     // Getoent statt satt (seit 09.10.2026): heller Grund, farbige Kante,
     // dunkle Schrift - alles aus dieser einen Farbe, gemischt im CSS (siehe
@@ -3002,6 +3006,7 @@ function aktualisiereAuswahl() {
     const heute = todayStr();
     zeichneTagesliste(nachTagen(todos), termineNachTagen(),
                       todos.filter(t => t.due < heute), heute);
+    setzeGewohnheitenChip();
   }
   zeichneTagOben();
 }
@@ -3233,8 +3238,18 @@ window.addEventListener("popstate", () => {
  * Gewohnheiten stehen am PC als Abschnitt ganz unten in der Spalte, solange der
  * Streifen offen ist; ob es sie gibt (angemeldet, Schalter), prueft fokus.js.
  */
+// Die Gewohnheiten unten in der Heute-Spalte gelten immer fuer heute. Das
+// "heute" an ihrer Ueberschrift bleibt deshalb nur dort stehen, wo die Spalte
+// darueber einen anderen Tag zeigt (CSS: .fok-heute.tag-ist-heute). Wird bei
+// jedem Wechsel des gewaehlten Tages gebraucht, auch ohne volles Neuzeichnen.
+function setzeGewohnheitenChip() {
+  document.getElementById("fokHeute")
+    ?.classList.toggle("tag-ist-heute", kalAuswahl === todayStr());
+}
+
 function zeichneHeuteSpalte() {
   kalHeuteSpalte.hidden = !istDrei();
+  setzeGewohnheitenChip();
   window.fokusHeute?.(istDrei() && kalOffen);
 }
 
