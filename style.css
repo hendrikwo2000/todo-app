@@ -4262,16 +4262,70 @@ button.zt-knoten { cursor: pointer; }
 
 /* ---------- Hilfe (seit 19.10.2026, hilfe.js) ----------
    Rahmen und Akkordeon von den Einstellungen geliehen (.ein-abschnitt,
-   .ein-kopf), hier nur der Lesetext und die Farbmuster. */
+   .ein-kopf). Zweite Runde (19.10.2026, Hendrik: "extrem einfach zu
+   erkennen"): jeder Abschnitt zeigt zuerst einen Spickzettel aus kurzen
+   Zeilen "Ziel | Weg" (.hilfe-zeilen), die Feinheiten stehen darunter in
+   "Mehr dazu" (.hilfe-mehr, ein <details> IM Abschnitt - hilfe.js zaehlt nur
+   details.ein-abschnitt zum Akkordeon, das innere bleibt davon unberuehrt). */
 /* Ohne Kurztext (.ein-kopf-sub) davor stuende der Pfeil direkt am Titel. */
 .hilfe-blaettern .ein-kopf-pfeil { margin-left: auto; }
+.hilfe-vorab { margin: 0 0 8px; padding: 0 2px; }
 .hilfe-text { font-size: 14px; line-height: 1.45; color: var(--text); }
-.hilfe-text ol, .hilfe-text ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.hilfe-text ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 .hilfe-text p { margin: 0; }
 .hilfe-text .hilfe-zwischen { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-top: 4px; }
-.hilfe-symbole { display: grid; grid-template-columns: 28px 1fr; gap: 4px 6px; margin: 0; }
-.hilfe-symbole dt { text-align: center; }
-.hilfe-symbole dd { margin: 0; }
+
+/* Spickzettel: links, was man will - rechts, wie es geht. Linke Spalte fest,
+   damit die Zeilen untereinander wie eine Tabelle fluchten. */
+.hilfe-zeilen { margin: 0; display: flex; flex-direction: column; counter-reset: hilfe-schritt; }
+.hilfe-zeile {
+  display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 2px 12px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.hilfe-zeile:first-child { border-top: 0; padding-top: 2px; }
+.hilfe-zeile dt { font-weight: 700; }
+.hilfe-zeile dd { margin: 0; }
+/* Nur eine Zaehler-Pille links (Farben): schmale Spalte, damit die Erklaerung
+   direkt daneben steht und nicht am anderen Ende der Zeile. */
+.hilfe-schmal .hilfe-zeile { grid-template-columns: 2.75rem minmax(0, 1fr); }
+/* Erste Schritte: die Reihenfolge traegt Information, deshalb nummeriert. */
+.hilfe-nummeriert .hilfe-zeile dt { display: flex; align-items: center; gap: 8px; }
+.hilfe-nummeriert .hilfe-zeile dt::before {
+  counter-increment: hilfe-schritt; content: counter(hilfe-schritt);
+  flex: none; width: 20px; height: 20px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  color: var(--accent); background: var(--accent-soft);
+}
+
+/* Symbole als Pillen: ein Blick statt einer Liste mit Erklaertext. */
+.hilfe-text .hilfe-chips { list-style: none; padding: 0; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+.hilfe-chips li {
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 12px 4px 9px;
+  font-size: 13.5px; white-space: nowrap;
+}
+.hilfe-chips li span { margin-right: 5px; }
+
+/* "Mehr dazu": gleicher Pfeil wie das Akkordeon, nur leiser und in Akzentfarbe,
+   damit er als Link zum Weiterlesen auffaellt und nicht als weiterer Abschnitt. */
+.hilfe-mehr { margin-top: 2px; }
+.hilfe-mehr > summary {
+  display: flex; align-items: center; gap: 6px; width: fit-content;
+  padding: 8px 0; list-style: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--accent);
+  -webkit-tap-highlight-color: transparent;
+}
+.hilfe-mehr > summary::-webkit-details-marker { display: none; }
+.hilfe-mehr > summary::after { content: "▾"; font-size: 11px; transition: transform .15s; }
+.hilfe-mehr[open] > summary::after { transform: rotate(180deg); }
+.hilfe-text .hilfe-mehr ul { padding: 2px 0 6px 18px; font-size: 13.5px; }
+@media (hover: hover) {
+  .hilfe-mehr > summary:hover { text-decoration: underline; }
+}
+
 /* Echte Streifenfarben der ToDo-Karten (siehe .todo.dated/.todo.urgent), damit
    die Erklaerung genau so aussieht wie das, was sie erklaert. */
 .hilfe-muster { display: flex; flex-direction: column; gap: 6px; }

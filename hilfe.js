@@ -12,10 +12,16 @@
 
    Wie in den Einstellungen ist immer nur ein Abschnitt offen (ein Akkordeon),
    und aus den Einstellungen heraus startet das Fenster mit allem zu.
+
+   Seit der zweiten Runde (19.10.2026) hat jeder Abschnitt unten ein "Mehr
+   dazu" (details.hilfe-mehr). Das gehoert NICHT zum Akkordeon (anderer
+   Klassenname, sonst klappte es die Abschnitte zu), geht aber mit seinem
+   Abschnitt zu: beim Oeffnen des Fensters und wenn der Abschnitt zuklappt.
    ==================================================================== */
 
 const hilfeFenster = document.getElementById("hilfeFenster");
 const hilfeAbschnitte = [...hilfeFenster.querySelectorAll("details.ein-abschnitt")];
+const hilfeMehrAlle = [...hilfeFenster.querySelectorAll("details.hilfe-mehr")];
 let hilfeZurueck = null;   // was vorher den Fokus hatte
 
 // abschnitt: data-hilfe des Abschnitts, der offen starten soll (oder keiner).
@@ -24,6 +30,7 @@ function hilfeOeffnen(abschnitt = null) {
   // Vollbilder uebereinander (wie beim Fenster "Gewohnheiten").
   if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
   for (const d of hilfeAbschnitte) d.open = d.dataset.hilfe === abschnitt;
+  for (const m of hilfeMehrAlle) m.open = false;
   hilfeZurueck = document.activeElement;
   hilfeFenster.hidden = false;
   hilfeFenster.querySelector(".ein-blaettern").scrollTop = 0;
@@ -43,7 +50,11 @@ function hilfeSchliessen() {
 // Ein Akkordeon: geht ein Abschnitt auf, klappen die anderen zu.
 for (const d of hilfeAbschnitte) {
   d.addEventListener("toggle", () => {
-    if (d.open) for (const andere of hilfeAbschnitte) if (andere !== d) andere.open = false;
+    if (d.open) {
+      for (const andere of hilfeAbschnitte) if (andere !== d) andere.open = false;
+    } else {
+      for (const m of d.querySelectorAll("details.hilfe-mehr")) m.open = false;
+    }
   });
 }
 

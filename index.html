@@ -804,10 +804,15 @@
 
   <!-- Hilfe (seit 19.10.2026, hilfe.js). Geoeffnet ueber Einstellungen › Hilfe
        und einmal von selbst beim allerersten Start eines neuen Kontos (dann mit
-       "Erste Schritte" offen). Rahmen wie das Fenster "Statistik". Der Inhalt
-       steht hier fest im Markup - WER EINE BEDIENUNG AENDERT (Geste, Symbol,
-       Farbe, Ort einer Einstellung), PASST DIESEN TEXT MIT AN. Gesten stehen
-       immer fuer beide Geraete da ("Doppelklick (am Handy zweimal tippen)"). -->
+       "Erste Schritte" offen). Rahmen wie das Fenster "Statistik".
+       Zweite Runde (19.10.2026, Hendrik: "extrem einfach zu erkennen"): jeder
+       Abschnitt zeigt oben einen Spickzettel aus kurzen Zeilen "Ziel | Weg"
+       (.hilfe-zeilen), alles Feine steht darunter in "Mehr dazu" (.hilfe-mehr).
+       Der Inhalt steht hier fest im Markup - WER EINE BEDIENUNG AENDERT (Geste,
+       Symbol, Farbe, Ort einer Einstellung), PASST DIESEN TEXT MIT AN. Eine
+       Zeile hoechstens ein Satzstueck; wird es laenger, gehoert es in "Mehr
+       dazu". "2× antippen" steht fuer beide Geraete (Doppelklick am Rechner),
+       erklaert einmal oben in .hilfe-vorab. -->
   <div id="hilfeFenster" class="admin-popup gw-fenster hilfe-fenster" hidden>
     <div class="admin-popup-box einstellungen gw-box" role="dialog" aria-modal="true" aria-labelledby="hilfeFensterTitel">
       <header class="ein-kopfzeile gw-kopfzeile">
@@ -816,6 +821,7 @@
                 aria-label="Hilfe schließen" title="Schließen">✕</button>
       </header>
       <div class="ein-blaettern gw-blaettern hilfe-blaettern">
+        <p class="ein-hinweis hilfe-vorab">„2× antippen“ ist am Rechner ein Doppelklick.</p>
 
         <details class="ein-abschnitt ein-abschnitt-erste" data-hilfe="start">
           <summary class="ein-kopf">
@@ -824,14 +830,24 @@
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
           <div class="ein-inhalt hilfe-text">
-            <ol>
-              <li><b>Liste anlegen:</b> Beim ersten Start über „Erste Liste anlegen“. Weitere Listen gibt es unter ⚙️ › ToDo › Meine Listen.</li>
-              <li><b>ToDo anlegen:</b> Oben auf „+ ToDo“, Titel tippen, Enter. Ein Datum setzt du über 📅, eine Notiz im Feld darunter.</li>
-              <li><b>Bereiche:</b> „+ Bereich“ legt eine eigene Spalte an, etwa Schule oder Haushalt. Neue ToDos von oben landen zuerst ohne Bereich, von dort ziehst du sie hinein.</li>
-              <li><b>Abhaken:</b> Kästchen antippen. Erledigtes sammelt sich zugeklappt unter „Erledigt“ am Ende des Bereichs. Dort lässt es sich auch wieder aufhaken.</li>
-              <li><b>Heute:</b> Die Tagesansicht zeigt, was heute fällig ist, dazu deine Termine und Gewohnheiten.</li>
-              <li><b>Kalender:</b> 📋 und 📅 oben rechts schalten zwischen Liste und Kalender.</li>
-            </ol>
+            <dl class="hilfe-zeilen hilfe-nummeriert">
+              <div class="hilfe-zeile"><dt>Liste</dt><dd>„Erste Liste anlegen“ antippen</dd></div>
+              <div class="hilfe-zeile"><dt>ToDo</dt><dd>„+ ToDo“, Titel, Enter</dd></div>
+              <div class="hilfe-zeile"><dt>Bereich</dt><dd>„+ Bereich“, z. B. Schule</dd></div>
+              <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kästchen antippen</dd></div>
+              <div class="hilfe-zeile"><dt>Heute</dt><dd>Zeigt, was heute fällig ist</dd></div>
+              <div class="hilfe-zeile"><dt>Kalender</dt><dd>Oben rechts 📋 oder 📅</dd></div>
+            </dl>
+            <details class="hilfe-mehr">
+              <summary>Mehr dazu</summary>
+              <ul>
+                <li>Weitere Listen gibt es unter ⚙️ › ToDo › Meine Listen.</li>
+                <li>Ein Datum setzt du über 📅, eine Notiz kommt ins Feld darunter.</li>
+                <li>Neue ToDos von oben landen zuerst ohne Bereich. Von dort ziehst du sie in einen Bereich.</li>
+                <li>Erledigtes sammelt sich zugeklappt unter „Erledigt“ am Ende des Bereichs. Dort lässt es sich auch wieder aufhaken.</li>
+                <li>Die Tagesansicht zeigt zusätzlich deine Termine und Gewohnheiten.</li>
+              </ul>
+            </details>
             <p class="ein-hinweis">Diese Hilfe findest du jederzeit wieder unter ⚙️ › Hilfe.</p>
           </div>
         </details>
@@ -843,22 +859,32 @@
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
           <div class="ein-inhalt hilfe-text">
-            <ul>
-              <li><b>Bearbeiten:</b> Doppelklick auf das ToDo (am Handy zweimal tippen). Am Rechner erscheinen ✏️ und 🗑️, sobald die Maus darüber steht, am Handy nach einmal Tippen.</li>
-              <li><b>Verschieben:</b> Das ToDo in einen anderen Bereich ziehen (am Handy lange drücken, dann ziehen). Neben den Spalten losgelassen, landet es wieder ohne Bereich.</li>
-              <li><b>Löschen:</b> Über 🗑️. Unten erscheint dann ein paar Sekunden lang „Rückgängig“.</li>
-              <li><b>Wiederkehrend:</b> Beim Abhaken entsteht gleich das nächste ToDo. Es taucht aber erst an seinem Termin wieder auf. Versehentlich abgehakt? Einfach wieder aufhaken, dann verschwindet das nächste wieder.</li>
-              <li><b>Unterpunkte:</b> Sind alle abgehakt, ist das ToDo erledigt.</li>
-            </ul>
-            <p class="hilfe-zwischen">Die Symbole beim Bearbeiten</p>
-            <dl class="hilfe-symbole">
-              <dt>📅</dt><dd>Termin setzen, ✕ daneben entfernt ihn</dd>
-              <dt>🔁</dt><dd>Wiederholung: täglich, wöchentlich, monatlich oder jährlich (geht nur mit Termin)</dd>
-              <dt>📂</dt><dd>Bereich zuordnen (nur bei ToDos ohne Bereich)</dd>
-              <dt>🏷️</dt><dd>Thema zuordnen (nur, wenn der Bereich Themen hat)</dd>
-              <dt>✅</dt><dd>Unterpunkt hinzufügen, eine kleine Checkliste im ToDo</dd>
+            <dl class="hilfe-zeilen">
+              <div class="hilfe-zeile"><dt>Bearbeiten</dt><dd>ToDo 2× antippen</dd></div>
+              <div class="hilfe-zeile"><dt>Verschieben</dt><dd>In einen Bereich ziehen, am Handy erst lange drücken</dd></div>
+              <div class="hilfe-zeile"><dt>Löschen</dt><dd>ToDo berühren, dann 🗑️</dd></div>
+              <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kästchen antippen</dd></div>
             </dl>
-            <p class="ein-hinweis">Beim Anlegen legt Strg+Enter im Notizfeld das ToDo gleich an.</p>
+            <p class="hilfe-zwischen">Beim Bearbeiten</p>
+            <ul class="hilfe-chips">
+              <li><span>📅</span>Termin</li>
+              <li><span>🔁</span>Wiederholung</li>
+              <li><span>📂</span>Bereich</li>
+              <li><span>🏷️</span>Thema</li>
+              <li><span>✅</span>Unterpunkt</li>
+            </ul>
+            <details class="hilfe-mehr">
+              <summary>Mehr dazu</summary>
+              <ul>
+                <li><b>Berühren</b> heißt: am Rechner die Maus darüber, am Handy einmal tippen. Dann erscheinen ✏️ und 🗑️.</li>
+                <li><b>Verschieben:</b> Neben den Spalten losgelassen, landet das ToDo wieder ohne Bereich.</li>
+                <li><b>Löschen:</b> Unten steht danach ein paar Sekunden lang „Rückgängig“.</li>
+                <li><b>Wiederkehrend:</b> Beim Abhaken entsteht gleich das nächste ToDo, es taucht erst an seinem Termin wieder auf. Versehentlich abgehakt? Wieder aufhaken, dann verschwindet das nächste. 🔁 geht nur mit Termin.</li>
+                <li><b>📅:</b> Das ✕ daneben entfernt den Termin. <b>📂</b> gibt es nur bei ToDos ohne Bereich, <b>🏷️</b> nur, wenn der Bereich Themen hat.</li>
+                <li><b>Unterpunkte</b> sind eine kleine Checkliste im ToDo. Sind alle abgehakt, ist das ToDo erledigt.</li>
+                <li>Beim Anlegen legt Strg+Enter im Notizfeld das ToDo gleich an.</li>
+              </ul>
+            </details>
           </div>
         </details>
 
@@ -869,13 +895,21 @@
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
           <div class="ein-inhalt hilfe-text">
-            <ul>
-              <li><b>Klick auf den Bereichsnamen:</b> zeigt den Farbpunkt zum Einfärben und „+ Thema“.</li>
-              <li><b>Doppelklick auf den Namen</b> (am Handy zweimal tippen): umbenennen. Dort sitzt auch 🗑️ zum Löschen des Bereichs.</li>
-              <li><b>Am Namen ziehen:</b> ändert die Reihenfolge der Bereiche.</li>
-              <li><b>Themen</b> gruppieren ToDos innerhalb eines Bereichs, etwa „Projekte › IT Wolf“. Klick auf ein Thema klappt es auf und zu, Doppelklick benennt es um, Ziehen sortiert.</li>
-              <li>Die Zahl neben dem Namen zählt die offenen ToDos.</li>
-            </ul>
+            <dl class="hilfe-zeilen">
+              <div class="hilfe-zeile"><dt>Einfärben</dt><dd>Namen antippen, Farbpunkt wählen</dd></div>
+              <div class="hilfe-zeile"><dt>Thema anlegen</dt><dd>Namen antippen, „+ Thema“</dd></div>
+              <div class="hilfe-zeile"><dt>Umbenennen</dt><dd>Namen 2× antippen</dd></div>
+              <div class="hilfe-zeile"><dt>Löschen</dt><dd>Namen 2× antippen, dann 🗑️</dd></div>
+              <div class="hilfe-zeile"><dt>Reihenfolge</dt><dd>Am Namen ziehen</dd></div>
+            </dl>
+            <details class="hilfe-mehr">
+              <summary>Mehr dazu</summary>
+              <ul>
+                <li><b>Themen</b> gruppieren ToDos innerhalb eines Bereichs, etwa „Projekte › IT Wolf“.</li>
+                <li>Ein Thema antippen klappt es auf und zu, 2× antippen benennt es um, ziehen sortiert.</li>
+                <li>Die Zahl neben dem Namen zählt die offenen ToDos.</li>
+              </ul>
+            </details>
           </div>
         </details>
 
@@ -886,12 +920,21 @@
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
           <div class="ein-inhalt hilfe-text">
-            <ul>
-              <li><b>Liste wechseln:</b> Ab zwei Listen auf den Titel oben klicken (kleiner Pfeil ▾).</li>
-              <li><b>Umbenennen:</b> Doppelklick auf den Titel (am Handy zweimal tippen). Geht bei eigenen Listen.</li>
-              <li><b>Neue Liste, teilen, löschen:</b> unter ⚙️ › ToDo › Meine Listen. „Teilen“ kopiert einen Link. Wer ihn öffnet, kann die Liste mitbearbeiten.</li>
-              <li>Was andere oder deine anderen Geräte geändert haben, siehst du, sobald du zur App zurückkommst.</li>
-            </ul>
+            <dl class="hilfe-zeilen">
+              <div class="hilfe-zeile"><dt>Wechseln</dt><dd>Titel oben antippen ▾ (ab zwei Listen)</dd></div>
+              <div class="hilfe-zeile"><dt>Umbenennen</dt><dd>Titel 2× antippen</dd></div>
+              <div class="hilfe-zeile"><dt>Neue Liste</dt><dd>⚙️ › ToDo › Meine Listen</dd></div>
+              <div class="hilfe-zeile"><dt>Teilen</dt><dd>Ebenda „Teilen“, das kopiert einen Link</dd></div>
+              <div class="hilfe-zeile"><dt>Löschen</dt><dd>Ebenda bei der Liste</dd></div>
+            </dl>
+            <details class="hilfe-mehr">
+              <summary>Mehr dazu</summary>
+              <ul>
+                <li>Umbenennen geht bei eigenen Listen.</li>
+                <li>Wer den Link öffnet, kann die Liste mitbearbeiten.</li>
+                <li>Was andere oder deine anderen Geräte geändert haben, siehst du, sobald du zur App zurückkommst.</li>
+              </ul>
+            </details>
           </div>
         </details>
 
@@ -902,17 +945,30 @@
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
           <div class="ein-inhalt hilfe-text">
-            <p class="hilfe-zwischen">Der Streifen links an jedem ToDo</p>
+            <p class="hilfe-zwischen">Der Streifen links am ToDo</p>
             <div class="hilfe-muster">
-              <div class="hilfe-karte rot"><b>Rot</b><span>fällig: überfällig, heute oder morgen</span></div>
+              <div class="hilfe-karte rot"><b>Rot</b><span>überfällig, heute oder morgen fällig</span></div>
               <div class="hilfe-karte gelb"><b>Gelb</b><span>hat einen Termin, der noch Zeit hat</span></div>
               <div class="hilfe-karte blau"><b>Blau</b><span>ohne Termin</span></div>
             </div>
-            <ul>
-              <li><b>Zahl am Bereich:</b> rot heißt, darin ist etwas Dringendes. Blau zählt offene ToDos, grau heißt: nichts offen.</li>
-              <li><b>Farbton eines Bereichs:</b> frei gewählt, er bedeutet nichts. Rot, Orange und Gelb gibt es dafür absichtlich nicht, die stehen für dringend und Termin.</li>
-              <li><b>Kalender:</b> Eine rote Tageszahl heißt, an diesem Tag ist ein ToDo fällig. Termine tragen ihre Farbe aus Google. Wiederkehrende Termine stehen leiser da, nur als Text.</li>
-            </ul>
+            <p class="hilfe-zwischen">Die Zahl am Bereich</p>
+            <dl class="hilfe-zeilen hilfe-schmal">
+              <div class="hilfe-zeile"><dt><span class="col-count urgent">3</span></dt><dd>Etwas Dringendes darin</dd></div>
+              <div class="hilfe-zeile"><dt><span class="col-count normal">3</span></dt><dd>Offene ToDos</dd></div>
+              <div class="hilfe-zeile"><dt><span class="col-count zero">0</span></dt><dd>Nichts offen</dd></div>
+            </dl>
+            <p class="hilfe-zwischen">Weitere Farben</p>
+            <dl class="hilfe-zeilen">
+              <div class="hilfe-zeile"><dt>Bereichsfarbe</dt><dd>Frei gewählt, sie bedeutet nichts</dd></div>
+              <div class="hilfe-zeile"><dt>Rote Tageszahl</dt><dd>Im Kalender ist an dem Tag ein ToDo fällig</dd></div>
+            </dl>
+            <details class="hilfe-mehr">
+              <summary>Mehr dazu</summary>
+              <ul>
+                <li>Rot, Orange und Gelb gibt es für Bereiche absichtlich nicht, die stehen für dringend und Termin.</li>
+                <li>Termine tragen ihre Farbe aus Google. Wiederkehrende Termine stehen leiser da, nur als Text.</li>
+              </ul>
+            </details>
           </div>
         </details>
 
@@ -923,14 +979,23 @@
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
           <div class="ein-inhalt hilfe-text">
-            <ul>
-              <li><b>Tag antippen:</b> Am Rechner und am iPad quer zeigt die Tagesansicht dann diesen Tag. Am Handy und iPad hochkant öffnet sich die Tageskarte, darin wischst du zum Vor- oder Folgetag.</li>
-              <li><b>Monat wechseln:</b> mit ‹ und › oder am Handy durch Wischen. Ein Klick auf den Monatsnamen wählt Monat und Jahr direkt, „Heute“ springt zurück.</li>
-              <li><b>Trichter:</b> blendet Quellen ein und aus, etwa einzelne Google-Kalender, und zeigt auf Wunsch die Kalenderwochen.</li>
-              <li><b>Breite</b> (am Rechner): die Kante zwischen Liste und Kalender ziehen. Doppelklick setzt sie zurück.</li>
-              <li><b>Am Handy</b> geht der Kalender auch mit einem Wisch vom rechten Bildschirmrand auf.</li>
-              <li><b>Termine</b> kommen aus deinem Google Kalender. Verbinden unter ⚙️ › ToDo › Google Kalender, danach legt das ＋ bei „Termine“ auch neue an.</li>
-            </ul>
+            <dl class="hilfe-zeilen">
+              <div class="hilfe-zeile"><dt>Tag ansehen</dt><dd>Tag antippen</dd></div>
+              <div class="hilfe-zeile"><dt>Monat wechseln</dt><dd>‹ › antippen oder wischen</dd></div>
+              <div class="hilfe-zeile"><dt>Filtern</dt><dd>Trichter: Quellen, Kalenderwochen</dd></div>
+              <div class="hilfe-zeile"><dt>Verbinden</dt><dd>⚙️ › ToDo › Google Kalender</dd></div>
+              <div class="hilfe-zeile"><dt>Termin anlegen</dt><dd>＋ bei „Termine“</dd></div>
+            </dl>
+            <details class="hilfe-mehr">
+              <summary>Mehr dazu</summary>
+              <ul>
+                <li><b>Tag antippen:</b> Am Rechner und am iPad quer zeigt die Tagesansicht dann diesen Tag. Am Handy und iPad hochkant öffnet sich die Tageskarte, darin wischst du zum Vor- oder Folgetag.</li>
+                <li><b>Monatsname antippen:</b> wählt Monat und Jahr direkt. „Heute“ springt zurück.</li>
+                <li><b>Breite</b> (am Rechner): die Kante zwischen Liste und Kalender ziehen. 2× antippen setzt sie zurück.</li>
+                <li><b>Am Handy</b> geht der Kalender auch mit einem Wisch vom rechten Bildschirmrand auf.</li>
+                <li><b>Termine</b> kommen aus deinem Google Kalender. Erst nach dem Verbinden legt das ＋ auch neue an.</li>
+              </ul>
+            </details>
           </div>
         </details>
 
@@ -941,13 +1006,23 @@
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
           <div class="ein-inhalt hilfe-text">
-            <ul>
-              <li><b>Abhaken:</b> den Kreis rechts antippen. Bei Gewohnheiten mit Zielmenge zählst du mit − und ＋.</li>
-              <li><b>Flamme 🔥:</b> zählt erledigte Tage. Unter ⚙️ › Gewohnheiten › „Flamme zählt“ wählst du: <i>Insgesamt</i> (alle erledigten Tage, ein ausgelassener Tag kostet nichts) oder <i>In Reihe</i> (Tage am Stück, ein ausgelassener Tag setzt sie auf null).</li>
-              <li><b>Anlegen und ändern:</b> unter ⚙️ › Gewohnheiten › Gewohnheiten. Verlauf und Statistik stehen gleich darunter.</li>
-              <li><b>Zeiterfassung ⏱:</b> oben rechts. ToDo auswählen (geht auch ohne), Starten. Hakst du das ToDo ab, stoppt die Uhr. Vergessenes über „+ Zeit nachtragen“, die Auswertung unter ⚙️ › Timer › Statistik.</li>
-              <li>⏱ und die Gewohnheiten lassen sich unter ⚙️ mit „Anzeige“ ausblenden.</li>
-            </ul>
+            <dl class="hilfe-zeilen">
+              <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kreis rechts antippen</dd></div>
+              <div class="hilfe-zeile"><dt>Flamme 🔥</dt><dd>Zählt deine erledigten Tage</dd></div>
+              <div class="hilfe-zeile"><dt>Anlegen, ändern</dt><dd>⚙️ › Gewohnheiten</dd></div>
+              <div class="hilfe-zeile"><dt>Zeit messen ⏱</dt><dd>Oben rechts: ToDo wählen, Starten</dd></div>
+              <div class="hilfe-zeile"><dt>Auswertung</dt><dd>⚙️ › Timer › Statistik</dd></div>
+            </dl>
+            <details class="hilfe-mehr">
+              <summary>Mehr dazu</summary>
+              <ul>
+                <li>Bei Gewohnheiten mit Zielmenge zählst du mit − und ＋.</li>
+                <li><b>Flamme:</b> Unter ⚙️ › Gewohnheiten › „Flamme zählt“ wählst du <i>Insgesamt</i> (alle erledigten Tage, ein ausgelassener Tag kostet nichts) oder <i>In Reihe</i> (Tage am Stück, ein ausgelassener Tag setzt sie auf null).</li>
+                <li><b>Zeiterfassung:</b> Ein ToDo auszuwählen geht auch ohne. Hakst du das ToDo ab, stoppt die Uhr. Vergessenes trägst du über „+ Zeit nachtragen“ nach.</li>
+                <li>Verlauf und Statistik der Gewohnheiten stehen unter ⚙️ › Gewohnheiten gleich darunter.</li>
+                <li>⏱ und die Gewohnheiten lassen sich unter ⚙️ mit „Anzeige“ ausblenden.</li>
+              </ul>
+            </details>
           </div>
         </details>
 

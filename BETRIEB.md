@@ -599,6 +599,22 @@ Farben erklärte nirgends jemand. Hendriks Wahl: Zeile bei den globalen Zeilen,
 eigenes Fenster wie „Verlauf & Statistik“ (schließt die Einstellungen, oben
 fest, am Handy Vollbild), sieben aufklappbare Abschnitte als EIN Akkordeon.
 
+- **Aufbau eines Abschnitts (zweite Runde, 19.10.2026):** Hendrik fand den
+  Inhalt „noch nicht so übersichtlich, sollte extrem einfach zu erkennen sein“
+  (die Struktur mit den sieben Abschnitten blieb). Gewählt aus drei Skizzen:
+  „Kurz + Mehr dazu“. Jeder Abschnitt zeigt zuerst einen **Spickzettel**
+  (`dl.hilfe-zeilen`, je Zeile `div.hilfe-zeile` mit `dt` = was man will,
+  `dd` = wie es geht, höchstens ein Satzstück), danach `details.hilfe-mehr`
+  „Mehr dazu“ mit Sonderfällen und Feinheiten. Erste Schritte ist nummeriert
+  (`.hilfe-nummeriert`), ToDos hat Symbol-Pillen (`.hilfe-chips`), Farben
+  nutzt die echten `.col-count`-Pillen (`.hilfe-schmal` = schmale linke
+  Spalte). Gesten stehen als „2× antippen“ da und werden einmal oben erklärt
+  (`.hilfe-vorab`: am Rechner ein Doppelklick) statt in jeder Zeile doppelt.
+  **Falle:** `hilfe.js` zählt nur `details.ein-abschnitt` zum Akkordeon —
+  `hilfe-mehr` darf diese Klasse nie bekommen, sonst klappt es die Abschnitte
+  zu; es geht mit seinem Abschnitt zu (Öffnen und Zuklappen). Neue Bedienung
+  gehört als Zeile in den Spickzettel, wenn sie eine Hauptsache ist, sonst
+  unter „Mehr dazu“. sw.js v51.
 - **Der Text steht fest in `index.html`.** Wer eine Bedienung ändert (Geste,
   Symbol, Farbe, Ort einer Einstellung), passt die Hilfe im selben Commit mit
   an — sonst erklärt sie bald etwas, das es nicht mehr gibt. Gesten stehen
