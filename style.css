@@ -3495,22 +3495,29 @@ body.zieht, body.zieht .todo {
 .zt-eintrag-name.ohne { color: var(--muted); }
 
 /* ---------- Dropdown: ToDos nach Liste › Bereich ---------- */
-/* Eigenes statt <select>: das zeigt keine Farben. Der Streifen links traegt die
-   Farbe des Bereichs (--zt-farbe, gesetzt in zeiterfassung.js), wie am Board. */
+/* Eigenes statt <select>: das zeigt keine Farben. Der Bereich liegt auf seinem
+   Farbton (--zt-farbe, gesetzt in zeiterfassung.js, gemischt wie --col-ton an der
+   Spalte am Board, im dunklen Modus mit etwas mehr Farbe); bis 19.10.2026 war es
+   ein Streifen links. Der Streifen gehoert seitdem dem Termin, wie an der Karte:
+   rot = dringend, gelb = jeder andere Termin (data-termin="rot"/"gelb"). */
+.zt-dd, .zt-dd-knopf, .zt-dd-panel { --ton-anteil: 11%; }
+:root[data-theme="dark"] .zt-dd, :root[data-theme="dark"] .zt-dd-knopf, :root[data-theme="dark"] .zt-dd-panel { --ton-anteil: 15%; }
 .zt-dd { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .zt-dd-knopf {
   display: flex; align-items: center; gap: 10px;
   width: 100%; min-height: 50px;
   padding: 7px 12px;
   border: 1px solid var(--line);
-  border-left: 5px solid var(--zt-farbe, var(--line));
+  border-left: 5px solid var(--line);
   border-radius: 10px;
-  background: var(--bg);
+  background: color-mix(in srgb, var(--zt-farbe, var(--bg)) var(--ton-anteil), var(--bg));
   color: var(--text);
   font: inherit; text-align: left;
   cursor: pointer;
 }
-.zt-dd-knopf[aria-expanded="true"] { border-color: var(--accent); border-left-color: var(--zt-farbe, var(--accent)); }
+.zt-dd-knopf[aria-expanded="true"] { border-color: var(--accent); }
+.zt-dd-knopf[data-termin="gelb"] { border-left-color: var(--yellow); }
+.zt-dd-knopf[data-termin="rot"]  { border-left-color: var(--red); }
 .zt-dd-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .zt-dd-name { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .zt-dd-name.ohne { color: var(--muted); font-weight: 500; }
@@ -3530,29 +3537,36 @@ body.zieht, body.zieht .todo {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+/* Der Listenname steht nur bei mehreren Listen da und bewusst leise. */
 .zt-dd-liste-kopf {
-  padding: 10px 4px 2px;
-  font-size: 11.5px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .04em; color: var(--muted);
+  padding: 8px 4px 0;
+  font-size: 11px; font-weight: 500; color: var(--muted);
 }
 .zt-dd-gruppe {
   display: flex; flex-direction: column;
-  border-left: 4px solid var(--zt-farbe, transparent);
-  border-radius: 3px;
+  padding: 2px 4px 4px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--zt-farbe, var(--bg)) var(--ton-anteil), var(--bg));
 }
 .zt-dd-bereich { padding: 6px 8px 2px; font-size: 12.5px; font-weight: 700; color: var(--text); }
 .zt-dd-eintrag {
   display: flex; align-items: baseline; gap: 8px;
   width: 100%; min-height: 40px;
-  padding: 8px 8px 8px 18px;
+  padding: 8px 8px 8px 14px;
   border: 0;
+  border-left: 4px solid transparent;
   border-radius: 6px;
   background: none;
   color: var(--text);
   font: inherit; font-size: 14px; text-align: left;
   cursor: pointer;
 }
-.zt-dd-eintrag.zt-dd-ohne { padding-left: 10px; color: var(--muted); }
+.zt-dd-eintrag.zt-dd-ohne { padding-left: 6px; color: var(--muted); }  /* + 4 px Rand = wie vorher */
+/* Ueber-Thema im Bereich: kleine graue Ueberschrift, die ToDos darunter eingerueckt. */
+.zt-dd-thema { padding: 6px 8px 0 18px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.zt-dd-eintrag.im-thema { padding-left: 24px; }
+.zt-dd-eintrag[data-termin="gelb"] { border-left-color: var(--yellow); }
+.zt-dd-eintrag[data-termin="rot"]  { border-left-color: var(--red); }
 .zt-dd-eintrag[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 @media (hover: hover) {
   .zt-dd-eintrag:hover { background: var(--row); }

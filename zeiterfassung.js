@@ -193,16 +193,19 @@ function ztHinweisZeile(text) {
 // Die App haelt alle Listen im Speicher (`listen`, `daten`). Daraus kommen die
 // aktuellen Namen - gespeichert sind nur die zum Zeitpunkt der Buchung.
 
-function ztFundAus(t, boardId, bereiche) {
+function ztFundAus(t, boardId, bereiche, themen) {
   const meta = listen.find(b => b.id === boardId);
   const cat = bereiche[t.categoryId];
   const mitBereich = !!cat && !istOhneBereich(cat.id);
+  // Das Ueber-Thema (Gruppe im Bereich), falls das ToDo in einem steht.
+  const thema = mitBereich && t.themaId ? (themen || []).find(th => th.id === t.themaId) : null;
   return {
     todo: t,
     boardId,
     listeName: meta ? meta.name : "",
     bereichId: mitBereich ? cat.id : null,
     bereichName: mitBereich ? cat.name : "",
+    themaName: thema ? thema.name : "",
     farbe: mitBereich ? (cat.farbe || null) : null,
   };
 }
@@ -219,7 +222,7 @@ function ztFindeTodo(id) {
   for (const boardId in daten) {
     const d = daten[boardId] || {};
     const t = (d.todos || []).find(x => x.id === id);
-    if (t) return ztFundAus(t, boardId, ztBereicheVon(d));
+    if (t) return ztFundAus(t, boardId, ztBereicheVon(d), d.themen);
   }
   return null;
 }
@@ -242,12 +245,18 @@ function ztNameVon(e) {
   return f ? f.todo.text : (e.todoText || "Gelöschtes ToDo");
 }
 
+// Mit nur einer Liste (bei den meisten "Meine ToDos") sagt ihr Name nichts und
+// stand zu praesent im Knopf (Hendrik, 19.10.2026) - dann bleibt nur der Bereich.
+// Steht das ToDo in einem Ueber-Thema, folgt es hinter dem Bereich ("Projekte ›
+// Kapitel 3"). Gebucht wird das Thema nicht mit, es kommt immer live vom ToDo.
 function ztOrtVon(e) {
   if (!e.todoId) return "";
   const f = ztFindeTodo(e.todoId);
-  const liste = f ? f.listeName : e.listeName;
+  const liste = listen.length > 1 ? (f ? f.listeName : e.listeName) : "";
   const bereich = f ? f.bereichName : e.bereichName;
-  return [liste, bereich].filter(Boolean).join(" · ");
+  const ort = [liste, bereich].filter(Boolean).join(" · ");
+  const thema = f ? f.themaName : "";
+  return thema ? (ort ? `${ort} › ${thema}` : thema) : ort;
 }
 
 // Die Bereichsfarbe als CSS-Wert - nur aus der festen Palette (FARBEN in
@@ -270,13 +279,16 @@ function ztTodoReihenfolge(a, b) {
 
 /**
  * Die offenen ToDos aller Listen, je Liste nach Bereichen in der Reihenfolge des
- * Boards, "Ohne Bereich" zuletzt. Weg bleiben erledigte und die noch
- * unsichtbare naechste Ausgabe einer Serie (nochNichtFaellig), die man auf dem
- * Board auch nicht sieht. Mit Suchtext nur, was passt: am ToDo-Text oder am
- * Bereichsnamen (dann der ganze Bereich).
+ * Boards, "Ohne Bereich" zuletzt. Je Bereich zuerst die freien ToDos, dann die
+ * Ueber-Themen mit ihren ToDos (`frei`, `themen`), wie am Board. Weg bleiben
+ * erledigte und die noch unsichtbare naechste Ausgabe einer Serie
+ * (nochNichtFaellig), die man auf dem Board auch nicht sieht. Mit Suchtext nur,
+ * was passt: am ToDo-Text oder am Namen von Bereich bzw. Thema (dann der ganze
+ * Bereich bzw. das ganze Thema).
  */
 function ztGruppen(suche) {
   const q = suche.trim().toLocaleLowerCase("de");
+  const passtName = name => !!q && name.toLocaleLowerCase("de").includes(q);
   const gruppen = [];
   for (const b of listen) {
     const d = daten[b.id] || {};
@@ -285,20 +297,47 @@ function ztGruppen(suche) {
     let ohne = null;
     for (const c of (d.categories || [])) {
       const ohneBereich = istOhneBereich(c.id);
-      const bereichPasst = !!q && !ohneBereich && c.name.toLocaleLowerCase("de").includes(q);
-      const todos = (d.todos || [])
-        .filter(t => t.categoryId === c.id && !t.done && !nochNichtFaellig(t))
-        .filter(t => !q || bereichPasst || t.text.toLocaleLowerCase("de").includes(q))
+      const bereichPasst = !ohneBereich && passtName(c.name);
+      // "Ohne Bereich" kennt keine Themen (wie am Board).
+      const themenDa = ohneBereich ? [] : (d.themen || []).filter(th => th.categoryId === c.id);
+      const offen = (d.todos || []).filter(t => t.categoryId === c.id && !t.done && !nochNichtFaellig(t));
+      const sortiert = (liste, themaPasst) => liste
+        .filter(t => !q || bereichPasst || themaPasst || t.text.toLocaleLowerCase("de").includes(q))
         .sort(ztTodoReihenfolge)
-        .map(t => ztFundAus(t, b.id, bereichMap));
-      if (!todos.length) continue;
-      const g = { name: ohneBereich ? "Ohne Bereich" : c.name, farbe: ohneBereich ? null : c.farbe, todos };
+        .map(t => ztFundAus(t, b.id, bereichMap, d.themen));
+      // Ein ToDo mit einem Thema, das es nicht mehr gibt, zaehlt als frei.
+      const frei = sortiert(offen.filter(t => !themenDa.some(th => th.id === t.themaId)), false);
+      const themen = themenDa
+        .map(th => ({ name: th.name, todos: sortiert(offen.filter(t => t.themaId === th.id), passtName(th.name)) }))
+        .filter(th => th.todos.length);
+      if (!frei.length && !themen.length) continue;
+      const g = { name: ohneBereich ? "Ohne Bereich" : c.name, farbe: ohneBereich ? null : c.farbe, frei, themen };
       if (ohneBereich) ohne = g; else bereiche.push(g);
     }
     if (ohne) bereiche.push(ohne);
     if (bereiche.length) gruppen.push({ name: b.name, bereiche });
   }
   return gruppen;
+}
+
+// Die Termin-Ampel wie an der Karte am Board (.todo.dated/.todo.urgent): rot =
+// dringend (ueberfaellig, heute, morgen), gelb = jeder andere Termin, "" = keiner.
+// Sie steht als data-termin an der Zeile und am Knopf (Streifen links) und als
+// Chip rechts daneben.
+function ztTerminAmpel(due) {
+  if (!due) return "";
+  return isUrgent(due) ? "rot" : "gelb";
+}
+
+// Der Termin als kleiner Chip. Kurzform ohne Jahr, das Jahr nur, wenn es nicht
+// das laufende ist.
+function ztTerminChip(due) {
+  const chip = document.createElement("span");
+  chip.className = "zt-dd-termin" + (isUrgent(due) ? " dringend" : "");
+  chip.textContent = due.slice(0, 4) === todayStr().slice(0, 4) ? formatDateShort(due) : formatDate(due);
+  const hinweis = dueInfo(due)?.badge;
+  chip.title = hinweis ? `${hinweis} · ${formatDate(due)}` : formatDate(due);
+  return chip;
 }
 
 const ztDropdowns = [];
@@ -356,8 +395,13 @@ function ztDropdown(host, { buchung, beiWahl, ohneText }) {
     pfeil.className = "zt-dd-pfeil";
     pfeil.setAttribute("aria-hidden", "true");
     pfeil.textContent = dd.offen ? "▴" : "▾";
-    knopf.replaceChildren(text, pfeil);
+    // Der Termin des gewaehlten ToDos wie in der Liste (seit 19.10.2026): Chip
+    // rechts, dazu der gelbe/rote Streifen. Den Bereich tragen der Farbton und
+    // der Name in der grauen Zeile.
+    const due = f?.todo.due || "";
+    knopf.replaceChildren(...[text, due ? ztTerminChip(due) : null, pfeil].filter(Boolean));
     knopf.style.setProperty("--zt-farbe", ztFarbwert(f?.farbe));
+    if (due) knopf.dataset.termin = ztTerminAmpel(due); else delete knopf.dataset.termin;
     knopf.setAttribute("aria-expanded", String(dd.offen));
   }
 
@@ -372,17 +416,12 @@ function ztDropdown(host, { buchung, beiWahl, ohneText }) {
     text.textContent = fund ? fund.todo.text : "Ohne ToDo";
     k.appendChild(text);
     // Termin als kleiner Chip rechts (seit 18.10.2026, vorher nur das rote Wort
-    // "heute"/"ueberfaellig"). Gleiche Regel wie der Streifen am Board: dringend
-    // (ueberfaellig, heute, morgen) rot, jeder andere Termin gelb. Kurzform ohne
-    // Jahr, das Jahr nur, wenn es nicht das laufende ist.
+    // "heute"/"ueberfaellig"), seit 19.10.2026 dazu der Streifen links wie an der
+    // Karte am Board: dringend rot, jeder andere Termin gelb.
     const due = fund?.todo.due;
     if (due) {
-      const chip = document.createElement("span");
-      chip.className = "zt-dd-termin" + (isUrgent(due) ? " dringend" : "");
-      chip.textContent = due.slice(0, 4) === todayStr().slice(0, 4) ? formatDateShort(due) : formatDate(due);
-      const hinweis = dueInfo(due)?.badge;
-      chip.title = hinweis ? `${hinweis} · ${formatDate(due)}` : formatDate(due);
-      k.appendChild(chip);
+      k.dataset.termin = ztTerminAmpel(due);
+      k.appendChild(ztTerminChip(due));
     }
     k.onclick = () => { dd.schliesse(); beiWahl(fund); };
     return k;
@@ -395,12 +434,18 @@ function ztDropdown(host, { buchung, beiWahl, ohneText }) {
     if (!suche.trim()) liste.appendChild(eintrag(null, gewaehltId));
     const gruppen = ztGruppen(suche);
     for (const l of gruppen) {
-      const kopf = document.createElement("div");
-      kopf.className = "zt-dd-liste-kopf";
-      kopf.textContent = l.name;
-      liste.appendChild(kopf);
+      // Der Listenname nur, wenn es mehrere Listen gibt (Hendrik, 19.10.2026:
+      // "Meine ToDos ist mir zu praesent"); an einer einzigen gibt es nichts zu
+      // unterscheiden.
+      if (listen.length > 1) {
+        const kopf = document.createElement("div");
+        kopf.className = "zt-dd-liste-kopf";
+        kopf.textContent = l.name;
+        liste.appendChild(kopf);
+      }
       for (const g of l.bereiche) {
-        // Der Farbstreifen laeuft am ganzen Bereich entlang, wie am Board.
+        // Der ganze Bereich liegt auf dem Farbton des Bereichs, wie die Spalte am
+        // Board (seit 19.10.2026 statt des Streifens links).
         const gruppe = document.createElement("div");
         gruppe.className = "zt-dd-gruppe";
         gruppe.style.setProperty("--zt-farbe", ztFarbwert(g.farbe));
@@ -408,7 +453,20 @@ function ztDropdown(host, { buchung, beiWahl, ohneText }) {
         name.className = "zt-dd-bereich";
         name.textContent = g.name;
         gruppe.appendChild(name);
-        for (const fund of g.todos) gruppe.appendChild(eintrag(fund, gewaehltId));
+        for (const fund of g.frei) gruppe.appendChild(eintrag(fund, gewaehltId));
+        // Die Themen als kleine graue Zwischenueberschrift, ihre ToDos ein Stueck
+        // weiter eingerueckt (seit 19.10.2026).
+        for (const th of g.themen) {
+          const kopf = document.createElement("div");
+          kopf.className = "zt-dd-thema";
+          kopf.textContent = th.name;
+          gruppe.appendChild(kopf);
+          for (const fund of th.todos) {
+            const k = eintrag(fund, gewaehltId);
+            k.classList.add("im-thema");
+            gruppe.appendChild(k);
+          }
+        }
         liste.appendChild(gruppe);
       }
     }

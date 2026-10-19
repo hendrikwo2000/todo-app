@@ -3079,7 +3079,33 @@ wie der Streifen am Board (`isUrgent`: überfällig, heute, morgen), sonst gelb.
 Vorher stand nur bei überfällig/heute ein rotes Wort, Zukunftstermine gar
 nicht. Hendrik wählte den Chip gegen „Farbpunkt vor dem Namen" und „Streifen
 links wie am Board" (der Bereichsstreifen sitzt dort schon links) und „wie am
-Board" gegen „nur heute rot". Der geschlossene Knopf zeigt den Termin nicht.
+Board" gegen „nur heute rot". (Der Streifen kam am 19.10.2026 doch, siehe
+nächster Absatz - da ist der Bereichsstreifen nämlich weg.)
+
+**Dritte Runde, 19.10.2026** (Dropdown und geschlossener Knopf, wieder per
+ASCII-Skizzen gefragt):
+
+- **Bereich als Farbton statt Streifen.** Der ganze Bereich (Name + ToDos) liegt
+  auf `--zt-farbe` zu `--ton-anteil` (11 %, dunkel 15 %) gemischt mit `--bg`, genau
+  wie `--col-ton` an der Spalte am Board. `--ton-anteil` steht an `.zt-dd`,
+  `.zt-dd-knopf` und `.zt-dd-panel` selbst, weil er sonst nur in `.column[data-farbe]`
+  gilt. Auch der geschlossene Knopf ist getönt. „Ohne Bereich" bleibt ungetönt.
+- **Termin-Streifen links** an Zeile und Knopf wie an der Karte (`data-termin="rot"`
+  = dringend, `"gelb"` = anderer Termin; `ztTerminAmpel`), der Chip bleibt rechts.
+  Der **geschlossene Knopf zeigt den Termin jetzt auch** (Chip vor dem Pfeil +
+  Streifen), Hendrik hat es so bestätigt. Alle Zeilen haben 4 px transparenten
+  linken Rand, damit der Text mit und ohne Termin bündig steht.
+- **Listenname nur bei mehreren Listen** („Meine ToDos ist mir zu präsent"): bei
+  `listen.length <= 1` entfällt die Listen-Überschrift in der Auswahl und der
+  Listenname in der grauen Zeile des Knopfs (`ztOrtVon`); bei mehreren ist die
+  Überschrift klein und blass statt Großbuchstaben. Statistik und „Heute gebucht"
+  blieben unverändert.
+- **Über-Thema** (die Gruppe im Bereich, `themen` / `themaId`): in der Auswahl als
+  kleine graue Zwischenüberschrift, die ToDos eingerückt darunter (freie ToDos
+  zuerst, wie am Board); im Knopf in der grauen Zeile „Projekte › Kapitel 3".
+  Der Filter trifft auch Themennamen (dann das ganze Thema). Das Thema wird nicht
+  mit gebucht, es kommt live vom ToDo - für ein gelöschtes ToDo fehlt es. Aus
+  Versehen als „Termin" gelesen: Hendriks „Tehma" war das Thema.
 
 ### Daten
 
