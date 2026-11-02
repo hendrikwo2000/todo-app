@@ -3092,6 +3092,31 @@ ASCII-Skizzen gefragt):
   gebucht"). `bestaetigen()` hat dafür die Option `neutral: true` (blauer statt
   roter Knopf).
 
+**Uhr auf ein ToDo ziehen (02.11.2026).** Hendrik fand die Auswahl im Fenster
+„umständlich“ (⏱, Liste aufklappen, ToDo suchen, Starten) und startet die Uhr am
+Rechner. Jetzt zieht man ⏱ mit der Maus auf eine Karte am Board oder eine
+ToDo-Zeile der Heute-Ansicht, und die Uhr läuft darauf, ohne Fenster, mit
+Meldung „Uhr läuft auf …“. Seine Wahl aus drei Fragen (mit Vorschau):
+- **Läuft die Uhr schon, wird neu gestartet**, nicht umgebucht: die bisherige
+  Zeit bleibt beim alten ToDo („42 Min auf „Mathe“ gebucht, Uhr läuft auf
+  „Englisch““). Geht über `/start`, das eine laufende Uhr ohnehin beendet und
+  bucht (unter 10 s verworfen). Gleiches ToDo noch einmal: nur „läuft schon“.
+- **Nur Ziehen**, kein ⏱ an den Karten (auch nicht beim Drüberfahren).
+- **Das Fenster bleibt, wie es ist** (auswählen, dann Starten).
+
+Technik (`zeiterfassung.js`, Abschnitt „Uhr auf ein ToDo ziehen“): natives
+HTML5-Ziehen, `draggable` an den `.timer-knopf` **nur bei
+`(hover: hover) and (pointer: fine)`** - am Finger soll langes Drücken auf ⏱
+nichts ziehen. `dragover`/`drop` hängen am Dokument (Board und Heute-Ansicht
+zeichnen ständig neu) und reagieren nur, solange die Uhr am Zeiger hängt
+(`ztZiehtUhr`); die Ablage-Zonen des Boards steigen umgekehrt aus, solange kein
+`draggedId`/`draggedCat`/`draggedThema` gesetzt ist. Ziel ist `li.todo[data-id]`
+(aktive Liste) oder `.kal-todo-zeile[data-id]` (trägt `data-board`, gesetzt in
+`baueEintrag`), nur offene ToDos. Das Ziel trägt beim Darüberziehen `.zt-ziel`,
+denselben Ring wie eine angesprungene Karte. Der Tooltip an ⏱ erklärt das Ziehen.
+Getestet mit nachgebauten DragEvents, ein echter Mauszug war im Testbrowser
+nicht möglich.
+
 ### Daten
 
 `zeiteintraege`: `start`/`ende` in UTC (`ende` NULL = die Uhr läuft, höchstens

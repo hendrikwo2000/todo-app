@@ -32,6 +32,9 @@
      Kalender, Dauer-Knoepfe, die "Bis" setzen.
    - Statistik: vierter Zeitraum "Gesamt" - alles seit Beginn.
 
+   Seit 02.11.2026 laesst sich ⏱ am Rechner auch auf ein ToDo ziehen, dann
+   laeuft die Uhr ohne Fenster darauf (siehe "Uhr auf ein ToDo ziehen").
+
    Gerechnet wird auf dem Server (functions/_lib/zeit.js), die Uhr hier ist
    reine Anzeige ab dem Stand der letzten Antwort.
 
@@ -547,7 +550,9 @@ function ztZeichneKnoepfe() {
     // Ein gekappter Eintrag wartet auf einen Blick: Punkt am Knopf.
     k.classList.toggle("hinweis", !ztLaeuft && ztGekappt.length > 0);
     k.querySelector(".timer-zeit").textContent = ztLaeuft ? ztKnopfText(sek) : "";
-    k.title = ztLaeuft ? `Uhr läuft: ${ztNameVon(ztLaeuft)}` : "Zeiterfassung";
+    const ziehen = k.draggable
+      ? (ztLaeuft ? " – auf ein anderes ToDo ziehen wechselt" : " – auf ein ToDo ziehen startet die Uhr") : "";
+    k.title = (ztLaeuft ? `Uhr läuft: ${ztNameVon(ztLaeuft)}` : "Zeiterfassung") + ziehen;
   }
 }
 
@@ -654,17 +659,105 @@ function ztZeichne() {
 }
 
 // ---------- Aktionen ----------
-async function ztStarte() {
-  const antwort = await ztSchreibe("/start", { heute: todayStr(), ...ztAuswahl });
+function ztStarte() { return ztStarteMit(ztAuswahl, null); }
+
+// laeuftText: Meldung fuer den Weg ohne Fenster (Uhr aufs ToDo gezogen), sonst
+// null - dann zeigt das offene Fenster selbst, dass die Uhr laeuft.
+async function ztStarteMit(buchung, laeuftText) {
+  const antwort = await ztSchreibe("/start", { heute: todayStr(), ...buchung });
   if (!antwort.ok) { snackInfo(antwort.daten.error || "Start fehlgeschlagen."); return; }
-  // Lief schon eine (anderes Geraet, anderer Tab), hat der Server sie gebucht.
+  // Lief schon eine (anderes Geraet, anderer Tab, oder beim Ziehen die eigene),
+  // hat der Server sie gebucht.
   const vorher = antwort.daten.beendet;
   ztUebernimmLaufend(antwort.daten.laeuft);
   ztAuswahl = {};
-  if (vorher) snackInfo(`${ztDauer(vorher.sek)} auf „${ztNameVon(vorher)}“ gebucht`);
+  const teile = [];
+  if (vorher) teile.push(`${ztDauer(vorher.sek)} auf „${ztNameVon(vorher)}“ gebucht`);
+  if (laeuftText) teile.push(laeuftText);
+  if (teile.length) snackInfo(teile.join(", "));
   ztZeichne();
   await ztLade();
   ztNachAenderung();
+}
+
+/* ---------- Uhr auf ein ToDo ziehen (seit 02.11.2026) ----------
+ * Hendrik: die Auswahl im Fenster sei umstaendlich. Am Rechner zieht man ⏱
+ * jetzt mit der Maus auf eine Karte am Board oder eine ToDo-Zeile der
+ * Heute-Ansicht, und die Uhr laeuft auf diesem ToDo - ohne Fenster. Seine Wahl
+ * dabei: laeuft sie schon, wird NEU gestartet (die bisherige Zeit bleibt beim
+ * alten ToDo, /start bucht sie), nicht umgebucht; an den Karten erscheint
+ * nichts Neues; das Fenster bleibt, wie es ist.
+ * Nur mit Maus (hover + feiner Zeiger): Hendrik startet die Uhr am Rechner, und
+ * am Finger soll ein langes Druecken auf ⏱ nicht ploetzlich etwas ziehen.
+ */
+const ZT_ZIEH_TYP = "application/x-todo-uhr";
+const ztMitMaus = window.matchMedia("(hover: hover) and (pointer: fine)");
+let ztZiehtUhr = false;
+let ztZielEl = null;
+
+function ztSetzeZiehbar() { for (const k of ztKnoepfe) k.draggable = ztMitMaus.matches; }
+ztSetzeZiehbar();
+// Maus an- oder abgesteckt (Tablet mit Tastatur): der Tooltip erklaert das
+// Ziehen nur, wo es geht.
+ztMitMaus.addEventListener?.("change", () => { ztSetzeZiehbar(); ztZeichneKnoepfe(); });
+
+for (const k of ztKnoepfe) {
+  k.addEventListener("dragstart", e => {
+    ztZiehtUhr = true;
+    e.dataTransfer.effectAllowed = "copy";
+    e.dataTransfer.setData(ZT_ZIEH_TYP, "1");
+  });
+  k.addEventListener("dragend", () => {
+    ztZiehtUhr = false;
+    ztMarkiereZiel(null);
+  });
+}
+
+// Karte am Board (liegt immer in der aktiven Liste) oder Zeile der
+// Heute-Ansicht (traegt ihre Liste selbst, data-board) - nur offene ToDos.
+function ztZielAus(el) {
+  const z = el.closest?.("li.todo[data-id], .kal-todo-zeile[data-id]");
+  if (!z) return null;
+  const boardId = z.dataset.board || aktiveListe;
+  const t = (daten[boardId]?.todos || []).find(x => x.id === z.dataset.id);
+  return t && !t.done ? { el: z, todo: t } : null;
+}
+
+function ztMarkiereZiel(el) {
+  if (ztZielEl === el) return;
+  ztZielEl?.classList.remove("zt-ziel");
+  ztZielEl = el;
+  ztZielEl?.classList.add("zt-ziel");
+}
+
+// Am Dokument statt an jeder Karte: Board und Heute-Ansicht zeichnen ihre
+// Zeilen staendig neu. Die Ablage-Zonen des Boards steigen selbst aus, solange
+// keine Karte, kein Bereich und kein Thema am Zeiger haengt.
+document.addEventListener("dragover", e => {
+  if (!ztZiehtUhr) return;
+  const ziel = ztZielAus(e.target);
+  ztMarkiereZiel(ziel ? ziel.el : null);
+  if (!ziel) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+});
+document.addEventListener("drop", e => {
+  if (!ztZiehtUhr) return;
+  const ziel = ztZielAus(e.target);
+  ztMarkiereZiel(null);
+  if (!ziel) return;
+  e.preventDefault();
+  ztStarteAuf(ziel.todo.id);
+});
+
+async function ztStarteAuf(todoId) {
+  if (ztLaeuft && ztLaeuft.todoId === todoId) {
+    snackInfo(`Die Uhr läuft schon auf „${ztNameVon(ztLaeuft)}“`);
+    return;
+  }
+  const fund = ztFindeTodo(todoId);
+  if (!fund) return;
+  await ztStarteMit(ztBuchungAus(fund), `Uhr läuft auf „${fund.todo.text}“`);
 }
 
 /**

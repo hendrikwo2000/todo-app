@@ -2958,6 +2958,9 @@ function beschreibungAlsText(roh) {
 function baueEintrag(t, mitDatum, faellig, mitBis = false) {
   const zeile = document.createElement("div");
   zeile.className = "kal-todo-zeile" + (faellig ? " faellig" : "");
+  // Fuer die Uhr, die man auf die Zeile zieht (zeiterfassung.js, ztZielAus).
+  zeile.dataset.id = t.id;
+  zeile.dataset.board = t.boardId;
 
   // Der Kalender bearbeitet sonst nichts, aber Abhaken ist die eine Sache, die
   // man beim Blick auf "was ist heute faellig" tatsaechlich tun will. Laeuft

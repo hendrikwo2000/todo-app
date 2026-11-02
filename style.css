@@ -2571,6 +2571,10 @@ html.dreispaltig .kalender .kal-liste {
 /* Kurzes Aufblinken der Karte, die man aus dem Kalender angesprungen hat -
    sonst sucht man nach dem Wechsel, wo man gelandet ist. */
 .todo.kal-treffer { animation: kalTreffer 1.6s ease-out; }
+/* Die Uhr wird auf ein ToDo gezogen (zeiterfassung.js): das Ziel unter der
+   Maus traegt denselben Ring wie eine angesprungene Karte. */
+.todo.zt-ziel,
+.kal-todo-zeile.zt-ziel { box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 4px var(--accent); }
 @keyframes kalTreffer {
   0%, 45% { box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 4px var(--accent); }
   100%    { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
