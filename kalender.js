@@ -310,10 +310,6 @@ function schalteQuelle(schluessel) {
 // ---------- Daten ----------
 // Flache Liste aller offenen ToDos mit Termin, quer ueber alle Listen.
 // Erledigte bleiben draussen (der Kalender beantwortet "was kommt noch").
-// Wiederkehrende ToDos, deren naechster Termin noch aussteht, ebenfalls:
-// nochNichtFaellig() versteckt sie auf dem Board bis zum Faelligkeitstag,
-// und der Kalender haelt sich an dieselbe Regel - sonst zeigt er etwas,
-// das man auf dem Board nicht findet.
 function kalenderTermine() {
   const listenName = {};
   for (const b of listen) listenName[b.id] = b.name;
@@ -326,13 +322,11 @@ function kalenderTermine() {
     for (const c of (d.categories || [])) bereiche[c.id] = c;
     for (const t of (d.todos || [])) {
       if (t.done || !t.due) continue;
-      if (nochNichtFaellig(t)) continue;
       const cat = bereiche[t.categoryId];
       termine.push({
         id: t.id,
         text: t.text,
         due: t.due,
-        wiederholung: t.wiederholung || null,
         vorlauf: typeof t.vorlauf === "number" ? t.vorlauf : null,
         boardId,
         boardName: listenName[boardId] || "",
@@ -2999,12 +2993,6 @@ function baueEintrag(t, mitDatum, faellig, mitBis = false) {
   const titel = document.createElement("span");
   titel.className = "kal-eintrag-titel";
   titel.textContent = t.text;
-  if (t.wiederholung) {
-    const wdh = document.createElement("span");
-    wdh.className = "kal-wdh";
-    wdh.textContent = "🔁";
-    titel.appendChild(wdh);
-  }
   text.appendChild(titel);
 
   // Herkunft: Listenname nur, wenn es NICHT die gerade aktive Liste ist -

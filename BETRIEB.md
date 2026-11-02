@@ -900,10 +900,6 @@ der Analyse vom 19.10.2026 mit zwei Tabs nachgestellt.
 - `ersetzeInhalt()` tauscht die Felder im bestehenden Objekt, statt
   `daten[id]` neu zuzuweisen — `state` zeigt bei der aktiven Liste auf genau
   dieses Objekt.
-- Haben beide Geräte dasselbe wiederkehrende ToDo abgehakt, legte jedes einen
-  Nachfolger an. Von den beim Mischen NEU entstandenen gleichen Nachfolgern
-  (Bereich, Titel, Rhythmus, Termin) bleibt einer; schon vorher doppelt
-  Gespeichertes fasst das Mischen nicht an.
 
 **Grenzen, bewusst:** Ohne mitgeschickten Stand (alte App aus dem Cache,
 Pending-Einträge von vor dem 19.10.2026, frisch angelegte Liste vor dem
@@ -1186,68 +1182,19 @@ wollte, und ein Fehlgriff hätte den ganzen Titel überschrieben. Jetzt steht
 alles nur da; wer tippen will, tippt das Feld an. `startEdit()` räumt zusätzlich
 die Textauswahl weg, die der Doppelklick selbst erzeugt hat.
 
-## Wiederkehrende ToDos
+## Wiederkehrende ToDos: entfernt am 02.11.2026
 
-Ein ToDo mit `wiederholung` (`taeglich`/`woechentlich`/`monatlich`/`jaehrlich`,
-sonst NULL) erzeugt beim Abhaken sofort seinen Nachfolger — keine eigene
-„Serie" im Datenmodell, jede Ausgabe ist eine ganz normale, eigenständige
-Zeile in `todos`. Löschen, Bearbeiten vor dem Abhaken, Drag & Drop: alles
-funktioniert wie bei jedem anderen ToDo, weil es technisch keins ist.
+Gab es vom 09.08. bis 02.11.2026 (🔁 im Bearbeiten-Fenster, beim Abhaken
+entstand sofort der Nachfolger). Hendrik: „brauche ich gar nicht“ - also ganz
+raus, samt Nachfolger-Logik, Doppel-Abgleich beim Mischen und dem Verstecken
+bis zum Termin (`nochNichtFaellig`). Live gab es in keinem Konto ein
+wiederkehrendes ToDo. Die Wiederholung von **Kalenderterminen** (Google-Serien)
+ist ein eigener Teil und bleibt.
 
-**Nächster Termin.** Fester Rhythmus ab dem URSPRÜNGLICHEN Fälligkeitsdatum
-(nicht ab dem Tag des Abhakens) — `folgeTermin()` in `app.js`. Zwei
-Feinheiten: Bei Monat/Jahr wird auf den letzten Tag des Zielmonats geklemmt,
-falls der ursprüngliche Tag dort nicht existiert (31. Januar → 28./29.
-Februar, nicht in den März „übergelaufen"); liegt der berechnete Termin
-trotz Klemmung noch in der Vergangenheit (spät abgehakt), rechnet die
-Funktion so oft weiter, bis der neue Termin wirklich ansteht — sonst wäre
-der frisch erzeugte Nachfolger sofort wieder überfällig.
-
-**Nur über den Bearbeiten-Dialog setzbar**, nicht im Schnell-Anlegen-Feld —
-gleiche Beschränkung wie bei Bereich/Thema-Zuordnung, die auch nur dort
-geht. Braucht zwingend einen Termin (ohne Termin ergibt eine Wiederholung
-keinen Sinn) — das Auswahlfeld bleibt unsichtbar, bis einer gesetzt ist.
-Im Dialog steckt die Auswahl seit der Kompakt-Zeile hinter einem
-🔁-Knopf statt einem immer sichtbaren `<select>` — Klick ruft
-`openDatePicker()` auf dem (unsichtbar überlagerten) `<select>` auf,
-genau wie beim 📅-Knopf für den Termin selbst; der Knopftext zeigt das
-gewählte Muster kompakt an (`updateWiederholungButton()`).
-
-**Bereich (📂) und Über-Thema (🏷️) folgen seit 13.08.2026 demselben Muster**
-(`verdrahteWahlSymbol()` in `app.js`). Vorher standen beide als breite
-`<select>` über der Knopfreihe und nahmen dort je eine ganze Zeile ein; jetzt
-sind es zwei weitere Symbole in der Reihe. Ist etwas gewählt, steht der Name
-neben dem Symbol — auf 18 Zeichen gekürzt, denn Namen sind frei wählbar und
-schöben die Reihe sonst auseinander (der volle Name steht im `title`).
-
-📂 gibt es nur bei ToDos ohne Bereich, 🏷️ nur, wenn der Bereich Themen hat —
-`verdrahteWahlSymbol()` steigt still aus, wenn der Knopf fehlt.
-
-**Dabei musste `.edit-thema` aus der CSS weichen.** Die Regel gab dem Feld ein
-eigenes Aussehen (volle Breite, Rahmen) und stand SPÄTER in der Datei als
-`.date-field select`, bei gleicher Spezifität — das `<select>` wäre also
-sichtbar geblieben und hätte den neuen Knopf verdrängt. Dieselbe Familie von
-Fallen wie an mehreren anderen Stellen in dieser Datei.
-
-**Sichtbarkeit.** Die neu erzeugte Ausgabe erscheint nicht sofort nach dem
-Abhaken, sondern erst ab ihrem eigenen Fälligkeitstag
-(`nochNichtFaellig()` in `app.js`, gefiltert in `renderColumn()` und
-`synchronisiereOhneBereich()`) — sonst stünde direkt danach eine optisch
-fast identische Zeile mit nur einem anderen Datum da. Gilt NUR für
-wiederkehrende ToDos: ein normales ToDo mit Zukunftstermin bleibt wie
-gewohnt sofort sichtbar (samt „Morgen"-Anzeige und roter Dringlichkeit ab
-morgen) — sonst wäre auch die Vorschau auf morgen fällige, nicht
-wiederkehrende ToDos weg.
-
-**Wieder aufgehakt (seit 19.10.2026).** Vorher blieb der Nachfolger beim
-Wiederöffnen stehen, und das nächste Abhaken legte einen zweiten an — bis
-zum Fälligkeitstag unsichtbar, dann doppelt. Jetzt (Hendriks Wahl): beim
-Öffnen wird der Nachfolger zurückgenommen, wenn er unverändert ist
-(`folgeUnveraendert()`: Termin = `folgeTermin()`, Notiz, Thema, Checkliste
-gleich und nichts abgehakt). Hat man ihn schon bearbeitet, bleibt er, und
-beim erneuten Abhaken entsteht kein zweiter (`naechsteAusgabe()`: offenes
-ToDo derselben Serie — Bereich, Titel, Rhythmus — mit späterem Termin). Eine
-Verknüpfung im Datenmodell gibt es weiter nicht, daher dieser Abgleich.
+Die Spalte `todos.wiederholung` bleibt leer in der D1 stehen: ein DROP COLUMN
+auf Prod bringt nichts außer Risiko. Die API liest und schreibt sie nicht mehr;
+schickt eine alte App aus dem Cache das Feld noch mit, wird es still
+übergangen. Letzter Stand mit Wiederholung: Commit `9361339`.
 
 ## Termin heißt „bis“: Vorlauf unter Heute (seit 02.11.2026)
 
@@ -1271,9 +1218,7 @@ Eigenes, es geht ohnehin Feld für Feld.
 Tagesansicht liefert. Unverändert beim Termintag bleiben: Kalenderraster (Mathe
 stünde sonst in acht Zellen), ein anderer gewählter Tag, Board, Push, Zahl am
 App-Symbol und die WhatsApp-Morgenliste (sonst käme jeden Morgen dieselbe
-Liste). **Wiederkehrende** ToDos haben keinen Vorlauf (`imVorlauf()`): ihre
-nächste Ausgabe stünde sonst gleich nach dem Abhaken wieder da, das ⏳ fehlt
-bei ihnen im Bearbeiten-Fenster.
+Liste).
 
 **Aussehen: eine Liste („Variante A“).** Hendrik hat aus zwei Bildern an
 seinen echten Einträgen gewählt: Fälliges und Kommendes stehen gemischt unter
@@ -1299,17 +1244,13 @@ Umbenennen — Tippfehler heißt löschen und neu anlegen.
 **Automatik.** Letzter offener Punkt abgehakt → das ToDo wird automatisch
 erledigt; ein Punkt an einem erledigten ToDo wieder geöffnet → das ToDo wird
 automatisch wieder offen (`toggleUnterpunkt()` in `app.js`, ruft dafür
-`toggleDone()` auf — nicht `t.done` direkt setzen, sonst würde z. B. eine
-Wiederholung beim Automatik-Abhaken nicht auslösen). Umgekehrt: das
+`toggleDone()` auf — nicht `t.done` direkt setzen, sonst fehlt, was
+`toggleDone()` sonst noch erledigt: Erledigt-Zeitpunkt, Zeiterfassung anhalten,
+Speichern). Umgekehrt: das
 Haupt-Häkchen manuell gesetzt zieht alle Unterpunkte mit, manuell entfernt
 lässt sie unangetastet — sonst würde die Automatik ein gerade wieder
 geöffnetes ToDo sofort erneut schließen, falls zufällig noch alle Punkte
 angehakt sind.
-
-**Wiederholung + Unterpunkte.** Ein wiederkehrendes ToDo mit Checkliste
-kopiert seine Unterpunkte beim Abhaken auf die neue Ausgabe, aber frisch
-unangehakt — sonst müsste man z. B. eine wiederkehrende Einkaufsliste jedes
-Mal neu eintippen.
 
 **Eingabefeld hinter dem ✓-Knopf.** Im Bearbeiten-Dialog steckt nur das
 Eingabefeld für einen NEUEN Punkt hinter einem kompakten ✓-Knopf in der
@@ -1505,23 +1446,14 @@ Notwendigkeit.
 **Fast rein lesend.** Ein Tipp auf einen Eintrag wechselt bei Bedarf die Liste
 (`wechsleListe()`) und öffnet das ToDo im gewohnten Bearbeiten-Modus
 (`startEdit()`), die Karte blinkt kurz auf (`.todo.kal-treffer`). Kein
-Termin-Ziehen im Kalender — sonst läge dieselbe Logik (Wiederholung,
-Unterpunkt-Automatik, Speichern) an zwei Stellen. Die einzige Ausnahme ist das
+Termin-Ziehen im Kalender — sonst läge dieselbe Logik (Unterpunkt-Automatik,
+Speichern) an zwei Stellen. Die einzige Ausnahme ist das
 Abhaken in der Tagesliste, und auch das ruft nur `toggleDone()` in `app.js`
 auf, statt etwas nachzubauen (siehe unten).
 Im Umschalt-Modus schließt sich das Panel dabei, sonst läge die Bearbeitung
 unsichtbar dahinter; **im Split bleibt es offen** — das Board steht ja schon
 daneben, und Zuklappen wäre ein ungefragter Rückbau der eingestellten
 Ansicht.
-
-**Wiederkehrende ToDos erscheinen erst ab ihrem Fälligkeitstag**, im
-Kalender genauso wie auf dem Board — `kalenderTermine()` filtert mit
-demselben `nochNichtFaellig()` wie `renderColumn()`. Die erste Fassung
-zeigte sie im Kalender schon vorher (Argument: es ist ein echter
-Datensatz); das war falsch, weil der Kalender damit Termine anzeigte, die
-man auf dem Board nicht wiederfindet. Wer das je wieder ändert, braucht
-zusätzlich eine Ausnahme in `renderColumn()` und `synchronisiereOhneBereich()`,
-sonst zeigt der Sprung aus dem Kalender ins Leere.
 
 **Am HEUTIGEN Tag steht Überfälliges mit in der Tagesliste** (seit
 13.08.2026), als eigener Abschnitt „Überfällig (n)" über den heutigen ToDos und
@@ -1557,7 +1489,7 @@ Der Balken schiebt den Inhalt übrigens nicht, weil er ein Rand ist und
 Sonst bleibt der Kalender rein lesend — aber Erledigen ist die eine Sache, die
 man beim Blick auf „was ist heute fällig" tatsächlich tun will, und der Umweg
 übers Board dafür war einer zu viel. Läuft über `toggleDone(id, boardId)` in
-`app.js`, damit die Wiederholungs- und Unterpunkt-Logik an genau einer Stelle
+`app.js`, damit die Unterpunkt-Logik an genau einer Stelle
 bleibt. **Der `boardId`-Parameter ist Pflicht, nicht Kosmetik:** die Tagesliste
 zeigt ToDos aus ALLEN Listen, und ohne ihn liefe `findTodo()` gegen `state`
 (die aktive Liste) ins Leere. `findTodo()`, `unterpunkteVon()` und `nextOrder()`
@@ -3209,8 +3141,7 @@ ein Hinweis oben im Fenster mit „Korrigieren" (Dialog; jede Korrektur setzt
   blättert selbst (`max-height`). Bewusst kein `<select>`: das zeigt keine Farben,
   am iPhone schon gar nicht. Inhalt (`ztGruppen`): oben „Ohne ToDo", dann je Liste
   (Reihenfolge von `listen`) ihre Bereiche in Board-Reihenfolge, „Ohne Bereich"
-  zuletzt, nur offene ToDos ohne die noch unsichtbare nächste Ausgabe einer Serie
-  (`nochNichtFaellig`). Mit Termin zuerst. Das Feld oben grenzt ein (ToDo-Text oder
+  zuletzt, nur offene ToDos. Mit Termin zuerst. Das Feld oben grenzt ein (ToDo-Text oder
   Bereichsname), Enter nimmt den ersten Treffer, Fokus nur mit Maus (sonst klappte
   am Handy die Tastatur über die Liste). Ein Klick daneben klappt zu (Handler in der
   Einfangphase, weil der Klick auf einen Eintrag die Liste neu baut), Escape auch.

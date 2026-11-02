@@ -167,7 +167,7 @@ hinter dem Knopf.
 „Timer") zeigt eine Woche, einen Monat, ein Jahr oder **Gesamt** (alles seit dem
 ersten Eintrag): Balken pro Tag bzw. Monat, die Summe, darunter aufklappbar
 **Liste › Bereich › ToDo**. ToDos mit gleichem Namen im selben Bereich zählen
-zusammen, so stehen alle Wiederholungen eines Serien-ToDos in einer Zeile. Ganz
+zusammen. Ganz
 unten die einzelnen Einträge und **⬇ CSV**: die Einträge des Zeitraums als Datei
 für Excel (Datum, Von, Bis, Dauer, ToDo, Liste, Bereich), etwa als Nachweis.
 

@@ -281,9 +281,7 @@ function ztTodoReihenfolge(a, b) {
  * Die offenen ToDos aller Listen, je Liste nach Bereichen in der Reihenfolge des
  * Boards, "Ohne Bereich" zuletzt. Je Bereich zuerst die freien ToDos, dann die
  * Ueber-Themen mit ihren ToDos (`frei`, `themen`), wie am Board. Weg bleiben
- * erledigte und die noch unsichtbare naechste Ausgabe einer Serie
- * (nochNichtFaellig), die man auf dem Board auch nicht sieht. Mit Suchtext nur,
- * was passt: am ToDo-Text oder am Namen von Bereich bzw. Thema (dann der ganze
+ * erledigte. Mit Suchtext nur, was passt: am ToDo-Text oder am Namen von Bereich bzw. Thema (dann der ganze
  * Bereich bzw. das ganze Thema).
  */
 function ztGruppen(suche) {
@@ -300,7 +298,7 @@ function ztGruppen(suche) {
       const bereichPasst = !ohneBereich && passtName(c.name);
       // "Ohne Bereich" kennt keine Themen (wie am Board).
       const themenDa = ohneBereich ? [] : (d.themen || []).filter(th => th.categoryId === c.id);
-      const offen = (d.todos || []).filter(t => t.categoryId === c.id && !t.done && !nochNichtFaellig(t));
+      const offen = (d.todos || []).filter(t => t.categoryId === c.id && !t.done);
       const sortiert = (liste, themaPasst) => liste
         .filter(t => !q || bereichPasst || themaPasst || t.text.toLocaleLowerCase("de").includes(q))
         .sort(ztTodoReihenfolge)

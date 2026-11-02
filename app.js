@@ -59,15 +59,6 @@ const FARBEN = [
   { id: "anthrazit",  name: "Anthrazit"  },
 ];
 
-// Wiederholungsmuster fuer ToDos. Muss zu WIEDERHOLUNG_ERLAUBT in
-// functions/api/todos.js passen.
-const WIEDERHOLUNGEN = [
-  { id: "taeglich",     name: "Täglich"     },
-  { id: "woechentlich", name: "Wöchentlich" },
-  { id: "monatlich",    name: "Monatlich"   },
-  { id: "jaehrlich",    name: "Jährlich"    },
-];
-
 // Ab wann ein ToDo vor seinem Termin unter Heute steht (seit 02.11.2026): der
 // Termin heisst "bis", man kann vorher daran arbeiten. Standard 14 Tage
 // (Hendriks Wahl), am ToDo einstellbar - null dort heisst Standard, damit eine
@@ -223,49 +214,6 @@ function addDaysStr(n) {
 }
 function todayStr() { return addDaysStr(0); }
 
-// Naechstes Datum fuer ein Wiederholungsmuster, ausgehend von einem
-// gegebenen "YYYY-MM-DD" (nicht von heute, siehe addDaysStr). Rechnet ueber
-// lokale Date-Methoden (nicht new Date(iso) - das parst als UTC und kann je
-// nach Zeitzone einen Tag verschieben). Bei Monat/Jahr auf den letzten Tag
-// des Zielmonats geklemmt, falls der Ausgangstag dort nicht existiert (31.
-// Januar + 1 Monat -> 28./29. Februar, nicht in den Maerz uebergelaufen).
-function naechsteFaelligkeit(iso, muster) {
-  const [y, m, d] = iso.split("-").map(Number);
-  const datum = new Date(y, m - 1, d);
-  if (muster === "taeglich") {
-    datum.setDate(datum.getDate() + 1);
-  } else if (muster === "woechentlich") {
-    datum.setDate(datum.getDate() + 7);
-  } else if (muster === "monatlich") {
-    const zielTag = datum.getDate();
-    datum.setDate(1);                     // sicher auf den 1. springen...
-    datum.setMonth(datum.getMonth() + 1); // ...dann den Monat weiterschalten...
-    const letzterTag = new Date(datum.getFullYear(), datum.getMonth() + 1, 0).getDate();
-    datum.setDate(Math.min(zielTag, letzterTag)); // ...zielTag setzen, geklemmt.
-  } else if (muster === "jaehrlich") {
-    const zielTag = datum.getDate();
-    const zielMonat = datum.getMonth();
-    datum.setDate(1);
-    datum.setFullYear(datum.getFullYear() + 1);
-    const letzterTag = new Date(datum.getFullYear(), zielMonat + 1, 0).getDate();
-    datum.setMonth(zielMonat);
-    datum.setDate(Math.min(zielTag, letzterTag));
-  } else {
-    return iso; // unbekanntes Muster - unveraendert zurueck, sollte nie vorkommen
-  }
-  return `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
-}
-
-// Wiederholt naechsteFaelligkeit(), bis das Ergebnis nicht mehr in der
-// Vergangenheit liegt - wer spaet abhakt, bekommt keinen sofort
-// ueberfaelligen Folgetermin, sondern den naechsten ECHT anstehenden.
-function folgeTermin(iso, muster) {
-  let naechster = naechsteFaelligkeit(iso, muster);
-  const heute = todayStr();
-  while (naechster < heute) naechster = naechsteFaelligkeit(naechster, muster);
-  return naechster;
-}
-
 function formatDate(iso) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
@@ -337,22 +285,12 @@ function setzeBadgeErlaubt(an) {
 // (Streifen am ToDo und Zaehler neben der Bereichs-Ueberschrift).
 function isUrgent(iso) { return !!iso && iso <= addDaysStr(1); }
 
-// Neu erzeugte Ausgabe eines wiederkehrenden ToDos (siehe toggleDone): bis zum
-// Faelligkeitstag unsichtbar, damit man nach dem Abhaken nicht sofort wieder
-// dieselbe Zeile sieht. NUR wiederkehrende ToDos - ein normales ToDo mit
-// Zukunftstermin bleibt wie bisher sofort sichtbar (Morgen-Anzeige, rote
-// Dringlichkeit ab morgen bleiben fuer den Normalfall unangetastet).
-function nochNichtFaellig(t) {
-  return !t.done && !!t.wiederholung && !!t.due && t.due > todayStr();
-}
-
 // Steht das ToDo schon vor seinem Termin unter Heute? (seit 02.11.2026, siehe
 // VORLAEUFE). Nur in der Heute-Ansicht - Raster, Board, Push und Morgenliste
-// bleiben beim Termintag. Wiederkehrende bleiben aussen vor: ihre naechste
-// Ausgabe stuende sonst gleich nach dem Abhaken wieder da (nochNichtFaellig).
+// bleiben beim Termintag.
 function vorlaufVon(t) { return typeof t.vorlauf === "number" ? t.vorlauf : VORLAUF_STANDARD; }
 function imVorlauf(t) {
-  return !t.done && !t.wiederholung && !!t.due
+  return !t.done && !!t.due
     && t.due > todayStr() && t.due <= addDaysStr(vorlaufVon(t));
 }
 
@@ -2080,25 +2018,7 @@ function mischeDreiWege(basisInhalt, hier, dort) {
     todos: mischeSammlung(b.todos, hier.todos, dort.todos),
     unterpunkte: mischeSammlung(b.unterpunkte, hier.unterpunkte, dort.unterpunkte),
   };
-  // Haben beide Geraete dasselbe wiederkehrende ToDo abgehakt, hat jedes seinen
-  // eigenen Nachfolger angelegt - von den NEU entstandenen bleibt einer. Was
-  // schon vorher doppelt in der Liste stand, fasst das hier nicht an.
-  const alt = new Set((b.todos || []).map(t => t.id));
-  const gruppen = new Map();
-  for (const t of erg.todos) {
-    if (t.done || !t.wiederholung || !t.due) continue;
-    const k = JSON.stringify([t.categoryId, t.text, t.wiederholung, t.due]);
-    if (!gruppen.has(k)) gruppen.set(k, []);
-    gruppen.get(k).push(t);
-  }
-  const weg = new Set();
-  for (const g of gruppen.values()) {
-    if (g.length < 2) continue;
-    const neu = g.filter(t => !alt.has(t.id));
-    const behalten = neu.length === g.length ? 1 : 0;   // alles neu: einer bleibt
-    neu.slice(behalten).forEach(t => weg.add(t.id));
-  }
-  if (weg.size) erg.todos = erg.todos.filter(t => !weg.has(t.id));
+  // Unterpunkte eines ToDos, das beim Mischen wegfiel, gehen mit.
   const todoIds = new Set(erg.todos.map(t => t.id));
   erg.unterpunkte = erg.unterpunkte.filter(u => todoIds.has(u.todoId));
   return erg;
@@ -2547,29 +2467,6 @@ function addTodoOhneBereich() {
   openAdd(id, null);
 }
 
-// Der offene Nachfolger eines wiederkehrenden ToDos: dieselbe Serie (Bereich,
-// Titel, Rhythmus), spaeter faellig, noch nicht erledigt - der frueheste davon.
-// Eine Verknuepfung im Datenmodell gibt es nicht (jede Ausgabe ist ein normales
-// ToDo, siehe BETRIEB.md "Wiederkehrende ToDos"), daher der Abgleich.
-function naechsteAusgabe(t, inhalt) {
-  return (inhalt.todos || [])
-    .filter(x => x.id !== t.id && !x.done && x.wiederholung === t.wiederholung
-              && x.categoryId === t.categoryId && x.text === t.text && x.due && x.due > t.due)
-    .sort((a, b) => a.due.localeCompare(b.due))[0] || null;
-}
-
-// Sieht der Nachfolger noch genau so aus, wie toggleDone ihn angelegt hat?
-// Termin, Notiz, Thema und Checkliste (Texte gleich, nichts abgehakt).
-function folgeUnveraendert(t, folge, inhalt) {
-  if (folge.due !== folgeTermin(t.due, t.wiederholung)) return false;
-  if ((folge.note || null) !== (t.note || null)) return false;
-  if ((folge.themaId || null) !== (t.themaId || null)) return false;
-  const vorlage = unterpunkteVon(t.id, inhalt).map(u => u.text);
-  const jetzt = unterpunkteVon(folge.id, inhalt);
-  return jetzt.every(u => !u.done)
-    && JSON.stringify(jetzt.map(u => u.text)) === JSON.stringify(vorlage);
-}
-
 // boardId ist der Weg des Kalenders: er zeigt ToDos aus allen Listen und hakt
 // sie dort ab, wo sie liegen - ohne die aktive Liste umzuschalten. Ohne Angabe
 // bleibt alles wie bisher.
@@ -2591,45 +2488,6 @@ function toggleDone(id, boardId = aktiveListe) {
     // Laeuft die Zeiterfassung auf genau diesem ToDo, haelt sie an (Hendriks
     // Wahl, 18.10.2026) - wer fertig ist, arbeitet nicht mehr daran.
     window.zeitBeiAbhaken?.(t.id);
-  }
-  // Wiederkehrendes ToDo wieder geoeffnet (z. B. Fehlklick): den eben angelegten
-  // Nachfolger zuruecknehmen, als waere nichts gewesen - aber nur, solange er
-  // unveraendert ist. Hat man ihn schon bearbeitet, bleibt er stehen (Hendriks
-  // Wahl, 19.10.2026). Vorher blieb er immer stehen, und das naechste Abhaken
-  // legte einen zweiten an.
-  if (!t.done && t.wiederholung && t.due) {
-    const folge = naechsteAusgabe(t, inhalt);
-    if (folge && folgeUnveraendert(t, folge, inhalt)) {
-      inhalt.todos = inhalt.todos.filter(x => x.id !== folge.id);
-      inhalt.unterpunkte = (inhalt.unterpunkte || []).filter(u => u.todoId !== folge.id);
-    }
-  }
-  // Wiederkehrendes ToDo abgehakt: sofort die naechste Ausgabe anlegen. Baut
-  // das neue ToDo direkt (nicht ueber addTodoTo()) - die Funktion raeumt
-  // nebenbei ein offenes Schnell-Anlege-Feld weg, was hier ein voellig
-  // unbeteiligtes, gerade offenes Eingabefeld anderswo auf dem Board
-  // schliessen wuerde. Steht schon ein offener Nachfolger da (geoeffnet und
-  // wieder abgehakt, nachdem man ihn bearbeitet hatte), keinen zweiten.
-  if (t.done && t.wiederholung && t.due && !naechsteAusgabe(t, inhalt)) {
-    const neuesTodo = {
-      id: uid(),
-      categoryId: t.categoryId,
-      themaId: t.themaId,
-      text: t.text,
-      due: folgeTermin(t.due, t.wiederholung),
-      note: t.note,
-      wiederholung: t.wiederholung,
-      done: false,
-      createdAt: new Date().toISOString(),
-      completedAt: null,
-    };
-    inhalt.todos.push(neuesTodo);
-    // Checkliste mitnehmen, aber frisch unangehakt - sonst muesste man sie bei
-    // jeder Wiederholung neu eintippen (z. B. eine wiederkehrende Einkaufsliste).
-    const unterpunkte = inhalt.unterpunkte || (inhalt.unterpunkte = []);
-    unterpunkteVon(t.id, inhalt).forEach(u => {
-      unterpunkte.push({ id: uid(), todoId: neuesTodo.id, text: u.text, done: false });
-    });
   }
   render();
   save(boardId);
@@ -2696,11 +2554,9 @@ function saveEdit(id) {
   t.text = text;
   t.due = dateInput.value || null;
   t.note = noteInput && noteInput.value.trim() ? noteInput.value.trim() : null;
-  const wiederholungSelect = document.querySelector(`[data-edit-wiederholung="${id}"]`);
-  t.wiederholung = (t.due && wiederholungSelect && wiederholungSelect.value) ? wiederholungSelect.value : null;
-  // Vorlauf nur mit Termin und ohne Wiederholung (siehe imVorlauf); leer = Standard.
+  // Vorlauf nur mit Termin (siehe imVorlauf); leer = Standard.
   const vorlaufSelect = document.querySelector(`[data-edit-vorlauf="${id}"]`);
-  t.vorlauf = (t.due && !t.wiederholung && vorlaufSelect && vorlaufSelect.value !== "")
+  t.vorlauf = (t.due && vorlaufSelect && vorlaufSelect.value !== "")
     ? Number(vorlaufSelect.value) : null;
   // Bereich-Auswahl (nur bei ToDos, die gerade "Ohne Bereich" liegen). Ein
   // Wechsel in einen echten Bereich stellt das ToDo dort frei ein (ohne Thema)
@@ -3126,7 +2982,7 @@ function zeigeHinweise() {
 function synchronisiereOhneBereich() {
   if (!aktiveListe) return;
   const id = ohneBereichId(aktiveListe);
-  const hatTodos = state.todos.some(t => t.categoryId === id && !nochNichtFaellig(t));
+  const hatTodos = state.todos.some(t => t.categoryId === id);
   const wirdBefuellt = addingCat === id;   // offenes Eingabefeld haelt die Spalte
   const idx = state.categories.findIndex(c => c.id === id);
   if ((hatTodos || wirdBefuellt) && idx < 0) state.categories.unshift({ id, name: OHNE_NAME });
@@ -3211,7 +3067,7 @@ function render() {
 
 function renderColumn(cat) {
   const istOhne = istOhneBereich(cat.id);
-  const inCat = state.todos.filter(t => t.categoryId === cat.id && !nochNichtFaellig(t));
+  const inCat = state.todos.filter(t => t.categoryId === cat.id);
   const open = inCat.filter(t => !t.done);           // pro Gruppe sortiert, nicht global
   const done = inCat.filter(t => t.done).sort(sortDone);
   const themen = istOhne ? [] : themenIn(cat.id);    // "Ohne Bereich" kennt keine Themen
@@ -3790,12 +3646,9 @@ function updateDateButton(calBtn, clearBtn, value) {
   clearBtn.hidden = !has;
 }
 
-// Analog zu updateDateButton: zeigt das Wiederholungsmuster kompakt im Knopf
-// ("🔁 Wöchentlich"), damit der Bearbeiten-Dialog kein breites <select> mehr
-// dauerhaft in der Zeile braucht - Klick oeffnet die Auswahl (siehe renderTodo).
 /**
- * Symbol-Knopf plus verstecktes <select> - dasselbe Muster wie bei der
- * Wiederholung. Der Knopf traegt den gewaehlten Namen, damit man ihn sieht,
+ * Symbol-Knopf plus verstecktes <select> - dasselbe Muster wie beim
+ * Vorlauf. Der Knopf traegt den gewaehlten Namen, damit man ihn sieht,
  * ohne die Liste zu oeffnen; ohne Auswahl bleibt nur das Symbol stehen.
  */
 function verdrahteWahlSymbol(wrap, art, symbol, titelLeer) {
@@ -3819,15 +3672,9 @@ function verdrahteWahlSymbol(wrap, art, symbol, titelLeer) {
   feld.addEventListener("change", nachziehen);
 }
 
-function updateWiederholungButton(btn, value) {
-  const muster = WIEDERHOLUNGEN.find(w => w.id === value);
-  btn.classList.toggle("active", !!muster);
-  btn.textContent = muster ? `🔁 ${muster.name}` : "🔁";
-  btn.title = muster ? `Wiederholt sich ${muster.name.toLowerCase()} – zum Ändern klicken` : "Wiederholung festlegen";
-}
-
-// Dasselbe fuer den Vorlauf: beim Standard nur das Symbol, sonst die Kurzform
+// Analog zu updateDateButton: beim Standard nur das Symbol, sonst die Kurzform
 // ("⏳ 4 Wochen"), damit man eine eigene Einstellung ohne Aufklappen sieht.
+// Das <select> dahinter bleibt unsichtbar, ein Klick oeffnet es (renderTodo).
 function updateVorlaufButton(btn, value) {
   const v = value === "" ? null : VORLAEUFE.find(x => String(x.tage) === value);
   btn.classList.toggle("active", !!v);
@@ -3965,15 +3812,6 @@ function renderTodo(t) {
         </span>
         <button type="button" class="add-icon date-clear" title="Termin entfernen" hidden>✕</button>
         <span class="date-field">
-          <button type="button" class="add-icon" data-act="wiederholung" hidden>🔁</button>
-          <select class="edit-wiederholung" data-edit-wiederholung="${t.id}" aria-label="Wiederholung" tabindex="-1">
-            <option value="">Wiederholt sich nicht</option>
-            ${WIEDERHOLUNGEN.map(w =>
-              `<option value="${w.id}"${t.wiederholung === w.id ? " selected" : ""}>${w.name}</option>`
-            ).join("")}
-          </select>
-        </span>
-        <span class="date-field">
           <button type="button" class="add-icon" data-act="vorlauf" hidden>⏳</button>
           <select class="edit-vorlauf" data-edit-vorlauf="${t.id}" aria-label="Unter Heute ab" tabindex="-1">
             <option value="">2 Wochen vorher (Standard)</option>
@@ -3995,8 +3833,6 @@ function renderTodo(t) {
     const dateInput = wrap.querySelector(`[data-edit-date="${t.id}"]`);
     const calBtn    = wrap.querySelector('[data-act="cal"]');
     const clearBtn  = wrap.querySelector(".date-clear");
-    const wiederholungSelect = wrap.querySelector(".edit-wiederholung");
-    const wiederholungBtn = wrap.querySelector('[data-act="wiederholung"]');
     const vorlaufSelect = wrap.querySelector(".edit-vorlauf");
     const vorlaufBtn = wrap.querySelector('[data-act="vorlauf"]');
     noteInput.value = t.note || "";
@@ -4004,19 +3840,13 @@ function renderTodo(t) {
 
     const syncDateUi = () => {
       updateDateButton(calBtn, clearBtn, dateInput.value);
-      wiederholungBtn.hidden = !dateInput.value;
-      updateWiederholungButton(wiederholungBtn, wiederholungSelect.value);
-      // Wiederkehrende stehen erst am Termin unter Heute (imVorlauf) - der
-      // Vorlauf haette dort keine Wirkung, also auch keinen Knopf.
-      vorlaufBtn.hidden = !dateInput.value || !!wiederholungSelect.value;
+      vorlaufBtn.hidden = !dateInput.value;
       updateVorlaufButton(vorlaufBtn, vorlaufSelect.value);
     };
     syncDateUi();
     calBtn.addEventListener("click", () => openDatePicker(dateInput));
     clearBtn.addEventListener("click", () => { dateInput.value = ""; syncDateUi(); textInput.focus(); });
     dateInput.addEventListener("change", syncDateUi);
-    wiederholungBtn.addEventListener("click", () => openDatePicker(wiederholungSelect));
-    wiederholungSelect.addEventListener("change", syncDateUi);
     vorlaufBtn.addEventListener("click", () => openDatePicker(vorlaufSelect));
     vorlaufSelect.addEventListener("change", syncDateUi);
 
@@ -4111,15 +3941,8 @@ function renderTodo(t) {
     const info = dueInfo(t.due);
     const due = document.createElement("span");
     due.className = "due" + (!t.done && info && info.cls ? " " + info.cls : "");
-    const symbol = t.wiederholung ? "🔁 " : "";
-    due.textContent = `${symbol}📅 ${formatDate(t.due)}`;
-    const titelTeile = [];
-    if (!t.done && info && info.badge) titelTeile.push(info.badge);
-    if (t.wiederholung) {
-      const muster = WIEDERHOLUNGEN.find(w => w.id === t.wiederholung);
-      if (muster) titelTeile.push(`wiederholt sich ${muster.name.toLowerCase()}`);
-    }
-    if (titelTeile.length) due.title = titelTeile.join(" · ");
+    due.textContent = `📅 ${formatDate(t.due)}`;
+    if (!t.done && info && info.badge) due.title = info.badge;
     main.appendChild(due);
   }
 

@@ -151,6 +151,7 @@ CREATE TABLE todos (
   position     INTEGER,
   created_at   TEXT NOT NULL,
   completed_at TEXT,
+  -- ungenutzt seit 02.11.2026 (wiederkehrende ToDos entfernt), bleibt leer stehen
   wiederholung TEXT,
   -- Tage vor dem Termin, ab denen das ToDo unter Heute steht (NULL = Standard
   -- der App, 14). Rahmen prueft die API, siehe migration-vorlauf.sql.
