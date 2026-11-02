@@ -333,6 +333,7 @@ function kalenderTermine() {
         text: t.text,
         due: t.due,
         wiederholung: t.wiederholung || null,
+        vorlauf: typeof t.vorlauf === "number" ? t.vorlauf : null,
         boardId,
         boardName: listenName[boardId] || "",
         bereich: (cat && !istOhneBereich(cat.id)) ? cat.name : "",
@@ -349,6 +350,38 @@ function nachTagen(termine) {
   const tage = {};
   for (const t of termine) (tage[t.due] = tage[t.due] || []).push(t);
   return tage;
+}
+
+// Die ToDos, die unter einem Tag stehen. Heute kommt dazu, was bald faellig
+// ist (seit 02.11.2026, imVorlauf in app.js): der Termin heisst "bis", man
+// kann vorher daran arbeiten. Alles in EINER Liste nach Termin - Hendriks Wahl
+// aus zwei Bildern ("Variante A"); was drueckt, zeigt der rote Balken. Andere
+// Tage zeigen nur, was an ihnen faellig ist, wie das Raster.
+function todosFuerTag(tage, tag, heute) {
+  const eigene = tage[tag] || [];
+  if (tag !== heute) return eigene;
+  const bald = [];
+  for (const d of Object.keys(tage).sort()) {
+    if (d <= heute) continue;
+    for (const t of tage[d]) if (imVorlauf(t)) bald.push(t);
+  }
+  return eigene.concat(bald);
+}
+
+// "heute", "bis morgen", "bis Di 10.11. · noch 8 Tage" - steht in der
+// Heute-Ansicht hinter dem Bereich, weil dort Faelliges und Kommendes
+// gemischt stehen.
+const WOCHENTAG_KURZ = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+function bisText(iso) {
+  if (iso === todayStr()) return "heute";
+  if (iso === addDaysStr(1)) return "bis morgen";
+  const [j, m, d] = iso.split("-").map(Number);
+  const ziel = new Date(j, m - 1, d);
+  const jetzt = new Date();
+  const heute0 = new Date(jetzt.getFullYear(), jetzt.getMonth(), jetzt.getDate());
+  // round statt floor: an der Zeitumstellung fehlt oder steht eine Stunde zu viel.
+  const tage = Math.round((ziel - heute0) / 86400000);
+  return `bis ${WOCHENTAG_KURZ[ziel.getDay()]} ${formatDateShort(iso)} · noch ${tage} Tage`;
 }
 
 function isoTag(jahr, monat, tag) {
@@ -805,7 +838,7 @@ function zeichneTagOben() {
     kopf.querySelector(".kal-kopf-plus")?.remove();
     const summe = document.createElement("span");
     summe.className = "tag-oben-summe";
-    summe.textContent = tagObenSumme((tage[tag] || []).length
+    summe.textContent = tagObenSumme(todosFuerTag(tage, tag, heute).length
       + (tag === heute ? ueberfaellige.length : 0), (tageTermine[tag] || []).length);
     if (summe.textContent) kopf.appendChild(summe);
   }
@@ -1470,7 +1503,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
   if (tag) {
     const [j, m, t] = tag.split("-").map(Number);
     titel = TAG_FORMAT.format(new Date(j, m - 1, t));
-    todosDesTages = tage[tag] || [];
+    todosDesTages = todosFuerTag(tage, tag, heute);
     termineDesTages = tageTermine[tag] || [];
   } else {
     // Sollte nicht vorkommen (jedes Oeffnen waehlt heute), aber ein leerer
@@ -1550,11 +1583,14 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
     }
 
     if (!ruhig) {
+      // Rot ist heute, was auch auf dem Board rot ist (isUrgent: bis morgen) -
+      // das Kommende darunter bleibt ruhig, auch die Ueberschrift, solange
+      // nur Kommendes dasteht.
       ziel.appendChild(baueGruppenKopf("ToDos", todoPlus,
-        "ToDo", faelligHeute && todosDesTages.length > 0, "☑️"));
+        "ToDo", faelligHeute && todosDesTages.some(t => isUrgent(t.due)), "☑️"));
       if (aktiv && todoEingabeOffen && aktiveListe) ziel.appendChild(baueAnlegeZeile(tag));
       for (const t of todosDesTages) {
-        ziel.appendChild(baueEintrag(t, false, faelligHeute));
+        ziel.appendChild(baueEintrag(t, false, faelligHeute && isUrgent(t.due), faelligHeute));
       }
       if (!todosDesTages.length) ziel.appendChild(baueLeerZeile("Nichts fällig."));
     }
@@ -2928,7 +2964,8 @@ function beschreibungAlsText(roh) {
 // der wie gehabt zum ToDo auf dem Board springt. Der Rahmen gehoert der Zeile,
 // nicht mehr dem Eintrag - sonst saehe der Haken aus, als stuende er neben der
 // Karte statt darin.
-function baueEintrag(t, mitDatum, faellig) {
+// mitBis: in der Heute-Ansicht steht der Termin als "bis …" dahinter (bisText).
+function baueEintrag(t, mitDatum, faellig, mitBis = false) {
   const zeile = document.createElement("div");
   zeile.className = "kal-todo-zeile" + (faellig ? " faellig" : "");
 
@@ -2976,6 +3013,7 @@ function baueEintrag(t, mitDatum, faellig) {
   if (mitDatum) teile.push(formatDate(t.due));
   if (t.boardId !== aktiveListe && t.boardName) teile.push(t.boardName);
   if (t.bereich) teile.push(t.bereich);
+  if (mitBis) teile.push(bisText(t.due));
   if (teile.length) {
     const meta = document.createElement("span");
     meta.className = "kal-eintrag-meta";

@@ -1249,6 +1249,42 @@ beim erneuten Abhaken entsteht kein zweiter (`naechsteAusgabe()`: offenes
 ToDo derselben Serie — Bereich, Titel, Rhythmus — mit späterem Termin). Eine
 Verknüpfung im Datenmodell gibt es weiter nicht, daher dieser Abgleich.
 
+## Termin heißt „bis“: Vorlauf unter Heute (seit 02.11.2026)
+
+Das Datum an einem ToDo ist eine Frist, kein fester Tag (Hendrik: „tatsächlich
+nur bis Datum x und nicht an Datum x – dafür sind eher die Kalendertermine
+da“). Deshalb steht ein ToDo schon **vor** seinem Termin unter Heute:
+standardmäßig ab 14 Tagen, am einzelnen ToDo über ⏳ im Bearbeiten-Fenster
+änderbar (Erst am Tag, 1/3 Tage, 1/3/4/6/8 Wochen, Sofort). Einen Schalter
+„bis“/„genau am“ gibt es bewusst nicht.
+
+**Daten.** Spalte `todos.vorlauf` (INTEGER, Tage; `migration-vorlauf.sql`,
+rein additiv). NULL = Standard (`VORLAUF_STANDARD` in `app.js`), damit eine
+spätere Änderung des Standards alle nicht eigens eingestellten mitnimmt.
+„Sofort“ ist 3650. Die API prüft nur den Rahmen 0–3650 (`vorlaufOk` in
+`functions/api/todos.js`). Das Mischen zwischen Geräten braucht nichts
+Eigenes, es geht ohnehin Feld für Feld.
+
+**Wo es wirkt — und wo nicht.** Nur in der Ansicht des HEUTIGEN Tages
+(Heute-Spalte, Tagesansicht über den ToDos, Tageskarte am Handy), alles über
+`todosFuerTag()` in `kalender.js`, das auch die Zahl der zugeklappten
+Tagesansicht liefert. Unverändert beim Termintag bleiben: Kalenderraster (Mathe
+stünde sonst in acht Zellen), ein anderer gewählter Tag, Board, Push, Zahl am
+App-Symbol und die WhatsApp-Morgenliste (sonst käme jeden Morgen dieselbe
+Liste). **Wiederkehrende** ToDos haben keinen Vorlauf (`imVorlauf()`): ihre
+nächste Ausgabe stünde sonst gleich nach dem Abhaken wieder da, das ⏳ fehlt
+bei ihnen im Bearbeiten-Fenster.
+
+**Aussehen: eine Liste („Variante A“).** Hendrik hat aus zwei Bildern an
+seinen echten Einträgen gewählt: Fälliges und Kommendes stehen gemischt unter
+„ToDos“, nach Termin sortiert. Rot (Balken, und die Überschrift nur dann) ist
+nur, was auch auf dem Board rot ist (`isUrgent`: heute und morgen). Hinter dem
+Bereich steht `bisText()`: „heute“, „bis morgen“, „bis Di 10.11. · noch 8
+Tage“. Verworfen: getrennte Abschnitte „Heute fällig“ / „Bald fällig“ (eine
+Überschrift mehr in der schmalen Spalte, und „bis morgen“ stand dort ohne Rot,
+obwohl das Board es rot zeigt). Falls die Liste einmal sehr lang wird, ist
+die Trennung der Ausweg.
+
 ## Unterpunkte
 
 Eine Checkliste INNERHALB eines ToDos, eigene Tabelle `unterpunkte`

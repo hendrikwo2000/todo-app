@@ -68,6 +68,25 @@ const WIEDERHOLUNGEN = [
   { id: "jaehrlich",    name: "Jährlich"    },
 ];
 
+// Ab wann ein ToDo vor seinem Termin unter Heute steht (seit 02.11.2026): der
+// Termin heisst "bis", man kann vorher daran arbeiten. Standard 14 Tage
+// (Hendriks Wahl), am ToDo einstellbar - null dort heisst Standard, damit eine
+// spaetere Aenderung des Standards alle nicht eigens eingestellten mitnimmt.
+// "Sofort" ist ein Jahrzehnt. Die erlaubten Werte prueft auch der Server
+// (VORLAUF_MAX in functions/api/todos.js).
+const VORLAUF_STANDARD = 14;
+const VORLAEUFE = [
+  { tage: 0,    name: "Erst am Tag",     kurz: "am Tag"   },
+  { tage: 1,    name: "1 Tag vorher",    kurz: "1 Tag"    },
+  { tage: 3,    name: "3 Tage vorher",   kurz: "3 Tage"   },
+  { tage: 7,    name: "1 Woche vorher",  kurz: "1 Woche"  },
+  { tage: 21,   name: "3 Wochen vorher", kurz: "3 Wochen" },
+  { tage: 28,   name: "4 Wochen vorher", kurz: "4 Wochen" },
+  { tage: 42,   name: "6 Wochen vorher", kurz: "6 Wochen" },
+  { tage: 56,   name: "8 Wochen vorher", kurz: "8 Wochen" },
+  { tage: 3650, name: "Sofort",          kurz: "sofort"   },
+];
+
 // Eingeklappte Erledigt-Bereiche pro Kategorie (in localStorage gemerkt).
 let doneCollapsed = {};
 try { doneCollapsed = JSON.parse(localStorage.getItem("doneCollapsed") || "{}"); }
@@ -325,6 +344,16 @@ function isUrgent(iso) { return !!iso && iso <= addDaysStr(1); }
 // Dringlichkeit ab morgen bleiben fuer den Normalfall unangetastet).
 function nochNichtFaellig(t) {
   return !t.done && !!t.wiederholung && !!t.due && t.due > todayStr();
+}
+
+// Steht das ToDo schon vor seinem Termin unter Heute? (seit 02.11.2026, siehe
+// VORLAEUFE). Nur in der Heute-Ansicht - Raster, Board, Push und Morgenliste
+// bleiben beim Termintag. Wiederkehrende bleiben aussen vor: ihre naechste
+// Ausgabe stuende sonst gleich nach dem Abhaken wieder da (nochNichtFaellig).
+function vorlaufVon(t) { return typeof t.vorlauf === "number" ? t.vorlauf : VORLAUF_STANDARD; }
+function imVorlauf(t) {
+  return !t.done && !t.wiederholung && !!t.due
+    && t.due > todayStr() && t.due <= addDaysStr(vorlaufVon(t));
 }
 
 // Nativen Kalender-Dialog eines Datumsfelds oeffnen. Das Feld selbst bleibt
@@ -2669,6 +2698,10 @@ function saveEdit(id) {
   t.note = noteInput && noteInput.value.trim() ? noteInput.value.trim() : null;
   const wiederholungSelect = document.querySelector(`[data-edit-wiederholung="${id}"]`);
   t.wiederholung = (t.due && wiederholungSelect && wiederholungSelect.value) ? wiederholungSelect.value : null;
+  // Vorlauf nur mit Termin und ohne Wiederholung (siehe imVorlauf); leer = Standard.
+  const vorlaufSelect = document.querySelector(`[data-edit-vorlauf="${id}"]`);
+  t.vorlauf = (t.due && !t.wiederholung && vorlaufSelect && vorlaufSelect.value !== "")
+    ? Number(vorlaufSelect.value) : null;
   // Bereich-Auswahl (nur bei ToDos, die gerade "Ohne Bereich" liegen). Ein
   // Wechsel in einen echten Bereich stellt das ToDo dort frei ein (ohne Thema)
   // und reiht das termin-lose ToDo hinten in den Zielbereich ein.
@@ -3793,6 +3826,17 @@ function updateWiederholungButton(btn, value) {
   btn.title = muster ? `Wiederholt sich ${muster.name.toLowerCase()} – zum Ändern klicken` : "Wiederholung festlegen";
 }
 
+// Dasselbe fuer den Vorlauf: beim Standard nur das Symbol, sonst die Kurzform
+// ("⏳ 4 Wochen"), damit man eine eigene Einstellung ohne Aufklappen sieht.
+function updateVorlaufButton(btn, value) {
+  const v = value === "" ? null : VORLAEUFE.find(x => String(x.tage) === value);
+  btn.classList.toggle("active", !!v);
+  btn.textContent = v ? `⏳ ${v.kurz}` : "⏳";
+  btn.title = v
+    ? `${v.name} unter Heute – zum Ändern klicken`
+    : "Unter Heute ab 2 Wochen vor dem Termin – zum Ändern klicken";
+}
+
 // Checklisten-Abschnitt im Bearbeiten-Dialog: bestehende Punkte (Haekchen,
 // Text, Loeschen). Das Eingabefeld fuer einen NEUEN Punkt sitzt seit der
 // Kompakt-Zeile hinter dem ✓-Knopf in .edit-buttons (siehe renderTodo), nicht
@@ -3929,6 +3973,15 @@ function renderTodo(t) {
             ).join("")}
           </select>
         </span>
+        <span class="date-field">
+          <button type="button" class="add-icon" data-act="vorlauf" hidden>⏳</button>
+          <select class="edit-vorlauf" data-edit-vorlauf="${t.id}" aria-label="Unter Heute ab" tabindex="-1">
+            <option value="">2 Wochen vorher (Standard)</option>
+            ${VORLAEUFE.map(v =>
+              `<option value="${v.tage}"${t.vorlauf === v.tage ? " selected" : ""}>${v.name}</option>`
+            ).join("")}
+          </select>
+        </span>
         ${bereichWahl}${themaWahl}
         ${unterpunktOffen
           ? `<input type="text" class="edit-unterpunkt-neu" data-neuer-unterpunkt="${t.id}" placeholder="＋ Unterpunkt" autocomplete="off">`
@@ -3944,6 +3997,8 @@ function renderTodo(t) {
     const clearBtn  = wrap.querySelector(".date-clear");
     const wiederholungSelect = wrap.querySelector(".edit-wiederholung");
     const wiederholungBtn = wrap.querySelector('[data-act="wiederholung"]');
+    const vorlaufSelect = wrap.querySelector(".edit-vorlauf");
+    const vorlaufBtn = wrap.querySelector('[data-act="vorlauf"]');
     noteInput.value = t.note || "";
     verdrahteNotizHoehe(noteInput);   // NACH dem Setzen des Werts, sonst misst es leer
 
@@ -3951,13 +4006,19 @@ function renderTodo(t) {
       updateDateButton(calBtn, clearBtn, dateInput.value);
       wiederholungBtn.hidden = !dateInput.value;
       updateWiederholungButton(wiederholungBtn, wiederholungSelect.value);
+      // Wiederkehrende stehen erst am Termin unter Heute (imVorlauf) - der
+      // Vorlauf haette dort keine Wirkung, also auch keinen Knopf.
+      vorlaufBtn.hidden = !dateInput.value || !!wiederholungSelect.value;
+      updateVorlaufButton(vorlaufBtn, vorlaufSelect.value);
     };
     syncDateUi();
     calBtn.addEventListener("click", () => openDatePicker(dateInput));
     clearBtn.addEventListener("click", () => { dateInput.value = ""; syncDateUi(); textInput.focus(); });
     dateInput.addEventListener("change", syncDateUi);
     wiederholungBtn.addEventListener("click", () => openDatePicker(wiederholungSelect));
-    wiederholungSelect.addEventListener("change", () => updateWiederholungButton(wiederholungBtn, wiederholungSelect.value));
+    wiederholungSelect.addEventListener("change", syncDateUi);
+    vorlaufBtn.addEventListener("click", () => openDatePicker(vorlaufSelect));
+    vorlaufSelect.addEventListener("change", syncDateUi);
 
     // Bereich und Ueber-Thema nach demselben Muster: Symbol oeffnet die Liste,
     // und sobald etwas gewaehlt ist, steht der Name daneben. Ohne ihn muesste

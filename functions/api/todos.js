@@ -43,6 +43,12 @@ const FARBEN_ERLAUBT = new Set([
 // die Datenbank zu wandern.
 const WIEDERHOLUNG_ERLAUBT = new Set(["taeglich", "woechentlich", "monatlich", "jaehrlich"]);
 
+// Vorlauf in Tagen (seit 02.11.2026, siehe VORLAEUFE in app.js): ab wann ein
+// ToDo vor seinem Termin unter Heute steht. NULL = Standard der App. Geprueft
+// wird nur der Rahmen, nicht die Liste der Auswahl - "Sofort" ist 3650.
+const VORLAUF_MAX = 3650;
+function vorlaufOk(v) { return v == null || (Number.isInteger(v) && v >= 0 && v <= VORLAUF_MAX); }
+
 // Zeilen aus der Datenbank in die Form, die die App kennt. Von GET (alle
 // Listen) und vom 409 im PUT (eine Liste) gemeinsam benutzt, damit beide
 // Antworten garantiert gleich aussehen - die App vergleicht sie feldweise.
@@ -61,6 +67,7 @@ function todoAus(t) {
     createdAt: t.created_at,
     completedAt: t.completed_at,
     wiederholung: t.wiederholung || null,
+    vorlauf: t.vorlauf ?? null,   // null = Standard der App
   };
 }
 function unterpunktAus(u) { return { id: u.id, todoId: u.todo_id, text: u.text, done: u.done === 1 }; }
@@ -80,7 +87,7 @@ async function inhaltDerListe(env, boardId) {
     ).bind(boardId),
     env.DB.prepare(
       `SELECT t.id, t.list_id, t.thema_id, t.text, t.note, t.due, t.done,
-              t.position, t.created_at, t.completed_at, t.wiederholung
+              t.position, t.created_at, t.completed_at, t.wiederholung, t.vorlauf
          FROM todos t
          JOIN lists l ON l.id = t.list_id
         WHERE l.board_id = ?`
@@ -142,7 +149,7 @@ export async function onRequestGet({ request, env }) {
 
     const todos = await env.DB.prepare(
       `SELECT t.id, t.list_id, t.thema_id, t.text, t.note, t.due, t.done,
-              t.position, t.created_at, t.completed_at, t.wiederholung, l.board_id
+              t.position, t.created_at, t.completed_at, t.wiederholung, t.vorlauf, l.board_id
          FROM todos t
          JOIN lists l ON l.id = t.list_id
          JOIN board_members m ON m.board_id = l.board_id
@@ -250,7 +257,8 @@ export async function onRequestPut({ request, env }) {
     return json({ error: "Ungueltiges Ueber-Thema" }, 400);
   }
   if (zustand.todos.some(t => !t || typeof t.id !== "string" || typeof t.text !== "string"
-                     || (t.wiederholung != null && !WIEDERHOLUNG_ERLAUBT.has(t.wiederholung)))) {
+                     || (t.wiederholung != null && !WIEDERHOLUNG_ERLAUBT.has(t.wiederholung))
+                     || !vorlaufOk(t.vorlauf))) {
     return json({ error: "Ungueltiges ToDo" }, 400);
   }
   if (unterpunkte.some(u => !u || typeof u.id !== "string" || typeof u.text !== "string"
@@ -339,8 +347,8 @@ export async function onRequestPut({ request, env }) {
     anweisungen.push(
       env.DB.prepare(
         `INSERT INTO todos
-           (id, list_id, thema_id, text, note, due, done, position, created_at, completed_at, wiederholung)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           (id, list_id, thema_id, text, note, due, done, position, created_at, completed_at, wiederholung, vorlauf)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         t.id,
         t.categoryId,
@@ -352,7 +360,8 @@ export async function onRequestPut({ request, env }) {
         typeof t.order === "number" ? t.order : null,
         t.createdAt || new Date().toISOString(),
         t.completedAt ?? null,
-        t.wiederholung ?? null
+        t.wiederholung ?? null,
+        t.vorlauf ?? null
       )
     );
   }
