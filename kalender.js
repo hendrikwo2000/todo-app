@@ -364,18 +364,14 @@ function todosFuerTag(tage, tag, heute) {
 
 // "heute", "bis morgen", "bis Di 10.11. · noch 8 Tage" - steht in der
 // Heute-Ansicht hinter dem Bereich, weil dort Faelliges und Kommendes
-// gemischt stehen.
-const WOCHENTAG_KURZ = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+// gemischt stehen. Anfang wie an der Karte (terminText in app.js), dazu die Tage.
 function bisText(iso) {
-  if (iso === todayStr()) return "heute";
-  if (iso === addDaysStr(1)) return "bis morgen";
-  const [j, m, d] = iso.split("-").map(Number);
-  const ziel = new Date(j, m - 1, d);
+  if (iso <= addDaysStr(1)) return terminText(iso, false);
   const jetzt = new Date();
   const heute0 = new Date(jetzt.getFullYear(), jetzt.getMonth(), jetzt.getDate());
   // round statt floor: an der Zeitumstellung fehlt oder steht eine Stunde zu viel.
-  const tage = Math.round((ziel - heute0) / 86400000);
-  return `bis ${WOCHENTAG_KURZ[ziel.getDay()]} ${formatDateShort(iso)} · noch ${tage} Tage`;
+  const tage = Math.round((isoAlsDate(iso) - heute0) / 86400000);
+  return `${terminText(iso, false)} · noch ${tage} Tage`;
 }
 
 function isoTag(jahr, monat, tag) {

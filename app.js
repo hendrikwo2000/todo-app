@@ -236,6 +236,32 @@ function dueInfo(iso) {
   return { cls: "", badge: "" };
 }
 
+// Datum an der Karte (seit 02.11.2026): der Termin heisst "bis" (siehe
+// VORLAEUFE), also "bis Di 10.11." statt "10.11.2026" - der Wochentag zum
+// Einordnen, das Jahr nur, wenn es nicht dieses ist (wie in der
+// Zeiterfassung). Hendriks Wahl aus zwei Bildern ("Vorschlag A"); "noch X
+// Tage" steht bewusst nur unter Heute (bisText in kalender.js), das Board
+// bleibt ruhig. Erledigte tragen nur das Datum, die Frist ist dann egal.
+const WOCHENTAG_KURZ = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const DATUM_LANG = new Intl.DateTimeFormat("de-DE",
+  { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+function isoAlsDate(iso) {
+  const [j, m, d] = iso.split("-").map(Number);
+  return new Date(j, m - 1, d);
+}
+function datumOhneJahr(iso) {
+  return iso.slice(0, 4) === todayStr().slice(0, 4) ? formatDateShort(iso) : formatDate(iso);
+}
+function tagKurz(iso) { return `${WOCHENTAG_KURZ[isoAlsDate(iso).getDay()]} ${datumOhneJahr(iso)}`; }
+function terminText(iso, erledigt) {
+  if (erledigt) return datumOhneJahr(iso);
+  const heute = todayStr();
+  if (iso < heute) return `überfällig seit ${tagKurz(iso)}`;
+  if (iso === heute) return "heute";
+  if (iso === addDaysStr(1)) return "bis morgen";
+  return `bis ${tagKurz(iso)}`;
+}
+
 // ---------- App-Icon-Badge (installierte PWA) ----------
 // Zaehlt UEBER ALLE Listen (nicht nur die aktive): faellige/ueberfaellige,
 // nicht erledigte ToDos. Der Push im Hintergrund (siehe sw.js) setzt dieselbe
@@ -3941,8 +3967,8 @@ function renderTodo(t) {
     const info = dueInfo(t.due);
     const due = document.createElement("span");
     due.className = "due" + (!t.done && info && info.cls ? " " + info.cls : "");
-    due.textContent = `📅 ${formatDate(t.due)}`;
-    if (!t.done && info && info.badge) due.title = info.badge;
+    due.textContent = `📅 ${terminText(t.due, t.done)}`;
+    due.title = DATUM_LANG.format(isoAlsDate(t.due));
     main.appendChild(due);
   }
 

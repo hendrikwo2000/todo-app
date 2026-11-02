@@ -1230,6 +1230,14 @@ Tage“. Verworfen: getrennte Abschnitte „Heute fällig“ / „Bald fällig�
 obwohl das Board es rot zeigt). Falls die Liste einmal sehr lang wird, ist
 die Trennung der Ausweg.
 
+**Auch an der Karte steht „bis“ (seit 02.11.2026, „Vorschlag A“).** Statt
+„📅 10.11.2026“: „📅 heute“, „📅 bis morgen“, „📅 bis Di 10.11.“, „📅 überfällig
+seit Mi 28.10.“, das Jahr nur, wenn es nicht dieses ist (`terminText()` in
+`app.js`, `bisText()` baut darauf auf). Erledigte nur „📅 10.11.“. Beim
+Drüberfahren das ausgeschriebene Datum (`DATUM_LANG`) statt wie vorher nur
+„Heute“/„Morgen“. Verworfen: „noch X Tage“ auch an der Karte (B) - das steht
+unter Heute, das Board bleibt ruhig. Farben und Ampel-Balken unverändert.
+
 ## Unterpunkte
 
 Eine Checkliste INNERHALB eines ToDos, eigene Tabelle `unterpunkte`
