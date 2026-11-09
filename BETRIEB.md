@@ -2035,6 +2035,21 @@ seinen echten Einträgen; die Alternativen „Ohne Bereich“ als Streifen oben 
   verzögert (nach rund 1,5 s); `pruefeAuslegung()` direkt aufrufen, wenn nichts
   passiert. Das Ziehen ist nur mit nachgebauten Drag-Ereignissen geprüft, nicht
   mit echter Maus.
+- **iPhone sprang nach oben (behoben 09.11.2026).** `render()` hängte die
+  Bereiche zuerst lose ins Board, und `ordneBereiche()` las gleich darauf
+  `board.clientWidth`. Der Browser rechnet dafür die Seite durch, und lose
+  standen die Bereiche **nebeneinander** (`.board` ist eine Flex-Zeile): Die
+  Seite war kurz 1400 statt 2400 px hoch, die Scrollposition wurde darauf
+  gekappt. Chrome holt sie danach zurück, Safari (iPhone, Homescreen-App) nicht.
+  Jedes Neuzeichnen sprang dort nach oben: Bearbeiten öffnen, OK/Abbrechen,
+  Abhaken, Bereich antippen. Seitdem kommen die Bereiche zuerst in einen
+  vorläufigen `.board-spalte`-Streifen, untereinander ist die Seite nie
+  niedriger als danach. **Regel:** Zwischen `board.innerHTML = ""` und dem
+  fertigen Board nichts messen, solange die Seite niedriger ist als vorher.
+  Prüfen lässt sich das am Rechner trotzdem: Mitten in `render()` steht
+  `window.scrollY` kurz auf dem gekappten Wert (gemessen über eingehängte
+  Getter für `clientWidth` & Co.), am Ende aber wieder richtig. Deshalb nach
+  dem gekappten Zwischenwert suchen, nicht nach dem Endwert.
 
 **Bereichsfarben: zwölf zur Wahl (18.10.2026).** Zu Blau, Türkis, Grün, Lila,
 Pink und Grau kamen Himmelblau, Limette, Braun, Magenta, Indigo und Anthrazit.

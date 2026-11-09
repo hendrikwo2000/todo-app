@@ -3078,7 +3078,18 @@ function render() {
   const spalten = state.categories.slice()
     .sort((a, b) => (istOhneBereich(a.id) ? 0 : 1) - (istOhneBereich(b.id) ? 0 : 1));
   bereichsReihenfolge = spalten.map(cat => cat.id);
-  spalten.forEach(cat => board.appendChild(renderColumn(cat)));
+  // Erst in EINEN vorlaeufigen Streifen, nicht lose ins Board: ordneBereiche
+  // misst gleich die Boardbreite, und dafuer rechnet der Browser die Seite
+  // einmal komplett durch. Lose standen die Bereiche in dem Moment NEBENeinander
+  // (.board ist eine Flex-Zeile), die Seite war kurz viel niedriger, und der
+  // Browser kappte die Scrollposition darauf. Chrome holt sie danach zurueck,
+  // Safari auf dem iPhone nicht - dort sprang jedes Neuzeichnen (Bearbeiten,
+  // OK, Abhaken, Bereich antippen) nach oben. Untereinander im Streifen ist die
+  // Seite mindestens so hoch wie danach, gekappt wird nichts.
+  const vorlaeufig = document.createElement("div");
+  vorlaeufig.className = "board-spalte";
+  board.appendChild(vorlaeufig);
+  spalten.forEach(cat => vorlaeufig.appendChild(renderColumn(cat)));
   ordneBereiche();   // vor dem Fokussieren: Umhaengen kostet den Fokus
 
   // Eingabefeld der gerade offenen Stelle fokussieren (frei oder in einem Thema).
