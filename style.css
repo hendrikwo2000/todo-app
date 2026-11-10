@@ -3810,7 +3810,7 @@ button.zt-knoten { cursor: pointer; }
 /* Ein langer Name wird abgeschnitten (das erste <span>) und zieht die Karte
    nicht auseinander, Haken und Mengenfeld bleiben an ihrer Stelle. Einen Stift
    gibt es hier seit 19.10.2026 nicht mehr; bearbeitet wird seit 10.11.2026 ueber
-   den Namen (Kalender, Stift in der Pille). */
+   den Namen (Verlauf, Stift neben dem Namen dort). */
 .fok-gew-name {
   display: flex;
   align-items: center;
@@ -3968,9 +3968,9 @@ button.zt-knoten { cursor: pointer; }
   }
 }
 
-/* ---------- Pillen (Gewohnheit waehlen, Zeitraum) ---------- */
-/* Quer scrollbar statt umbrechend, damit die Hoehe nicht an der Zahl der
-   Gewohnheiten haengt. */
+/* ---------- Pillen (Zeitraum der Statistik) ---------- */
+/* Quer scrollbar statt umbrechend. Bis 10.11.2026 waehlten Pillen auch die
+   Gewohnheit im Verlauf - dort stehen jetzt alle untereinander. */
 .gw-pillen { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; flex: none; }
 .gw-pillen button {
   flex: 0 0 auto;
@@ -3986,8 +3986,8 @@ button.zt-knoten { cursor: pointer; }
   border-color: var(--accent); background: var(--accent-soft); color: var(--accent);
 }
 
-/* Der Stift an den Zeilen der Verwalten-Liste. Im Verlauf sitzt der Stift in der
-   gewaehlten Pille, siehe .gw-pille-gewaehlt unten. */
+/* Der Stift an den Zeilen der Verwalten-Liste und im Kopf jedes Kalenders im
+   Verlauf (bis 10.11.2026 sass er dort in der gewaehlten Pille). */
 .gw-stift {
   flex: none;
   display: inline-flex; align-items: center; justify-content: center;
@@ -4004,44 +4004,38 @@ button.zt-knoten { cursor: pointer; }
   .gw-stift:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 }
 
-/* Die gewaehlte Pille mit dem Stift darin: EINE Pille, in der zwei Knoepfe sitzen,
-   getrennt durch einen feinen Strich. Die Regeln stehen mit ".gw-pillen" davor,
-   weil ".gw-pillen button" sonst jedem der beiden Knoepfe wieder einen eigenen
-   Rahmen und Hintergrund gaebe; sie muessen NACH den Pillen-Regeln stehen. */
-.gw-pillen .gw-pille-gewaehlt {
-  flex: 0 0 auto;
-  display: inline-flex;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  background: var(--accent-soft);
-  overflow: hidden;
-}
-.gw-pillen .gw-pille-gewaehlt button {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--accent);
-}
-.gw-pillen .gw-pille-gewaehlt .gw-pille-stift {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 13px 0 11px;
-}
-.gw-pillen .gw-pille-gewaehlt .gw-pille-stift::before {
-  content: "";
-  position: absolute;
-  left: 0; top: 8px; bottom: 8px;
-  width: 1px;
-  background: var(--accent);
-  opacity: .35;
-}
-@media (hover: hover) {
-  .gw-pillen .gw-pille-gewaehlt button:hover { color: var(--text); }
-}
-
 /* ---------- Verlauf: Monatskalender ---------- */
 .gw-kal-kopf { display: flex; align-items: center; justify-content: center; gap: 16px; }
+/* Der Monat gilt fuer alle Kalender darunter und bleibt beim Scrollen oben
+   stehen (seit 10.11.2026). top gleicht das Polster von .gw-blaettern aus, der
+   Hintergrund ist der des Kastens - sonst schienen die Tage durch. */
+#gewVerlauf .gw-kal-kopf {
+  position: sticky;
+  top: -14px;
+  z-index: 2;
+  margin: -14px -14px 0;
+  padding: 10px 14px;
+  background: var(--row);
+}
+@media (max-width: 560px) {
+  #gewVerlauf .gw-kal-kopf { top: -12px; margin: -12px -12px 0; padding: 8px 12px; }
+}
+
+/* Alle Gewohnheiten untereinander, je ein Kalender mit Kopf (Name, Flamme,
+   Stift). Getrennt durch eine Linie, damit klar ist, wo der naechste beginnt. */
+.gw-kal-liste { display: flex; flex-direction: column; }
+.gw-kal-block { display: flex; flex-direction: column; gap: 6px; padding: 12px 0 16px; }
+.gw-kal-block + .gw-kal-block { border-top: 1px solid var(--line); }
+.gw-kal-block:first-child { padding-top: 4px; }
+.gw-kal-block-kopf { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.gw-kal-block-name {
+  flex: 0 1 auto; min-width: 0;
+  font-size: 15px; font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gw-kal-block-flamme { flex: none; font-size: 12px; font-weight: 600; color: var(--orange); }
+/* Der Stift rechts aussen, wie in der Verwalten-Liste. */
+.gw-kal-block-kopf .gw-stift { margin-left: auto; }
 .gw-kal-monat { font-size: 15px; font-weight: 700; min-width: 150px; text-align: center; }
 .gw-pfeil {
   width: 44px; height: 44px;
@@ -4069,8 +4063,11 @@ button.zt-knoten { cursor: pointer; }
   font-size: 11px; font-weight: 600; color: var(--muted);
   text-align: center; padding-bottom: 2px;
 }
+/* Feste Hoehe statt quadratisch (seit 10.11.2026): mit mehreren Kalendern
+   untereinander waere am PC jeder ueber 500 px hoch, am Handy ueber 300. 38 px
+   reichen dem Finger und fassen Tag plus "3/8" bei Mengen. */
 .gw-zelle {
-  aspect-ratio: 1;
+  height: 38px;
   min-width: 0;
   border: 0; border-radius: 10px;
   padding: 0;

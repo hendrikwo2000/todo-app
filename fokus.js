@@ -204,10 +204,10 @@ function zeichneKarte(g) {
   const karte = document.createElement("div");
   karte.className = `fok-gew ${g.zustand}` + (g.typ === "menge" ? " mit-menge" : "");
 
-  // Name und Flamme sind zusammen EIN Knopf: ein Tipp oeffnet den Kalender
-  // genau dieser Gewohnheit (Fenster "Gewohnheiten", Reiter Verlauf). Dort
-  // traegt ein Tipp auf einen Tag nach, und der Stift in der Pille bearbeitet
-  // sie. Hendrik am 10.11.2026: ueber das Zahnrad waren es fuer einen
+  // Name und Flamme sind zusammen EIN Knopf: ein Tipp oeffnet den Verlauf
+  // (Fenster "Gewohnheiten") und springt dort zum Kalender genau dieser
+  // Gewohnheit. Ein Tipp auf einen Tag traegt nach, der Stift neben ihrem Namen
+  // bearbeitet sie. Hendrik am 10.11.2026: ueber das Zahnrad waren es fuer einen
   // nachgetragenen Tag sieben Tipps, fuers Bearbeiten fuenf. Das kleine ›
   // verraet, dass der Name etwas tut - einen Stift an jeder Karte wollte er im
   // Oktober nicht mehr. Die ganze linke Flaeche statt nur des Namens, damit der

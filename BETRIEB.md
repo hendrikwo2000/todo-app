@@ -488,12 +488,12 @@ selben Tag zurückgenommen. Falls das Thema wiederkommt: dort steht, wie
 `oeffneEinstellungenBei`, das lazy Zeichnen der Abschnitte und die
 Escape-/Zurück-Behandlung gelöst waren.
 
-**Der Stift im Verlauf** sitzt in der gewählten Pille (`.gw-pille-gewaehlt`, ein
-feiner Strich trennt Name und Stift) und ist ein gezeichnetes Symbol statt des
-Schriftzeichens ✎, das zwischen den Pillen klein und fremd wirkte (Hendrik am
-18.10.2026). Dasselbe Symbol (`GEW_STIFT_SVG`) tragen die Zeilen der
-Verwalten-Liste. Die Karten der Gewohnheiten (`fokus.js`) haben weiter das
-Schriftzeichen.
+**Der Stift im Verlauf** steht seit 10.11.2026 rechts im Kopf jedes Kalenders
+(`gewStiftKnopf`, dieselbe Klasse `.gw-stift` wie in der Verwalten-Liste). Davor
+sass er in der gewählten Pille. Er ist ein gezeichnetes Symbol (`GEW_STIFT_SVG`)
+statt des Schriftzeichens ✎, das zwischen den Pillen klein und fremd wirkte
+(Hendrik am 18.10.2026). Die Karten der Gewohnheiten (`fokus.js`) haben keinen
+Stift; dort öffnet ein Tipp auf den Namen den Verlauf.
 
 **Das Zahnrad gibt es zweimal.** Einmal in der Kopfzeile der App
 (`#einstellungenBtn`), einmal im Kalender (`.kal-ansicht-zeile`) — am Handy
@@ -3020,10 +3020,8 @@ Speichern), Bearbeiten fünf. Die Einstellungen selbst gefallen ihm, sie bleiben
   abgeschafft, darum kein sichtbarer Knopf mehr pro Karte. Innen stehen nur
   `<span>`s (`.fok-gew-name`, `.fok-gew-zeile`): ein `<div>` darf nicht in einen
   Knopf. Gilt an beiden Orten der Liste, Kachel „heute“ und Heute-Spalte.
-- **Bearbeiten** läuft danach über den Stift in der gewählten Pille, also Name ›
-  Stift › Speichern. Weil das Fenster jetzt bei irgendeiner Gewohnheit aufgehen
-  kann, schiebt `gewZeichneKalWahl` die gewählte Pille waagerecht ins Bild; sonst
-  läge sie samt Stift bei der vierten Gewohnheit rechts außerhalb der Reihe.
+- **Bearbeiten** läuft danach über den Stift neben ihrem Namen im Verlauf, also
+  Name › Stift › Speichern.
 - **Tipp auf einen Tag im Kalender** schaltet bei Abhak-Gewohnheiten (`typ`
   ungleich `menge`) direkt um, offen ↔ erledigt, ohne den Dialog „Tag
   nachtragen“ (`gewSchalteTag` in `gewohnheiten.js`). Danach steht „Rückgängig“
@@ -3037,8 +3035,34 @@ Speichern), Bearbeiten fünf. Die Einstellungen selbst gefallen ihm, sie bleiben
   Eintrag“.
 
 Der Weg über ⚙️ › Gewohnheiten bleibt bestehen. Dort hin muss man weiter für
-Anlegen, Reihenfolge, Archiv und für Gewohnheiten, die heute nicht in der Liste
-stehen. Im Fenster kommt man an die aber auch über die Pillen.
+Anlegen, Reihenfolge und Archiv.
+
+### Verlauf: alle Gewohnheiten untereinander (seit 10.11.2026)
+
+Gleich nach den kurzen Wegen, Hendrik: „jetzt noch, dass alle Gewohnheiten auf
+einmal zu sehen sind, aktuell oben umschalten finde ich nicht gut". Die Pillen
+über dem Kalender sind weg. Gewählt unter zwei Skizzen: **Kalender untereinander**
+(gegen eine Wochen-Tabelle mit Gewohnheiten als Zeilen und sieben Tagen als
+Spalten).
+
+- `gewZeichneVerlauf` baut je aktiver Gewohnheit einen Block (`gewZeichneBlock`,
+  `.gw-kal-block`): Kopf mit Name, Flamme und Stift, darunter das Raster. Die
+  Reihenfolge ist die aus den Einstellungen. Alle Blöcke stehen in `#gewKalListe`.
+- **Ein Monat für alle.** `gewVerlauf.monat` gilt für jeden Kalender; Pfeile und
+  Wischen (die Gesten horchen auf der ganzen Liste) blättern alle zugleich. Der
+  Monatskopf klebt beim Scrollen oben (`position: sticky`, `top` gleicht das
+  Polster von `.gw-blaettern` aus, Hintergrund `--row`, sonst schienen die Tage
+  durch).
+- **Zellen 38 px hoch statt quadratisch.** Quadratisch wäre jeder Kalender am PC
+  über 500 px hoch geworden, am Handy über 300.
+- **Sprung zur Gewohnheit:** Der Tipp auf einen Namen unter „heute“ übergibt ihre
+  ID (`gewFensterOeffnen("verlauf", id)` → `gewVerlauf.springeZu`), und
+  `gewSpringeZuBlock` scrollt ihren Kalender knapp unter den Monatskopf. Das Ziel
+  wird nach dem Öffnen gelöscht, damit das Neuzeichnen nach einem Haken nicht
+  wegspringt. `gewVerlauf.gewohnheitId` gibt es nicht mehr.
+- **Legende und Hinweis** fassen alle Kalender zusammen: „teilweise“, sobald es
+  eine Mindestens-Menge gibt, „überschritten“ bei einer Obergrenze, „nicht
+  geplant“, wenn irgendein Kalender so einen Tag im Monat hat.
 
 ## Zeiterfassung (seit 18.10.2026)
 

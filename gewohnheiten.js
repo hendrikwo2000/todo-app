@@ -37,13 +37,14 @@ const gewAnsichten = {
 // Die Fokuszeit war bis 18.10.2026 der dritte Reiter hier, dann kurz ein
 // eigenes Fenster; seitdem gibt es stattdessen die Statistik der Zeiterfassung
 // (zeiterfassung.js).
-const gewKalRaster = document.getElementById("gewKalRaster");
+// Die Kalender aller Gewohnheiten, untereinander (seit 10.11.2026).
+const gewKalListe = document.getElementById("gewKalListe");
 
 let gewReiter = "verlauf";
-// Welche Gewohnheit und welcher Monat im Verlauf zu sehen sind. Die Gewohnheit
-// faellt beim Zeichnen auf die erste aktive zurueck, wenn sie leer ist oder
-// ins Archiv zeigt.
-const gewVerlauf = { gewohnheitId: null, monat: "" };
+// Welcher Monat im Verlauf zu sehen ist (gilt fuer alle Kalender), und zu
+// welcher Gewohnheit das Fenster beim Oeffnen springen soll (Tipp auf ihren
+// Namen unter "heute"; null = oben bleiben).
+const gewVerlauf = { monat: "", springeZu: null };
 // Zeitraum der Statistik, in Tagen (7/30/90).
 let gewStatTage = 30;
 // Laedt der Bestand gerade? Dann steht "Lädt …" statt eines leeren Kalenders.
@@ -71,7 +72,7 @@ async function gewFensterOeffnen(reiter = "verlauf", gewohnheitId = null) {
   // Aus den Einstellungen heraus: die schliessen, sonst laegen zwei
   // Vollbilder uebereinander und Escape muesste zweimal.
   if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
-  if (gewohnheitId) gewVerlauf.gewohnheitId = gewohnheitId;
+  gewVerlauf.springeZu = gewohnheitId;
   // Jedes Oeffnen beginnt beim aktuellen Monat.
   gewVerlauf.monat = "";
   gewFenster.hidden = false;
@@ -84,6 +85,8 @@ async function gewFensterOeffnen(reiter = "verlauf", gewohnheitId = null) {
   gewLadeFehler = r.ok ? "" : r.fehler;
   if (r.offline) snackInfo("Offline — letzter bekannter Stand");
   if (gewIstOffen()) gewZeichneAktuell();
+  // Gesprungen wird nur beim Oeffnen, nicht bei jedem spaeteren Neuzeichnen.
+  gewVerlauf.springeZu = null;
 }
 
 function gewFensterSchliessen() {
@@ -124,16 +127,16 @@ function gewOhneBestand(behaelter) {
 /* -------------------------------------------------------------- Stift */
 
 // Derselbe Stift, aber gezeichnet statt als Schriftzeichen: das ✎ sah im Verlauf
-// klein und fremd zwischen den Pillen aus (Hendrik, 18.10.2026). Er sitzt jetzt
-// IN der gewaehlten Pille (siehe gewZeichneKalWahl).
+// klein und fremd aus (Hendrik, 18.10.2026). Er steht seit 10.11.2026 im Kopf
+// jedes Kalenders (gewZeichneBlock), davor sass er in der gewaehlten Pille.
 const GEW_STIFT_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" '
   + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
   + 'aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>'
   + '<path d="m15 5 4 4"/></svg>';
 
-// Der Stift an den Zeilen der Verwalten-Liste, gezeichnet wie der in der Pille
-// im Verlauf (GEW_STIFT_SVG). Die Karten im Streifen (fokus.js) haben weiter das
-// Schriftzeichen ✎ - es ist dieselbe Handlung.
+// Der Stift an den Zeilen der Verwalten-Liste und im Kopf jedes Kalenders im
+// Verlauf. Die Karten im Streifen (fokus.js) haben keinen: dort oeffnet ein Tipp
+// auf den Namen den Verlauf.
 function gewStiftKnopf(g) {
   const k = document.createElement("button");
   k.type = "button";
@@ -145,134 +148,117 @@ function gewStiftKnopf(g) {
   return k;
 }
 
-function gewStiftInPille(g) {
-  const k = document.createElement("button");
-  k.type = "button";
-  k.className = "gw-pille-stift";
-  k.innerHTML = GEW_STIFT_SVG;
-  k.title = "Bearbeiten";
-  k.setAttribute("aria-label", `${g.name} bearbeiten`);
-  k.onclick = () => gewOeffneDialog(g);
-  return k;
-}
-
 /* ------------------------------------------------------------- Verlauf */
-/* Ein Monatskalender pro Gewohnheit, umschaltbar ueber die Pillen darueber.
-   Nachtragen laeuft ueber die Zellen (gewOeffneTag in gewohnheiten-dialoge.js).
-   Eine zweite Blickrichtung ("Nach Tag": ein Tag, alle Gewohnheiten) gab es
-   in der Fokus-App einmal - am 11.08.2026 ausprobiert und verworfen, nicht
-   wieder einbauen. */
+/* Seit 10.11.2026 ALLE Gewohnheiten auf einmal: je ein Monatskalender,
+   untereinander, ein gemeinsamer Monat oben (Pfeile und Wischen blaettern alle
+   zugleich). Bis dahin war es ein Kalender, umschaltbar ueber Pillen - Hendrik:
+   "alle Gewohnheiten auf einmal sehen, oben umschalten finde ich nicht gut".
+   Gewaehlt unter zwei Skizzen, die andere war eine Wochen-Tabelle (Gewohnheiten
+   als Zeilen, sieben Tage als Spalten).
+   Nachtragen laeuft ueber die Zellen: Abhaken schaltet direkt um
+   (gewSchalteTag), Mengen oeffnen gewOeffneTag in gewohnheiten-dialoge.js.
+   Eine Blickrichtung "Nach Tag" (ein Tag, alle Gewohnheiten) gab es in der
+   Fokus-App einmal - am 11.08.2026 ausprobiert und verworfen, nicht wieder
+   einbauen. */
 
 function gewZeichneVerlauf() {
-  const wahl = document.getElementById("gewKalWahl");
   const monatText = document.getElementById("gewKalMonat");
-  if (gewOhneBestand(gewKalRaster)) {
-    wahl.replaceChildren();
+  const zurueck = document.getElementById("gewKalZurueck");
+  const vor = document.getElementById("gewKalVor");
+  if (gewOhneBestand(gewKalListe)) {
     monatText.textContent = "";
     return;
   }
 
   const aktive = gewBestand.gewohnheiten.filter(g => !g.archiviert);
+  if (!gewVerlauf.monat) gewVerlauf.monat = gewBestand.heute.slice(0, 7);
+
+  const [jahr, monat] = gewVerlauf.monat.split("-").map(Number);
+  monatText.textContent = aktive.length
+    ? new Date(Date.UTC(jahr, monat - 1, 1))
+      .toLocaleDateString("de-DE", { month: "long", year: "numeric", timeZone: "UTC" })
+    : "";
+  zurueck.disabled = !aktive.length || gewVerlauf.monat <= gewBestand.historieAb.slice(0, 7);
+  vor.disabled = !aktive.length || gewVerlauf.monat >= gewBestand.heute.slice(0, 7);
+
   if (!aktive.length) {
-    gewVerlauf.gewohnheitId = null;
-    wahl.replaceChildren();
-    monatText.textContent = "";
-    document.getElementById("gewKalZurueck").disabled = true;
-    document.getElementById("gewKalVor").disabled = true;
-    document.getElementById("gewLegendeGeplant").hidden = true;
-    document.getElementById("gewLegendeUeberschritten").hidden = true;
-    gewKalRaster.replaceChildren(gewHinweis("Noch keine Gewohnheit angelegt – in den Einstellungen unter „Gewohnheiten“ geht es los."));
+    for (const id of ["gewLegendeTeilweise", "gewLegendeUeberschritten", "gewLegendeGeplant"]) {
+      document.getElementById(id).hidden = true;
+    }
+    gewKalListe.replaceChildren(gewHinweis("Noch keine Gewohnheit angelegt – in den Einstellungen unter „Gewohnheiten“ geht es los."));
     return;
   }
 
-  if (!gewVerlauf.gewohnheitId || !aktive.some(g => g.id === gewVerlauf.gewohnheitId)) {
-    gewVerlauf.gewohnheitId = aktive[0].id;
-  }
-  if (!gewVerlauf.monat) gewVerlauf.monat = gewBestand.heute.slice(0, 7);
+  let nichtGeplant = false;
+  const bloecke = aktive.map(g => {
+    const block = gewZeichneBlock(g);
+    if (block.dataset.nichtGeplant) nichtGeplant = true;
+    return block;
+  });
+  gewKalListe.replaceChildren(...bloecke);
 
-  gewZeichneKalWahl();
-  gewZeichneKalender();
+  // Die Legende zeigt, was in IRGENDEINEM der Kalender vorkommen kann:
+  // "teilweise" nur bei Mindestens-Mengen, "ueberschritten" nur bei Obergrenzen
+  // (status() in _lib/tag.js), "nicht geplant" nur, wenn es den Tag im Monat gibt.
+  const mitMenge = aktive.filter(g => g.typ === "menge");
+  document.getElementById("gewLegendeTeilweise").hidden = !mitMenge.some(g => !gewIstObergrenze(g));
+  document.getElementById("gewLegendeUeberschritten").hidden = !mitMenge.some(g => gewIstObergrenze(g));
+  document.getElementById("gewLegendeGeplant").hidden = !nichtGeplant;
+  document.getElementById("gewKalHinweis").textContent = mitMenge.length
+    ? "Ein Tipp auf einen Tag hakt ihn ab oder öffnet ihn wieder, bei Mengen trägst du die Zahl ein. Wischen wechselt den Monat."
+    : "Ein Tipp auf einen Tag hakt ihn ab oder öffnet ihn wieder. Wischen wechselt den Monat.";
+
+  // Aus der Liste unter "heute" geoeffnet: zu genau dieser Gewohnheit springen.
+  // Nur beim Oeffnen (gewFensterOeffnen loescht das Ziel danach) - ein Neuzeichnen
+  // nach dem Abhaken soll nicht wegspringen.
+  if (gewVerlauf.springeZu) gewSpringeZuBlock(gewVerlauf.springeZu);
 }
 
-function gewZeichneKalWahl() {
-  const wahl = document.getElementById("gewKalWahl");
-  wahl.replaceChildren();
-  for (const g of gewBestand.gewohnheiten.filter(x => !x.archiviert)) {
-    const knopf = document.createElement("button");
-    knopf.type = "button";
-    knopf.textContent = g.name;
-    const gewaehlt = g.id === gewVerlauf.gewohnheitId;
-    knopf.setAttribute("aria-selected", String(gewaehlt));
-    knopf.onclick = () => {
-      gewVerlauf.gewohnheitId = g.id;
-      gewZeichneKalWahl();
-      gewZeichneKalender();
-    };
-    // Der Stift gehoert zur gewaehlten Gewohnheit und sitzt in ihrer Pille.
-    // Hier muss er sein: Gewohnheiten, die heute nicht dran sind, tauchen im
-    // Streifen gar nicht auf - ohne diesen Knopf kaeme man an sie nur noch
-    // ueber "Verwalten" in den Einstellungen.
-    if (gewaehlt) {
-      const huelle = document.createElement("span");
-      huelle.className = "gw-pille-gewaehlt";
-      huelle.append(knopf, gewStiftInPille(g));
-      wahl.appendChild(huelle);
-    } else {
-      wahl.appendChild(knopf);
-    }
-  }
-  // Seit der Name unter "heute" das Fenster bei SEINER Gewohnheit oeffnet
-  // (10.11.2026), kann die gewaehlte Pille rechts ausserhalb der Reihe liegen -
-  // und mit ihr der Stift, der zum Bearbeiten fuehrt. Nur waagerecht schieben,
-  // die Seite selbst darf nicht springen.
-  const pille = wahl.querySelector(".gw-pille-gewaehlt");
-  if (pille) {
-    const p = pille.getBoundingClientRect();
-    const r = wahl.getBoundingClientRect();
-    if (p.right > r.right) wahl.scrollLeft += p.right - r.right + 8;
-    else if (p.left < r.left) wahl.scrollLeft -= r.left - p.left + 8;
-  }
-}
+/** Ein Kalender: Kopf mit Name, Flamme und Stift, darunter das Raster. */
+function gewZeichneBlock(g) {
+  const block = document.createElement("section");
+  block.className = "gw-kal-block";
+  block.dataset.id = g.id;
+  block.setAttribute("aria-label", g.name);
 
-function gewZeichneKalender() {
-  const g = gewBestand.gewohnheiten.find(x => x.id === gewVerlauf.gewohnheitId);
-  gewKalRaster.replaceChildren();
-  if (!g) return;
+  const kopf = document.createElement("div");
+  kopf.className = "gw-kal-block-kopf";
+  const name = document.createElement("span");
+  name.className = "gw-kal-block-name";
+  name.textContent = g.name;
+  kopf.appendChild(name);
+  const flamme = gewBestand.straehnen[g.id] || 0;
+  if (flamme > 0) {
+    const f = document.createElement("span");
+    f.className = "gw-kal-block-flamme";
+    f.textContent = `🔥 ${gewMitEinheit(flamme, gewFlammenEinheitVon(g))}`;
+    kopf.appendChild(f);
+  }
+  kopf.appendChild(gewStiftKnopf(g));
+  block.appendChild(kopf);
+
+  const raster = document.createElement("div");
+  raster.className = "gw-kal-raster";
+  for (const name of GEW_WOCHENTAGE) {
+    const kopfzelle = document.createElement("div");
+    kopfzelle.className = "gw-kal-kopfzelle";
+    kopfzelle.textContent = name;
+    raster.appendChild(kopfzelle);
+  }
 
   const heute = gewBestand.heute;
-  document.getElementById("gewKalZurueck").disabled = gewVerlauf.monat <= gewBestand.historieAb.slice(0, 7);
-  document.getElementById("gewKalVor").disabled = gewVerlauf.monat >= heute.slice(0, 7);
-
-  // "teilweise" gibt es nur bei Mindestens-Mengen, "ueberschritten" nur bei
-  // Obergrenzen - Abhaken kennt keins von beiden (status() in _lib/tag.js).
-  const obergrenze = gewIstObergrenze(g);
-  document.getElementById("gewLegendeTeilweise").hidden = !(g.typ === "menge" && !obergrenze);
-  document.getElementById("gewLegendeUeberschritten").hidden = !obergrenze;
-
-  const [jahr, monat] = gewVerlauf.monat.split("-").map(Number);
-  document.getElementById("gewKalMonat").textContent = new Date(Date.UTC(jahr, monat - 1, 1))
-    .toLocaleDateString("de-DE", { month: "long", year: "numeric", timeZone: "UTC" });
-
-  for (const name of GEW_WOCHENTAGE) {
-    const kopf = document.createElement("div");
-    kopf.className = "gw-kal-kopfzelle";
-    kopf.textContent = name;
-    gewKalRaster.appendChild(kopf);
-  }
-
-  let irgendeinNichtGeplant = false;
   for (const d of gewMonatsRaster(gewVerlauf.monat)) {
     if (d.slice(0, 7) !== gewVerlauf.monat) {
       const leer = document.createElement("div");
       leer.className = "gw-zelle leer";
-      gewKalRaster.appendChild(leer);
+      raster.appendChild(leer);
       continue;
     }
 
     const zukunft = d > heute;
     const geplant = gewIstGeplant(g, d);
     const tag = gewTagVon(g.id, d);
-    if (!geplant) irgendeinNichtGeplant = true;
+    if (!geplant) block.dataset.nichtGeplant = "1";
     // Tage, an denen es die Gewohnheit noch gar nicht gab. Sonst saehen sie
     // aus wie verpasste Tage, obwohl die Statistik sie nicht mitzaehlt. Ein
     // nachgetragener Eintrag hebt das auf - der ist echt.
@@ -301,7 +287,7 @@ function gewZeichneKalender() {
       zelle.appendChild(menge);
     }
 
-    zelle.title = `${gewWochentagVon(d)}, ${gewFormatDatum(d)}`
+    zelle.title = `${g.name}, ${gewWochentagVon(d)}, ${gewFormatDatum(d)}`
       + (!geplant ? " — nicht geplant"
         : vorAnlegen ? " — davor gab es die Gewohnheit noch nicht"
         : tag ? `: ${tag.menge}${g.typ === "menge" ? " / " + tag.ziel + (g.einheit ? " " + g.einheit : "") : ""}`
@@ -320,13 +306,24 @@ function gewZeichneKalender() {
       else gewSchalteTag(g, d, zelle);
     };
 
-    gewKalRaster.appendChild(zelle);
+    raster.appendChild(zelle);
   }
+  block.appendChild(raster);
+  return block;
+}
 
-  document.getElementById("gewLegendeGeplant").hidden = !irgendeinNichtGeplant;
-  document.getElementById("gewKalHinweis").textContent = g.typ === "menge"
-    ? "Tippe auf einen Tag, um die Menge nachzutragen. Wischen wechselt den Monat."
-    : "Ein Tipp auf einen Tag hakt ihn ab oder öffnet ihn wieder. Wischen wechselt den Monat.";
+/**
+ * Den Kalender einer Gewohnheit oben in den blaetternden Kasten holen, knapp
+ * unter den klebenden Monatskopf. Von Hand gerechnet statt scrollIntoView:
+ * das schoebe auch Vorfahren mit, und der Monatskopf wuerde ihn verdecken.
+ */
+function gewSpringeZuBlock(id) {
+  const block = [...gewKalListe.children].find(b => b.dataset.id === id);
+  if (!block) return;
+  const kasten = gewFenster.querySelector(".gw-blaettern");
+  const kopf = gewFenster.querySelector(".gw-kal-kopf");
+  const abstand = block.getBoundingClientRect().top - kasten.getBoundingClientRect().top;
+  kasten.scrollTop += abstand - kopf.offsetHeight - 16;
 }
 
 /**
@@ -379,7 +376,7 @@ function gewBlaettereMonat(schritte) {
   if (ziel > gewBestand.heute.slice(0, 7)) return;
   if (ziel < gewBestand.historieAb.slice(0, 7)) return;
   gewVerlauf.monat = ziel;
-  gewZeichneKalender();
+  gewZeichneVerlauf();
 }
 
 document.getElementById("gewKalZurueck").onclick = () => gewBlaettereMonat(-1);
@@ -390,19 +387,20 @@ document.getElementById("gewKalVor").onclick = () => gewBlaettereMonat(1);
  * sitzen weit weg vom Daumen. Ein Wisch endet mit einem click auf der Zelle,
  * unter der der Finger losgelaufen ist; `gewGewischt` merkt das kurz. Und ein
  * senkrechter Wisch ist Scrollen, kein Blaettern: er muss deutlich waagerechter
- * sein als hoch.
+ * sein als hoch. Seit alle Gewohnheiten untereinander stehen, horcht die ganze
+ * Liste: ein Wisch auf irgendeinem Kalender blaettert alle.
  */
 const GEW_WISCH_MINDEST = 50;
 let gewWischStart = null;
 let gewGewischt = false;
 
-gewKalRaster.addEventListener("touchstart", e => {
+gewKalListe.addEventListener("touchstart", e => {
   gewWischStart = e.touches.length === 1
     ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
     : null;
 }, { passive: true });
 
-gewKalRaster.addEventListener("touchend", e => {
+gewKalListe.addEventListener("touchend", e => {
   if (!gewWischStart) return;
   const ende = e.changedTouches[0];
   const dx = ende.clientX - gewWischStart.x;

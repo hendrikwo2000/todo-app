@@ -728,13 +728,15 @@
       <div class="ein-blaettern gw-blaettern">
 
         <section id="gewVerlauf" class="gw-ansicht">
-          <div id="gewKalWahl" class="gw-pillen" aria-label="Gewohnheit"></div>
+          <!-- Seit 10.11.2026 alle Gewohnheiten untereinander, je ein Kalender
+               (gewZeichneVerlauf); der Monat oben gilt fuer alle und bleibt beim
+               Scrollen stehen. Davor: Pillen zum Umschalten, ein Kalender. -->
           <div class="gw-kal-kopf">
             <button type="button" id="gewKalZurueck" class="gw-pfeil" aria-label="Vorheriger Monat">‹</button>
             <div id="gewKalMonat" class="gw-kal-monat"></div>
             <button type="button" id="gewKalVor" class="gw-pfeil" aria-label="Nächster Monat">›</button>
           </div>
-          <div id="gewKalRaster" class="gw-kal-raster"></div>
+          <div id="gewKalListe" class="gw-kal-liste"></div>
           <div class="gw-legende">
             <span><i class="gw-farbe-offen"></i>offen</span>
             <span id="gewLegendeTeilweise"><i class="gw-farbe-teilweise"></i>teilweise</span>
@@ -1029,8 +1031,8 @@
                 <li><b>Flamme:</b> Unter ⚙️ › Gewohnheiten › „Flamme zählt“ wählst du <i>Insgesamt</i> (alle erledigten Tage, ein ausgelassener Tag kostet nichts) oder <i>In Reihe</i> (Tage am Stück, ein ausgelassener Tag setzt sie auf null).</li>
                 <li><b>Ziehen</b> geht am Rechner mit der Maus, auf eine Karte oder eine Zeile unter Heute. Läuft die Uhr schon, bleibt die bisherige Zeit beim alten ToDo, und ab jetzt zählt das neue.</li>
                 <li><b>Zeiterfassung:</b> Ein ToDo auszuwählen geht auch ohne. Hakst du das ToDo ab, stoppt die Uhr. Vergessenes trägst du über „+ Zeit nachtragen“ nach.</li>
-                <li><b>Kalender einer Gewohnheit:</b> Ein Tipp auf einen Tag hakt ihn ab oder öffnet ihn wieder, „Rückgängig“ steht danach unten. Bei Zielmengen trägst du die Zahl ein. Daneben steht der Reiter Statistik.</li>
-                <li>Gewohnheiten, die heute nicht dran sind, erreichst du über die Namen oben im Kalender, oder unter ⚙️ › Gewohnheiten.</li>
+                <li><b>Verlauf:</b> Alle Gewohnheiten stehen untereinander, je mit einem Monatskalender, auch die, die heute nicht dran sind. Ein Tipp auf einen Tag hakt ihn ab oder öffnet ihn wieder, „Rückgängig“ steht danach unten. Bei Zielmengen trägst du die Zahl ein. Daneben steht der Reiter Statistik.</li>
+                <li>Den Verlauf öffnest du auch über ⚙️ › Gewohnheiten › „Verlauf &amp; Statistik“.</li>
                 <li>⏱ und die Gewohnheiten lassen sich unter ⚙️ mit „Anzeige“ ausblenden.</li>
               </ul>
             </details>
