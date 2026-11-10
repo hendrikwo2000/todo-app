@@ -447,8 +447,17 @@ window.fokusOben = function (an, host) {
   if (!war) ladeFokus();
 };
 
-// Ein Tipp auf den Kopf klappt den Abschnitt in der Kachel auf und zu; die Wahl
-// bleibt pro Geraet gemerkt.
+// Ein Tipp auf "Gewohnheiten ›" (Kopf in der Kachel bzw. Ueberschrift in der
+// Heute-Spalte) fuehrt in die Einstellungen: Reiter Gewohnheiten, Liste schon
+// aufgeklappt (Hendrik am 10.11.2026). Klappen tut nur noch der Rest des Kopfes.
+for (const id of ["fokObenEinstellungen", "fokHeuteEinstellungen"]) {
+  document.getElementById(id).addEventListener("click", () => {
+    window.oeffneEinstellungenBei?.("gewohnheiten", "verwalten");
+  });
+}
+
+// Ein Tipp auf den Kopf (ab "heute" bis zum Pfeil) klappt den Abschnitt in der
+// Kachel auf und zu; die Wahl bleibt pro Geraet gemerkt.
 fokObenKopf.addEventListener("click", () => {
   fokObenOffen = !fokObenOffen;
   try { localStorage.setItem(FOK_OBEN_KEY, fokObenOffen ? "1" : "0"); }

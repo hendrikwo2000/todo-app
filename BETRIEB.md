@@ -3064,6 +3064,26 @@ Spalten).
   eine Mindestens-Menge gibt, „überschritten“ bei einer Obergrenze, „nicht
   geplant“, wenn irgendein Kalender so einen Tag im Monat hat.
 
+### „Gewohnheiten ›“ führt in die Einstellungen (seit 10.11.2026)
+
+Dritter Wunsch desselben Tages, Hendrik: „wenn ich auf Gewohnheiten klicke, dass
+ich in den Einstellungen unter Gewohnheiten lande“. Die Überschrift des
+Abschnitts ist jetzt ein Knopf `.fok-titel-knopf` („🔥 Gewohnheiten ›“), am Handy
+im Kopf der Kachel (`#fokObenEinstellungen`), am PC in der Überschrift der
+Heute-Spalte (`#fokHeuteEinstellungen`). Er ruft
+`oeffneEinstellungenBei("gewohnheiten", "verwalten")` (app.js): Einstellungen
+auf, Reiter Gewohnheiten, Abschnitt „Gewohnheiten“ (Liste, Neue Gewohnheit,
+Archiv) schon aufgeklappt, und der Reiter wird oben ins Bild geholt, sonst läge
+die Liste am Handy unter den globalen Zeilen.
+
+**Am Handy klappt der Kopf trotzdem weiter.** Er besteht aus zwei Knöpfen
+nebeneinander in `.fok-oben-kopfzeile`: links das Wort, rechts `#fokObenKopf` ab
+„heute“ über die Bilanz bis zum Pfeil (`flex: 1`, die ganze übrige Breite). Hendriks
+Wahl unter drei Skizzen; verworfen: ein ⚙️ im Kopf und „immer offen, ganzer Kopf
+führt in die Einstellungen“. Die Schrift sitzt deshalb an der Kopfzeile, beide
+Knöpfe erben sie (`font`, `letter-spacing`, `text-transform: inherit` — die
+Browser setzen bei Knöpfen alle drei zurück).
+
 ## Zeiterfassung (seit 18.10.2026)
 
 Der Knopf ⏱ war bis dahin ein 25-Minuten-Countdown ohne Bezug („Fokusminuten

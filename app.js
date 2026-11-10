@@ -1139,6 +1139,27 @@ function oeffneEinstellungen() {
   window.gewEinstellungenZeigen?.();
 }
 
+/**
+ * Die Einstellungen gleich auf einem Reiter oeffnen, mit einem Abschnitt schon
+ * aufgeklappt (data-abschnitt am <details>). Seit 10.11.2026: ein Tipp auf die
+ * Ueberschrift "Gewohnheiten" unter heute landet im Reiter Gewohnheiten bei der
+ * offenen Liste (fokus.js) - Hendrik wollte dort nicht erst Reiter und Abschnitt
+ * suchen. Der Reiter wird ganz nach oben geholt, sonst laege die Liste am Handy
+ * unter den globalen Zeilen ausserhalb des Bildes.
+ */
+function oeffneEinstellungenBei(reiter, abschnitt) {
+  oeffneEinstellungen();
+  zeigeEinReiter(reiter);
+  const det = abschnitt
+    ? document.querySelector(`#einstellungenHaupt details.ein-abschnitt[data-abschnitt="${abschnitt}"]`)
+    : null;
+  if (det) det.open = true;
+  const blaettern = einstellungenPopup.querySelector(".ein-blaettern");
+  const box = einstellungenPopup.querySelector(".ein-reiterbox");
+  blaettern.scrollTop += box.getBoundingClientRect().top - blaettern.getBoundingClientRect().top - 8;
+}
+window.oeffneEinstellungenBei = oeffneEinstellungenBei;
+
 /** Eine Liste aus den Einstellungen heraus zur aktiven machen. */
 function aktiviereListeAusEinstellungen(id) {
   wechsleListe(id);

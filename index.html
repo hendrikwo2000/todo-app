@@ -102,14 +102,22 @@
          zeichneTagOben leert die Kachel bei jedem Zeichnen und reicht den
          Abschnitt danach neu hinein (fokusOben in fokus.js). Am PC stehen die
          Gewohnheiten stattdessen in der Heute-Spalte (#fokHeute). -->
+    <!-- Der Kopf hat seit 10.11.2026 zwei Knoepfe (Hendriks Wahl): das Wort
+         "Gewohnheiten ›" fuehrt in die Einstellungen (Reiter Gewohnheiten, Liste
+         offen), der Rest mit Bilanz und Pfeil klappt auf und zu. -->
     <section id="fokOben" class="fok-oben zu" aria-label="Gewohnheiten heute" hidden>
-      <button type="button" id="fokObenKopf" class="fok-oben-kopf" aria-expanded="false">
-        <span aria-hidden="true">🔥</span>
-        <span>Gewohnheiten</span>
-        <span class="kal-heute-chip">heute</span>
-        <span id="fokObenBilanz" class="fok-oben-bilanz"></span>
-        <span class="fok-oben-pfeil" aria-hidden="true">▾</span>
-      </button>
+      <div class="fok-oben-kopfzeile">
+        <button type="button" id="fokObenEinstellungen" class="fok-titel-knopf" title="Gewohnheiten einstellen">
+          <span aria-hidden="true">🔥</span>
+          <span>Gewohnheiten</span>
+          <span class="fok-titel-pfeil" aria-hidden="true">›</span>
+        </button>
+        <button type="button" id="fokObenKopf" class="fok-oben-kopf" aria-expanded="false" title="Auf- und zuklappen">
+          <span class="kal-heute-chip">heute</span>
+          <span id="fokObenBilanz" class="fok-oben-bilanz"></span>
+          <span class="fok-oben-pfeil" aria-hidden="true">▾</span>
+        </button>
+      </div>
       <div id="fokObenKoerper" class="fok-oben-koerper"></div>
     </section>
 
@@ -178,9 +186,14 @@
     <div id="kalHeuteSpalte" class="kal-liste">
       <div id="kalTagesliste" class="kal-tagblock"></div>
       <section id="fokHeute" class="fok-heute" aria-label="Gewohnheiten heute" hidden>
+        <!-- "Gewohnheiten ›" fuehrt in die Einstellungen, wie am Handy
+             (10.11.2026). -->
         <h3 class="kal-gruppe">
           <span class="kal-gruppe-text">
-            <span class="kal-gruppe-symbol" aria-hidden="true">🔥</span>Gewohnheiten
+            <button type="button" id="fokHeuteEinstellungen" class="fok-titel-knopf" title="Gewohnheiten einstellen">
+              <span class="kal-gruppe-symbol" aria-hidden="true">🔥</span>Gewohnheiten
+              <span class="fok-titel-pfeil" aria-hidden="true">›</span>
+            </button>
             <span class="kal-heute-chip">heute</span>
           </span>
           <span id="fokHeuteBilanz" class="fok-heute-bilanz"></span>
@@ -1020,7 +1033,7 @@
               <div class="hilfe-zeile"><dt>Flamme 🔥</dt><dd>Zählt deine erledigten Tage</dd></div>
               <div class="hilfe-zeile"><dt>Tag nachtragen</dt><dd>Namen antippen, dann den Tag</dd></div>
               <div class="hilfe-zeile"><dt>Ändern</dt><dd>Namen antippen, dann den Stift</dd></div>
-              <div class="hilfe-zeile"><dt>Anlegen</dt><dd>⚙️ › Gewohnheiten</dd></div>
+              <div class="hilfe-zeile"><dt>Anlegen, ordnen</dt><dd>Überschrift „Gewohnheiten ›“ antippen</dd></div>
               <div class="hilfe-zeile"><dt>Zeit messen ⏱</dt><dd>⏱ auf ein ToDo ziehen, oder antippen und wählen</dd></div>
               <div class="hilfe-zeile"><dt>Auswertung</dt><dd>⚙️ › Timer › Statistik</dd></div>
             </dl>
