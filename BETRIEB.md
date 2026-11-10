@@ -2974,7 +2974,9 @@ Auch „Heute" holt nichts mehr nach vorn: der Streifen zeigt immer das Raster.
 ### Was der Fokus-Teil kann — und was nicht
 
 Bei den Gewohnheiten: abhaken (einfach oder mit Menge über −/Zahl/+), Flammen
-sehen. Einen Stift zum Bearbeiten gibt es an der Karte seit 19.10.2026 nicht mehr.
+sehen, und **seit 10.11.2026 ein Tipp auf Name/Flamme**, der den Kalender genau
+dieser Gewohnheit öffnet (siehe „Kurze Wege“ unten). Einen Stift zum Bearbeiten
+gibt es an der Karte seit 19.10.2026 nicht mehr.
 Alles andere steht seit
 Oktober 2026 in den Einstellungen (anlegen, Reihenfolge, Archiv, Zaehlweise) und
 im Fenster "Gewohnheiten" (Verlauf, Statistik). Bis dahin fuehrte ein ↗ in der
@@ -3000,6 +3002,43 @@ Flamme und "x von 3 diese Woche" stimmen erst nach dem Nachliefern wieder.
 Anlegen, Bearbeiten und die Zeiterfassung brauchen Netz - bei der Uhr mit
 Absicht: sie rechnet aus dem Startzeitpunkt des Servers, nachgereicht waere der
 Eintrag gelogen.
+
+### Kurze Wege: Name antippen, Tag antippen (seit 10.11.2026)
+
+Hendrik: „Wenn man eine Gewohnheit ändern möchte, sind das zu viele Klicks.“
+Gemeint waren (gefragt) **Tag nachtragen** und **Gewohnheit bearbeiten**, vor
+allem am Handy. Über das Zahnrad kostete ein nachgetragener Tag sieben Tipps
+(⚙️ › Reiter Gewohnheiten › Verlauf & Statistik › Pille › Tag › Erledigt ›
+Speichern), Bearbeiten fünf. Die Einstellungen selbst gefallen ihm, sie bleiben.
+
+- **Tipp auf die Karte** (`.fok-gew-haupt` in `fokus.js`, seit dem Tag ein
+  `<button>` über Name UND Flammen-Zeile) öffnet das Fenster „Gewohnheiten“ auf
+  dem Verlauf genau dieser Gewohnheit (`gewFensterOeffnen("verlauf", g.id)`). Ein
+  kleines › am Namen verrät es; sonst sieht die Karte aus wie vorher. Hendriks
+  Wahl unter drei Skizzen: gegen ein 📅 an jeder Karte und gegen einen einzigen
+  Knopf im Kopf des Abschnitts. Den Stift an der Karte hatte er im Oktober
+  abgeschafft, darum kein sichtbarer Knopf mehr pro Karte. Innen stehen nur
+  `<span>`s (`.fok-gew-name`, `.fok-gew-zeile`): ein `<div>` darf nicht in einen
+  Knopf. Gilt an beiden Orten der Liste, Kachel „heute“ und Heute-Spalte.
+- **Bearbeiten** läuft danach über den Stift in der gewählten Pille, also Name ›
+  Stift › Speichern. Weil das Fenster jetzt bei irgendeiner Gewohnheit aufgehen
+  kann, schiebt `gewZeichneKalWahl` die gewählte Pille waagerecht ins Bild; sonst
+  läge sie samt Stift bei der vierten Gewohnheit rechts außerhalb der Reihe.
+- **Tipp auf einen Tag im Kalender** schaltet bei Abhak-Gewohnheiten (`typ`
+  ungleich `menge`) direkt um, offen ↔ erledigt, ohne den Dialog „Tag
+  nachtragen“ (`gewSchalteTag` in `gewohnheiten.js`). Danach steht „Rückgängig“
+  in der Leiste, wie beim Abhaken unter „heute“; ist die Flamme durch einen
+  vergangenen Tag gewachsen, steht das mit drin. Ein zweiter Tipp auf denselben
+  Tag, solange der erste noch beim Server ist, wird verschluckt (`.schaltet`,
+  Zelle blass). Mengen behalten den Dialog, weil eine Zahl hinein muss. Der
+  Hinweis unter dem Kalender (`#gewKalHinweis`) richtet sich nach der Art.
+- Ein „offen“ schreibt Menge 0, und `log.js` löscht bei `binaer` dann die Zeile.
+  Das Rückgängig nach einem Abhaken landet deshalb sauber wieder bei „kein
+  Eintrag“.
+
+Der Weg über ⚙️ › Gewohnheiten bleibt bestehen. Dort hin muss man weiter für
+Anlegen, Reihenfolge, Archiv und für Gewohnheiten, die heute nicht in der Liste
+stehen. Im Fenster kommt man an die aber auch über die Pillen.
 
 ## Zeiterfassung (seit 18.10.2026)
 

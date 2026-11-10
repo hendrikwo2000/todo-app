@@ -181,7 +181,7 @@ function gewZeichneVerlauf() {
     document.getElementById("gewKalVor").disabled = true;
     document.getElementById("gewLegendeGeplant").hidden = true;
     document.getElementById("gewLegendeUeberschritten").hidden = true;
-    gewKalRaster.replaceChildren(gewHinweis("Noch keine Gewohnheit angelegt – in den Einstellungen unter „Verwalten“ geht es los."));
+    gewKalRaster.replaceChildren(gewHinweis("Noch keine Gewohnheit angelegt – in den Einstellungen unter „Gewohnheiten“ geht es los."));
     return;
   }
 
@@ -220,6 +220,17 @@ function gewZeichneKalWahl() {
     } else {
       wahl.appendChild(knopf);
     }
+  }
+  // Seit der Name unter "heute" das Fenster bei SEINER Gewohnheit oeffnet
+  // (10.11.2026), kann die gewaehlte Pille rechts ausserhalb der Reihe liegen -
+  // und mit ihr der Stift, der zum Bearbeiten fuehrt. Nur waagerecht schieben,
+  // die Seite selbst darf nicht springen.
+  const pille = wahl.querySelector(".gw-pille-gewaehlt");
+  if (pille) {
+    const p = pille.getBoundingClientRect();
+    const r = wahl.getBoundingClientRect();
+    if (p.right > r.right) wahl.scrollLeft += p.right - r.right + 8;
+    else if (p.left < r.left) wahl.scrollLeft -= r.left - p.left + 8;
   }
 }
 
@@ -300,13 +311,62 @@ function gewZeichneKalender() {
 
     if (zukunft || !geplant) zelle.disabled = true;
     // Nach einer Wischgeste kommt noch ein click auf der Zelle unter dem
-    // Finger - der soll den Tag-Dialog nicht aufreissen.
-    else zelle.onclick = () => { if (!gewGewischt) gewOeffneTag(g, d); };
+    // Finger - der soll weder umschalten noch den Tag-Dialog aufreissen.
+    // Abhaken schaltet direkt um (gewSchalteTag), Mengen brauchen eine Zahl
+    // und behalten den Dialog.
+    else zelle.onclick = () => {
+      if (gewGewischt) return;
+      if (g.typ === "menge") gewOeffneTag(g, d);
+      else gewSchalteTag(g, d, zelle);
+    };
 
     gewKalRaster.appendChild(zelle);
   }
 
   document.getElementById("gewLegendeGeplant").hidden = !irgendeinNichtGeplant;
+  document.getElementById("gewKalHinweis").textContent = g.typ === "menge"
+    ? "Tippe auf einen Tag, um die Menge nachzutragen. Wischen wechselt den Monat."
+    : "Ein Tipp auf einen Tag hakt ihn ab oder öffnet ihn wieder. Wischen wechselt den Monat.";
+}
+
+/**
+ * Abhak-Gewohnheiten: ein Tipp auf einen Tag schaltet ihn direkt um, offen <->
+ * erledigt, ohne den Dialog "Tag nachtragen". Hendrik am 10.11.2026 - vorher
+ * waren es drei Tipps (Tag, Erledigt, Speichern). Gegen einen Fehlgriff steht
+ * "Rueckgaengig" in der Leiste, wie beim Abhaken unter "heute".
+ *
+ * Ein zweiter Tipp auf denselben Tag, solange der erste noch beim Server ist,
+ * wird verschluckt: beide laesen sonst denselben alten Stand und schrieben
+ * dasselbe. Die Zelle wird so lange blass (`.schaltet`); gezeichnet wird sie
+ * danach ohnehin neu (gewMeldeAenderung in gewSchreibeTag).
+ */
+const gewSchaltetGerade = new Set();
+
+async function gewSchalteTag(g, datum, zelle) {
+  const schluessel = `${g.id}|${datum}`;
+  if (gewSchaltetGerade.has(schluessel)) return;
+  gewSchaltetGerade.add(schluessel);
+  zelle?.classList.add("schaltet");
+  try {
+    const tag = gewTagVon(g.id, datum);
+    const vorher = tag && tag.menge >= 1 ? 1 : 0;
+    const neu = vorher ? 0 : 1;
+    const flammeVorher = gewBestand.straehnen[g.id] || 0;
+    const r = await gewSchreibeTag(g, datum, neu);
+    if (!r.ok) { zelle?.classList.remove("schaltet"); return; }
+
+    let text = `${gewFormatDatum(datum).slice(0, 6)} ${neu ? "erledigt" : "wieder offen"}`;
+    // Ohne Netz hat gewSchreibeTag schon "gemerkt" gemeldet - die Leiste hier
+    // ersetzt das, also muss es mit hinein.
+    if (r.offline) text += " – ohne Verbindung gemerkt";
+    else if (neu && datum !== gewBestand.heute && r.straehne > flammeVorher) {
+      // Kurz wie auf der Karte: am Handy passt die Leiste so in eine Zeile.
+      text += ` – 🔥 ${gewMitEinheit(r.straehne, gewFlammenEinheitVon(g))}`;
+    }
+    showUndo(text, () => gewSchreibeTag(g, datum, vorher));
+  } finally {
+    gewSchaltetGerade.delete(schluessel);
+  }
 }
 
 /**

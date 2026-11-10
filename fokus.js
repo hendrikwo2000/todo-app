@@ -204,17 +204,33 @@ function zeichneKarte(g) {
   const karte = document.createElement("div");
   karte.className = `fok-gew ${g.zustand}` + (g.typ === "menge" ? " mit-menge" : "");
 
-  const haupt = document.createElement("div");
+  // Name und Flamme sind zusammen EIN Knopf: ein Tipp oeffnet den Kalender
+  // genau dieser Gewohnheit (Fenster "Gewohnheiten", Reiter Verlauf). Dort
+  // traegt ein Tipp auf einen Tag nach, und der Stift in der Pille bearbeitet
+  // sie. Hendrik am 10.11.2026: ueber das Zahnrad waren es fuer einen
+  // nachgetragenen Tag sieben Tipps, fuers Bearbeiten fuenf. Das kleine ›
+  // verraet, dass der Name etwas tut - einen Stift an jeder Karte wollte er im
+  // Oktober nicht mehr. Die ganze linke Flaeche statt nur des Namens, damit der
+  // Finger sie sicher trifft. Innen nur <span>s: ein <div> darf nicht in einen
+  // <button>.
+  const haupt = document.createElement("button");
+  haupt.type = "button";
   haupt.className = "fok-gew-haupt";
+  haupt.title = "Kalender und Bearbeiten";
+  haupt.onclick = () => window.gewFensterOeffnen?.("verlauf", g.id);
 
-  const name = document.createElement("div");
+  const name = document.createElement("span");
   name.className = "fok-gew-name";
   const nameText = document.createElement("span");
   nameText.textContent = g.name;
-  name.append(nameText);
+  const pfeil = document.createElement("span");
+  pfeil.className = "fok-gew-pfeil";
+  pfeil.setAttribute("aria-hidden", "true");
+  pfeil.textContent = "›";
+  name.append(nameText, pfeil);
   haupt.appendChild(name);
 
-  const zeile = document.createElement("div");
+  const zeile = document.createElement("span");
   zeile.className = "fok-gew-zeile";
 
   if (g.typ === "menge") {

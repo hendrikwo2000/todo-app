@@ -742,7 +742,9 @@
             <span id="gewLegendeUeberschritten" hidden><i class="gw-farbe-ueberschritten"></i>überschritten</span>
             <span id="gewLegendeGeplant" hidden><i class="gw-farbe-nicht-geplant"></i>nicht geplant</span>
           </div>
-          <p class="ein-hinweis gw-mitte">Tippe auf einen Tag, um ihn nachzutragen. Wischen wechselt den Monat.</p>
+          <!-- Text haengt an der Art der Gewohnheit (gewZeichneKalender):
+               Abhaken schaltet per Tipp um, Mengen oeffnen den Dialog. -->
+          <p id="gewKalHinweis" class="ein-hinweis gw-mitte">Tippe auf einen Tag, um ihn nachzutragen. Wischen wechselt den Monat.</p>
         </section>
 
         <section id="gewStatistik" class="gw-ansicht" hidden>
@@ -1014,7 +1016,9 @@
             <dl class="hilfe-zeilen">
               <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kreis rechts antippen</dd></div>
               <div class="hilfe-zeile"><dt>Flamme 🔥</dt><dd>Zählt deine erledigten Tage</dd></div>
-              <div class="hilfe-zeile"><dt>Anlegen, ändern</dt><dd>⚙️ › Gewohnheiten</dd></div>
+              <div class="hilfe-zeile"><dt>Tag nachtragen</dt><dd>Namen antippen, dann den Tag</dd></div>
+              <div class="hilfe-zeile"><dt>Ändern</dt><dd>Namen antippen, dann den Stift</dd></div>
+              <div class="hilfe-zeile"><dt>Anlegen</dt><dd>⚙️ › Gewohnheiten</dd></div>
               <div class="hilfe-zeile"><dt>Zeit messen ⏱</dt><dd>⏱ auf ein ToDo ziehen, oder antippen und wählen</dd></div>
               <div class="hilfe-zeile"><dt>Auswertung</dt><dd>⚙️ › Timer › Statistik</dd></div>
             </dl>
@@ -1025,7 +1029,8 @@
                 <li><b>Flamme:</b> Unter ⚙️ › Gewohnheiten › „Flamme zählt“ wählst du <i>Insgesamt</i> (alle erledigten Tage, ein ausgelassener Tag kostet nichts) oder <i>In Reihe</i> (Tage am Stück, ein ausgelassener Tag setzt sie auf null).</li>
                 <li><b>Ziehen</b> geht am Rechner mit der Maus, auf eine Karte oder eine Zeile unter Heute. Läuft die Uhr schon, bleibt die bisherige Zeit beim alten ToDo, und ab jetzt zählt das neue.</li>
                 <li><b>Zeiterfassung:</b> Ein ToDo auszuwählen geht auch ohne. Hakst du das ToDo ab, stoppt die Uhr. Vergessenes trägst du über „+ Zeit nachtragen“ nach.</li>
-                <li>Verlauf und Statistik der Gewohnheiten stehen unter ⚙️ › Gewohnheiten gleich darunter.</li>
+                <li><b>Kalender einer Gewohnheit:</b> Ein Tipp auf einen Tag hakt ihn ab oder öffnet ihn wieder, „Rückgängig“ steht danach unten. Bei Zielmengen trägst du die Zahl ein. Daneben steht der Reiter Statistik.</li>
+                <li>Gewohnheiten, die heute nicht dran sind, erreichst du über die Namen oben im Kalender, oder unter ⚙️ › Gewohnheiten.</li>
                 <li>⏱ und die Gewohnheiten lassen sich unter ⚙️ mit „Anzeige“ ausblenden.</li>
               </ul>
             </details>

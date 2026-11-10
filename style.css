@@ -1265,6 +1265,13 @@ input[type="date"]:focus {
   gap: 16px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, .28);
   font-size: 14px;
+  /* Ohne feste Breite schrumpft ein Kasten mit left: 50% auf die rechte
+     Bildschirmhaelfte - am Handy brach "03.11. erledigt" samt Rueckgaengig in
+     fuenf Zeilen um (10.11.2026). So ist er so breit wie sein Text, hoechstens
+     der Bildschirm abzueglich Rand. */
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
   opacity: 0;
   pointer-events: none;
   transition: opacity .18s, transform .18s;
@@ -3781,23 +3788,43 @@ button.zt-knoten { cursor: pointer; }
    nichts, sieht deshalb aus wie unbeschrieben - und nicht wie offen. */
 .fok-gew.ruht { opacity: .72; }
 
-.fok-gew-haupt { flex: 1 1 auto; min-width: 0; }
-/* Ein langer Name wird abgeschnitten (das <span>) und zieht die Karte nicht
-   auseinander, Haken und Mengenfeld bleiben an ihrer Stelle. Einen Stift gibt es
-   hier seit 19.10.2026 nicht mehr (Bearbeiten geht in den Einstellungen). */
+/* Seit 10.11.2026 ein Knopf (fokus.js): ein Tipp oeffnet den Kalender dieser
+   Gewohnheit. Rahmen, Polster und Schrift des Browsers deshalb weg - die Karte
+   sieht aus wie vorher, nur mit dem › am Namen. */
+.fok-gew-haupt {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .fok-gew-haupt:hover .fok-gew-name { color: var(--accent); }
+}
+/* Ein langer Name wird abgeschnitten (das erste <span>) und zieht die Karte
+   nicht auseinander, Haken und Mengenfeld bleiben an ihrer Stelle. Einen Stift
+   gibt es hier seit 19.10.2026 nicht mehr; bearbeitet wird seit 10.11.2026 ueber
+   den Namen (Kalender, Stift in der Pille). */
 .fok-gew-name {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
   font-size: 14px;
 }
-.fok-gew-name > span {
+.fok-gew-name > span:first-child {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.fok-gew-pfeil { flex: none; color: var(--muted); font-size: 16px; line-height: 1; }
 /* Offline abgehakt, noch nicht beim Server (gewohnheiten-daten.js). */
 .fok-wartet { white-space: nowrap; color: var(--orange); font-weight: 600; }
 .fok-gew-zeile {
@@ -4073,6 +4100,8 @@ button.zt-knoten { cursor: pointer; }
    Nachtragen weiter zurueckreichen darf als das Anlegen. */
 .gw-zelle.nicht-geplant { background: transparent; color: var(--muted); opacity: .4; cursor: default; }
 .gw-zelle.vor-anlegen { background: transparent; color: var(--muted); opacity: .45; }
+/* Abhaken per Tipp ist unterwegs zum Server (gewSchalteTag). */
+.gw-zelle.schaltet { opacity: .55; }
 
 .gw-legende {
   display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
