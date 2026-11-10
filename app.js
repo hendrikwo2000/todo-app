@@ -1140,12 +1140,12 @@ function oeffneEinstellungen() {
 }
 
 /**
- * Die Einstellungen gleich auf einem Reiter oeffnen, mit einem Abschnitt schon
- * aufgeklappt (data-abschnitt am <details>). Seit 10.11.2026: ein Tipp auf die
- * Ueberschrift "Gewohnheiten" unter heute landet im Reiter Gewohnheiten bei der
- * offenen Liste (fokus.js) - Hendrik wollte dort nicht erst Reiter und Abschnitt
- * suchen. Der Reiter wird ganz nach oben geholt, sonst laege die Liste am Handy
- * unter den globalen Zeilen ausserhalb des Bildes.
+ * Die Einstellungen gleich auf einem Reiter oeffnen, auf Wunsch mit einem
+ * Abschnitt schon aufgeklappt (data-abschnitt am <details>). Seit 10.11.2026:
+ * ein Tipp auf die Ueberschrift "Gewohnheiten" unter heute landet im Reiter
+ * Gewohnheiten (fokus.js), alle Abschnitte zu - die aufgeklappte Liste wollte
+ * Hendrik nach dem Ausprobieren nicht. Der Reiter wird nach oben geholt, damit
+ * er am Handy nicht unter den globalen Zeilen ausserhalb des Bildes liegt.
  */
 function oeffneEinstellungenBei(reiter, abschnitt) {
   oeffneEinstellungen();

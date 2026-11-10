@@ -3071,10 +3071,12 @@ ich in den Einstellungen unter Gewohnheiten lande“. Die Überschrift des
 Abschnitts ist jetzt ein Knopf `.fok-titel-knopf` („🔥 Gewohnheiten ›“), am Handy
 im Kopf der Kachel (`#fokObenEinstellungen`), am PC in der Überschrift der
 Heute-Spalte (`#fokHeuteEinstellungen`). Er ruft
-`oeffneEinstellungenBei("gewohnheiten", "verwalten")` (app.js): Einstellungen
-auf, Reiter Gewohnheiten, Abschnitt „Gewohnheiten“ (Liste, Neue Gewohnheit,
-Archiv) schon aufgeklappt, und der Reiter wird oben ins Bild geholt, sonst läge
-die Liste am Handy unter den globalen Zeilen.
+`oeffneEinstellungenBei("gewohnheiten")` (app.js): Einstellungen auf, Reiter
+Gewohnheiten vorn, alle Abschnitte zu, und der Reiter wird oben ins Bild geholt,
+sonst läge er am Handy unter den globalen Zeilen. Zuerst war die Liste
+(Abschnitt „Gewohnheiten“) gleich aufgeklappt, Hendriks erste Wahl; nach dem
+Ausprobieren: „nur in den Einstellungen Gewohnheiten, nicht Gewohnheiten neu
+öffnen“. Der zweite Parameter (`abschnitt`) bleibt für später in der Funktion.
 
 **Am Handy klappt der Kopf trotzdem weiter.** Er besteht aus zwei Knöpfen
 nebeneinander in `.fok-oben-kopfzeile`: links das Wort, rechts `#fokObenKopf` ab

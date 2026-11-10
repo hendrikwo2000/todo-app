@@ -448,11 +448,13 @@ window.fokusOben = function (an, host) {
 };
 
 // Ein Tipp auf "Gewohnheiten ›" (Kopf in der Kachel bzw. Ueberschrift in der
-// Heute-Spalte) fuehrt in die Einstellungen: Reiter Gewohnheiten, Liste schon
-// aufgeklappt (Hendrik am 10.11.2026). Klappen tut nur noch der Rest des Kopfes.
+// Heute-Spalte) fuehrt in die Einstellungen auf den Reiter Gewohnheiten, alle
+// Abschnitte zu (Hendrik am 10.11.2026 - erst mit aufgeklappter Liste, gleich
+// danach: "nur in den Einstellungen Gewohnheiten, nicht Gewohnheiten neu
+// oeffnen"). Klappen tut nur noch der Rest des Kopfes.
 for (const id of ["fokObenEinstellungen", "fokHeuteEinstellungen"]) {
   document.getElementById(id).addEventListener("click", () => {
-    window.oeffneEinstellungenBei?.("gewohnheiten", "verwalten");
+    window.oeffneEinstellungenBei?.("gewohnheiten");
   });
 }
 
