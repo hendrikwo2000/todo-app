@@ -1153,6 +1153,61 @@ der Knopfmitte muss `.kal-schliessen` treffen, obwohl der Knopf nur 28×23 px
 groß ist. (`#kalZu` ist am Handy ohnehin `display: none` — dort schaltet die
 Pille. Die Regel greift für ihn nur am Rechner mit Touchscreen.)
 
+## Fußzeile am Handy (seit 15.11.2026)
+
+Bis 560 px Breite (Handy hochkant) steht unten eine Leiste wie in jeder App:
+**ToDos | Kalender | ＋ | Zeit | Einstellungen**. Hendriks Wahl aus drei
+Skizzen: fünf Felder mit ＋ in der Mitte, Linien-Symbole mit Text (aktiv blau
+mit getönter Pille), nur am Handy - iPad und Rechner behalten die Knöpfe oben.
+Markup `#fusszeile` in `index.html`, Aussehen am Ende von `style.css`
+(„Fusszeile am Handy"), das ＋-Menü in `fusszeile.js`.
+
+**Was die Leiste übernimmt, verschwindet am Handy oben:** „＋ ToDo“,
+„＋ Bereich“, ⏱, ⚙️ und die Pille 📋|📅 aus der Kopfzeile (die damit einzeilig
+ist: Listenname links, „Gespeichert“ rechts) und die ganze Zeile
+`.kal-ansicht-zeile` oben im Kalender. Das Kalender-Panel endet über der
+Leiste (`bottom` = Leistenhöhe + Safe Area), ebenso Snackbar und der Platz unter
+dem Board. Die Leiste steht **außerhalb von `.app`**, weil die Kalenderansicht
+`.app` ausblendet.
+
+**Kein neuer Code für die alten Wege.** Die Knöpfe hängen an der vorhandenen
+Verdrahtung: `.fuss-ansicht` an derselben wie die Pille (`kalender.js`, beide
+Selektoren dort nennen `.ansicht-seg, .fuss-ansicht` - auch `aria-pressed`
+kommt von dort), `.timer-knopf` an der Zeiterfassung (läuft die Uhr, steht die
+Zeit statt „Zeit“ da), `.ein-knopf` am Zahnrad. Sichtbar wird die Leiste mit
+`zeigeEinstellungenKnopf()` in `app.js`, also erst nach der Anmeldung. Ist die
+Zeiterfassung abgeschaltet, hat sie vier Felder.
+
+**Das ＋ öffnet ein kleines Menü** (Hendriks Wahl gegen „je nach Ansicht
+direkt“), Einträge je nach Ansicht:
+* ToDo-Ansicht: **ToDo** (`addTodoOhneBereich`, wie „＋ ToDo“ oben) und
+  **Bereich** (`addCategory`).
+* Kalender: **Termin** am gewählten Tag (nur mit Schreibrecht bei Google -
+  dieselbe Bedingung wie am runden Plus der Tages-Karte, sonst 403) und
+  **ToDo** mit dem gewählten Tag als „bis“: öffnet die Tages-Karte mit offener
+  Anlege-Zeile, dasselbe wie das ＋ an „ToDos“ darin.
+Bleibt nur ein Eintrag übrig, führt das ＋ ihn gleich aus. Menü und Schleier
+stehen **außerhalb** der Leiste: die bildet mit ihrem z-index eine eigene Ebene,
+das Menü muss aber über dem durchsichtigen Schleier liegen. Der Schleier liegt
+auch über der Leiste - ein Tipp daneben schließt nur das Menü (statt nebenbei
+ein ToDo abzuhaken), ein zweiter Tipp aufs ＋ ebenso. Escape fängt
+`fusszeile.js` in der Einfangphase ab, sonst klappte der Kalender mit zu.
+
+**Ebenen:** Leiste 58 (über dem Kalender-Panel 56), Schleier und Menü 59, alle
+Fenster liegen darüber (Kalender-Fenster 60, Einstellungen 120, Sperre 100,
+Snackbar 130).
+
+**Hilfe:** die drei Zeilen, die Knöpfe oben nennen, tragen beide Fassungen
+(`.ohne-fuss` / `.mit-fuss`), dieselbe Breitengrenze schaltet um.
+
+**Nebenbei behoben:** der Schatten des zugeklappten Kalenders ragte unter
+1000 px als grauer Streifen am rechten Rand herein (Fund vom 19.10.2026). Jetzt
+ohne Schatten, solange das Panel zu ist und nicht gerade gewischt wird
+(`html:not(.kal-offen) .kalender:not([style*="translate"])`).
+
+Ungeprüft: echtes Handy (Safe Area unten, Tastatur über der Leiste), nur im
+Browser-Pane bei 360/390 px gemessen.
+
 ## Notizfeld
 
 Wächst mit dem Inhalt nach unten statt zu scrollen — im Anlege-Feld wie im

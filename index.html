@@ -140,6 +140,67 @@
 
   <div id="snackbar" class="snackbar" aria-live="polite"></div>
 
+  <!-- Fusszeile am Handy (seit 15.11.2026, Hendriks Wahl): ToDos | Kalender |
+       ＋ | Zeit | Einstellungen, wie in jeder App. Nur bis 560 px Breite - iPad
+       und Rechner behalten die Knoepfe oben. Was hier steht, verschwindet am
+       Handy aus der Kopfzeile und aus der Zeile oben im Kalender (style.css,
+       "Fusszeile am Handy").
+       Steht ausserhalb von .app, weil die Kalenderansicht .app ausblendet und
+       die Fusszeile dort stehen bleiben muss.
+       Die Knoepfe haengen an der vorhandenen Verdrahtung: .fuss-ansicht an
+       derselben wie die Pille 📋|📅 (kalender.js), .timer-knopf an der
+       Zeiterfassung, .ein-knopf am Zahnrad. Nur das ＋ und sein Menue sind neu
+       (fusszeile.js). Sichtbar erst mit der Anmeldung (zeigeEinstellungenKnopf
+       in app.js), sonst stuende sie unter der Anmeldemaske. -->
+  <nav id="fusszeile" class="fusszeile" aria-label="Navigation" hidden>
+    <button type="button" class="fuss-knopf fuss-ansicht" data-ansicht="liste" aria-pressed="true">
+      <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+        <rect x="4" y="4" width="16" height="16" rx="3.5"/>
+        <path d="M8.3 12.2l2.5 2.5 4.9-5.1"/>
+      </svg></span>
+      <span class="fuss-text">ToDos</span>
+    </button>
+    <button type="button" class="fuss-knopf fuss-ansicht" data-ansicht="kalender" aria-pressed="false">
+      <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+        <rect x="3.5" y="5" width="17" height="15.5" rx="3"/>
+        <path d="M3.5 10h17M8 3v4M16 3v4"/>
+      </svg></span>
+      <span class="fuss-text">Kalender</span>
+    </button>
+    <button type="button" id="fussPlus" class="fuss-knopf fuss-plus"
+            aria-haspopup="menu" aria-expanded="false" aria-controls="fussMenue">
+      <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+        <path d="M12 5v14M5 12h14"/>
+      </svg></span>
+      <span class="fuss-text">Neu</span>
+    </button>
+    <!-- .timer-zeit fuellt zeiterfassung.js, solange die Uhr laeuft - dann
+         steht die Zeit statt "Zeit" da. hidden, solange die Zeiterfassung aus
+         ist; die Fusszeile hat dann vier Felder. -->
+    <button type="button" class="fuss-knopf timer-knopf" hidden>
+      <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+        <circle cx="12" cy="13.5" r="7.5"/>
+        <path d="M12 9.5v4l2.6 1.6M9.8 3h4.4M12 3v3"/>
+      </svg></span>
+      <span class="fuss-text fuss-text-ruhe">Zeit</span>
+      <span class="fuss-text timer-zeit"></span>
+    </button>
+    <button type="button" class="fuss-knopf ein-knopf" hidden>
+      <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+        <path d="M10.21 4.82 L10.58 2.51 L13.42 2.51 L13.79 4.82 L15.81 5.66 L17.71 4.28 L19.72 6.29 L18.34 8.19 L19.18 10.21 L21.49 10.58 L21.49 13.42 L19.18 13.79 L18.34 15.81 L19.72 17.71 L17.71 19.72 L15.81 18.34 L13.79 19.18 L13.42 21.49 L10.58 21.49 L10.21 19.18 L8.19 18.34 L6.29 19.72 L4.28 17.71 L5.66 15.81 L4.82 13.79 L2.51 13.42 L2.51 10.58 L4.82 10.21 L5.66 8.19 L4.28 6.29 L6.29 4.28 L8.19 5.66 Z"/>
+        <circle cx="12" cy="12" r="3.2"/>
+      </svg></span>
+      <span class="fuss-text">Einstellungen</span>
+    </button>
+  </nav>
+  <!-- Das Menue hinter dem ＋, Eintraege je nach Ansicht (fusszeile.js).
+       Ausserhalb der Leiste, weil es UEBER dem Schleier liegen muss und die
+       Leiste mit ihrem z-index eine eigene Ebene bildet. Der Schleier ist
+       durchsichtig und faengt den Tipp daneben ab: der schliesst nur das Menue,
+       statt nebenbei ein ToDo abzuhaken. -->
+  <div id="fussSchleier" class="fuss-schleier" hidden></div>
+  <div id="fussMenue" class="fuss-menue" role="menu" aria-label="Neu anlegen" hidden></div>
+
   <!-- Kalender: rechte Haelfte des Bildschirms. In breiten Fenstern steht er
        fest neben der Liste (Split), in schmalen faehrt er als Panel darueber -
        ueber den Umschalter in der Kopfzeile oder per Wisch vom rechten
@@ -849,18 +910,18 @@
           <div class="ein-inhalt hilfe-text">
             <dl class="hilfe-zeilen hilfe-nummeriert">
               <div class="hilfe-zeile"><dt>Liste</dt><dd>„Erste Liste anlegen“ antippen</dd></div>
-              <div class="hilfe-zeile"><dt>ToDo</dt><dd>„+ ToDo“, Titel, Enter</dd></div>
-              <div class="hilfe-zeile"><dt>Bereich</dt><dd>„+ Bereich“, z. B. Schule</dd></div>
+              <div class="hilfe-zeile"><dt>ToDo</dt><dd><span class="ohne-fuss">„+ ToDo“</span><span class="mit-fuss">＋ unten, „ToDo“</span>, Titel, Enter</dd></div>
+              <div class="hilfe-zeile"><dt>Bereich</dt><dd><span class="ohne-fuss">„+ Bereich“</span><span class="mit-fuss">＋ unten, „Bereich“</span>, z. B. Schule</dd></div>
               <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kästchen antippen</dd></div>
               <div class="hilfe-zeile"><dt>Heute</dt><dd>Zeigt, was heute und bald fällig ist</dd></div>
-              <div class="hilfe-zeile"><dt>Kalender</dt><dd>Oben rechts 📋 oder 📅</dd></div>
+              <div class="hilfe-zeile"><dt>Kalender</dt><dd><span class="ohne-fuss">Oben rechts 📋 oder 📅</span><span class="mit-fuss">Unten „ToDos“ oder „Kalender“</span></dd></div>
             </dl>
             <details class="hilfe-mehr">
               <summary>Mehr dazu</summary>
               <ul>
                 <li>Weitere Listen gibt es unter ⚙️ › ToDo › Meine Listen.</li>
                 <li>Ein Datum setzt du über 📅, eine Notiz kommt ins Feld darunter. Das Datum heißt „bis“: schon 2 Wochen vorher steht das ToDo unter Heute.</li>
-                <li>Neue ToDos von oben landen zuerst ohne Bereich. Von dort ziehst du sie in einen Bereich.</li>
+                <li>Neue ToDos über <span class="ohne-fuss">„+ ToDo“</span><span class="mit-fuss">＋</span> landen zuerst ohne Bereich. Von dort ziehst du sie in einen Bereich.</li>
                 <li>Erledigtes sammelt sich zugeklappt unter „Erledigt“ am Ende des Bereichs. Dort lässt es sich auch wieder aufhaken.</li>
                 <li>Die Tagesansicht zeigt zusätzlich deine Termine und Gewohnheiten.</li>
               </ul>
@@ -1284,5 +1345,8 @@
   <script src="zeiterfassung.js"></script>
   <!-- Hilfe-Fenster (seit 19.10.2026). Braucht einstellungenPopup aus app.js. -->
   <script src="hilfe.js"></script>
+  <!-- Fusszeile am Handy (seit 15.11.2026): das ＋-Menue. Braucht app.js
+       (addTodoOhneBereich, addCategory) und kalender.js (Tag, Termin). -->
+  <script src="fusszeile.js"></script>
 </body>
 </html>

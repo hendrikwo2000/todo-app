@@ -109,8 +109,13 @@ const streifenTimerLabel         = document.getElementById("streifenTimerLabel")
 // Das Zahnrad steckt DREIMAL im Dokument: in der Kopfzeile der App und in den
 // beiden Panels (Kalender, Fokus), die die Kopfzeile am Handy verdecken. Alle
 // tragen .ein-knopf, alle starten versteckt und erscheinen mit der Anmeldung.
+// Seit 15.11.2026 kommt die Fusszeile am Handy dazu (Zahnrad dort plus die
+// ganze Leiste - vor der Anmeldung stuende sie unter der Anmeldemaske).
 const einKnoepfe = [...document.querySelectorAll(".ein-knopf")];
-function zeigeEinstellungenKnopf() { for (const b of einKnoepfe) b.hidden = false; }
+function zeigeEinstellungenKnopf() {
+  for (const b of einKnoepfe) b.hidden = false;
+  document.getElementById("fusszeile").hidden = false;
+}
 const listenMenue  = document.getElementById("listenMenue");
 const snackbar     = document.getElementById("snackbar");
 const titel        = document.getElementById("titel");

@@ -1894,6 +1894,11 @@ html:not(.breit) #kalZu { display: none; }
   will-change: transform;
 }
 .kalender.animiert { transition: transform .26s cubic-bezier(.32, .72, 0, 1); }
+/* Zugeklappt und in Ruhe kein Schatten: das Panel liegt dann rechts neben dem
+   Bildschirm, und sein Schatten ragte als grauer Streifen am rechten Rand
+   herein (Fund vom 19.10.2026, behoben 15.11.2026). Waehrend des Wischens
+   steht die Verschiebung inline am Panel - dann bleibt der Schatten. */
+html:not(.kal-offen) .kalender:not([style*="translate"]) { box-shadow: none; }
 
 /* Eigene Zeile ueber dem Kopf, damit der Umschalter genau dort sitzt wie in
    der Listen-Ansicht: oben rechts. In die Kopfzeile selbst passt er auf einem
@@ -4446,3 +4451,166 @@ button.zt-knoten { cursor: pointer; }
 .hilfe-karte.rot  { border-left-color: var(--red); }
 .hilfe-karte.gelb { border-left-color: var(--yellow); }
 .hilfe-karte b { min-width: 42px; }
+
+/* ---------- Fusszeile am Handy (seit 15.11.2026) ---------- */
+/* ToDos | Kalender | ＋ | Zeit | Einstellungen, wie in jeder App (Hendriks Wahl:
+   fuenf Felder, ＋ in der Mitte, Linien-Symbole mit Text, nur am Handy). Markup
+   in index.html, das ＋-Menue in fusszeile.js. Bis 560 px - dieselbe Grenze, ab
+   der die Dialoge zum Vollbild werden; iPad und Rechner behalten die Knoepfe
+   oben. Alles, was die Leiste uebernimmt, verschwindet am Handy aus der
+   Kopfzeile und aus der Zeile oben im Kalender: zwei Wege zum selben Ziel
+   waeren nur zwei Stellen zum Suchen.
+   Steht am Dateiende, weil es die Grundregeln von .timer-knopf, .snackbar und
+   .kal-raster bei gleicher Spezifitaet schlagen muss. */
+:root { --fuss-hoehe: 60px; }
+.fusszeile, .fuss-schleier, .fuss-menue { display: none; }
+/* Die Hilfe nennt am Handy die Leiste statt der Knoepfe oben. */
+.mit-fuss { display: none; }
+
+@media (max-width: 560px) {
+  .mit-fuss { display: inline; }
+  .ohne-fuss { display: none; }
+
+  .fusszeile:not([hidden]) {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    /* Ueber dem Kalender (56), unter seinen Fenstern (60), den Einstellungen
+       (120) und dem Sperrbildschirm (100) - die liegen alle darueber. */
+    z-index: 58;
+    height: calc(var(--fuss-hoehe) + env(safe-area-inset-bottom));
+    padding: 0 max(4px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(4px, env(safe-area-inset-left));
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+  }
+
+  /* Platz fuer die Leiste: das letzte ToDo darf nicht dahinter verschwinden. */
+  .app { padding-bottom: calc(var(--fuss-hoehe) + 28px + env(safe-area-inset-bottom)); }
+  .snackbar { bottom: calc(var(--fuss-hoehe) + 12px + env(safe-area-inset-bottom)); }
+
+  /* Kopfzeile: nur noch Listenname und "Gespeichert" - in EINER Zeile, die
+     zweite Zeile mit den Anlege-Knoepfen faellt weg. */
+  .topbar > #addTodoBtn,
+  .topbar > #addCatBtn,
+  .topbar > .timer-knopf,
+  .topbar > #einstellungenBtn,
+  .topbar > .ansicht-schalter { display: none; }
+  .topbar::after { display: none; }
+  .topbar > #saveStatus { order: 0; margin-left: auto; }
+
+  /* Kalender: die Zeile oben mit ⏱, Zahnrad und Pille gibt es jetzt unten.
+     Das Panel endet ueber der Leiste, sonst laege die letzte Rasterzeile
+     dahinter; den Geraeterand unten traegt die Leiste. */
+  .kal-ansicht-zeile { display: none; }
+  .kalender { bottom: calc(var(--fuss-hoehe) + env(safe-area-inset-bottom)); }
+  .kal-raster { padding-bottom: 10px; }
+
+  .fuss-knopf {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 0 4px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.15;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Eigene display-Regel schlaegt [hidden] - dieselbe Falle wie ueberall. */
+  .fuss-knopf[hidden] { display: none; }
+  .fuss-knopf:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 12px; }
+  /* Das Symbol sitzt in einer Pille: hinter der aktiven Ansicht wird sie
+     sichtbar, beim ＋ ist sie die blaue Flaeche. */
+  .fuss-symbol {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 30px;
+    border-radius: 15px;
+    transition: background .15s, color .15s;
+  }
+  .fuss-symbol svg,
+  .fuss-menue-eintrag svg {
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .fuss-text { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Wo man gerade ist: blau, mit getoenter Pille hinter dem Symbol. */
+  .fuss-ansicht[aria-pressed="true"] { color: var(--accent); }
+  .fuss-ansicht[aria-pressed="true"] .fuss-symbol { background: var(--accent-soft); }
+
+  /* ＋: die einzige volle Flaeche in der Leiste. Offen dreht es sich zum ✕. */
+  .fuss-plus .fuss-symbol { background: var(--accent); color: #fff; }
+  .fuss-plus .fuss-symbol svg { stroke-width: 2.2; transition: transform .18s; }
+  .fuss-plus[aria-expanded="true"] .fuss-symbol svg { transform: rotate(45deg); }
+  /* Im Darkmode ist das Blau hell - weisses Kreuz darauf haette zu wenig
+     Kontrast, also dunkel wie der Grund. */
+  :root[data-theme="dark"] .fuss-plus .fuss-symbol { color: var(--bg); }
+
+  /* Zeit: laeuft die Uhr, steht die Zeit statt des Wortes da, in Blau. Die
+     Kopfzeilen-Regeln fuer .timer-knopf (Rand, Innenabstand, Symbol weg)
+     gelten hier nicht. */
+  .fuss-knopf.timer-knopf { gap: 3px; padding: 6px 0 4px; font-size: 11px; line-height: 1.15; }
+  .fuss-knopf.timer-knopf.laeuft { color: var(--accent); }
+  .fuss-knopf.timer-knopf.laeuft .fuss-text-ruhe { display: none; }
+  .fuss-knopf .timer-zeit { font-size: 11px; }
+  /* Der gelbe Hinweis-Punkt gehoert ans Symbol, nicht an den Rand der Zelle. */
+  .fuss-knopf.timer-knopf.hinweis::after { top: 5px; right: calc(50% - 25px); }
+
+  /* Das Menue hinter dem ＋ und der durchsichtige Schleier, der den Tipp
+     daneben abfaengt (liegt auch ueber der Leiste, siehe fusszeile.js). */
+  .fuss-schleier:not([hidden]) { display: block; position: fixed; inset: 0; z-index: 59; }
+  .fuss-menue:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    z-index: 59;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(var(--fuss-hoehe) + 8px + env(safe-area-inset-bottom));
+    min-width: 200px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--row);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .22);
+  }
+  .fuss-menue-eintrag {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 9px;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+  .fuss-menue-eintrag svg { color: var(--accent); }
+  .fuss-menue-eintrag:active { background: var(--hover); }
+}
+/* Hover nur mit echter Maus - am Finger fraesse er den ersten Tipp. */
+@media (max-width: 560px) and (hover: hover) {
+  .fuss-knopf:hover { color: var(--text); }
+  .fuss-ansicht[aria-pressed="true"]:hover { color: var(--accent); }
+  .fuss-menue-eintrag:hover { background: var(--hover); }
+}
