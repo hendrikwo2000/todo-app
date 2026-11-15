@@ -1195,8 +1195,24 @@ ein Feld hoch und lässt sie beim Zuklappen oft stehen). Darum:
   Kalenderansicht und nie, solange ein Feld den Fokus hat (dann gehört die
   Verschiebung der Tastatur).
 * `html.kal-ansicht { overscroll-behavior: none }` - kein Nachfedern.
-Ungeprüft am echten iPhone; im Testbrowser nur künstlich verschoben und
-zurückgesetzt nachgestellt.
+
+**Das allein reichte nicht** (Hendriks Screenshots, gleicher Tag): im Kalender
+stand die Leiste weiter rund 60 pt zu hoch, darunter leere Fläche - der
+Kalender OBEN aber am richtigen Platz. Die Seite war also nicht verschoben;
+iOS rechnete den Bildschirm um gut die Statusleiste (59-62 pt) kürzer, und
+alles mit `bottom` (Leiste, Kalender-Panel) saß entsprechend höher. In der
+ToDo-Ansicht stimmt alles - dort ist die Seite länger als der Bildschirm, im
+Kalender (`.app` weg) leer. **Vermutung, am Gerät nicht nachprüfbar:** die
+Homescreen-App nimmt die volle Höhe nur, wenn die Seite überstehen kann. Darum
+bekommt `body` in der Kalenderansicht eine Mindesthöhe knapp über dem
+Bildschirm (`100vh` + Safe Area oben + 1 px) - nur Handybreite, nur
+Homescreen-App, nur iOS-WebKit (dieselbe Weiche wie `--oben`). Gescrollt wird
+trotzdem nicht: `kalAnsichtNachOben` hält die Seite auf 0. Falls das auch nicht
+greift, wäre der nächste Versuch, Leiste und Panel nicht über `bottom`, sondern
+über `top` + gemessene Höhe zu setzen.
+Ungeprüft am echten iPhone; im Testbrowser nur die Mechanik nachgestellt
+(Regel ohne Weiche eingehängt: Seite 1 px höher, Leiste unten, Reset auf 0,
+Liste kommt beim Zurück an ihre Stelle).
 
 **Ebenen:** Leiste 58 (über dem Kalender-Panel 56), alle Fenster liegen
 darüber (Kalender-Fenster 60, Anlegen-Fenster und Einstellungen 120, Sperre 100,

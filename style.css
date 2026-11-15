@@ -4508,6 +4508,24 @@ button.zt-knoten { cursor: pointer; }
      kalAnsichtNachOben in kalender.js). */
   html.kal-ansicht { overscroll-behavior: none; }
   .kal-raster { padding-bottom: 10px; }
+}
+/* iPhone als Homescreen-App: in der Kalenderansicht stand die Leiste rund
+   60 pt zu hoch, darunter leere Flaeche - der Kalender oben dagegen am
+   richtigen Platz (Hendriks Screenshots, 15.11.2026). Die Seite war also nicht
+   verschoben, sondern iOS rechnete den Bildschirm um gut die Statusleiste
+   kuerzer. Einziger Unterschied zur ToDo-Ansicht, wo alles stimmt: dort ist
+   die Seite laenger als der Bildschirm, im Kalender (.app weg) leer. Vermutung,
+   am Geraet nicht nachpruefbar: iOS nimmt die volle Hoehe nur, wenn die Seite
+   ueberstehen kann. Darum hier eine Mindesthoehe knapp ueber dem Bildschirm;
+   gescrollt wird trotzdem nicht - kalAnsichtNachOben (kalender.js) haelt die
+   Seite auf 0, overscroll-behavior oben nimmt das Federn. Dieselbe Weiche wie
+   bei --oben: nur Homescreen-App, nur iOS-WebKit. */
+@media (max-width: 560px) and (display-mode: standalone) {
+  @supports (-webkit-touch-callout: none) {
+    html.kal-ansicht body { min-height: calc(100vh + env(safe-area-inset-top, 0px) + 1px); }
+  }
+}
+@media (max-width: 560px) {
 
   .fuss-knopf {
     flex: 1 1 0;
