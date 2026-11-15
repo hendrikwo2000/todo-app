@@ -1205,15 +1205,16 @@ Einstellungen und Zeit-Fenster übereinander. Dialoge, die sich darüber legen
 ab; die verlangen erst eine Antwort. Das „Zeit“-Feld blau zu machen war mein
 Zusatz, Hendrik hatte nur die Einstellungen genannt.
 
-**Nur noch das ＋ der Leiste legt am Handy an** (Hendrik: „in jeder Zeile ein
-+ und in der Mitte“, gewählt „Nur noch ＋ unten“): die kleinen ＋ in der
-Tagesansicht über den ToDos (`#tagOben .kal-gruppe-plus`, `.kal-kopf-plus`),
-„＋ ToDo“ an jedem Bereich (`.col-add-btn`) und ＋ an jedem Thema
-(`.thema-add`) sind am Handy per CSS weg; das Anlegen-Fenster fragt Bereich und
-Thema selbst ab. In der Tages-Karte des Kalenders bleiben sie (die Karte deckt
-die Leiste ab). **Am PC und iPad bleiben sie** - Hendriks Klage bezog sich auf
-das Handy (das ＋ „in der Mitte“ gibt es nur dort); mein Call, auf Wunsch
-gleichziehen.
+**Nur noch das ＋ der Leiste legt an** (Hendrik: „in jeder Zeile ein + und in
+der Mitte“, gewählt „Nur noch ＋ unten“, danach „Ja, auch am PC weg“): die
+kleinen ＋ in der Tagesansicht über den ToDos (`#tagOben`), in der Heute-Spalte
+am PC (`#kalTagesliste`, je `.kal-gruppe-plus` und `.kal-kopf-plus`), „＋ ToDo“
+an jedem Bereich (`.col-add-btn`) und ＋ an jedem Thema (`.thema-add`) sind per
+CSS weg, überall; das Anlegen-Fenster fragt Bereich und Thema selbst ab. In der
+Tages-Karte des Kalenders (Handy, iPad hoch) bleiben sie - die Karte deckt die
+Leiste ab. Das Inline-Anlegefeld im Bereich (`openAdd`) erreicht man damit nur
+noch über den großen Knopf „＋ ToDo anlegen“ vor dem allerersten ToDo eines
+Kontos.
 
 **iPhone, Homescreen-App: die Leiste rutschte im Kalender nach oben**
 (Hendrik, 15.11.2026). In der Kalenderansicht gibt es auf Seitenebene nichts zu

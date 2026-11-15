@@ -4603,15 +4603,18 @@ html.board-schmal.kal-split .fusszeile.oben .fuss-knopf { flex: 1 1 0; width: au
   #hilfeFenster .admin-popup-box.gw-box { padding-bottom: 18px; }
   #timerPopup .admin-popup-box.timer-box { max-height: 100%; }
 
-  /* Nur noch das ＋ der Leiste legt an (Hendriks Wahl): die kleinen ＋ in der
-     Tagesansicht, an jedem Bereich und an jedem Thema fallen am Handy weg.
-     Das Fenster fragt Bereich und Thema selbst ab. In der Tages-Karte des
-     Kalenders bleiben sie - die Karte deckt die Leiste ab. */
-  #tagOben .kal-gruppe-plus,
-  #tagOben .kal-kopf-plus,
-  .col-add-btn,
-  .thema-add { display: none; }
 }
+/* Nur noch das ＋ der Leiste legt an (Hendriks Wahl, erst am Handy, dann
+   "Ja, auch am PC weg"): die kleinen ＋ in der Tagesansicht ueber den ToDos,
+   in der Heute-Spalte am PC, an jedem Bereich und an jedem Thema fallen weg.
+   Das Fenster fragt Bereich und Thema selbst ab. In der Tages-Karte des
+   Kalenders (Handy, iPad hoch) bleiben sie - die Karte deckt die Leiste ab. */
+#tagOben .kal-gruppe-plus,
+#tagOben .kal-kopf-plus,
+#kalTagesliste .kal-gruppe-plus,
+#kalTagesliste .kal-kopf-plus,
+.col-add-btn,
+.thema-add { display: none; }
 /* iPhone als Homescreen-App: in der Kalenderansicht stand die Leiste rund
    60 pt zu hoch, darunter leere Flaeche - der Kalender oben dagegen am
    richtigen Platz (Hendriks Screenshots, 15.11.2026). Die Seite war also nicht
