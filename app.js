@@ -2507,17 +2507,9 @@ function addTodoTo(categoryId, themaId, text, due, note) {
   return true;
 }
 
-// Der globale "＋ ToDo"-Knopf im Kopf: legt - falls noetig - den Sonder-Bereich
-// "Ohne Bereich" an und klappt dort das gewohnte Eingabefeld auf. So braucht die
-// schnelle Erfassung keinen eigenen Dialog; Termin und Notiz gehen wie ueberall.
-// Ohne eingegebenes ToDo verschwindet die Spalte beim naechsten render() wieder
-// (synchronisiereOhneBereich haelt sie nur, solange das Feld offen ist).
-function addTodoOhneBereich() {
-  if (!aktiveListe) return;
-  const id = ohneBereichId(aktiveListe);
-  if (!state.categories.some(c => c.id === id)) state.categories.unshift({ id, name: OHNE_NAME });
-  openAdd(id, null);
-}
+// Der globale "＋ ToDo"-Knopf im Kopf oeffnet seit 15.11.2026 das
+// Anlegen-Fenster (anlegen.js) - vorher klappte er das Eingabefeld im Bereich
+// "Ohne Bereich" auf (addTodoOhneBereich, entfernt).
 
 // boardId ist der Weg des Kalenders: er zeigt ToDos aus allen Listen und hakt
 // sie dort ab, wo sie liegen - ohne die aktive Liste umzuschalten. Ohne Angabe
@@ -2642,19 +2634,8 @@ function cancelEdit() {
 }
 
 // ---------- Aktionen: Bereiche ----------
-async function addCategory() {
-  if (!aktiveListe) return;   // ohne Liste gibt es nichts, wozu ein Bereich passt
-  const name = await textEingabe({
-    titel: "Neuer Bereich",
-    platzhalter: "z. B. Haushalt oder Arbeit",
-    okText: "Anlegen",
-    icon: "＋",
-  });
-  if (!name) return;
-  state.categories.push({ id: uid(), name: name });
-  render();
-  save();
-}
+// Neue Bereiche legt seit 15.11.2026 das Anlegen-Fenster an (anlegen.js,
+// Umschalter "Bereich") - addCategory mit eigenem Dialog ist entfallen.
 
 // Bereichsname per Doppelklick direkt in der Ueberschrift bearbeiten.
 function startRenameCategory(catId) {
@@ -3092,7 +3073,7 @@ function render() {
     const btn = document.createElement("button");
     btn.className = "btn primary";
     btn.textContent = "＋ ToDo anlegen";
-    btn.addEventListener("click", addTodoOhneBereich);
+    btn.addEventListener("click", () => oeffneAnlegen("todo"));   // anlegen.js
     wrap.appendChild(p);
     wrap.appendChild(btn);
     board.appendChild(wrap);
@@ -4048,8 +4029,7 @@ function renderTodo(t) {
 }
 
 // ---------- Ereignisse ----------
-addCatBtn.addEventListener("click", addCategory);
-addTodoBtn.addEventListener("click", addTodoOhneBereich);
+// addCatBtn und addTodoBtn verdrahtet anlegen.js (Anlegen-Fenster).
 themeSwitch.addEventListener("change", () => {
   const next = themeSwitch.checked ? "dark" : "light";
   localStorage.setItem("theme", next);

@@ -1160,7 +1160,8 @@ Bis 560 px Breite (Handy hochkant) steht unten eine Leiste wie in jeder App:
 Skizzen: fünf Felder mit ＋ in der Mitte, Linien-Symbole mit Text (aktiv blau
 mit getönter Pille), nur am Handy - iPad und Rechner behalten die Knöpfe oben.
 Markup `#fusszeile` in `index.html`, Aussehen am Ende von `style.css`
-(„Fusszeile am Handy"), das ＋-Menü in `fusszeile.js`.
+(„Fusszeile am Handy"). Das ＋ öffnet das Anlegen-Fenster (`anlegen.js`, siehe
+„Anlegen-Fenster“ gleich darunter).
 
 **Was die Leiste übernimmt, verschwindet am Handy oben:** „＋ ToDo“,
 „＋ Bereich“, ⏱, ⚙️ und die Pille 📋|📅 aus der Kopfzeile (die damit einzeilig
@@ -1178,23 +1179,27 @@ Zeit statt „Zeit“ da), `.ein-knopf` am Zahnrad. Sichtbar wird die Leiste mit
 `zeigeEinstellungenKnopf()` in `app.js`, also erst nach der Anmeldung. Ist die
 Zeiterfassung abgeschaltet, hat sie vier Felder.
 
-**Das ＋ öffnet ein kleines Menü** (Hendriks Wahl gegen „je nach Ansicht
-direkt“), Einträge je nach Ansicht:
-* ToDo-Ansicht: **ToDo** (`addTodoOhneBereich`, wie „＋ ToDo“ oben) und
-  **Bereich** (`addCategory`).
-* Kalender: **Termin** am gewählten Tag (nur mit Schreibrecht bei Google -
-  dieselbe Bedingung wie am runden Plus der Tages-Karte, sonst 403) und
-  **ToDo** mit dem gewählten Tag als „bis“: öffnet die Tages-Karte mit offener
-  Anlege-Zeile, dasselbe wie das ＋ an „ToDos“ darin.
-Bleibt nur ein Eintrag übrig, führt das ＋ ihn gleich aus. Menü und Schleier
-stehen **außerhalb** der Leiste: die bildet mit ihrem z-index eine eigene Ebene,
-das Menü muss aber über dem durchsichtigen Schleier liegen. Der Schleier liegt
-auch über der Leiste - ein Tipp daneben schließt nur das Menü (statt nebenbei
-ein ToDo abzuhaken), ein zweiter Tipp aufs ＋ ebenso. Escape fängt
-`fusszeile.js` in der Einfangphase ab, sonst klappte der Kalender mit zu.
+**iPhone, Homescreen-App: die Leiste rutschte im Kalender nach oben**
+(Hendrik, 15.11.2026). In der Kalenderansicht gibt es auf Seitenebene nichts zu
+scrollen; steht die Seite trotzdem verschoben, wandert in Safari alles
+Feststehende mit. Zwei Auslöser: das Kappen der alten Scrollposition, wenn
+`.app` beim Wechsel verschwindet, und die Tastatur (iOS schiebt die Seite für
+ein Feld hoch und lässt sie beim Zuklappen oft stehen). Darum:
+* `setzePanel()` setzt beim Wechsel in den Kalender ausdrücklich auf 0 -
+  **erst nach `pushState`**. Davor gesetzt, merkte sich der Browser 0 als
+  Position des Listen-Eintrags und stellte beim Zurück diese 0 wieder her: die
+  Liste landete ganz oben statt dort, wo man sie verlassen hatte (im Test
+  gefunden, nicht live gegangen).
+* `kalAnsichtNachOben()` setzt nach `focusout`, bei wachsendem
+  `visualViewport` und bei jedem `scroll` zurück auf 0 - nur in der
+  Kalenderansicht und nie, solange ein Feld den Fokus hat (dann gehört die
+  Verschiebung der Tastatur).
+* `html.kal-ansicht { overscroll-behavior: none }` - kein Nachfedern.
+Ungeprüft am echten iPhone; im Testbrowser nur künstlich verschoben und
+zurückgesetzt nachgestellt.
 
-**Ebenen:** Leiste 58 (über dem Kalender-Panel 56), Schleier und Menü 59, alle
-Fenster liegen darüber (Kalender-Fenster 60, Einstellungen 120, Sperre 100,
+**Ebenen:** Leiste 58 (über dem Kalender-Panel 56), alle Fenster liegen
+darüber (Kalender-Fenster 60, Anlegen-Fenster und Einstellungen 120, Sperre 100,
 Snackbar 130).
 
 **Hilfe:** die drei Zeilen, die Knöpfe oben nennen, tragen beide Fassungen
@@ -1207,6 +1212,45 @@ ohne Schatten, solange das Panel zu ist und nicht gerade gewischt wird
 
 Ungeprüft: echtes Handy (Safe Area unten, Tastatur über der Leiste), nur im
 Browser-Pane bei 360/390 px gemessen.
+
+## Anlegen-Fenster (seit 15.11.2026)
+
+Ein Popup für alles Neue (`#anlegenPopup` in `index.html`, `anlegen.js`,
+CSS „Anlegen-Fenster“ am Ende von `style.css`). Hendriks Wunsch am Tag der
+Fußzeile: „ein Popup wie bei Bereich“, und weil man viel öfter ToDos als
+Bereiche anlegt, ist **ToDo immer vorgewählt**. Es ersetzt das ＋-Menü der
+Fußzeile (am 15.11.2026 kurz live: ToDo/Bereich als Menü, ToDo klappte das
+Feld im Board auf), `addTodoOhneBereich` und `addCategory` mit eigenem Dialog.
+
+Oben ein Umschalter (wie die Pille 📋|📅), darunter ein Titelfeld für alle
+Arten - was schon getippt ist, bleibt beim Umschalten stehen:
+* **Liste** (＋ unten am Handy, „＋ ToDo“ / „＋ Bereich“ oben, „＋ ToDo anlegen“
+  im leeren Board): ToDo | Bereich. „＋ Bereich“ wählt Bereich vor.
+* **Kalender am Handy** (＋ unten bei offener Kalenderansicht): ToDo | Termin,
+  „bis“ = gewählter Tag. „Termin“ schließt das Fenster, öffnet das
+  Termin-Formular am gewählten Tag und trägt den getippten Titel ein. Nur mit
+  Schreibrecht bei Google (sonst 403, dieselbe Bedingung wie am runden Plus der
+  Tages-Karte); ohne bleibt nur ToDo und der Umschalter verschwindet.
+* Am Rechner mit offenem Kalender gilt ToDo | Bereich - die Knöpfe oben gehören
+  zum Board.
+
+**Felder für ein ToDo** (Hendriks Wahl aus vier Skizzen): Titel, Bereich
+(native Auswahl, „Ohne Bereich“ zuerst, dann die Bereiche der aktiven Liste),
+„bis“. Die Notiz kommt wie bisher übers Bearbeiten dazu. Ein leeres Datumsfeld
+zeigt „kein Datum“ (Überlagerung, das Feld selbst ist dann durchsichtig - am
+iPhone wäre ein leeres Datumsfeld sonst eine leere Fläche), gesetzt erscheint
+ein ✕ daneben. Schriftgröße 16 px in allen Feldern, sonst zoomt Safari beim
+Antippen.
+
+Nach dem Anlegen schließt das Fenster und die Snackbar sagt, wo das ToDo liegt
+(„… in Schule angelegt“) - es kann außerhalb des Bildes landen, im Kalender
+sieht man es gar nicht. Das „+ ToDo“ unten in jedem Bereich bleibt das schnelle
+Feld direkt im Bereich (Hendriks Wahl).
+
+**Oben fest** (`align-items: flex-start`, 8vh) wie die Einstellungen: beim
+Umschalten auf Bereich fallen zwei Zeilen weg, mittig sprang dann die
+Oberkante, und am Handy läge die Mitte halb unter der Tastatur. Escape fängt
+`anlegen.js` in der Einfangphase ab, sonst klappte der Kalender mit zu.
 
 ## Notizfeld
 

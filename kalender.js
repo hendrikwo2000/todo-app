@@ -3278,6 +3278,16 @@ function setzePanel(offen, sofort) {
     historieEintrag = false;
     if (!ausPopstate) history.back();
   }
+  // In den Kalender hinein ausdruecklich nach ganz oben: die Seite wird
+  // schlagartig kurz (.app weg), und Safari auf dem iPhone kappt die alte
+  // Scrollposition, ohne alles Feststehende neu zu setzen - die Fusszeile
+  // stand dann zu hoch (Hendrik, Homescreen-App, 15.11.2026). Siehe
+  // kalAnsichtNachOben unten.
+  // ERST NACH pushState: der Browser merkt sich beim pushState die
+  // Scrollposition des Listen-Eintrags und stellt sie beim Zurueck wieder her.
+  // Stand hier vorher schon 0, landete die Liste beim Zurueck ganz oben statt
+  // dort, wo man sie verlassen hat (im Test gefunden).
+  if (wechselt && alsAnsicht) window.scrollTo(0, 0);
 
   try { localStorage.setItem(ANSICHT_KEY, offen ? "kalender" : "liste"); }
   catch (e) { /* voller Speicher - dann eben ungemerkt */ }
@@ -3286,6 +3296,25 @@ function setzePanel(offen, sofort) {
   // Tag, bei zugeklapptem heute - sie haengt also an genau diesem Zustand.
   zeichneTagOben();
 }
+
+// In der Kalenderansicht (Handy) gibt es auf Seitenebene nichts zu scrollen -
+// alles steht fest, Raster und Karten blaettern in sich. Steht die Seite
+// trotzdem verschoben, wandert auf dem iPhone alles Feststehende mit nach oben,
+// allen voran die Fusszeile (Hendrik, Homescreen-App, 15.11.2026). Bekannte
+// Ausloeser: das Kappen beim Wechsel (siehe setzePanel) und die Tastatur - iOS
+// schiebt die Seite fuer ein Eingabefeld hoch und laesst sie beim Zuklappen
+// oft dort stehen. Darum nach dem Verlassen eines Feldes und wenn das
+// sichtbare Fenster wieder waechst zurueck auf 0 - aber nie, solange ein Feld
+// den Fokus hat: dann gehoert die Verschiebung der Tastatur.
+function kalAnsichtNachOben() {
+  if (!document.documentElement.classList.contains("kal-ansicht")) return;
+  const fokus = document.activeElement;
+  if (fokus && fokus.matches && fokus.matches("input, textarea, select, [contenteditable]")) return;
+  if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
+}
+document.addEventListener("focusout", () => setTimeout(kalAnsichtNachOben, 60));
+window.visualViewport?.addEventListener("resize", kalAnsichtNachOben);
+window.addEventListener("scroll", kalAnsichtNachOben, { passive: true });
 
 // Zurueck-Knopf des Browsers: eine Ansicht zurueck, nicht aus der App heraus.
 // Der Eintrag ist zu diesem Zeitpunkt schon vom Browser abgeraeumt, deshalb

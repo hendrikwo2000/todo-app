@@ -4455,7 +4455,7 @@ button.zt-knoten { cursor: pointer; }
 /* ---------- Fusszeile am Handy (seit 15.11.2026) ---------- */
 /* ToDos | Kalender | ＋ | Zeit | Einstellungen, wie in jeder App (Hendriks Wahl:
    fuenf Felder, ＋ in der Mitte, Linien-Symbole mit Text, nur am Handy). Markup
-   in index.html, das ＋-Menue in fusszeile.js. Bis 560 px - dieselbe Grenze, ab
+   in index.html; das ＋ oeffnet das Anlegen-Fenster (anlegen.js). Bis 560 px - dieselbe Grenze, ab
    der die Dialoge zum Vollbild werden; iPad und Rechner behalten die Knoepfe
    oben. Alles, was die Leiste uebernimmt, verschwindet am Handy aus der
    Kopfzeile und aus der Zeile oben im Kalender: zwei Wege zum selben Ziel
@@ -4463,7 +4463,7 @@ button.zt-knoten { cursor: pointer; }
    Steht am Dateiende, weil es die Grundregeln von .timer-knopf, .snackbar und
    .kal-raster bei gleicher Spezifitaet schlagen muss. */
 :root { --fuss-hoehe: 60px; }
-.fusszeile, .fuss-schleier, .fuss-menue { display: none; }
+.fusszeile { display: none; }
 /* Die Hilfe nennt am Handy die Leiste statt der Knoepfe oben. */
 .mit-fuss { display: none; }
 
@@ -4503,6 +4503,10 @@ button.zt-knoten { cursor: pointer; }
      dahinter; den Geraeterand unten traegt die Leiste. */
   .kal-ansicht-zeile { display: none; }
   .kalender { bottom: calc(var(--fuss-hoehe) + env(safe-area-inset-bottom)); }
+  /* Kein Nachfedern der Seite in der Kalenderansicht: es gibt dort nichts zu
+     scrollen, und auf dem iPhone zoege das Federn die Leiste mit hoch (siehe
+     kalAnsichtNachOben in kalender.js). */
+  html.kal-ansicht { overscroll-behavior: none; }
   .kal-raster { padding-bottom: 10px; }
 
   .fuss-knopf {
@@ -4538,8 +4542,7 @@ button.zt-knoten { cursor: pointer; }
     border-radius: 15px;
     transition: background .15s, color .15s;
   }
-  .fuss-symbol svg,
-  .fuss-menue-eintrag svg {
+  .fuss-symbol svg {
     flex: none;
     fill: none;
     stroke: currentColor;
@@ -4553,10 +4556,9 @@ button.zt-knoten { cursor: pointer; }
   .fuss-ansicht[aria-pressed="true"] { color: var(--accent); }
   .fuss-ansicht[aria-pressed="true"] .fuss-symbol { background: var(--accent-soft); }
 
-  /* ＋: die einzige volle Flaeche in der Leiste. Offen dreht es sich zum ✕. */
+  /* ＋: die einzige volle Flaeche in der Leiste. */
   .fuss-plus .fuss-symbol { background: var(--accent); color: #fff; }
-  .fuss-plus .fuss-symbol svg { stroke-width: 2.2; transition: transform .18s; }
-  .fuss-plus[aria-expanded="true"] .fuss-symbol svg { transform: rotate(45deg); }
+  .fuss-plus .fuss-symbol svg { stroke-width: 2.2; }
   /* Im Darkmode ist das Blau hell - weisses Kreuz darauf haette zu wenig
      Kontrast, also dunkel wie der Grund. */
   :root[data-theme="dark"] .fuss-plus .fuss-symbol { color: var(--bg); }
@@ -4570,47 +4572,130 @@ button.zt-knoten { cursor: pointer; }
   .fuss-knopf .timer-zeit { font-size: 11px; }
   /* Der gelbe Hinweis-Punkt gehoert ans Symbol, nicht an den Rand der Zelle. */
   .fuss-knopf.timer-knopf.hinweis::after { top: 5px; right: calc(50% - 25px); }
-
-  /* Das Menue hinter dem ＋ und der durchsichtige Schleier, der den Tipp
-     daneben abfaengt (liegt auch ueber der Leiste, siehe fusszeile.js). */
-  .fuss-schleier:not([hidden]) { display: block; position: fixed; inset: 0; z-index: 59; }
-  .fuss-menue:not([hidden]) {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    z-index: 59;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: calc(var(--fuss-hoehe) + 8px + env(safe-area-inset-bottom));
-    min-width: 200px;
-    padding: 6px;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: var(--row);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, .22);
-  }
-  .fuss-menue-eintrag {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-height: 48px;
-    padding: 10px 14px;
-    border: 0;
-    border-radius: 9px;
-    background: none;
-    color: var(--text);
-    font: inherit;
-    font-size: 15px;
-    font-weight: 600;
-    text-align: left;
-    cursor: pointer;
-  }
-  .fuss-menue-eintrag svg { color: var(--accent); }
-  .fuss-menue-eintrag:active { background: var(--hover); }
 }
 /* Hover nur mit echter Maus - am Finger fraesse er den ersten Tipp. */
 @media (max-width: 560px) and (hover: hover) {
   .fuss-knopf:hover { color: var(--text); }
   .fuss-ansicht[aria-pressed="true"]:hover { color: var(--accent); }
-  .fuss-menue-eintrag:hover { background: var(--hover); }
+}
+
+/* ---------- Anlegen-Fenster (seit 15.11.2026) ---------- */
+/* Ein Popup fuer neue ToDos und Bereiche (im Kalender am Handy: ToDo | Termin),
+   Logik in anlegen.js. Derselbe Kasten wie "Neuer Bereich" vorher
+   (.admin-popup-box), aber linksbuendig: es hat Zeilen mit Beschriftung.
+   Oben fest wie die Einstellungen - beim Umschalten fallen Bereich und bis weg,
+   mittig sprang dann die Oberkante, und am Handy laege die Mitte halb unter
+   der Tastatur. */
+.anlegen-popup {
+  align-items: flex-start;
+  padding-top: max(8vh, calc(var(--oben) + 12px));
+}
+.admin-popup-box.anlegen-box {
+  width: min(360px, 100%);
+  padding: 18px 20px 16px;
+  gap: 12px;
+  text-align: left;
+}
+/* Eigene display-Regeln schlagen [hidden] - dieselbe Falle wie ueberall. */
+.anlegen-reiter[hidden], .anlegen-reiter-knopf[hidden], .anlegen-zeile[hidden] { display: none; }
+
+/* Umschalter wie die Pille 📋|📅: zwei Haelften, die gewaehlte liegt als
+   hellere Karte obenauf. */
+.anlegen-reiter {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--col-bg);
+}
+.anlegen-reiter-knopf {
+  flex: 1 1 0;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.anlegen-reiter-knopf[aria-selected="true"] {
+  background: var(--row);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+  cursor: default;
+}
+.anlegen-reiter-knopf:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* 16 px im Titelfeld: darunter zoomt Safari auf dem iPhone beim Antippen in
+   die Seite hinein. */
+.anlegen-titel { font-size: 16px; padding: 10px 12px; }
+
+.anlegen-zeile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+}
+.anlegen-etikett {
+  flex: none;
+  width: 58px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.anlegen-wahl,
+.anlegen-datum input[type="date"] {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+.anlegen-wahl:focus,
+.anlegen-datum input[type="date"]:focus { outline: none; border-color: var(--accent); box-shadow: none; }
+.anlegen-wahl { flex: 1 1 auto; min-width: 0; }
+/* Leeres Datumsfeld: "kein Datum" statt tt.mm.jjjj bzw. einer leeren Flaeche
+   (iPhone). Beim Antippen weicht der Text, dann zeigt das Feld sich selbst. */
+.anlegen-datum { position: relative; flex: 1 1 auto; min-width: 0; display: flex; }
+.anlegen-datum-leer {
+  position: absolute;
+  left: 11px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.anlegen-datum.hat-wert .anlegen-datum-leer,
+.anlegen-datum:focus-within .anlegen-datum-leer { display: none; }
+.anlegen-datum:not(.hat-wert) input[type="date"]:not(:focus) { color: transparent; }
+.anlegen-bis-weg {
+  flex: none;
+  width: 34px; height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+.anlegen-bis-weg[hidden] { display: none; }
+@media (hover: hover) {
+  .anlegen-reiter-knopf:not([aria-selected="true"]):hover { color: var(--text); }
+  .anlegen-bis-weg:hover { color: var(--red); }
+}
+.anlegen-box .btn.primary { margin-top: 4px; min-height: 44px; font-size: 15px; }
+.anlegen-box .lock-link { align-self: center; }
+/* iPhone: ein Datumsfeld ist dort sonst zentriert und traegt Safaris eigene
+   Optik - linksbuendig passt es zum "kein Datum" darueber. */
+@media (pointer: coarse) {
+  .anlegen-datum input[type="date"] { -webkit-appearance: none; appearance: none; text-align: left; }
+  .anlegen-datum input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 }

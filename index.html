@@ -149,8 +149,8 @@
        die Fusszeile dort stehen bleiben muss.
        Die Knoepfe haengen an der vorhandenen Verdrahtung: .fuss-ansicht an
        derselben wie die Pille 📋|📅 (kalender.js), .timer-knopf an der
-       Zeiterfassung, .ein-knopf am Zahnrad. Nur das ＋ und sein Menue sind neu
-       (fusszeile.js). Sichtbar erst mit der Anmeldung (zeigeEinstellungenKnopf
+       Zeiterfassung, .ein-knopf am Zahnrad. Das ＋ oeffnet das Anlegen-Fenster
+       (anlegen.js). Sichtbar erst mit der Anmeldung (zeigeEinstellungenKnopf
        in app.js), sonst stuende sie unter der Anmeldemaske. -->
   <nav id="fusszeile" class="fusszeile" aria-label="Navigation" hidden>
     <button type="button" class="fuss-knopf fuss-ansicht" data-ansicht="liste" aria-pressed="true">
@@ -167,8 +167,7 @@
       </svg></span>
       <span class="fuss-text">Kalender</span>
     </button>
-    <button type="button" id="fussPlus" class="fuss-knopf fuss-plus"
-            aria-haspopup="menu" aria-expanded="false" aria-controls="fussMenue">
+    <button type="button" id="fussPlus" class="fuss-knopf fuss-plus" aria-haspopup="dialog">
       <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <path d="M12 5v14M5 12h14"/>
       </svg></span>
@@ -193,13 +192,43 @@
       <span class="fuss-text">Einstellungen</span>
     </button>
   </nav>
-  <!-- Das Menue hinter dem ＋, Eintraege je nach Ansicht (fusszeile.js).
-       Ausserhalb der Leiste, weil es UEBER dem Schleier liegen muss und die
-       Leiste mit ihrem z-index eine eigene Ebene bildet. Der Schleier ist
-       durchsichtig und faengt den Tipp daneben ab: der schliesst nur das Menue,
-       statt nebenbei ein ToDo abzuhaken. -->
-  <div id="fussSchleier" class="fuss-schleier" hidden></div>
-  <div id="fussMenue" class="fuss-menue" role="menu" aria-label="Neu anlegen" hidden></div>
+
+  <!-- Anlegen-Fenster (seit 15.11.2026, Hendriks Wunsch: "ein Popup wie bei
+       Bereich, ToDo ist immer Default"). Oeffnen das ＋ unten am Handy und
+       "＋ ToDo"/"＋ Bereich" oben. Der Umschalter zeigt in der Liste
+       ToDo | Bereich, im Kalender am Handy ToDo | Termin ("Termin" fuehrt ins
+       Termin-Formular). Ein Titelfeld fuer alle Arten - was schon getippt ist,
+       bleibt beim Umschalten stehen. Logik in anlegen.js.
+       Oben fest wie die Einstellungen: mittig sprang die Oberkante, sobald
+       Bereich und bis beim Umschalten wegfallen, und am Handy laege die Mitte
+       halb unter der Tastatur. -->
+  <div id="anlegenPopup" class="admin-popup anlegen-popup" hidden>
+    <form id="anlegenForm" class="admin-popup-box anlegen-box" role="dialog" aria-label="Neu anlegen" novalidate>
+      <div id="anlegenReiter" class="anlegen-reiter" role="tablist" aria-label="Was anlegen?">
+        <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="todo">ToDo</button>
+        <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="bereich">Bereich</button>
+        <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="termin">Termin</button>
+      </div>
+      <input type="text" id="anlegenTitel" class="eingabe-feld anlegen-titel" autocomplete="off"
+             enterkeyhint="done" aria-label="Titel">
+      <label id="anlegenBereichZeile" class="anlegen-zeile">
+        <span class="anlegen-etikett">Bereich</span>
+        <select id="anlegenBereich" class="anlegen-wahl"></select>
+      </label>
+      <div id="anlegenBisZeile" class="anlegen-zeile">
+        <label class="anlegen-etikett" for="anlegenBis">bis</label>
+        <!-- Leer zeigt das Feld "kein Datum" statt tt.mm.jjjj (am iPhone ist ein
+             leeres Datumsfeld sonst eine leere Flaeche). -->
+        <span class="anlegen-datum">
+          <input type="date" id="anlegenBis">
+          <span class="anlegen-datum-leer" aria-hidden="true">kein Datum</span>
+        </span>
+        <button type="button" id="anlegenBisWeg" class="anlegen-bis-weg" aria-label="Datum entfernen" title="Datum entfernen" hidden>✕</button>
+      </div>
+      <button type="submit" class="btn primary">Anlegen</button>
+      <button type="button" id="anlegenAbbrechen" class="lock-link">Abbrechen</button>
+    </form>
+  </div>
 
   <!-- Kalender: rechte Haelfte des Bildschirms. In breiten Fenstern steht er
        fest neben der Liste (Split), in schmalen faehrt er als Panel darueber -
@@ -910,7 +939,7 @@
           <div class="ein-inhalt hilfe-text">
             <dl class="hilfe-zeilen hilfe-nummeriert">
               <div class="hilfe-zeile"><dt>Liste</dt><dd>„Erste Liste anlegen“ antippen</dd></div>
-              <div class="hilfe-zeile"><dt>ToDo</dt><dd><span class="ohne-fuss">„+ ToDo“</span><span class="mit-fuss">＋ unten, „ToDo“</span>, Titel, Enter</dd></div>
+              <div class="hilfe-zeile"><dt>ToDo</dt><dd><span class="ohne-fuss">„+ ToDo“</span><span class="mit-fuss">＋ unten</span>, Titel, Enter</dd></div>
               <div class="hilfe-zeile"><dt>Bereich</dt><dd><span class="ohne-fuss">„+ Bereich“</span><span class="mit-fuss">＋ unten, „Bereich“</span>, z. B. Schule</dd></div>
               <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kästchen antippen</dd></div>
               <div class="hilfe-zeile"><dt>Heute</dt><dd>Zeigt, was heute und bald fällig ist</dd></div>
@@ -921,7 +950,7 @@
               <ul>
                 <li>Weitere Listen gibt es unter ⚙️ › ToDo › Meine Listen.</li>
                 <li>Ein Datum setzt du über 📅, eine Notiz kommt ins Feld darunter. Das Datum heißt „bis“: schon 2 Wochen vorher steht das ToDo unter Heute.</li>
-                <li>Neue ToDos über <span class="ohne-fuss">„+ ToDo“</span><span class="mit-fuss">＋</span> landen zuerst ohne Bereich. Von dort ziehst du sie in einen Bereich.</li>
+                <li>Im Fenster für ein neues ToDo wählst du gleich den Bereich und ein „bis“-Datum. Ohne Auswahl landet es ohne Bereich, von dort ziehst du es später in einen Bereich.</li>
                 <li>Erledigtes sammelt sich zugeklappt unter „Erledigt“ am Ende des Bereichs. Dort lässt es sich auch wieder aufhaken.</li>
                 <li>Die Tagesansicht zeigt zusätzlich deine Termine und Gewohnheiten.</li>
               </ul>
@@ -1345,8 +1374,8 @@
   <script src="zeiterfassung.js"></script>
   <!-- Hilfe-Fenster (seit 19.10.2026). Braucht einstellungenPopup aus app.js. -->
   <script src="hilfe.js"></script>
-  <!-- Fusszeile am Handy (seit 15.11.2026): das ＋-Menue. Braucht app.js
-       (addTodoOhneBereich, addCategory) und kalender.js (Tag, Termin). -->
-  <script src="fusszeile.js"></script>
+  <!-- Anlegen-Fenster (seit 15.11.2026): ＋ unten, "＋ ToDo"/"＋ Bereich" oben.
+       Braucht app.js (state, addTodoTo) und kalender.js (Tag, Termin). -->
+  <script src="anlegen.js"></script>
 </body>
 </html>
