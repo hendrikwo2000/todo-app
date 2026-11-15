@@ -4452,31 +4452,117 @@ button.zt-knoten { cursor: pointer; }
 .hilfe-karte.gelb { border-left-color: var(--yellow); }
 .hilfe-karte b { min-width: 42px; }
 
-/* ---------- Fusszeile am Handy (seit 15.11.2026) ---------- */
-/* ToDos | Kalender | ＋ | Zeit | Einstellungen, wie in jeder App (Hendriks Wahl:
-   fuenf Felder, ＋ in der Mitte, Linien-Symbole mit Text, nur am Handy). Markup
-   in index.html; das ＋ oeffnet das Anlegen-Fenster (anlegen.js). Bis 560 px - dieselbe Grenze, ab
-   der die Dialoge zum Vollbild werden; iPad und Rechner behalten die Knoepfe
-   oben. Alles, was die Leiste uebernimmt, verschwindet am Handy aus der
-   Kopfzeile und aus der Zeile oben im Kalender: zwei Wege zum selben Ziel
-   waeren nur zwei Stellen zum Suchen.
+/* ---------- Leiste: ToDos | Kalender | ＋ | Zeit | Einstellungen (seit 15.11.2026) ---------- */
+/* Hendriks Wahl: fuenf Felder, ＋ in der Mitte, Linien-Symbole mit Text - am
+   Handy unten wie in jeder App, darueber "gleiche Leiste oben" statt der alten
+   Knoepfe "+ ToDo  + Bereich  ⏱ ⚙️ 📋|📅". Ein Element (#fusszeile), das
+   navigation.js umhaengt und mit .unten / .oben kennzeichnet. Das ＋ in
+   denselben Farben wie die anderen Felder (Hendrik, dritte Runde) - es war
+   zuerst eine blaue Pille.
    Steht am Dateiende, weil es die Grundregeln von .timer-knopf, .snackbar und
    .kal-raster bei gleicher Spezifitaet schlagen muss. */
 :root { --fuss-hoehe: 60px; }
 .fusszeile { display: none; }
-/* Die Hilfe nennt am Handy die Leiste statt der Knoepfe oben. */
+/* Die Hilfe nennt am Handy "unten" statt "oben rechts". */
 .mit-fuss { display: none; }
 
+/* --- Die Felder, unten wie oben gleich gebaut --- */
+.fuss-knopf {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 0 4px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.15;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Eigene display-Regel schlaegt [hidden] - dieselbe Falle wie ueberall. */
+.fuss-knopf[hidden] { display: none; }
+.fuss-knopf:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 12px; }
+/* Das Symbol sitzt in einer Pille, die hinter dem aktiven Feld sichtbar wird. */
+.fuss-symbol {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 30px;
+  border-radius: 15px;
+  transition: background .15s, color .15s;
+}
+.fuss-symbol svg {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.fuss-text { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Wo man gerade ist: blau, mit getoenter Pille. Das ist die Ansicht (ToDos
+   oder Kalender) - ausser ein Fenster der Leiste ist offen: Einstellungen
+   (samt Hilfe und Verlauf der Gewohnheiten) bzw. Zeit (samt Statistik). Dann
+   leuchtet dessen Feld, und die Ansicht darunter tritt zurueck. */
+.fuss-ansicht[aria-pressed="true"],
+body:has(#einstellungenPopup:not([hidden]), #gewFenster:not([hidden]), #hilfeFenster:not([hidden])) .fuss-knopf.ein-knopf,
+body:has(#timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fuss-knopf.timer-knopf { color: var(--accent); }
+.fuss-ansicht[aria-pressed="true"] .fuss-symbol,
+body:has(#einstellungenPopup:not([hidden]), #gewFenster:not([hidden]), #hilfeFenster:not([hidden])) .fuss-knopf.ein-knopf .fuss-symbol,
+body:has(#timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fuss-knopf.timer-knopf .fuss-symbol { background: var(--accent-soft); }
+body:has(#einstellungenPopup:not([hidden]), #gewFenster:not([hidden]), #hilfeFenster:not([hidden]), #timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fuss-ansicht[aria-pressed="true"] { color: var(--muted); }
+body:has(#einstellungenPopup:not([hidden]), #gewFenster:not([hidden]), #hilfeFenster:not([hidden]), #timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fuss-ansicht[aria-pressed="true"] .fuss-symbol { background: none; }
+
+/* Zeit: laeuft die Uhr, steht die Zeit statt des Wortes da, in Blau. Die alten
+   Regeln fuer den Kopfzeilen-Knopf .timer-knopf (Rand, Innenabstand, Symbol
+   weg) gelten hier nicht. */
+.fuss-knopf.timer-knopf { gap: 3px; padding: 6px 0 4px; font-size: 11px; line-height: 1.15; }
+.fuss-knopf.timer-knopf.laeuft { color: var(--accent); }
+.fuss-knopf.timer-knopf.laeuft .fuss-text-ruhe { display: none; }
+.fuss-knopf .timer-zeit { font-size: 11px; }
+/* Der gelbe Hinweis-Punkt gehoert ans Symbol, nicht an den Rand der Zelle. */
+.fuss-knopf.timer-knopf.hinweis::after { top: 5px; right: calc(50% - 25px); }
+
+/* Hover nur mit echter Maus - am Finger fraesse er den ersten Tipp. */
+@media (hover: hover) {
+  .fuss-knopf:hover { color: var(--text); }
+  .fuss-ansicht[aria-pressed="true"]:hover { color: var(--accent); }
+}
+
+/* --- Oben: Kopfzeile (PC, iPad) bzw. Zeile oben im Kalender (iPad hoch) --- */
+.fusszeile.oben:not([hidden]) {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  margin-left: auto;
+}
+.fusszeile.oben .fuss-knopf { flex: none; width: 68px; padding: 2px 0; }
+.fusszeile.oben .fuss-knopf.timer-knopf { padding: 2px 0; }
+/* Board neben Heute und Kalender schmal (html.board-schmal, unter 600 px):
+   die Leiste bekommt eine eigene Zeile unter dem Titel und teilt sie auf. */
+html.board-schmal.kal-split .fusszeile.oben { order: 3; flex: 1 1 100%; margin-left: 0; }
+html.board-schmal.kal-split .fusszeile.oben .fuss-knopf { flex: 1 1 0; width: auto; }
+
+/* --- Unten: Handy --- */
 @media (max-width: 560px) {
   .mit-fuss { display: inline; }
   .ohne-fuss { display: none; }
 
-  .fusszeile:not([hidden]) {
+  .fusszeile.unten:not([hidden]) {
     display: flex;
     position: fixed;
     left: 0; right: 0; bottom: 0;
-    /* Ueber dem Kalender (56), unter seinen Fenstern (60), den Einstellungen
-       (120) und dem Sperrbildschirm (100) - die liegen alle darueber. */
+    /* Ueber dem Kalender (56), unter seinen Fenstern (60), den Dialogen (120)
+       und dem Sperrbildschirm (100). */
     z-index: 58;
     height: calc(var(--fuss-hoehe) + env(safe-area-inset-bottom));
     padding: 0 max(4px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(4px, env(safe-area-inset-left));
@@ -4488,19 +4574,13 @@ button.zt-knoten { cursor: pointer; }
   .app { padding-bottom: calc(var(--fuss-hoehe) + 28px + env(safe-area-inset-bottom)); }
   .snackbar { bottom: calc(var(--fuss-hoehe) + 12px + env(safe-area-inset-bottom)); }
 
-  /* Kopfzeile: nur noch Listenname und "Gespeichert" - in EINER Zeile, die
-     zweite Zeile mit den Anlege-Knoepfen faellt weg. */
-  .topbar > #addTodoBtn,
-  .topbar > #addCatBtn,
-  .topbar > .timer-knopf,
-  .topbar > #einstellungenBtn,
-  .topbar > .ansicht-schalter { display: none; }
+  /* Kopfzeile: nur Listenname und "Gespeichert", in EINER Zeile. */
   .topbar::after { display: none; }
   .topbar > #saveStatus { order: 0; margin-left: auto; }
 
-  /* Kalender: die Zeile oben mit ⏱, Zahnrad und Pille gibt es jetzt unten.
-     Das Panel endet ueber der Leiste, sonst laege die letzte Rasterzeile
-     dahinter; den Geraeterand unten traegt die Leiste. */
+  /* Kalender: keine Zeile oben (die Leiste steht unten). Das Panel endet ueber
+     der Leiste, sonst laege die letzte Rasterzeile dahinter; den Geraeterand
+     unten traegt die Leiste. */
   .kal-ansicht-zeile { display: none; }
   .kalender { bottom: calc(var(--fuss-hoehe) + env(safe-area-inset-bottom)); }
   /* Kein Nachfedern der Seite in der Kalenderansicht: es gibt dort nichts zu
@@ -4508,6 +4588,29 @@ button.zt-knoten { cursor: pointer; }
      kalAnsichtNachOben in kalender.js). */
   html.kal-ansicht { overscroll-behavior: none; }
   .kal-raster { padding-bottom: 10px; }
+
+  /* Einstellungen und Zeit sind am Handy wie eigene Ansichten: ihre Fenster
+     enden ueber der Leiste, statt sie zu verdecken (Hendrik, 15.11.2026).
+     Ein Tipp auf ein anderes Feld schliesst sie (navigation.js). Dialoge, die
+     sich darueber legen (Rueckfragen, "Neue Gewohnheit", Eintrag nachtragen),
+     decken die Leiste weiter ab - die verlangen erst eine Antwort. */
+  #einstellungenPopup, #gewFenster, #hilfeFenster, #timerPopup, #zeitFenster {
+    bottom: calc(var(--fuss-hoehe) + env(safe-area-inset-bottom));
+  }
+  #einstellungenPopup .admin-popup-box.einstellungen,
+  #gewFenster .admin-popup-box.gw-box,
+  #zeitFenster .admin-popup-box.gw-box,
+  #hilfeFenster .admin-popup-box.gw-box { padding-bottom: 18px; }
+  #timerPopup .admin-popup-box.timer-box { max-height: 100%; }
+
+  /* Nur noch das ＋ der Leiste legt an (Hendriks Wahl): die kleinen ＋ in der
+     Tagesansicht, an jedem Bereich und an jedem Thema fallen am Handy weg.
+     Das Fenster fragt Bereich und Thema selbst ab. In der Tages-Karte des
+     Kalenders bleiben sie - die Karte deckt die Leiste ab. */
+  #tagOben .kal-gruppe-plus,
+  #tagOben .kal-kopf-plus,
+  .col-add-btn,
+  .thema-add { display: none; }
 }
 /* iPhone als Homescreen-App: in der Kalenderansicht stand die Leiste rund
    60 pt zu hoch, darunter leere Flaeche - der Kalender oben dagegen am
@@ -4525,82 +4628,12 @@ button.zt-knoten { cursor: pointer; }
     html.kal-ansicht body { min-height: calc(100vh + env(safe-area-inset-top, 0px) + 1px); }
   }
 }
-@media (max-width: 560px) {
-
-  .fuss-knopf {
-    flex: 1 1 0;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    padding: 6px 0 4px;
-    border: 0;
-    border-radius: 0;
-    background: none;
-    color: var(--muted);
-    font: inherit;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.15;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  /* Eigene display-Regel schlaegt [hidden] - dieselbe Falle wie ueberall. */
-  .fuss-knopf[hidden] { display: none; }
-  .fuss-knopf:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 12px; }
-  /* Das Symbol sitzt in einer Pille: hinter der aktiven Ansicht wird sie
-     sichtbar, beim ＋ ist sie die blaue Flaeche. */
-  .fuss-symbol {
-    display: grid;
-    place-items: center;
-    width: 54px;
-    height: 30px;
-    border-radius: 15px;
-    transition: background .15s, color .15s;
-  }
-  .fuss-symbol svg {
-    flex: none;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-  .fuss-text { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  /* Wo man gerade ist: blau, mit getoenter Pille hinter dem Symbol. */
-  .fuss-ansicht[aria-pressed="true"] { color: var(--accent); }
-  .fuss-ansicht[aria-pressed="true"] .fuss-symbol { background: var(--accent-soft); }
-
-  /* ＋: die einzige volle Flaeche in der Leiste. */
-  .fuss-plus .fuss-symbol { background: var(--accent); color: #fff; }
-  .fuss-plus .fuss-symbol svg { stroke-width: 2.2; }
-  /* Im Darkmode ist das Blau hell - weisses Kreuz darauf haette zu wenig
-     Kontrast, also dunkel wie der Grund. */
-  :root[data-theme="dark"] .fuss-plus .fuss-symbol { color: var(--bg); }
-
-  /* Zeit: laeuft die Uhr, steht die Zeit statt des Wortes da, in Blau. Die
-     Kopfzeilen-Regeln fuer .timer-knopf (Rand, Innenabstand, Symbol weg)
-     gelten hier nicht. */
-  .fuss-knopf.timer-knopf { gap: 3px; padding: 6px 0 4px; font-size: 11px; line-height: 1.15; }
-  .fuss-knopf.timer-knopf.laeuft { color: var(--accent); }
-  .fuss-knopf.timer-knopf.laeuft .fuss-text-ruhe { display: none; }
-  .fuss-knopf .timer-zeit { font-size: 11px; }
-  /* Der gelbe Hinweis-Punkt gehoert ans Symbol, nicht an den Rand der Zelle. */
-  .fuss-knopf.timer-knopf.hinweis::after { top: 5px; right: calc(50% - 25px); }
-}
-/* Hover nur mit echter Maus - am Finger fraesse er den ersten Tipp. */
-@media (max-width: 560px) and (hover: hover) {
-  .fuss-knopf:hover { color: var(--text); }
-  .fuss-ansicht[aria-pressed="true"]:hover { color: var(--accent); }
-}
 
 /* ---------- Anlegen-Fenster (seit 15.11.2026) ---------- */
-/* Ein Popup fuer neue ToDos und Bereiche (im Kalender am Handy: ToDo | Termin),
-   Logik in anlegen.js. Derselbe Kasten wie "Neuer Bereich" vorher
-   (.admin-popup-box), aber linksbuendig: es hat Zeilen mit Beschriftung.
+/* Ein Popup fuer neue ToDos und Termine (Umschalter), dazu "Neuer Bereich"
+   ueber den Link unten. Logik in anlegen.js. Derselbe Kasten wie die anderen
+   Dialoge (.admin-popup-box), aber linksbuendig: es hat Zeilen mit
+   Beschriftung.
    Oben fest wie die Einstellungen - beim Umschalten fallen Bereich und bis weg,
    mittig sprang dann die Oberkante, und am Handy laege die Mitte halb unter
    der Tastatur. */
@@ -4615,7 +4648,10 @@ button.zt-knoten { cursor: pointer; }
   text-align: left;
 }
 /* Eigene display-Regeln schlagen [hidden] - dieselbe Falle wie ueberall. */
-.anlegen-reiter[hidden], .anlegen-reiter-knopf[hidden], .anlegen-zeile[hidden] { display: none; }
+.anlegen-reiter[hidden], .anlegen-reiter-knopf[hidden], .anlegen-zeile[hidden],
+.anlegen-link[hidden] { display: none; }
+.anlegen-ueberschrift { margin: 0; text-align: center; }
+.anlegen-ueberschrift[hidden] { display: none; }
 
 /* Umschalter wie die Pille 📋|📅: zwei Haelften, die gewaehlte liegt als
    hellere Karte obenauf. */
@@ -4710,10 +4746,32 @@ button.zt-knoten { cursor: pointer; }
   .anlegen-bis-weg:hover { color: var(--red); }
 }
 .anlegen-box .btn.primary { margin-top: 4px; min-height: 44px; font-size: 15px; }
-.anlegen-box .lock-link { align-self: center; }
+.anlegen-box .btn.primary:disabled { opacity: .6; cursor: progress; }
+/* Abbrechen links, der Link (Neuer Bereich bzw. Mehr) rechts - beide leise. */
+.anlegen-fuss { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.admin-popup-box .anlegen-fuss .lock-link { font-size: 13px; padding: 6px 4px; }
+.admin-popup-box .anlegen-fuss .anlegen-link { color: var(--accent); }
+
+/* Termin: Ganztaegig als Schalter rechts, die Zeiten nebeneinander. */
+.anlegen-etikett-breit { width: auto; flex: 1 1 auto; }
+.anlegen-zeit {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+.anlegen-zeit:focus { outline: none; border-color: var(--accent); }
+.anlegen-strich { flex: none; color: var(--muted); }
 /* iPhone: ein Datumsfeld ist dort sonst zentriert und traegt Safaris eigene
    Optik - linksbuendig passt es zum "kein Datum" darueber. */
 @media (pointer: coarse) {
-  .anlegen-datum input[type="date"] { -webkit-appearance: none; appearance: none; text-align: left; }
+  .anlegen-datum input[type="date"],
+  .anlegen-zeit { -webkit-appearance: none; appearance: none; text-align: left; }
   .anlegen-datum input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 }

@@ -1153,31 +1153,67 @@ der Knopfmitte muss `.kal-schliessen` treffen, obwohl der Knopf nur 28×23 px
 groß ist. (`#kalZu` ist am Handy ohnehin `display: none` — dort schaltet die
 Pille. Die Regel greift für ihn nur am Rechner mit Touchscreen.)
 
-## Fußzeile am Handy (seit 15.11.2026)
+## Die Leiste: ToDos | Kalender | ＋ | Zeit | Einstellungen (seit 15.11.2026)
 
-Bis 560 px Breite (Handy hochkant) steht unten eine Leiste wie in jeder App:
-**ToDos | Kalender | ＋ | Zeit | Einstellungen**. Hendriks Wahl aus drei
-Skizzen: fünf Felder mit ＋ in der Mitte, Linien-Symbole mit Text (aktiv blau
-mit getönter Pille), nur am Handy - iPad und Rechner behalten die Knöpfe oben.
-Markup `#fusszeile` in `index.html`, Aussehen am Ende von `style.css`
-(„Fusszeile am Handy"). Das ＋ öffnet das Anlegen-Fenster (`anlegen.js`, siehe
-„Anlegen-Fenster“ gleich darunter).
+Eine Leiste wie in jeder App: **ToDos | Kalender | ＋ Neu | Zeit |
+Einstellungen**, Linien-Symbole mit Text, das aktive Feld blau mit getönter
+Pille, das ＋ in denselben Farben wie die anderen (zuerst war es eine blaue
+Pille - Hendrik wollte es einheitlich). Hendriks Wahlen aus Skizzen, in drei
+Runden am 15.11.2026: erst nur am Handy unten, dann „gleiche Leiste oben“ auch
+an iPad und PC statt „+ ToDo  + Bereich  ⏱ ⚙️ 📋|📅“.
 
-**Was die Leiste übernimmt, verschwindet am Handy oben:** „＋ ToDo“,
-„＋ Bereich“, ⏱, ⚙️ und die Pille 📋|📅 aus der Kopfzeile (die damit einzeilig
-ist: Listenname links, „Gespeichert“ rechts) und die ganze Zeile
-`.kal-ansicht-zeile` oben im Kalender. Das Kalender-Panel endet über der
-Leiste (`bottom` = Leistenhöhe + Safe Area), ebenso Snackbar und der Platz unter
-dem Board. Die Leiste steht **außerhalb von `.app`**, weil die Kalenderansicht
-`.app` ausblendet.
+**Ein Element, das umzieht** (`#fusszeile` in `index.html` - der Name stammt
+aus der ersten Fassung; `navigation.js` hängt es um und setzt `.unten`/`.oben`):
+* Handy (bis 560 px): unten am Bildschirmrand, fest (`.unten`).
+* Breiter, Liste sichtbar: oben rechts in der Kopfzeile (`.oben`). Bei
+  schmalem Board neben Heute und Kalender (`html.board-schmal`) in einer
+  eigenen Zeile unter dem Titel.
+* Breiter, Kalender als eigene Ansicht (iPad hoch, 561-999 px): in die Zeile
+  oben im Kalender (`.kal-ansicht-zeile`), weil der Kalender die Kopfzeile
+  verdeckt.
+Ein `MutationObserver` auf die Klassen am `<html>` (die setzt `setzePanel`)
+und die Breitenabfrage lösen das Umhängen aus. **Umziehen statt zweimal im
+Dokument**, weil die Knöpfe an ihren Klassen verdrahtet sind und so ihre
+Zustände behalten: `.fuss-ansicht` in `kalender.js` (auch `aria-pressed`),
+`.timer-knopf` in `zeiterfassung.js` (läuft die Uhr, steht die Zeit statt
+„Zeit“ da), `.ein-knopf` in `app.js`, `#fussPlus` in `anlegen.js`. Sichtbar
+wird die Leiste mit `zeigeEinstellungenKnopf()` in `app.js`, also erst nach
+der Anmeldung. Ist die Zeiterfassung abgeschaltet, hat sie vier Felder.
 
-**Kein neuer Code für die alten Wege.** Die Knöpfe hängen an der vorhandenen
-Verdrahtung: `.fuss-ansicht` an derselben wie die Pille (`kalender.js`, beide
-Selektoren dort nennen `.ansicht-seg, .fuss-ansicht` - auch `aria-pressed`
-kommt von dort), `.timer-knopf` an der Zeiterfassung (läuft die Uhr, steht die
-Zeit statt „Zeit“ da), `.ein-knopf` am Zahnrad. Sichtbar wird die Leiste mit
-`zeigeEinstellungenKnopf()` in `app.js`, also erst nach der Anmeldung. Ist die
-Zeiterfassung abgeschaltet, hat sie vier Felder.
+**Die alten Knöpfe sind aus dem HTML raus** („＋ ToDo“, „＋ Bereich“, ⏱, ⚙️,
+die Pille 📋|📅 in der Kopfzeile und dieselben in `.kal-ansicht-zeile`, dort
+bleibt nur das ✕ für den Split). Ihre CSS-Regeln (`#einstellungenBtn`,
+`.ansicht-schalter`, `.topbar > .timer-knopf`, `#addTodoBtn` in den
+Umbruch-Regeln) stehen noch und greifen ins Leere - beim nächsten Aufräumen
+löschen.
+
+**Am Handy** ist die Kopfzeile einzeilig (Listenname links, „Gespeichert“
+rechts), `.kal-ansicht-zeile` fällt ganz weg, und Kalender-Panel, Snackbar und
+der Platz unter dem Board enden über der Leiste. Die Leiste steht **außerhalb
+von `.app`**, weil die Kalenderansicht `.app` ausblendet.
+
+**Einstellungen und Zeit sind am Handy wie eigene Ansichten** (Hendrik: „wenn
+man auf Einstellungen geht, verschwindet die Fußzeile, soll nicht so sein“).
+Ihre Fenster enden über der Leiste (`bottom` in der Handy-Regel) - das gilt
+für `#einstellungenPopup`, `#gewFenster`, `#hilfeFenster` (aus den
+Einstellungen geöffnet) und `#timerPopup`, `#zeitFenster` (Statistik). Ist
+eines offen, leuchtet sein Feld statt der Ansicht (`body:has(...)` in
+`style.css`). Ein Tipp auf ein anderes Feld schließt sie: `navigation.js`
+hört in der Einfangphase, also VOR dem Knopf selbst - sonst lägen
+Einstellungen und Zeit-Fenster übereinander. Dialoge, die sich darüber legen
+(Rückfragen, „Neue Gewohnheit“, Eintrag nachtragen), decken die Leiste weiter
+ab; die verlangen erst eine Antwort. Das „Zeit“-Feld blau zu machen war mein
+Zusatz, Hendrik hatte nur die Einstellungen genannt.
+
+**Nur noch das ＋ der Leiste legt am Handy an** (Hendrik: „in jeder Zeile ein
++ und in der Mitte“, gewählt „Nur noch ＋ unten“): die kleinen ＋ in der
+Tagesansicht über den ToDos (`#tagOben .kal-gruppe-plus`, `.kal-kopf-plus`),
+„＋ ToDo“ an jedem Bereich (`.col-add-btn`) und ＋ an jedem Thema
+(`.thema-add`) sind am Handy per CSS weg; das Anlegen-Fenster fragt Bereich und
+Thema selbst ab. In der Tages-Karte des Kalenders bleiben sie (die Karte deckt
+die Leiste ab). **Am PC und iPad bleiben sie** - Hendriks Klage bezog sich auf
+das Handy (das ＋ „in der Mitte“ gibt es nur dort); mein Call, auf Wunsch
+gleichziehen.
 
 **iPhone, Homescreen-App: die Leiste rutschte im Kalender nach oben**
 (Hendrik, 15.11.2026). In der Kalenderansicht gibt es auf Seitenebene nichts zu
@@ -1218,8 +1254,9 @@ Liste kommt beim Zurück an ihre Stelle).
 darüber (Kalender-Fenster 60, Anlegen-Fenster und Einstellungen 120, Sperre 100,
 Snackbar 130).
 
-**Hilfe:** die drei Zeilen, die Knöpfe oben nennen, tragen beide Fassungen
-(`.ohne-fuss` / `.mit-fuss`), dieselbe Breitengrenze schaltet um.
+**Hilfe:** die Zeilen, die die Lage der Leiste nennen („oben rechts“ /
+„unten“), tragen beide Fassungen (`.ohne-fuss` / `.mit-fuss`), dieselbe
+Breitengrenze schaltet um.
 
 **Nebenbei behoben:** der Schatten des zugeklappten Kalenders ragte unter
 1000 px als grauer Streifen am rechten Rand herein (Fund vom 19.10.2026). Jetzt
@@ -1231,42 +1268,43 @@ Browser-Pane bei 360/390 px gemessen.
 
 ## Anlegen-Fenster (seit 15.11.2026)
 
-Ein Popup für alles Neue (`#anlegenPopup` in `index.html`, `anlegen.js`,
-CSS „Anlegen-Fenster“ am Ende von `style.css`). Hendriks Wunsch am Tag der
-Fußzeile: „ein Popup wie bei Bereich“, und weil man viel öfter ToDos als
-Bereiche anlegt, ist **ToDo immer vorgewählt**. Es ersetzt das ＋-Menü der
-Fußzeile (am 15.11.2026 kurz live: ToDo/Bereich als Menü, ToDo klappte das
-Feld im Board auf), `addTodoOhneBereich` und `addCategory` mit eigenem Dialog.
+Ein Popup für alles Neue, geöffnet vom ＋ der Leiste (`#anlegenPopup` in
+`index.html`, `anlegen.js`, CSS „Anlegen-Fenster“ am Ende von `style.css`).
+Entstanden in drei Runden am 15.11.2026: erst ein ＋-Menü (ToDo/Bereich), dann
+„ein Popup wie bei Bereich, ToDo immer Default“, zuletzt **ToDo | Termin** im
+Umschalter - Hendrik: „ich verwende viel ToDo und Termin, Bereich kaum“. Ein
+neuer Bereich ist deshalb nur noch der kleine Link „Neuer Bereich“ unten
+(eigene Überschrift, kein Umschalter). `addTodoOhneBereich` und `addCategory`
+mit eigenem Dialog sind entfallen.
 
-Oben ein Umschalter (wie die Pille 📋|📅), darunter ein Titelfeld für alle
-Arten - was schon getippt ist, bleibt beim Umschalten stehen:
-* **Liste** (＋ unten am Handy, „＋ ToDo“ / „＋ Bereich“ oben, „＋ ToDo anlegen“
-  im leeren Board): ToDo | Bereich. „＋ Bereich“ wählt Bereich vor.
-* **Kalender am Handy** (＋ unten bei offener Kalenderansicht): ToDo | Termin,
-  „bis“ = gewählter Tag. „Termin“ schließt das Fenster, öffnet das
-  Termin-Formular am gewählten Tag und trägt den getippten Titel ein. Nur mit
-  Schreibrecht bei Google (sonst 403, dieselbe Bedingung wie am runden Plus der
-  Tages-Karte); ohne bleibt nur ToDo und der Umschalter verschwindet.
-* Am Rechner mit offenem Kalender gilt ToDo | Bereich - die Knöpfe oben gehören
-  zum Board.
+Ein Titelfeld für alle Arten - was schon getippt ist, bleibt beim Umschalten
+stehen. Unten links „Abbrechen“, rechts genau ein Link: bei ToDo „Neuer
+Bereich“, beim Termin „Mehr“.
 
-**Felder für ein ToDo** (Hendriks Wahl aus vier Skizzen): Titel, Bereich
-(native Auswahl, „Ohne Bereich“ zuerst, dann die Bereiche der aktiven Liste),
-„bis“. Die Notiz kommt wie bisher übers Bearbeiten dazu. Ein leeres Datumsfeld
-zeigt „kein Datum“ (Überlagerung, das Feld selbst ist dann durchsichtig - am
-iPhone wäre ein leeres Datumsfeld sonst eine leere Fläche), gesetzt erscheint
-ein ✕ daneben. Schriftgröße 16 px in allen Feldern, sonst zoomt Safari beim
-Antippen.
+**ToDo** (Hendriks Wahl aus vier Skizzen): Titel, Bereich (native Auswahl,
+„Ohne Bereich“ zuerst), **Thema** - nur wenn der gewählte Bereich Themen hat,
+Ersatz für die weggefallenen ＋ an den Themen -, „bis“. Die Notiz kommt übers
+Bearbeiten dazu. Ein leeres Datumsfeld zeigt „kein Datum“ (Überlagerung, das
+Feld ist dann durchsichtig - am iPhone wäre ein leeres Datumsfeld eine leere
+Fläche), gesetzt erscheint ein ✕. In der Kalenderansicht am Handy ist „bis“
+mit dem gewählten Tag vorbelegt. Nach dem Anlegen sagt die Snackbar, wo es
+liegt („… in Projekte › IT Wolf angelegt“).
 
-Nach dem Anlegen schließt das Fenster und die Snackbar sagt, wo das ToDo liegt
-(„… in Schule angelegt“) - es kann außerhalb des Bildes landen, im Kalender
-sieht man es gar nicht. Das „+ ToDo“ unten in jedem Bereich bleibt das schnelle
-Feld direkt im Bereich (Hendriks Wahl).
+**Termin kurz** (Hendriks Wahl gegen „gleich ins volle Formular“): Titel, Tag,
+Ganztägig (derselbe `.kal-schalter` wie im Formular), von–bis. Vorbelegt wie
+das volle Formular: ganztägig, 9-10 Uhr (mein Call); Tag = gewählter Tag, wenn
+der Kalender offen ist, sonst heute. „von“ verschieben nimmt „bis“ mit (Dauer
+bleibt), endet der Termin vor seinem Beginn, geht er über Mitternacht. Gespeichert
+wird mit demselben `terminAnfrage("POST", …)` und demselben Rumpf wie im
+Formular, danach `ladeGoogle()` frisch. „Mehr (Ort, Wiederholung) ›“ öffnet das
+volle Formular und trägt Titel, Tag und Zeiten ein. Termin gibt es nur mit
+Schreibrecht bei Google; ohne bleibt nur ToDo, und der Umschalter verschwindet.
 
 **Oben fest** (`align-items: flex-start`, 8vh) wie die Einstellungen: beim
-Umschalten auf Bereich fallen zwei Zeilen weg, mittig sprang dann die
-Oberkante, und am Handy läge die Mitte halb unter der Tastatur. Escape fängt
-`anlegen.js` in der Einfangphase ab, sonst klappte der Kalender mit zu.
+Umschalten wechseln die Zeilen, mittig sprang dann die Oberkante, und am Handy
+läge die Mitte halb unter der Tastatur. Schriftgröße 16 px in allen Feldern,
+sonst zoomt Safari beim Antippen. Escape fängt `anlegen.js` in der
+Einfangphase ab, sonst klappte der Kalender mit zu.
 
 ## Notizfeld
 

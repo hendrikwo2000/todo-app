@@ -90,8 +90,6 @@ catch (e) { themaCollapsed = {}; }
 
 // ---------- DOM-Referenzen ----------
 const board        = document.getElementById("board");
-const addCatBtn    = document.getElementById("addCatBtn");
-const addTodoBtn   = document.getElementById("addTodoBtn");
 const saveStatusEl = document.getElementById("saveStatus");
 const themeSwitch      = document.getElementById("themeSwitch");
 const themeSwitchLabel = document.getElementById("themeSwitchLabel");
@@ -109,8 +107,8 @@ const streifenTimerLabel         = document.getElementById("streifenTimerLabel")
 // Das Zahnrad steckt DREIMAL im Dokument: in der Kopfzeile der App und in den
 // beiden Panels (Kalender, Fokus), die die Kopfzeile am Handy verdecken. Alle
 // tragen .ein-knopf, alle starten versteckt und erscheinen mit der Anmeldung.
-// Seit 15.11.2026 kommt die Fusszeile am Handy dazu (Zahnrad dort plus die
-// ganze Leiste - vor der Anmeldung stuende sie unter der Anmeldemaske).
+// Seit 15.11.2026 gibt es nur noch das Zahnrad in der Leiste (navigation.js),
+// die mit ihm erscheint - vor der Anmeldung stuende sie unter der Anmeldemaske.
 const einKnoepfe = [...document.querySelectorAll(".ein-knopf")];
 function zeigeEinstellungenKnopf() {
   for (const b of einKnoepfe) b.hidden = false;
@@ -1858,8 +1856,6 @@ function zeigeAktiveListe() {
   if (!Array.isArray(state.todos)) state.todos = [];
   if (!Array.isArray(state.unterpunkte)) state.unterpunkte = [];
   zeichneTitel();
-  addCatBtn.disabled = !aktiveListe;
-  addTodoBtn.disabled = !aktiveListe;
 }
 
 // Titel = Name der aktiven Liste. Ab zwei Listen kommt ein kleiner Pfeil dazu
@@ -2507,8 +2503,8 @@ function addTodoTo(categoryId, themaId, text, due, note) {
   return true;
 }
 
-// Der globale "＋ ToDo"-Knopf im Kopf oeffnet seit 15.11.2026 das
-// Anlegen-Fenster (anlegen.js) - vorher klappte er das Eingabefeld im Bereich
+// Neue ToDos legt seit 15.11.2026 das Anlegen-Fenster an (＋ in der Leiste,
+// anlegen.js) - vorher klappte "＋ ToDo" oben das Eingabefeld im Bereich
 // "Ohne Bereich" auf (addTodoOhneBereich, entfernt).
 
 // boardId ist der Weg des Kalenders: er zeigt ToDos aus allen Listen und hakt
@@ -2635,7 +2631,7 @@ function cancelEdit() {
 
 // ---------- Aktionen: Bereiche ----------
 // Neue Bereiche legt seit 15.11.2026 das Anlegen-Fenster an (anlegen.js,
-// Umschalter "Bereich") - addCategory mit eigenem Dialog ist entfallen.
+// Link "Neuer Bereich") - addCategory mit eigenem Dialog ist entfallen.
 
 // Bereichsname per Doppelklick direkt in der Ueberschrift bearbeiten.
 function startRenameCategory(catId) {
@@ -3073,7 +3069,7 @@ function render() {
     const btn = document.createElement("button");
     btn.className = "btn primary";
     btn.textContent = "＋ ToDo anlegen";
-    btn.addEventListener("click", () => oeffneAnlegen("todo"));   // anlegen.js
+    btn.addEventListener("click", () => oeffneAnlegen());   // anlegen.js
     wrap.appendChild(p);
     wrap.appendChild(btn);
     board.appendChild(wrap);
@@ -4029,7 +4025,6 @@ function renderTodo(t) {
 }
 
 // ---------- Ereignisse ----------
-// addCatBtn und addTodoBtn verdrahtet anlegen.js (Anlegen-Fenster).
 themeSwitch.addEventListener("change", () => {
   const next = themeSwitch.checked ? "dark" : "light";
   localStorage.setItem("theme", next);

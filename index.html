@@ -49,29 +49,11 @@
   <div class="app">
     <header class="topbar">
       <h1 id="titel">ToDo-Liste</h1>
-      <button id="addTodoBtn" class="btn add-cat" title="ToDo anlegen – landet ohne Bereich, bis du es zuordnest">＋ ToDo</button>
-      <button id="addCatBtn" class="btn add-cat">＋ Bereich</button>
       <span id="saveStatus" class="save-status"></span>
-      <!-- Die Zeiterfassung als Knopf (seit 18.10.2026, vorher ein Reiter ueber
-           dem Kalender): zeigt die gelaufene Zeit, solange die Uhr laeuft, und
-           oeffnet ein kleines Fenster (#timerPopup). Zweimal im Dokument wie das
-           Zahnrad - am Handy verdeckt der Kalender die Kopfzeile. Sichtbarkeit
-           und Inhalt: zeiterfassung.js. -->
-      <button type="button" class="btn timer-knopf" title="Zeiterfassung" hidden><span aria-hidden="true">⏱</span><span class="timer-zeit"></span></button>
-      <button id="einstellungenBtn" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
-      <!-- Umschalter Liste/Kalender, aussen rechts. Die Ecke gehoert ihm und
-           nicht dem Zahnrad, weil er im Umschalt-Modus im Kalender noch einmal
-           auftaucht - und zwar an genau derselben Bildschirmstelle. Stuende
-           dort das Zahnrad daneben, spraenge die Pille beim Umschalten.
-
-           Zwei Segmente: 📋 = Streifen zu, 📅 = Streifen auf. Ein drittes
-           Symbol hier oben waere nur eine zweite Stelle fuer dieselbe Frage. -->
-      <div id="ansichtSchalter" class="ansicht-schalter" role="group" aria-label="Ansicht">
-        <button type="button" class="ansicht-seg" data-ansicht="liste"
-                aria-pressed="true" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
-        <button type="button" class="ansicht-seg" data-ansicht="kalender"
-                aria-pressed="false" aria-label="Kalender" title="Kalender">📅</button>
-      </div>
+      <!-- Rechts neben dem Titel steht seit 15.11.2026 die Leiste (#fusszeile,
+           ToDos | Kalender | ＋ Neu | Zeit | Einstellungen) - navigation.js
+           haengt sie hierher. Vorher standen hier "＋ ToDo", "＋ Bereich", ⏱,
+           ⚙️ und die Pille 📋|📅. -->
 
       <!-- Umschalter zwischen den Listen. Inhalt kommt per JS, erscheint nur
            bei mehr als einer Liste. -->
@@ -140,34 +122,32 @@
 
   <div id="snackbar" class="snackbar" aria-live="polite"></div>
 
-  <!-- Fusszeile am Handy (seit 15.11.2026, Hendriks Wahl): ToDos | Kalender |
-       ＋ | Zeit | Einstellungen, wie in jeder App. Nur bis 560 px Breite - iPad
-       und Rechner behalten die Knoepfe oben. Was hier steht, verschwindet am
-       Handy aus der Kopfzeile und aus der Zeile oben im Kalender (style.css,
-       "Fusszeile am Handy").
-       Steht ausserhalb von .app, weil die Kalenderansicht .app ausblendet und
-       die Fusszeile dort stehen bleiben muss.
+  <!-- Die Leiste ToDos | Kalender | ＋ | Zeit | Einstellungen (seit 15.11.2026,
+       Hendriks Wahl). Heisst aus Geschichte "fusszeile": am Handy (bis 560 px)
+       steht sie unten wie in jeder App, darueber oben rechts in der Kopfzeile
+       bzw. in der Zeile oben im Kalender - es ist immer DIESES eine Element,
+       navigation.js haengt es um (Klasse .unten / .oben).
        Die Knoepfe haengen an der vorhandenen Verdrahtung: .fuss-ansicht an
        derselben wie die Pille 📋|📅 (kalender.js), .timer-knopf an der
        Zeiterfassung, .ein-knopf am Zahnrad. Das ＋ oeffnet das Anlegen-Fenster
        (anlegen.js). Sichtbar erst mit der Anmeldung (zeigeEinstellungenKnopf
        in app.js), sonst stuende sie unter der Anmeldemaske. -->
   <nav id="fusszeile" class="fusszeile" aria-label="Navigation" hidden>
-    <button type="button" class="fuss-knopf fuss-ansicht" data-ansicht="liste" aria-pressed="true">
+    <button type="button" class="fuss-knopf fuss-ansicht" data-ansicht="liste" aria-pressed="true" title="ToDo-Liste">
       <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <rect x="4" y="4" width="16" height="16" rx="3.5"/>
         <path d="M8.3 12.2l2.5 2.5 4.9-5.1"/>
       </svg></span>
       <span class="fuss-text">ToDos</span>
     </button>
-    <button type="button" class="fuss-knopf fuss-ansicht" data-ansicht="kalender" aria-pressed="false">
+    <button type="button" class="fuss-knopf fuss-ansicht" data-ansicht="kalender" aria-pressed="false" title="Kalender">
       <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <rect x="3.5" y="5" width="17" height="15.5" rx="3"/>
         <path d="M3.5 10h17M8 3v4M16 3v4"/>
       </svg></span>
       <span class="fuss-text">Kalender</span>
     </button>
-    <button type="button" id="fussPlus" class="fuss-knopf fuss-plus" aria-haspopup="dialog">
+    <button type="button" id="fussPlus" class="fuss-knopf fuss-plus" aria-haspopup="dialog" title="Neu anlegen">
       <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <path d="M12 5v14M5 12h14"/>
       </svg></span>
@@ -176,7 +156,7 @@
     <!-- .timer-zeit fuellt zeiterfassung.js, solange die Uhr laeuft - dann
          steht die Zeit statt "Zeit" da. hidden, solange die Zeiterfassung aus
          ist; die Fusszeile hat dann vier Felder. -->
-    <button type="button" class="fuss-knopf timer-knopf" hidden>
+    <button type="button" class="fuss-knopf timer-knopf" title="Zeiterfassung" hidden>
       <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <circle cx="12" cy="13.5" r="7.5"/>
         <path d="M12 9.5v4l2.6 1.6M9.8 3h4.4M12 3v3"/>
@@ -184,7 +164,7 @@
       <span class="fuss-text fuss-text-ruhe">Zeit</span>
       <span class="fuss-text timer-zeit"></span>
     </button>
-    <button type="button" class="fuss-knopf ein-knopf" hidden>
+    <button type="button" class="fuss-knopf ein-knopf" title="Einstellungen" hidden>
       <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <path d="M10.21 4.82 L10.58 2.51 L13.42 2.51 L13.79 4.82 L15.81 5.66 L17.71 4.28 L19.72 6.29 L18.34 8.19 L19.18 10.21 L21.49 10.58 L21.49 13.42 L19.18 13.79 L18.34 15.81 L19.72 17.71 L17.71 19.72 L15.81 18.34 L13.79 19.18 L13.42 21.49 L10.58 21.49 L10.21 19.18 L8.19 18.34 L6.29 19.72 L4.28 17.71 L5.66 15.81 L4.82 13.79 L2.51 13.42 L2.51 10.58 L4.82 10.21 L5.66 8.19 L4.28 6.29 L6.29 4.28 L8.19 5.66 Z"/>
         <circle cx="12" cy="12" r="3.2"/>
@@ -193,29 +173,35 @@
     </button>
   </nav>
 
-  <!-- Anlegen-Fenster (seit 15.11.2026, Hendriks Wunsch: "ein Popup wie bei
-       Bereich, ToDo ist immer Default"). Oeffnen das ＋ unten am Handy und
-       "＋ ToDo"/"＋ Bereich" oben. Der Umschalter zeigt in der Liste
-       ToDo | Bereich, im Kalender am Handy ToDo | Termin ("Termin" fuehrt ins
-       Termin-Formular). Ein Titelfeld fuer alle Arten - was schon getippt ist,
-       bleibt beim Umschalten stehen. Logik in anlegen.js.
-       Oben fest wie die Einstellungen: mittig sprang die Oberkante, sobald
-       Bereich und bis beim Umschalten wegfallen, und am Handy laege die Mitte
-       halb unter der Tastatur. -->
+  <!-- Anlegen-Fenster (seit 15.11.2026). Oeffnet das ＋ der Leiste. Umschalter
+       ToDo | Termin, ToDo vorgewaehlt (Hendrik: "ich verwende viel ToDo und
+       Termin, Bereich kaum") - ein neuer Bereich ist der kleine Link unten. Ein
+       Titelfeld fuer alle Arten, was schon getippt ist, bleibt beim Umschalten.
+       Logik in anlegen.js.
+       Oben fest wie die Einstellungen: mittig sprang die Oberkante beim
+       Umschalten, und am Handy laege die Mitte halb unter der Tastatur. -->
   <div id="anlegenPopup" class="admin-popup anlegen-popup" hidden>
     <form id="anlegenForm" class="admin-popup-box anlegen-box" role="dialog" aria-label="Neu anlegen" novalidate>
       <div id="anlegenReiter" class="anlegen-reiter" role="tablist" aria-label="Was anlegen?">
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="todo">ToDo</button>
-        <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="bereich">Bereich</button>
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="termin">Termin</button>
       </div>
+      <!-- Nur fuer "Neuer Bereich": dort gibt es keinen Umschalter. -->
+      <h2 id="anlegenUeberschrift" class="anlegen-ueberschrift" hidden>Neuer Bereich</h2>
       <input type="text" id="anlegenTitel" class="eingabe-feld anlegen-titel" autocomplete="off"
              enterkeyhint="done" aria-label="Titel">
-      <label id="anlegenBereichZeile" class="anlegen-zeile">
+
+      <!-- ToDo -->
+      <label class="anlegen-zeile" data-fuer="todo">
         <span class="anlegen-etikett">Bereich</span>
         <select id="anlegenBereich" class="anlegen-wahl"></select>
       </label>
-      <div id="anlegenBisZeile" class="anlegen-zeile">
+      <!-- Nur, wenn der gewaehlte Bereich Themen hat. -->
+      <label id="anlegenThemaZeile" class="anlegen-zeile" hidden>
+        <span class="anlegen-etikett">Thema</span>
+        <select id="anlegenThema" class="anlegen-wahl"></select>
+      </label>
+      <div class="anlegen-zeile" data-fuer="todo">
         <label class="anlegen-etikett" for="anlegenBis">bis</label>
         <!-- Leer zeigt das Feld "kein Datum" statt tt.mm.jjjj (am iPhone ist ein
              leeres Datumsfeld sonst eine leere Flaeche). -->
@@ -225,8 +211,32 @@
         </span>
         <button type="button" id="anlegenBisWeg" class="anlegen-bis-weg" aria-label="Datum entfernen" title="Datum entfernen" hidden>✕</button>
       </div>
-      <button type="submit" class="btn primary">Anlegen</button>
-      <button type="button" id="anlegenAbbrechen" class="lock-link">Abbrechen</button>
+
+      <!-- Termin: kurz (Hendriks Wahl). Ort, Wiederholung, Farbe, Notiz ueber
+           "Mehr" im vollen Termin-Formular. -->
+      <label class="anlegen-zeile" data-fuer="termin">
+        <span class="anlegen-etikett">Tag</span>
+        <span class="anlegen-datum hat-wert">
+          <input type="date" id="anlegenTag">
+        </span>
+      </label>
+      <label class="anlegen-zeile" data-fuer="termin">
+        <span class="anlegen-etikett anlegen-etikett-breit">Ganztägig</span>
+        <input type="checkbox" id="anlegenGanztags" class="kal-schalter" role="switch">
+      </label>
+      <div id="anlegenZeitZeile" class="anlegen-zeile" data-fuer="termin">
+        <span class="anlegen-etikett">Zeit</span>
+        <input type="time" id="anlegenVon" class="anlegen-zeit" aria-label="Beginn">
+        <span class="anlegen-strich" aria-hidden="true">–</span>
+        <input type="time" id="anlegenBisZeit" class="anlegen-zeit" aria-label="Ende">
+      </div>
+
+      <button type="submit" id="anlegenOk" class="btn primary">Anlegen</button>
+      <div class="anlegen-fuss">
+        <button type="button" id="anlegenAbbrechen" class="lock-link">Abbrechen</button>
+        <button type="button" id="anlegenBereichLink" class="lock-link anlegen-link">Neuer Bereich</button>
+        <button type="button" id="anlegenMehr" class="lock-link anlegen-link" hidden>Mehr (Ort, Wiederholung) ›</button>
+      </div>
     </form>
   </div>
 
@@ -245,23 +255,15 @@
          aria-label="Breite des Kalenders"
          title="Breite ziehen, Doppelklick setzt zurück"></div>
     <!-- Die oberste Zeile des Panels. Sie traegt zweierlei, je nach Lage:
-         im Umschalt-Modus dieselbe Ecke wie die App-Kopfzeile (Zahnrad, dann
-         Umschalter) - im Split, wo die App-Kopfzeile daneben steht, nur noch
-         das Schliesskreuz. Das Zahnrad muss mit: am Handy verdeckt der
-         Kalender die Kopfzeile, und ohne dieses hier kaeme man aus der
-         Kalenderansicht gar nicht in die Einstellungen.
+         im Umschalt-Modus die Leiste (dieselbe Ecke wie in der App-Kopfzeile) -
+         im Split, wo die App-Kopfzeile daneben steht, nur das Schliesskreuz.
+         Am Handy faellt die Zeile ganz weg, dort steht die Leiste unten.
          Das ✕ steht hier und nicht mehr bei den Monatspfeilen: seit das Raster
          unten sitzt, saesse es sonst mitten im Panel statt in der Ecke, in der
          man ein Schliesskreuz sucht. -->
     <div class="kal-ansicht-zeile">
-      <button type="button" class="btn timer-knopf" title="Zeiterfassung" hidden><span aria-hidden="true">⏱</span><span class="timer-zeit"></span></button>
-      <button type="button" class="btn icon-only ein-knopf" title="Einstellungen" hidden>⚙️</button>
-      <div class="ansicht-schalter" role="group" aria-label="Ansicht">
-        <button type="button" class="ansicht-seg" data-ansicht="liste"
-                aria-pressed="false" aria-label="ToDo-Liste" title="ToDo-Liste">📋</button>
-        <button type="button" class="ansicht-seg" data-ansicht="kalender"
-                aria-pressed="true" aria-label="Kalender" title="Kalender">📅</button>
-      </div>
+      <!-- Im Umschalt-Modus (iPad hoch, 561-999 px) haengt navigation.js die
+           Leiste hierher, an dieselbe Stelle wie in der App-Kopfzeile. -->
       <button type="button" id="kalZu" class="kal-schliessen" aria-label="Kalender schließen">✕</button>
     </div>
 
@@ -939,18 +941,18 @@
           <div class="ein-inhalt hilfe-text">
             <dl class="hilfe-zeilen hilfe-nummeriert">
               <div class="hilfe-zeile"><dt>Liste</dt><dd>„Erste Liste anlegen“ antippen</dd></div>
-              <div class="hilfe-zeile"><dt>ToDo</dt><dd><span class="ohne-fuss">„+ ToDo“</span><span class="mit-fuss">＋ unten</span>, Titel, Enter</dd></div>
-              <div class="hilfe-zeile"><dt>Bereich</dt><dd><span class="ohne-fuss">„+ Bereich“</span><span class="mit-fuss">＋ unten, „Bereich“</span>, z. B. Schule</dd></div>
+              <div class="hilfe-zeile"><dt>ToDo</dt><dd>„＋ Neu“ <span class="ohne-fuss">oben</span><span class="mit-fuss">unten</span>, Titel, Enter</dd></div>
+              <div class="hilfe-zeile"><dt>Bereich</dt><dd>„＋ Neu“, dann unten „Neuer Bereich“</dd></div>
               <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kästchen antippen</dd></div>
               <div class="hilfe-zeile"><dt>Heute</dt><dd>Zeigt, was heute und bald fällig ist</dd></div>
-              <div class="hilfe-zeile"><dt>Kalender</dt><dd><span class="ohne-fuss">Oben rechts 📋 oder 📅</span><span class="mit-fuss">Unten „ToDos“ oder „Kalender“</span></dd></div>
+              <div class="hilfe-zeile"><dt>Kalender</dt><dd><span class="ohne-fuss">Oben rechts</span><span class="mit-fuss">Unten</span> „ToDos“ oder „Kalender“</dd></div>
             </dl>
             <details class="hilfe-mehr">
               <summary>Mehr dazu</summary>
               <ul>
                 <li>Weitere Listen gibt es unter ⚙️ › ToDo › Meine Listen.</li>
                 <li>Ein Datum setzt du über 📅, eine Notiz kommt ins Feld darunter. Das Datum heißt „bis“: schon 2 Wochen vorher steht das ToDo unter Heute.</li>
-                <li>Im Fenster für ein neues ToDo wählst du gleich den Bereich und ein „bis“-Datum. Ohne Auswahl landet es ohne Bereich, von dort ziehst du es später in einen Bereich.</li>
+                <li>Im Fenster für ein neues ToDo wählst du gleich Bereich, Thema und ein „bis“-Datum. Ohne Auswahl landet es ohne Bereich, von dort ziehst du es später in einen Bereich.</li>
                 <li>Erledigtes sammelt sich zugeklappt unter „Erledigt“ am Ende des Bereichs. Dort lässt es sich auch wieder aufhaken.</li>
                 <li>Die Tagesansicht zeigt zusätzlich deine Termine und Gewohnheiten.</li>
               </ul>
@@ -1374,8 +1376,10 @@
   <script src="zeiterfassung.js"></script>
   <!-- Hilfe-Fenster (seit 19.10.2026). Braucht einstellungenPopup aus app.js. -->
   <script src="hilfe.js"></script>
-  <!-- Anlegen-Fenster (seit 15.11.2026): ＋ unten, "＋ ToDo"/"＋ Bereich" oben.
-       Braucht app.js (state, addTodoTo) und kalender.js (Tag, Termin). -->
+  <!-- Anlegen-Fenster (seit 15.11.2026), dann die Leiste: welche Stelle sie
+       einnimmt und welche Fenster sie offen laesst. Brauchen app.js (state,
+       addTodoTo) und kalender.js (Tag, Termin). -->
   <script src="anlegen.js"></script>
+  <script src="navigation.js"></script>
 </body>
 </html>

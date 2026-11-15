@@ -16,7 +16,7 @@
    auf dem alten Stand haengen (activate() raeumt den alten Cache nur auf,
    wenn sich der Name aendert). Siehe BETRIEB.md.
    ==================================================================== */
-const CACHE_NAME = "todo-shell-v69";
+const CACHE_NAME = "todo-shell-v70";
 
 // Jede Datei hier MUSS es geben: cache.addAll bricht bei einem einzigen 404
 // komplett ab, und dann gibt es gar keinen Offline-Start mehr. fokus.js fehlte
@@ -35,6 +35,7 @@ const SHELL_FILES = [
   "/zeiterfassung.js",
   "/hilfe.js",
   "/anlegen.js",
+  "/navigation.js",
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",

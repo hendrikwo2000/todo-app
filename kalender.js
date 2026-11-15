@@ -3262,9 +3262,9 @@ function setzePanel(offen, sofort) {
   // Genau eines der beiden Segmente gilt: 📋 wenn der Streifen zu ist, sonst
   // 📅. WAS unten steht, sagen die Reiter dort - die Pille beantwortet nur
   // noch "Streifen auf oder zu".
-  // Die Fusszeile am Handy (.fuss-ansicht, seit 15.11.2026) zeigt denselben
-  // Zustand: die aktive Ansicht faerbt sich blau.
-  for (const seg of document.querySelectorAll(".ansicht-seg, .fuss-ansicht")) {
+  // Die Leiste (.fuss-ansicht, seit 15.11.2026 statt der Pille 📋|📅): die
+  // aktive Ansicht faerbt sich blau.
+  for (const seg of document.querySelectorAll(".fuss-ansicht")) {
     const gilt = offen ? seg.dataset.ansicht === "kalender" : seg.dataset.ansicht === "liste";
     seg.setAttribute("aria-pressed", String(gilt));
   }
@@ -3773,13 +3773,10 @@ document.addEventListener("touchend", gesteBeenden);
 document.addEventListener("touchcancel", gesteBeenden);
 
 // ---------- Verdrahtung ----------
-// Der Umschalter steckt zweimal im Dokument: in der Kopfzeile der App und im
-// Kalender selbst (der die Kopfzeile im Umschalt-Modus verdeckt). Sichtbar ist
-// immer nur einer, verdrahtet sind beide gleich.
-// Zwei Segmente: 📋 raeumt den Streifen weg, 📅 oeffnet ihn. Ein Tipp auf die
-// schon gewaehlte Ansicht tut nichts, wie bei jeder Pille.
-// Die Fusszeile am Handy (.fuss-ansicht) haengt an derselben Verdrahtung.
-for (const seg of document.querySelectorAll(".ansicht-seg, .fuss-ansicht")) {
+// Die Felder ToDos/Kalender der Leiste (seit 15.11.2026, navigation.js; vorher
+// die Pille 📋|📅, zweimal im Dokument): "ToDos" raeumt den Kalender weg,
+// "Kalender" oeffnet ihn. Ein Tipp auf die schon gewaehlte Ansicht tut nichts.
+for (const seg of document.querySelectorAll(".fuss-ansicht")) {
   seg.addEventListener("click", () => {
     if (seg.dataset.ansicht === "liste") { schliesseKalender(); return; }
     if (kalOffen) return;
