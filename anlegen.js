@@ -6,6 +6,9 @@
    Markup #anlegenPopup in index.html, Aussehen in style.css
    ("Anlegen-Fenster").
 
+   Ausserdem oeffnet "＋ ToDo" im Kopf eines Bereichs (ab Tablet-Breite) das
+   Fenster mit diesem Bereich vorgewaehlt.
+
    Hendriks Wahlen (in drei Runden am selben Tag):
    - ein Popup "wie bei Bereich", ToDo immer vorgewaehlt;
    - Umschalter ToDo | Termin - "ich verwende viel ToDo und Termin, Bereich
@@ -67,7 +70,9 @@ function anlegenStartTag() {
   return (kalOffen && kalAuswahl) || todayStr();
 }
 
-function oeffneAnlegen() {
+// vorgabe.bereich: der Bereich, aus dem heraus geoeffnet wurde ("＋ ToDo" im
+// Bereichskopf) - dann ist er vorgewaehlt.
+function oeffneAnlegen(vorgabe = {}) {
   const todo = !!aktiveListe;
   const termin = anlegenTerminMoeglich();
   if (!todo && !termin) return;
@@ -75,6 +80,10 @@ function oeffneAnlegen() {
   anlegenReiter.hidden = !(todo && termin);
   anlegenTitel.value = "";
   fuelleAnlegenBereiche();
+  if (vorgabe.bereich && !istOhneBereich(vorgabe.bereich)
+      && state.categories.some(c => c.id === vorgabe.bereich)) {
+    anlegenBereich.value = vorgabe.bereich;
+  }
   // In der Kalenderansicht am Handy hat ein neues ToDo den gewaehlten Tag als
   // "bis" (wie das ＋ an "ToDos" in der Tages-Karte); sonst keins.
   const kalAnsicht = kalOffen && !istSplit();
@@ -271,4 +280,4 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && schliesseAnlegen()) { e.preventDefault(); e.stopImmediatePropagation(); }
 }, true);
 
-document.getElementById("fussPlus").addEventListener("click", oeffneAnlegen);
+document.getElementById("fussPlus").addEventListener("click", () => oeffneAnlegen());

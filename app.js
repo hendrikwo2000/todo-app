@@ -3219,7 +3219,7 @@ function renderColumn(cat) {
       const btn = document.createElement("button");
       btn.className = "btn primary";
       btn.textContent = "＋ ToDo anlegen";
-      btn.addEventListener("click", () => openAdd(cat.id, null));
+      btn.addEventListener("click", () => oeffneAnlegen({ bereich: cat.id }));   // anlegen.js
       wrap.appendChild(empty);
       wrap.appendChild(btn);
       col.appendChild(wrap);
@@ -3527,7 +3527,10 @@ function baueAddKnopfzeile(cat) {
   todoBtn.type = "button";
   todoBtn.className = "col-add-btn";
   todoBtn.textContent = "＋ ToDo";
-  todoBtn.addEventListener("click", () => openAdd(cat.id, null));
+  // Seit 15.11.2026 das Anlegen-Fenster mit diesem Bereich vorgewaehlt (Hendriks
+  // Wahl) statt des Eingabefelds im Bereich. Am Handy ist der Knopf ausgeblendet,
+  // dort legt das ＋ der Leiste an.
+  todoBtn.addEventListener("click", () => oeffneAnlegen({ bereich: cat.id }));   // anlegen.js
   zeile.appendChild(todoBtn);
 
   return zeile;

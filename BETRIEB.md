@@ -1210,11 +1210,21 @@ der Mitte“, gewählt „Nur noch ＋ unten“, danach „Ja, auch am PC weg“
 kleinen ＋ in der Tagesansicht über den ToDos (`#tagOben`), in der Heute-Spalte
 am PC (`#kalTagesliste`, je `.kal-gruppe-plus` und `.kal-kopf-plus`), „＋ ToDo“
 an jedem Bereich (`.col-add-btn`) und ＋ an jedem Thema (`.thema-add`) sind per
-CSS weg, überall; das Anlegen-Fenster fragt Bereich und Thema selbst ab. In der
+CSS weg; das Anlegen-Fenster fragt Bereich und Thema selbst ab. In der
 Tages-Karte des Kalenders (Handy, iPad hoch) bleiben sie - die Karte deckt die
-Leiste ab. Das Inline-Anlegefeld im Bereich (`openAdd`) erreicht man damit nur
-noch über den großen Knopf „＋ ToDo anlegen“ vor dem allerersten ToDo eines
-Kontos.
+Leiste ab.
+
+**Ausnahme ab Tablet-Breite: „＋ ToDo“ im Bereichskopf** (Hendrik, vierte Runde:
+„am Handy gefällt es mir, am PC aber noch nicht - finde es sinnvoll, wenn man
+in den Bereichen ToDos erstellen kann“). Gewählt: nur an den Bereichen (nicht an
+den Themen, nicht in der Tagesansicht), PC und iPad, und es öffnet das
+**Anlegen-Fenster mit diesem Bereich vorgewählt** (`oeffneAnlegen({ bereich })`)
+statt des früheren Eingabefelds im Bereich. Am Handy bleibt es ausgeblendet.
+Der große Knopf „＋ ToDo anlegen“ im leeren Bereich (vor dem allerersten ToDo
+eines Kontos) öffnet seitdem ebenfalls das Fenster - mein Call, damit es
+keinen zweiten Weg gibt. Das Inline-Anlegefeld (`openAdd`, `baueAddWidget`)
+ist damit nur noch über das ausgeblendete ＋ an den Themen verdrahtet - toter
+Code, beim nächsten Aufräumen entfernen.
 
 **iPhone, Homescreen-App: die Leiste rutschte im Kalender nach oben**
 (Hendrik, 15.11.2026). In der Kalenderansicht gibt es auf Seitenebene nichts zu
