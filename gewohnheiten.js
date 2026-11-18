@@ -71,7 +71,7 @@ function gewHinweis(text) {
 async function gewFensterOeffnen(reiter = "verlauf", gewohnheitId = null) {
   // Aus den Einstellungen heraus: die schliessen, sonst laegen zwei
   // Vollbilder uebereinander und Escape muesste zweimal.
-  if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
+  einstellungenVerlassenFuer(gewFenster);
   gewVerlauf.springeZu = gewohnheitId;
   // Jedes Oeffnen beginnt beim aktuellen Monat.
   gewVerlauf.monat = "";

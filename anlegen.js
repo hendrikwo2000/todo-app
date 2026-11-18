@@ -14,9 +14,14 @@
    - Umschalter ToDo | Termin - "ich verwende viel ToDo und Termin, Bereich
      kaum": ein neuer Bereich ist nur noch der kleine Link unten;
    - ToDo: Titel, Bereich, (Thema, wenn der Bereich welche hat), bis;
-   - Termin kurz: Titel, Tag, Ganztaegig, von-bis. Ort, Wiederholung, Farbe,
-     Notiz ueber "Mehr", das ins volle Termin-Formular fuehrt und das
-     Getippte mitnimmt.
+   - Termin: seit 19.11.2026 gleich mit ALLEN Feldern (Hendrik: "wenn ich auf
+     Termin gehe, sollen direkt alle Optionen sein, und ganz oben Titel und
+     Notiz, 1 zu 1 wie bei ToDo"). Dafuer uebernimmt das volle
+     Termin-Formular (kalender.js) an genau derselben Stelle, mit demselben
+     Kopf und Umschalter (f.ausNeu, Klasse .wie-neu) - "ToDo" dort fuehrt
+     hierher zurueck. Vorher gab es hier eine Kurzform und "Mehr".
+   - Von "Neuer Bereich" fuehrt der Umschalter zurueck (seit 19.11.2026):
+     dort erscheint er mit drittem Feld "Bereich".
    Termin gibt es nur mit Schreibrecht bei Google (sonst endete es in einem
    403 - dieselbe Bedingung wie am runden Plus der Tages-Karte); ohne bleibt
    nur ToDo und der Umschalter verschwindet.
@@ -27,8 +32,7 @@
    Braucht aus app.js: state, aktiveListe, addTodoTo, ohneBereichId,
    istOhneBereich, OHNE_NAME, themenIn, uid, render, save, snackInfo,
    todayStr. Aus kalender.js: kalOffen, kalAuswahl, googleZustand, istSplit,
-   isoVonDate, terminAnfrage, googleGeladen, ladeGoogle,
-   oeffneTerminFormular, formularFelder, zeichneTerminPopup.
+   oeffneTerminFormular, formularFelder, zeichneTerminPopup, kalTerminBox.
    ==================================================================== */
 
 const anlegenPopup       = document.getElementById("anlegenPopup");
@@ -43,24 +47,15 @@ const anlegenThemaZeile  = document.getElementById("anlegenThemaZeile");
 const anlegenThema       = document.getElementById("anlegenThema");
 const anlegenBis         = document.getElementById("anlegenBis");
 const anlegenBisWeg      = document.getElementById("anlegenBisWeg");
-const anlegenTag         = document.getElementById("anlegenTag");
-const anlegenGanztags    = document.getElementById("anlegenGanztags");
-const anlegenZeitZeile   = document.getElementById("anlegenZeitZeile");
-const anlegenVon         = document.getElementById("anlegenVon");
-const anlegenBisZeit     = document.getElementById("anlegenBisZeit");
 const anlegenOk          = document.getElementById("anlegenOk");
 const anlegenBereichLink = document.getElementById("anlegenBereichLink");
-const anlegenMehr        = document.getElementById("anlegenMehr");
 
 const ANLEGEN_PLATZHALTER = {
   todo: "Was ist zu tun?",
-  termin: "Was steht an?",
   bereich: "Name, z. B. Haushalt oder Arbeit",
 };
 
 let anlegenArt = "todo";
-let anlegenDauer = 60;       // Minuten - "von" verschieben nimmt "bis" mit
-let anlegenSpeichert = false;
 
 function anlegenTerminMoeglich() {
   return !!(googleZustand.verbunden && googleZustand.schreiben);
@@ -73,15 +68,17 @@ function anlegenStartTag() {
 }
 
 // vorgabe.bereich: der Bereich, aus dem heraus geoeffnet wurde ("＋ ToDo" im
-// Bereichskopf) - dann ist er vorgewaehlt.
+// Bereichskopf) - dann ist er vorgewaehlt. vorgabe.titel/.notiz: was schon
+// getippt war (Rueckweg aus dem Termin-Formular).
 function oeffneAnlegen(vorgabe = {}) {
   const todo = !!aktiveListe;
   const termin = anlegenTerminMoeglich();
   if (!todo && !termin) return;
+  // Ohne Liste gibt es nur Termine - dann gleich ins Termin-Formular.
+  if (!todo) { anlegenZumTermin(vorgabe.titel || "", vorgabe.notiz || ""); return; }
 
-  anlegenReiter.hidden = !(todo && termin);
-  anlegenTitel.value = "";
-  anlegenNotiz.value = "";
+  anlegenTitel.value = vorgabe.titel || "";
+  anlegenNotiz.value = vorgabe.notiz || "";
   fuelleAnlegenBereiche();
   if (vorgabe.bereich && !istOhneBereich(vorgabe.bereich)
       && state.categories.some(c => c.id === vorgabe.bereich)) {
@@ -91,16 +88,14 @@ function oeffneAnlegen(vorgabe = {}) {
   // "bis" (wie das ＋ an "ToDos" in der Tages-Karte); sonst keins.
   const kalAnsicht = kalOffen && !istSplit();
   setzeAnlegenBis(kalAnsicht ? anlegenStartTag() : "");
-  anlegenTag.value = anlegenStartTag();
-  // Wie das volle Termin-Formular: ganztaegig, 9-10 Uhr, wenn man umschaltet.
-  anlegenGanztags.checked = true;
-  anlegenVon.value = "09:00";
-  anlegenBisZeit.value = "10:00";
-  anlegenDauer = 60;
-  waehleAnlegenArt(todo ? "todo" : "termin");
+  waehleAnlegenArt("todo");
   anlegenPopup.hidden = false;
+  passeNotizHoeheAn(anlegenNotiz);
   anlegenTitel.focus();
 }
+
+// Vom Termin-Formular zurueck ("ToDo" in dessen Umschalter, kalender.js).
+window.anlegenZuToDo = mit => oeffneAnlegen(mit || {});
 
 function schliesseAnlegen() {
   if (anlegenPopup.hidden) return false;
@@ -110,25 +105,41 @@ function schliesseAnlegen() {
 }
 
 function waehleAnlegenArt(art) {
+  // Termin: das volle Formular uebernimmt (kalender.js), mit dem, was schon
+  // getippt ist.
+  if (art === "termin") { anlegenZumTermin(anlegenTitel.value, anlegenNotiz.value); return; }
   anlegenArt = art;
-  for (const k of anlegenReiter.children) k.setAttribute("aria-selected", String(k.dataset.art === art));
-  // "Neuer Bereich" hat keinen Umschalter, dafuer eine Ueberschrift.
   const bereich = art === "bereich";
-  if (bereich) anlegenReiter.hidden = true;
-  // Die Ueberschrift steht seit 18.11.2026 mittig im Kopf (Abbrechen | Titel |
-  // Anlegen); das alte h2 bleibt zu.
+  // Der Umschalter: ToDo | Termin (Termin nur mit Schreibrecht bei Google),
+  // bei "Neuer Bereich" zusaetzlich "Bereich" als gewaehltes Feld - so sieht
+  // man, wo man ist, und kommt per Tipp zurueck.
+  for (const k of anlegenReiter.children) {
+    k.setAttribute("aria-selected", String(k.dataset.art === art));
+    if (k.dataset.art === "termin") k.hidden = !anlegenTerminMoeglich();
+    if (k.dataset.art === "bereich") k.hidden = !bereich;
+  }
+  anlegenReiter.hidden = [...anlegenReiter.children].filter(k => !k.hidden).length < 2;
   anlegenUeberschrift.hidden = true;
   anlegenKopfTitel.textContent = bereich ? "Neuer Bereich" : "Neu";
   anlegenNotiz.hidden = bereich;
   anlegenTitel.placeholder = ANLEGEN_PLATZHALTER[art];
   for (const z of anlegenForm.querySelectorAll("[data-fuer]")) z.hidden = z.dataset.fuer !== art;
   zeigeAnlegenThema();
-  anlegenZeitZeile.hidden = art !== "termin" || anlegenGanztags.checked;
-  // Unten links Abbrechen, rechts genau EIN Link: bei ToDo "Neuer Bereich",
-  // beim Termin "Mehr".
-  anlegenBereichLink.hidden = art !== "todo" || !aktiveListe;
-  anlegenMehr.hidden = art !== "termin";
+  anlegenBereichLink.hidden = art !== "todo";
   anlegenTitel.focus();
+}
+
+// Ins volle Termin-Formular, an derselben Stelle und im selben Kopf.
+function anlegenZumTermin(titel, notiz) {
+  schliesseAnlegen();
+  oeffneTerminFormular(anlegenStartTag(), null);
+  if (!formularFelder) return;
+  Object.assign(formularFelder, { titel: titel.trim(), notiz: notiz || "", ausNeu: true });
+  zeichneTerminPopup();
+  // Wie beim Formular selbst: von allein ins Titelfeld nur am Rechner (am
+  // Handy schoebe die Tastatur das halbe Fenster weg).
+  const feld = kalTerminBox.querySelector(".kal-form-titel");
+  if (feld && !("ontouchstart" in window)) feld.focus();
 }
 
 // "Ohne Bereich" zuerst, dann die Bereiche der aktiven Liste in ihrer
@@ -162,31 +173,6 @@ function zeigeAnlegenBis() {
   anlegenBisWeg.hidden = !hat;
 }
 
-// "09:30" -> 570
-function anlegenMinuten(hhmm) {
-  const [h, m] = (hhmm || "0:0").split(":").map(Number);
-  return h * 60 + m;
-}
-
-// Beginn, Ende als Datum + Uhrzeit. Endet der Termin vor seinem Beginn, geht
-// er ueber Mitternacht (23:00-01:00) - das Ende liegt dann am Folgetag.
-function anlegenZeitraum() {
-  const tag = anlegenTag.value || anlegenStartTag();
-  if (anlegenGanztags.checked) {
-    return { ganztags: true, startDatum: tag, endDatum: tag, vonZeit: "09:00", bisZeit: "10:00" };
-  }
-  const von = anlegenVon.value || "09:00";
-  let dauer = anlegenMinuten(anlegenBisZeit.value || "10:00") - anlegenMinuten(von);
-  if (dauer <= 0) dauer += 24 * 60;
-  const [j, m, t] = tag.split("-").map(Number);
-  const ende = new Date(j, m - 1, t, 0, anlegenMinuten(von) + dauer);
-  const zwei = n => String(n).padStart(2, "0");
-  return {
-    ganztags: false, startDatum: tag, endDatum: isoVonDate(ende),
-    vonZeit: von, bisZeit: `${zwei(ende.getHours())}:${zwei(ende.getMinutes())}`,
-  };
-}
-
 async function legeAusFensterAn() {
   const text = anlegenTitel.value.trim();
   if (!text) { anlegenTitel.focus(); return; }
@@ -197,27 +183,6 @@ async function legeAusFensterAn() {
     render();
     save();
     snackInfo(`Bereich „${text}“ angelegt`);
-    return;
-  }
-
-  if (anlegenArt === "termin") {
-    // Gegen den Doppeltipp - ein zweiter legte den Termin zweimal an.
-    if (anlegenSpeichert) return;
-    anlegenSpeichert = true;
-    anlegenOk.disabled = true;
-    const ok = await terminAnfrage("POST", {
-      titel: text, ...anlegenZeitraum(), farbe: "", notiz: anlegenNotiz.value.trim(), ort: "",
-      zeitzone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin",
-    });
-    anlegenSpeichert = false;
-    anlegenOk.disabled = false;
-    if (!ok) return;   // terminAnfrage hat die Meldung schon gezeigt
-    schliesseAnlegen();
-    // Frisch holen wie nach dem vollen Formular: im Kalender steht dann, was
-    // bei Google steht.
-    googleGeladen = null;
-    await ladeGoogle();
-    snackInfo(`Termin „${text}“ angelegt`);
     return;
   }
 
@@ -239,18 +204,6 @@ async function legeAusFensterAn() {
   snackInfo(`„${text}“${wo} angelegt`);
 }
 
-// "Mehr": ins volle Termin-Formular, mit allem, was schon im Fenster steht.
-function anlegenZumFormular() {
-  const titel = anlegenTitel.value.trim();
-  const notiz = anlegenNotiz.value.trim();
-  const zeitraum = anlegenZeitraum();
-  schliesseAnlegen();
-  oeffneTerminFormular(zeitraum.startDatum, null);
-  if (!formularFelder) return;
-  Object.assign(formularFelder, zeitraum, { titel }, notiz ? { notiz } : {});
-  zeichneTerminPopup();
-}
-
 // ---------- Verdrahtung ----------
 for (const k of anlegenReiter.children) {
   k.addEventListener("click", () => waehleAnlegenArt(k.dataset.art));
@@ -258,29 +211,12 @@ for (const k of anlegenReiter.children) {
 anlegenForm.addEventListener("submit", e => { e.preventDefault(); legeAusFensterAn(); });
 document.getElementById("anlegenAbbrechen").addEventListener("click", schliesseAnlegen);
 anlegenBereichLink.addEventListener("click", () => waehleAnlegenArt("bereich"));
-anlegenMehr.addEventListener("click", anlegenZumFormular);
 anlegenPopup.addEventListener("click", e => { if (e.target === anlegenPopup) schliesseAnlegen(); });
 anlegenBereich.addEventListener("change", zeigeAnlegenThema);
 anlegenBis.addEventListener("input", zeigeAnlegenBis);
 anlegenBis.addEventListener("change", zeigeAnlegenBis);
+anlegenNotiz.addEventListener("input", () => passeNotizHoeheAn(anlegenNotiz));
 anlegenBisWeg.addEventListener("click", () => setzeAnlegenBis(""));
-anlegenGanztags.addEventListener("change", () => {
-  anlegenZeitZeile.hidden = anlegenGanztags.checked;
-});
-// Beginn verschieben nimmt das Ende mit (Dauer bleibt) - wie im vollen
-// Formular. Das Ende selbst aendert nur die Dauer.
-anlegenVon.addEventListener("change", () => {
-  if (!anlegenVon.value) return;
-  const ende = (anlegenMinuten(anlegenVon.value) + anlegenDauer) % (24 * 60);
-  const zwei = n => String(n).padStart(2, "0");
-  anlegenBisZeit.value = `${zwei(Math.floor(ende / 60))}:${zwei(ende % 60)}`;
-});
-anlegenBisZeit.addEventListener("change", () => {
-  let d = anlegenMinuten(anlegenBisZeit.value) - anlegenMinuten(anlegenVon.value);
-  if (d <= 0) d += 24 * 60;
-  anlegenDauer = d;
-});
-
 // Escape in der Einfangphase und mit stopImmediatePropagation: app.js und
 // kalender.js haengen ihre Escape-Handler an denselben Knoten, der des
 // Kalenders klappte im selben Druck sonst die ganze Kalenderansicht zu.
@@ -288,4 +224,5 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && schliesseAnlegen()) { e.preventDefault(); e.stopImmediatePropagation(); }
 }, true);
 
-document.getElementById("fussPlus").addEventListener("click", () => oeffneAnlegen());
+// Das ＋ der Leiste (unter 1000 px) und das in der Kopfzeile am PC.
+for (const k of document.querySelectorAll(".neu-knopf")) k.addEventListener("click", () => oeffneAnlegen());

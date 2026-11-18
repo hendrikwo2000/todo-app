@@ -58,6 +58,31 @@
       <!-- Umschalter zwischen den Listen. Inhalt kommt per JS, erscheint nur
            bei mehr als einer Liste. -->
       <div id="listenMenue" class="listen-menue" hidden></div>
+      <!-- Am PC (ab 1000 px) seit 19.11.2026 statt der Leiste: Uhr und ＋ neben
+           dem Titel (Hendriks Wahl "Uhr neben dem ＋"), das Zahnrad in der Ecke.
+           Ist das Panel rechts offen, steht das Zahnrad dort
+           (.kopf-zahnrad-panel), sonst hier. Unter 1000 px ist die Gruppe weg -
+           dort traegt die Leiste unten dieselben Knoepfe. Verdrahtet ueber die
+           Klassen wie die Felder der Leiste: .timer-knopf (zeiterfassung.js),
+           .neu-knopf (anlegen.js), .ein-knopf (app.js). -->
+      <div class="kopf-knoepfe">
+        <button type="button" class="kopf-knopf timer-knopf" title="Zeiterfassung" hidden>
+          <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+            <circle cx="12" cy="13.5" r="7.5"/>
+            <path d="M12 9.5v4l2.6 1.6M9.8 3h4.4M12 3v3"/>
+          </svg></span>
+          <span class="timer-zeit"></span>
+        </button>
+        <button type="button" class="kopf-knopf neu-knopf" title="Neu anlegen" aria-label="Neu anlegen" aria-haspopup="dialog" hidden>
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button type="button" class="kopf-knopf ein-knopf kopf-zahnrad-app" title="Einstellungen" aria-label="Einstellungen" hidden>
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+            <path d="M10.21 4.82 L10.58 2.51 L13.42 2.51 L13.79 4.82 L15.81 5.66 L17.71 4.28 L19.72 6.29 L18.34 8.19 L19.18 10.21 L21.49 10.58 L21.49 13.42 L19.18 13.79 L18.34 15.81 L19.72 17.71 L17.71 19.72 L15.81 18.34 L13.79 19.18 L13.42 21.49 L10.58 21.49 L10.21 19.18 L8.19 18.34 L6.29 19.72 L4.28 17.71 L5.66 15.81 L4.82 13.79 L2.51 13.42 L2.51 10.58 L4.82 10.21 L5.66 8.19 L4.28 6.29 L6.29 4.28 L8.19 5.66 Z"/>
+            <circle cx="12" cy="12" r="3.2"/>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <!-- Erscheint, solange der Server nicht erreichbar ist bzw. noch nicht
@@ -164,7 +189,7 @@
       <span class="fuss-text timer-zeit"></span>
     </button>
     </div>
-    <button type="button" id="fussPlus" class="fuss-knopf fuss-plus" aria-haspopup="dialog" title="Neu anlegen">
+    <button type="button" id="fussPlus" class="fuss-knopf fuss-plus neu-knopf" aria-haspopup="dialog" title="Neu anlegen">
       <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <path d="M12 5v14M5 12h14"/>
       </svg></span>
@@ -196,6 +221,9 @@
       <div id="anlegenReiter" class="anlegen-reiter" role="tablist" aria-label="Was anlegen?">
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="todo">ToDo</button>
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="termin">Termin</button>
+        <!-- Nur bei "Neuer Bereich" sichtbar (seit 19.11.2026): dann steht
+             man dort und kommt per Tipp auf ToDo oder Termin zurueck. -->
+        <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="bereich" hidden>Bereich</button>
       </div>
       <!-- Nur fuer "Neuer Bereich": dort gibt es keinen Umschalter. -->
       <h2 id="anlegenUeberschrift" class="anlegen-ueberschrift" hidden>Neuer Bereich</h2>
@@ -228,33 +256,70 @@
         <button type="button" id="anlegenBisWeg" class="anlegen-bis-weg" aria-label="Datum entfernen" title="Datum entfernen" hidden>✕</button>
       </div>
 
-      <!-- Termin: kurz (Hendriks Wahl). Ort, Wiederholung, Farbe, Notiz ueber
-           "Mehr" im vollen Termin-Formular. -->
-      <label class="anlegen-zeile" data-fuer="termin">
-        <span class="anlegen-etikett">Tag</span>
-        <span class="anlegen-datum hat-wert">
-          <input type="date" id="anlegenTag">
-        </span>
-      </label>
-      <label class="anlegen-zeile" data-fuer="termin">
-        <span class="anlegen-etikett anlegen-etikett-breit">Ganztägig</span>
-        <input type="checkbox" id="anlegenGanztags" class="kal-schalter" role="switch">
-      </label>
-      <div id="anlegenZeitZeile" class="anlegen-zeile" data-fuer="termin">
-        <span class="anlegen-etikett">Zeit</span>
-        <input type="time" id="anlegenVon" class="anlegen-zeit" aria-label="Beginn">
-        <span class="anlegen-strich" aria-hidden="true">–</span>
-        <input type="time" id="anlegenBisZeit" class="anlegen-zeit" aria-label="Ende">
-      </div>
-
       </div>
       <div class="anlegen-fuss">
         <button type="button" id="anlegenBereichLink" class="lock-link anlegen-link">Neuer Bereich</button>
-        <button type="button" id="anlegenMehr" class="lock-link anlegen-link" hidden>Mehr (Ort, Wiederholung) ›</button>
       </div>
       <div class="anlegen-knoepfe">
         <button type="button" id="anlegenAbbrechen" class="btn">Abbrechen</button>
         <button type="submit" id="anlegenOk" class="btn primary">Anlegen</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Bearbeiten-Fenster (seit 19.11.2026). Vorher klappte die Karte selbst zu
+       einer Bearbeiten-Zeile auf (Titel, Notiz, Pillen fuer Datum, Vorlauf,
+       Unterpunkt) - Hendrik: "nicht so uebersichtlich, vielleicht ein Popup,
+       den Titel etwas groesser und die Punkte unter der Notiz optisch besser".
+       Aufbau wie das Neu-Fenster: Titel und Notiz als Gruppe, darunter Zeilen,
+       die Unterpunkte als eigene Gruppe, unten Abbrechen | Fertig.
+       Logik in bearbeiten.js. -->
+  <div id="bearbeitenPopup" class="admin-popup anlegen-popup bearbeiten-popup" hidden>
+    <form id="bearbeitenForm" class="admin-popup-box anlegen-box" role="dialog" aria-label="ToDo bearbeiten" novalidate>
+      <div class="anlegen-kopf">
+        <span class="anlegen-kopf-titel">ToDo</span>
+      </div>
+      <div class="anlegen-gruppe anlegen-textgruppe">
+        <input type="text" id="bearbeitenTitel" class="eingabe-feld anlegen-titel" autocomplete="off"
+               enterkeyhint="done" aria-label="Titel" placeholder="Titel">
+        <textarea id="bearbeitenNotiz" class="anlegen-notiz" rows="2" placeholder="Notiz" aria-label="Notiz"></textarea>
+      </div>
+      <div class="anlegen-gruppe anlegen-felder">
+        <label class="anlegen-zeile">
+          <span class="anlegen-etikett">Bereich</span>
+          <select id="bearbeitenBereich" class="anlegen-wahl"></select>
+        </label>
+        <label id="bearbeitenThemaZeile" class="anlegen-zeile" hidden>
+          <span class="anlegen-etikett">Thema</span>
+          <select id="bearbeitenThema" class="anlegen-wahl"></select>
+        </label>
+        <div class="anlegen-zeile">
+          <label class="anlegen-etikett" for="bearbeitenBis">bis</label>
+          <span class="anlegen-datum">
+            <input type="date" id="bearbeitenBis">
+            <span class="anlegen-datum-leer" aria-hidden="true">kein Datum</span>
+          </span>
+          <button type="button" id="bearbeitenBisWeg" class="anlegen-bis-weg" aria-label="Datum entfernen" title="Datum entfernen" hidden>✕</button>
+        </div>
+        <!-- Nur mit Datum: ab wann das ToDo unter Heute steht (VORLAEUFE in app.js). -->
+        <label id="bearbeitenVorlaufZeile" class="anlegen-zeile" hidden>
+          <span class="anlegen-etikett anlegen-etikett-breit">Unter Heute ab</span>
+          <select id="bearbeitenVorlauf" class="anlegen-wahl"></select>
+        </label>
+      </div>
+      <!-- Unterpunkte: Abhaken, Loeschen und Hinzufuegen gelten sofort (wie
+           bisher in der Bearbeiten-Zeile), nicht erst mit "Fertig". -->
+      <div class="anlegen-gruppe bearbeiten-unterpunkte">
+        <div id="bearbeitenUnterpunkte" class="bearbeiten-up-liste"></div>
+        <label class="bearbeiten-up-neu">
+          <span class="bearbeiten-up-plus" aria-hidden="true">＋</span>
+          <input type="text" id="bearbeitenUnterpunktNeu" class="bearbeiten-up-feld" autocomplete="off"
+                 enterkeyhint="enter" placeholder="Unterpunkt hinzufügen" aria-label="Unterpunkt hinzufügen">
+        </label>
+      </div>
+      <div class="anlegen-knoepfe">
+        <button type="button" id="bearbeitenAbbrechen" class="btn">Abbrechen</button>
+        <button type="submit" id="bearbeitenOk" class="btn primary">Fertig</button>
       </div>
     </form>
   </div>
@@ -273,18 +338,17 @@
          tabindex="0" aria-orientation="vertical"
          aria-label="Breite des Kalenders"
          title="Breite ziehen, Doppelklick setzt zurück"></div>
-    <!-- Die oberste Zeile des Panels. Sie traegt zweierlei, je nach Lage:
-         im Umschalt-Modus die Leiste (dieselbe Ecke wie in der App-Kopfzeile) -
-         im Split, wo die App-Kopfzeile daneben steht, nur das Schliesskreuz.
-         Am Handy faellt die Zeile ganz weg, dort steht die Leiste unten.
-         Das ✕ steht hier und nicht mehr bei den Monatspfeilen: seit das Raster
-         unten sitzt, saesse es sonst mitten im Panel statt in der Ecke, in der
-         man ein Schliesskreuz sucht. -->
-    <div class="kal-ansicht-zeile">
-      <!-- Im Umschalt-Modus (iPad hoch, 561-999 px) haengt navigation.js die
-           Leiste hierher, an dieselbe Stelle wie in der App-Kopfzeile. -->
-      <button type="button" id="kalZu" class="kal-schliessen" aria-label="Kalender schließen">✕</button>
-    </div>
+    <!-- Zahnrad in der Ecke oben rechts (seit 19.11.2026, Hendrik: "Einstellungen
+         immer ganz rechts in der Ecke"). Steht das Panel am PC da, sitzt es hier;
+         ist es zu, das Gegenstueck am Ende der App-Kopfzeile (.kopf-zahnrad-app).
+         Unterhalb der Split-Grenze ist es weg, dort traegt die Leiste unten das
+         Zahnrad. Bis dahin stand hier eine Zeile mit ✕ (PC) bzw. der Leiste (iPad). -->
+    <button type="button" class="kopf-knopf ein-knopf kopf-zahnrad-panel" title="Einstellungen" aria-label="Einstellungen" hidden>
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+        <path d="M10.21 4.82 L10.58 2.51 L13.42 2.51 L13.79 4.82 L15.81 5.66 L17.71 4.28 L19.72 6.29 L18.34 8.19 L19.18 10.21 L21.49 10.58 L21.49 13.42 L19.18 13.79 L18.34 15.81 L19.72 17.71 L17.71 19.72 L15.81 18.34 L13.79 19.18 L13.42 21.49 L10.58 21.49 L10.21 19.18 L8.19 18.34 L6.29 19.72 L4.28 17.71 L5.66 15.81 L4.82 13.79 L2.51 13.42 L2.51 10.58 L4.82 10.21 L5.66 8.19 L4.28 6.29 L6.29 4.28 L8.19 5.66 Z"/>
+        <circle cx="12" cy="12" r="3.2"/>
+      </svg>
+    </button>
 
     <!-- Der gewaehlte Tag als eigene Heute-Spalte neben dem Raster - nur ab
          1380 px (html.dreispaltig). Darunter steht der Tag ueber den ToDos
@@ -498,6 +562,29 @@
             <label class="switch" id="themeSwitchWrap">
               <input type="checkbox" id="themeSwitch">
               <span class="switch-label" id="themeSwitchLabel">Hell</span>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+
+          <!-- Seit 19.11.2026, nur am PC (ab 1000 px, .nur-pc): was rechts neben
+               den ToDos steht. Ersetzt die Knoepfe ToDos/Kalender, die es am PC
+               nicht mehr gibt (Hendrik: "Am Desktop habe ich Kalender immer an").
+               Pro Geraet, Standard an; Logik in kalender.js. -->
+          <div class="ein-abschnitt ein-zeile nur-pc" data-abschnitt="pc-kalender">
+            <span class="ein-kopf-icon kachel kachel-rot" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span>
+            <span class="ein-kopf-text">Kalender anzeigen</span>
+            <label class="switch">
+              <input type="checkbox" id="pcKalenderSwitch">
+              <span class="switch-label" id="pcKalenderLabel">An</span>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+          <div class="ein-abschnitt ein-zeile nur-pc" data-abschnitt="pc-heute">
+            <span class="ein-kopf-icon kachel kachel-orange" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg></span>
+            <span class="ein-kopf-text">Heute anzeigen</span>
+            <label class="switch">
+              <input type="checkbox" id="pcHeuteSwitch">
+              <span class="switch-label" id="pcHeuteLabel">An</span>
               <span class="switch-track"><span class="switch-thumb"></span></span>
             </label>
           </div>
@@ -807,7 +894,7 @@
         <div id="ztGekappt" class="zt-gekappt" hidden></div>
         <!-- Ohne laufende Uhr: auswaehlen, dann starten. -->
         <section id="ztStartBlock" class="zt-start" hidden>
-          <span class="zt-label" id="ztStartLabel">Woran arbeitest du?</span>
+          <h3 class="zt-abschnitt" id="ztStartLabel">Woran arbeitest du?</h3>
           <div id="ztDdStart" class="zt-dd"></div>
           <button type="button" id="ztStarten" class="btn primary zt-starten">▶ Starten</button>
         </section>
@@ -820,16 +907,26 @@
             <span>Stoppen</span>
           </button>
         </section>
+        <!-- Seit 19.11.2026 eine Gruppe wie in den Einstellungen (Hendrik: das
+             Fenster "passt nicht richtig in das Design"): Gebucht (klappt die
+             Eintraege auf), Zeit nachtragen, Statistik. -->
         <section class="zt-heute">
-          <button type="button" id="ztHeuteKopf" class="zt-heute-kopf" aria-expanded="false" aria-controls="ztHeuteListe">
-            <span class="zt-heute-titel">Heute gebucht</span>
-            <span id="ztHeuteSumme" class="zt-summe"></span>
-            <span class="zt-heute-pfeil" aria-hidden="true">▸</span>
-          </button>
-          <div id="ztHeuteListe" class="zt-eintraege" hidden></div>
-          <div class="zt-fuss">
-            <button type="button" id="ztNachtragen" class="lock-link">+ Zeit nachtragen</button>
-            <button type="button" id="ztStatistikOeffnen" class="lock-link">Statistik ›</button>
+          <h3 class="zt-abschnitt">Heute</h3>
+          <div class="anlegen-gruppe zt-gruppe">
+            <button type="button" id="ztHeuteKopf" class="zt-zeile zt-heute-kopf" aria-expanded="false" aria-controls="ztHeuteListe">
+              <span class="zt-heute-titel">Gebucht</span>
+              <span id="ztHeuteSumme" class="zt-summe"></span>
+              <span class="zt-heute-pfeil" aria-hidden="true">›</span>
+            </button>
+            <div id="ztHeuteListe" class="zt-eintraege" hidden></div>
+            <button type="button" id="ztNachtragen" class="zt-zeile">
+              <span class="zt-zeile-text">Zeit nachtragen</span>
+              <span class="zt-pfeil" aria-hidden="true">›</span>
+            </button>
+            <button type="button" id="ztStatistikOeffnen" class="zt-zeile">
+              <span class="zt-zeile-text">Statistik</span>
+              <span class="zt-pfeil" aria-hidden="true">›</span>
+            </button>
           </div>
         </section>
       </div>
@@ -846,6 +943,7 @@
   <div id="gewFenster" class="admin-popup gw-fenster" hidden>
     <div class="admin-popup-box einstellungen gw-box" role="dialog" aria-labelledby="gewFensterTitel">
       <header class="ein-kopfzeile gw-kopfzeile">
+        <button type="button" class="ein-zurueck" hidden>‹ Einstellungen</button>
         <h2 id="gewFensterTitel" class="gw-titel">Gewohnheiten</h2>
         <button type="button" id="gewFensterZu" class="ein-schliessen"
                 aria-label="Gewohnheiten schließen" title="Schließen">✕</button>
@@ -904,6 +1002,7 @@
   <div id="zeitFenster" class="admin-popup gw-fenster zt-fenster" hidden>
     <div class="admin-popup-box einstellungen gw-box" role="dialog" aria-labelledby="zeitFensterTitel">
       <header class="ein-kopfzeile gw-kopfzeile">
+        <button type="button" class="ein-zurueck" hidden>‹ Einstellungen</button>
         <h2 id="zeitFensterTitel" class="gw-titel">Statistik</h2>
         <button type="button" id="zeitFensterZu" class="ein-schliessen"
                 aria-label="Statistik schließen" title="Schließen">✕</button>
@@ -952,6 +1051,7 @@
   <div id="hilfeFenster" class="admin-popup gw-fenster hilfe-fenster" hidden>
     <div class="admin-popup-box einstellungen gw-box" role="dialog" aria-modal="true" aria-labelledby="hilfeFensterTitel">
       <header class="ein-kopfzeile gw-kopfzeile">
+        <button type="button" class="ein-zurueck" hidden>‹ Einstellungen</button>
         <h2 id="hilfeFensterTitel" class="gw-titel">Hilfe</h2>
         <button type="button" id="hilfeZu" class="ein-schliessen"
                 aria-label="Hilfe schließen" title="Schließen">✕</button>
@@ -968,11 +1068,11 @@
           <div class="ein-inhalt hilfe-text">
             <dl class="hilfe-zeilen hilfe-nummeriert">
               <div class="hilfe-zeile"><dt>Liste</dt><dd>„Erste Liste anlegen“ antippen</dd></div>
-              <div class="hilfe-zeile"><dt>ToDo</dt><dd>„＋ Neu“ <span class="ohne-fuss">oben oder „＋ ToDo“ am Bereich</span><span class="mit-fuss">unten</span>, Titel, Enter</dd></div>
+              <div class="hilfe-zeile"><dt>ToDo</dt><dd><span class="ohne-fuss">＋ neben „Meine ToDos“ oder „＋ ToDo“ am Bereich</span><span class="mit-fuss">„＋ Neu“ unten</span>, Titel, Enter</dd></div>
               <div class="hilfe-zeile"><dt>Bereich</dt><dd>„＋ Neu“, dann unten „Neuer Bereich“</dd></div>
               <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kästchen antippen</dd></div>
               <div class="hilfe-zeile"><dt>Heute</dt><dd>Zeigt, was heute und bald fällig ist</dd></div>
-              <div class="hilfe-zeile"><dt>Kalender</dt><dd><span class="ohne-fuss">Oben rechts</span><span class="mit-fuss">Unten</span> „ToDos“ oder „Kalender“</dd></div>
+              <div class="hilfe-zeile"><dt>Kalender</dt><dd><span class="ohne-fuss">Einstellungen › „Kalender anzeigen“, „Heute anzeigen“</span><span class="mit-fuss">Unten „ToDos“ oder „Kalender“</span></dd></div>
             </dl>
             <details class="hilfe-mehr">
               <summary>Mehr dazu</summary>
@@ -996,28 +1096,27 @@
           </summary>
           <div class="ein-inhalt hilfe-text">
             <dl class="hilfe-zeilen">
-              <div class="hilfe-zeile"><dt>Bearbeiten</dt><dd>ToDo 2× antippen</dd></div>
+              <div class="hilfe-zeile"><dt>Bearbeiten</dt><dd>ToDo 2× antippen, oder berühren, dann Stift</dd></div>
               <div class="hilfe-zeile"><dt>Verschieben</dt><dd>In einen Bereich ziehen, am Handy erst lange drücken</dd></div>
               <div class="hilfe-zeile"><dt>Löschen</dt><dd>ToDo berühren, dann Papierkorb</dd></div>
+              <div class="hilfe-zeile"><dt>Zeit messen</dt><dd>ToDo berühren, dann Uhr</dd></div>
               <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kästchen antippen</dd></div>
             </dl>
-            <p class="hilfe-zwischen">Beim Bearbeiten</p>
-            <ul class="hilfe-chips">
-              <li><svg class="sym" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Datum</li>
-              <li><svg class="sym" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10M7 20.5h10M8 3.5v2.8c0 3 4 4.2 4 5.7s-4 2.7-4 5.7v2.8M16 3.5v2.8c0 3-4 4.2-4 5.7s4 2.7 4 5.7v2.8"/></svg>Vorlauf</li>
-              <li><svg class="sym" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.2h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg>Bereich</li>
-              <li><svg class="sym" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12.2V5.5a2 2 0 0 1 2-2h6.7l8.3 8.3a2 2 0 0 1 0 2.8l-5.9 5.9a2 2 0 0 1-2.8 0z"/><circle class="voll" cx="8" cy="8" r="1.5"/></svg>Thema</li>
-              <li><svg class="sym" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5l1.6 1.6 2.8-3M3.5 13.5l1.6 1.6 2.8-3M11 7h9.5M11 14h9.5M11 19.5h6"/></svg>Unterpunkt</li>
-            </ul>
+            <p class="hilfe-zwischen">Im Fenster „Bearbeiten“</p>
+            <dl class="hilfe-zeilen">
+              <div class="hilfe-zeile"><dt>Oben</dt><dd>Titel und Notiz</dd></div>
+              <div class="hilfe-zeile"><dt>Darunter</dt><dd>Bereich, Thema, bis, „Unter Heute ab“</dd></div>
+              <div class="hilfe-zeile"><dt>Unterpunkte</dt><dd>Abhaken, löschen, „＋ Unterpunkt hinzufügen“</dd></div>
+            </dl>
             <details class="hilfe-mehr">
               <summary>Mehr dazu</summary>
               <ul>
-                <li><b>Berühren</b> heißt: am Rechner die Maus darüber, am Handy einmal tippen. Dann erscheinen Stift und Papierkorb.</li>
+                <li><b>Berühren</b> heißt: am Rechner die Maus darüber, am Handy einmal tippen. Dann erscheinen Uhr, Stift und Papierkorb.</li>
                 <li><b>Verschieben:</b> Neben den Spalten losgelassen, landet das ToDo wieder ohne Bereich.</li>
                 <li><b>Löschen:</b> Unten steht danach ein paar Sekunden lang „Rückgängig“.</li>
-                <li><b>Termin heißt „bis“:</b> Ab 2 Wochen vorher steht das ToDo jeden Tag unter Heute, nach Termin sortiert, rot ab dem Tag davor. „Vorlauf“ ändert das für ein einzelnes ToDo, von „Erst am Tag“ bis „Sofort“.</li>
-                <li><b>Datum:</b> Das ✕ daneben entfernt den Termin. <b>Bereich</b> gibt es nur bei ToDos ohne Bereich, <b>Thema</b> nur, wenn der Bereich Themen hat.</li>
-                <li><b>Unterpunkte</b> sind eine kleine Checkliste im ToDo. Sind alle abgehakt, ist das ToDo erledigt.</li>
+                <li><b>Termin heißt „bis“:</b> Ab 2 Wochen vorher steht das ToDo jeden Tag unter Heute, nach Termin sortiert, rot ab dem Tag davor. „Unter Heute ab“ ändert das für ein einzelnes ToDo, von „Erst am Tag“ bis „Sofort“.</li>
+                <li><b>Datum:</b> Das ✕ daneben entfernt den Termin. <b>Thema</b> steht nur da, wenn der Bereich Themen hat.</li>
+                <li><b>Unterpunkte</b> sind eine kleine Checkliste im ToDo. Sind alle abgehakt, ist das ToDo erledigt. Sie gelten sofort, Titel und Co. erst mit „Fertig“.</li>
                 <li>Beim Anlegen legt Strg+Enter im Notizfeld das ToDo gleich an.</li>
               </ul>
             </details>
@@ -1125,7 +1224,7 @@
               <div class="hilfe-zeile"><dt>Monat wechseln</dt><dd>‹ › antippen oder wischen</dd></div>
               <div class="hilfe-zeile"><dt>Filtern</dt><dd>Trichter: Quellen, Kalenderwochen</dd></div>
               <div class="hilfe-zeile"><dt>Verbinden</dt><dd>Einstellungen › ToDo › Google Kalender</dd></div>
-              <div class="hilfe-zeile"><dt>Termin anlegen</dt><dd>„＋ Neu“, dann „Termin“</dd></div>
+              <div class="hilfe-zeile"><dt>Termin anlegen</dt><dd>＋, dann „Termin“: alle Felder auf einmal</dd></div>
             </dl>
             <details class="hilfe-mehr">
               <summary>Mehr dazu</summary>
@@ -1153,7 +1252,8 @@
               <div class="hilfe-zeile"><dt>Tag nachtragen</dt><dd>Namen antippen, dann den Tag</dd></div>
               <div class="hilfe-zeile"><dt>Ändern</dt><dd>Namen antippen, dann den Stift</dd></div>
               <div class="hilfe-zeile"><dt>Anlegen, ordnen</dt><dd>Überschrift „Gewohnheiten ›“ antippen</dd></div>
-              <div class="hilfe-zeile"><dt>Zeit messen</dt><dd>„Zeit“ auf ein ToDo ziehen, oder antippen und wählen</dd></div>
+              <div class="hilfe-zeile"><dt>Zeit messen</dt><dd>ToDo berühren, dann Uhr</dd></div>
+              <div class="hilfe-zeile"><dt>Fokus</dt><dd>Läuft die Uhr: Zeit und ToDo groß, „Ausblenden“ oben links</dd></div>
               <div class="hilfe-zeile"><dt>Auswertung</dt><dd>Einstellungen › Timer › Statistik</dd></div>
             </dl>
             <details class="hilfe-mehr">
@@ -1161,11 +1261,12 @@
               <ul>
                 <li>Bei Gewohnheiten mit Zielmenge zählst du mit − und ＋.</li>
                 <li><b>Flamme:</b> Unter Einstellungen › Gewohnheiten › „Flamme zählt“ wählst du <i>Insgesamt</i> (alle erledigten Tage, ein ausgelassener Tag kostet nichts) oder <i>In Reihe</i> (Tage am Stück, ein ausgelassener Tag setzt sie auf null).</li>
-                <li><b>Ziehen</b> geht am Rechner mit der Maus, auf eine Karte oder eine Zeile unter Heute. Läuft die Uhr schon, bleibt die bisherige Zeit beim alten ToDo, und ab jetzt zählt das neue.</li>
-                <li><b>Zeiterfassung:</b> Ein ToDo auszuwählen geht auch ohne. Hakst du das ToDo ab, stoppt die Uhr. Vergessenes trägst du über „+ Zeit nachtragen“ nach.</li>
+                <li><b>Fokus-Bildschirm:</b> zeigt die laufende Zeit, das ToDo mit Notiz und Unterpunkten, dazu „Stoppen“ und „Erledigt“. Ausgeblendet läuft die Uhr weiter; ein Tipp auf die Zeit <span class="ohne-fuss">neben dem ＋</span><span class="mit-fuss">unten</span> holt ihn zurück.</li>
+                <li><b>Startest du ein anderes ToDo</b>, während die Uhr läuft, bleibt die bisherige Zeit beim alten, ab jetzt zählt das neue. Am Rechner kannst du die Uhr auch auf eine Karte ziehen.</li>
+                <li><b>Ohne ToDo</b> startest du über die Uhr <span class="ohne-fuss">neben dem ＋</span><span class="mit-fuss">unten</span>. Hakst du das ToDo ab, stoppt die Uhr. Vergessenes trägst du über „Zeit nachtragen“ nach.</li>
                 <li><b>Verlauf:</b> Alle Gewohnheiten stehen untereinander, je mit einem Monatskalender, auch die, die heute nicht dran sind. Ein Tipp auf einen Tag hakt ihn ab oder öffnet ihn wieder, „Rückgängig“ steht danach unten. Bei Zielmengen trägst du die Zahl ein. Daneben steht der Reiter Statistik.</li>
                 <li>Den Verlauf öffnest du auch über Einstellungen › Gewohnheiten › „Verlauf &amp; Statistik“.</li>
-                <li>„Zeit“ und die Gewohnheiten lassen sich unter Einstellungen mit „Anzeige“ ausblenden.</li>
+                <li>Die Zeiterfassung (samt Uhr an den ToDos) und die Gewohnheiten lassen sich unter Einstellungen mit „Anzeige“ ausblenden.</li>
               </ul>
             </details>
           </div>
@@ -1228,6 +1329,35 @@
         <button type="button" class="btn primary" id="ztDialogSpeichern">Speichern</button>
       </div>
       <button type="button" class="lock-link" id="ztDialogLoeschen" hidden>Eintrag löschen</button>
+    </div>
+  </div>
+
+  <!-- Fokus-Bildschirm (seit 19.11.2026). Hendrik: "wenn ich in einem ToDo drin
+       bin mit der Zeit, soll ein Focus Screen kommen, wo ich nur die Zeit und
+       das aktuelle ToDo sehe und im Notfall den ausmachen kann, wenn ich noch
+       was gucken muss." Seine Wahl: mit Notiz, abhakbaren Unterpunkten und
+       "Erledigt". Ganzer Bildschirm, ueber Leiste und Kalender, unter den
+       Fenstern (die Zeiterfassung oeffnet sich darueber). Logik in
+       zeiterfassung.js (zf...). -->
+  <div id="zeitFokus" class="zeit-fokus" role="dialog" aria-modal="true" aria-labelledby="zfTitel" hidden>
+    <div class="zf-kopf">
+      <button type="button" id="zfAusblenden" class="zf-textknopf">Ausblenden</button>
+      <button type="button" id="zfMehr" class="zf-textknopf">Zeiterfassung</button>
+    </div>
+    <div class="zf-inhalt">
+      <div id="zfOrt" class="zf-ort"></div>
+      <h2 id="zfTitel" class="zf-titel"></h2>
+      <div id="zfUhr" class="zf-uhr">0:00:00</div>
+      <div id="zfGruppe" class="anlegen-gruppe zf-gruppe" hidden>
+        <p id="zfNotiz" class="zf-notiz" hidden></p>
+        <div id="zfUnterpunkte" class="zf-unterpunkte" hidden></div>
+      </div>
+    </div>
+    <div class="zf-knoepfe">
+      <button type="button" id="zfStopp" class="zf-knopf zf-stopp">
+        <span class="zf-stopp-quadrat" aria-hidden="true"></span>Stoppen
+      </button>
+      <button type="button" id="zfErledigt" class="zf-knopf zf-erledigt">✓ Erledigt</button>
     </div>
   </div>
 
@@ -1407,6 +1537,7 @@
        einnimmt und welche Fenster sie offen laesst. Brauchen app.js (state,
        addTodoTo) und kalender.js (Tag, Termin). -->
   <script src="anlegen.js"></script>
+  <script src="bearbeiten.js"></script>
   <script src="navigation.js"></script>
 </body>
 </html>

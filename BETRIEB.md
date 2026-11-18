@@ -1155,6 +1155,9 @@ Pille. Die Regel greift für ihn nur am Rechner mit Touchscreen.)
 
 ## Die Leiste: ToDos | Kalender | ＋ | Zeit | Einstellungen (seit 15.11.2026)
 
+**Seit 19.11.2026 nur noch unter 1000 px (unten), am PC Knöpfe in der Kopfzeile** -
+siehe „Runde 4 am 19.11.2026“ unten. Was hier über „oben“ steht, ist Geschichte.
+
 Eine Leiste wie in jeder App: **ToDos | Kalender | ＋ Neu | Zeit |
 Einstellungen**, Linien-Symbole mit Text, das aktive Feld blau mit getönter
 Pille, das ＋ in denselben Farben wie die anderen (zuerst war es eine blaue
@@ -1316,6 +1319,104 @@ Umschalten wechseln die Zeilen, mittig sprang dann die Oberkante, und am Handy
 läge die Mitte halb unter der Tastatur. Schriftgröße 16 px in allen Feldern,
 sonst zoomt Safari beim Antippen. Escape fängt `anlegen.js` in der
 Einfangphase ab, sonst klappte der Kalender mit zu.
+
+## Runde 4 am 19.11.2026: Kopf am PC, Bearbeiten-Fenster, Fokus-Bildschirm
+
+Hendriks Auftrag (eine Liste nach dem Live-Test des iOS-Looks), Rückfragen per
+Skizze und drei Grobbildern (`ToDo-Entwurf-iOS/leiste-pc-a/b/c.png`):
+
+**Kopf am PC (ab 1000 px, `html.breit`).** Hendrik: „Am Desktop habe ich
+Kalender immer an. Also brauch ich die 2 Knöpfe gar nicht.“ Seine eigene Idee
+nach den Grobbildern (statt Leiste unten/links/als Reiter):
+* Keine Leiste mehr am PC. `.kopf-knoepfe` in der App-Kopfzeile: Uhr und ＋
+  rechts neben „Meine ToDos“ (seine Wahl „Uhr neben dem ＋“), das Zahnrad ganz
+  rechts in der Ecke - im Panel (`.kopf-zahnrad-panel`, absolut oben rechts),
+  solange es offen ist, sonst am Ende der Kopfzeile (`.kopf-zahnrad-app`). Alle
+  als blaue Symbole ohne Fläche (Symbolknopf aus `Tageswerte/DESIGN.md`;
+  Hendrik: „alle Buttons sollten gleich aussehen“). Das graue ✕ über dem
+  Kalender und die ganze Zeile `.kal-ansicht-zeile` sind weg.
+* Zwei Schalter in den Einstellungen bei den globalen Zeilen, nur am PC
+  sichtbar (`.nur-pc`): **Kalender anzeigen**, **Heute anzeigen**. Pro Gerät
+  (`pcKalender`, `pcHeute` in localStorage), Standard an. Logik in
+  `kalender.js` (`pcKalenderAn`, `pcHeuteAn`, `pcPanelSollOffen`,
+  `istNurHeute`, `schaltePc`). Am PC entscheiden NUR sie: Escape und Wischen
+  schließen dort keinen Kalender mehr, `ANSICHT_KEY` gilt nur noch unter
+  1000 px. Wird das Fenster schmaler als 1000 px, steht die Liste da (nicht
+  plötzlich der Kalender als Ansicht); wieder breiter, gelten die Schalter.
+* Heute aus: keine Heute-Spalte (ab 1380 px) bzw. keine Tagesansicht über den
+  ToDos (1000-1379 px) - die Gewohnheiten darin gehen mit. Kalender aus und
+  Heute an (ab 1380 px): das Panel steht nur mit der Heute-Spalte da
+  (`html.nur-heute`, Breite `--heute-breite`); unter 1380 px dann die
+  Tagesansicht über den ToDos. Beides aus: Board über die ganze Breite.
+
+**Unter 1000 px (iPad hoch, Handy): die Leiste unten** (Hendriks Wahl fürs
+iPad). Die Regeln der Handy-Leiste gelten jetzt bis 999 px; `navigation.js`
+hängt nichts mehr um. Nebenbei: der Kalender als eigene Ansicht nimmt dort die
+ganze Breite (stand am iPad hoch 480 px breit rechts, links leer).
+
+**Bearbeiten als Fenster** (`#bearbeitenPopup`, `bearbeiten.js`). Hendrik:
+„nicht so übersichtlich, vielleicht ein Popup, den Titel etwas größer und die
+Punkte unter der Notiz optisch besser“. Aufbau wie das Neu-Fenster: Titel
+(20 px, fett) und Notiz als Gruppe, darunter Bereich, Thema (nur mit Themen),
+bis, „Unter Heute ab“ (nur mit Datum), die Unterpunkte als eigene Gruppe mit
+„＋ Unterpunkt hinzufügen“, unten Abbrechen | Fertig. Die Bearbeiten-Zeile in
+der Karte (`edit-row`, `saveEdit`, `verdrahteWahlSymbol`, …) ist raus.
+`startEdit()` öffnet das Fenster, `editingId` bleibt gesetzt, solange es offen
+ist (das Nachladen wartet). Meine Calls: Bereich bei JEDEM ToDo änderbar (vorher
+nur bei „Ohne Bereich“); Unterpunkte gelten sofort wie vorher, der Rest erst mit
+„Fertig“; kein Fokus beim Öffnen (Tastatur am Handy).
+
+**Neu-Fenster.** Titel größer als die Notiz. **Termin mit allen Feldern**
+(Hendrik: „direkt alle Optionen, ganz oben Titel und Notiz, 1 zu 1 wie bei
+ToDo“): ein Tipp auf „Termin“ übergibt an das volle Termin-Formular
+(`anlegenZumTermin` → `oeffneTerminFormular` mit `formularFelder.ausNeu`). Das
+steht dann an derselben Stelle und in derselben Größe (`#kalTerminPopup.wie-neu`)
+mit Kopf „Neu“ und Umschalter ToDo | Termin (`baueNeuKopf`); „ToDo“ dort führt
+mit Titel und Notiz zurück (`window.anlegenZuToDo`). Die Kurzform (Tag,
+Ganztägig, von-bis) und „Mehr“ sind weg. Das Termin-Formular ist dabei überall
+gruppiert (`.kal-form-gruppiert`): Titel + Notiz oben (die Notiz-Zeile unten
+entfällt), darunter Ganztägig, Zeitraum, Ort, Wiederholung; neue Termine heißen
+unten „Anlegen“. **Von „Neuer Bereich“ zurück:** der Umschalter bleibt sichtbar
+und bekommt dort ein drittes, gewähltes Feld „Bereich“; ToDo oder Termin führt
+zurück.
+
+**Termin an der Karte farbig** (Hendriks Wahl „farbige Schrift“): „bis Mi
+25.11.“ in Gelbbraun (`--bis-farbe`) statt grau wie die Notiz, „bis morgen“ rot
+wie der Streifen, heute bleibt orange.
+
+**„‹ Einstellungen“** links oben in Hilfe, „Verlauf & Statistik“ und der
+Zeit-Statistik, wenn sie aus den Einstellungen kamen (`einstellungenVerlassenFuer`
+in `app.js`) - Hendrik kam aus der Hilfe nicht zurück. Die beiden anderen
+Fenster hatten dasselbe Problem.
+
+**Zeiterfassung.**
+* **Uhr an der Karte** (Hendrik fragte „am ToDo eine Uhr?“ - am 02.11. hatte er
+  das noch abgelehnt): in den Werkzeugen neben Stift und Papierkorb (beim
+  Drüberfahren bzw. nach einem Tipp), startet die Zeit auf diesem ToDo. Läuft
+  sie darauf, ist sie blau und holt den Fokus zurück. Nur mit Schalter
+  „Anzeige“ an (aus = auch keine Uhr an den Karten).
+* **Fokus-Bildschirm** (`#zeitFokus`, `zf…` in `zeiterfassung.js`), seine Wahl
+  „mit Notiz und Unterpunkten“: Bereich › Thema, Titel, große Zeit, Notiz,
+  abhakbare Unterpunkte (auch aus anderen Listen: `toggleUnterpunkt(id,
+  boardId)`), Stoppen | Erledigt; oben „Ausblenden“ und „Zeiterfassung“ (öffnet
+  das Fenster darüber, z-index 115 gegen 120). Geht bei jedem Start auf (Karte,
+  „Starten“, Ziehen) und beim Tipp auf die laufende Uhr in Kopf bzw. Leiste -
+  das Fenster öffnet der Knopf nur noch ohne laufende Uhr. War er beim Verlassen
+  der Seite offen, kommt er nach dem Neuladen wieder (`zeitFokusOffen`).
+* **Fenster im Einstellungen-Look:** grauer Grund, Gruppen, „Heute“ als Gruppe
+  mit Gebucht › / Zeit nachtragen › / Statistik ›. Die Auswahl sieht aus wie das
+  Board (weiße Gruppe je Bereich mit getönter Kopfzeile, Termin-Streifen und
+  -Chip bleiben). Falle: die Gruppen in der blätternden Liste brauchen
+  `flex: none`, sonst drückt die max-height sie zusammen.
+
+**Lokal getestet** (wrangler pages dev, Browser-Pane 1500/1200/900/820/390 px,
+hell und dunkel): alle Schalterkombinationen und Breitenwechsel, Escape am PC,
+Bearbeiten (speichern inkl. Bereich/Thema/Vorlauf, Abbrechen, Escape,
+Unterpunkte), Neu ↔ Termin ↔ Bereich, Uhr an der Karte, Fokus (Ausblenden,
+zurückholen, Neuladen, Stoppen, Erledigt), Anzeige-Schalter, ‹ Einstellungen,
+doppelte IDs. **Ungeprüft:** echtes iPhone/iPad; Termin wirklich bei Google
+anlegen (lokal kein Google, Formular nur mit vorgetäuschtem Schreibrecht
+angesehen); echter Mauszug der Uhr.
 
 ## Notizfeld
 

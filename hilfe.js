@@ -28,7 +28,7 @@ let hilfeZurueck = null;   // was vorher den Fokus hatte
 function hilfeOeffnen(abschnitt = null) {
   // Aus den Einstellungen heraus: die schliessen, sonst laegen zwei
   // Vollbilder uebereinander (wie beim Fenster "Gewohnheiten").
-  if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
+  einstellungenVerlassenFuer(hilfeFenster);
   for (const d of hilfeAbschnitte) d.open = d.dataset.hilfe === abschnitt;
   for (const m of hilfeMehrAlle) m.open = false;
   hilfeZurueck = document.activeElement;

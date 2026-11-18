@@ -128,6 +128,21 @@ function gemerkteBreite() {
 // "kalender" verstanden - alles ausser "liste" heisst Kalender.
 const ANSICHT_KEY = "kalAnsicht";
 
+// Am PC (ab SPLIT_AB) gibt es seit 19.11.2026 keine Knoepfe ToDos/Kalender
+// mehr - Hendrik: "Am Desktop habe ich Kalender immer an, also brauche ich die
+// 2 Knoepfe gar nicht." Stattdessen zwei Schalter in den Einstellungen,
+// "Kalender anzeigen" und "Heute anzeigen", pro Geraet, Standard an. Am PC
+// entscheiden NUR sie, was rechts steht (Escape und Wischen schliessen dort
+// nichts mehr); ANSICHT_KEY gilt nur noch unterhalb der Split-Grenze.
+const PC_KALENDER_KEY = "pcKalender";
+const PC_HEUTE_KEY = "pcHeute";
+function liesPcSchalter(key) {
+  try { return localStorage.getItem(key) !== "aus"; }
+  catch (e) { return true; }
+}
+let pcKalenderAn = liesPcSchalter(PC_KALENDER_KEY);
+let pcHeuteAn = liesPcSchalter(PC_HEUTE_KEY);
+
 /**
  * Drei Aufbauten, entschieden allein an der Fensterbreite (seit 09.10.2026):
  *
@@ -149,14 +164,28 @@ function istSplit() {
 // Abend) reichte eine - dann stand am iPad ein 270 px schmales Board neben
 // einer eigenen Heute-Spalte; Hendrik wollte die Tagesansicht dort lieber
 // ueber den ToDos.
+// Seit 19.11.2026 zusaetzlich nur, wenn "Heute anzeigen" an ist.
 function istDrei() {
-  return window.innerWidth >= BREITE_MIN + HEUTE_BREITE + BOARD_MINDEST;
+  return pcHeuteAn && window.innerWidth >= BREITE_MIN + HEUTE_BREITE + BOARD_MINDEST;
+}
+
+// Kalender am PC aus, Heute an und genug Platz: das Panel steht trotzdem da,
+// aber nur mit der Heute-Spalte (html.nur-heute).
+function istNurHeute() {
+  return istSplit() && !pcKalenderAn && istDrei();
+}
+
+// Soll das Panel am PC offen sein? Unterhalb der Split-Grenze bedeutungslos.
+function pcPanelSollOffen() {
+  return pcKalenderAn || istNurHeute();
 }
 
 // Steht die Tagesansicht ueber den ToDos? Ueberall, wo es keine eigene
-// Heute-Spalte gibt. Ob sie gerade zu SEHEN ist, entscheidet zeichneTagOben()
-// (das Board muss sichtbar sein).
+// Heute-Spalte gibt - am PC aber nur, solange "Heute anzeigen" an ist. Ob sie
+// gerade zu SEHEN ist, entscheidet zeichneTagOben() (das Board muss sichtbar
+// sein).
 function tagOben() {
+  if (istSplit() && !pcHeuteAn) return false;
   return !istDrei();
 }
 
@@ -192,9 +221,10 @@ function wendeBreiteAn() {
  * Umschalter-Zeile im Panel ausblenden" gelten dann trotzdem.
  */
 function pflegeBreit() {
-  const panel = kalBreite() + (istDrei() ? HEUTE_BREITE : 0);
+  const panel = istNurHeute() ? HEUTE_BREITE : kalBreite() + (istDrei() ? HEUTE_BREITE : 0);
   document.documentElement.classList.toggle("breit", istSplit());
   document.documentElement.classList.toggle("dreispaltig", istDrei());
+  document.documentElement.classList.toggle("nur-heute", istNurHeute());
   document.documentElement.classList.toggle("board-schmal",
     istSplit() && window.innerWidth - panel < BOARD_SCHMAL);
   wendeBreiteAn();
@@ -1972,6 +2002,8 @@ function schliesseTerminFormular() {
 // unter den Fingern neu entsteht, verliert Fokus und Cursorposition.
 function zeichneTerminPopup() {
   kalTerminPopup.hidden = !formularOffen;
+  // Aus dem Neu-Fenster: dieselbe Lage und Groesse wie dort (style.css).
+  kalTerminPopup.classList.toggle("wie-neu", !!(formularOffen && formularFelder && formularFelder.ausNeu));
   kalTerminBox.innerHTML = "";
   if (!formularOffen) return;
   const f = formularFelder;
@@ -2090,7 +2122,11 @@ function baueTerminFormular(tag, termin) {
   const f = formularFelder;
   if (f.modus === "ansicht" || f.modus === "lesen") return baueTerminAnsicht(f, termin);
   const box = document.createElement("div");
-  box.className = "kal-form";
+  // Seit 19.11.2026 gruppiert wie das Neu-Fenster der ToDos: Titel und Notiz
+  // als eine Gruppe oben, darunter die Zeilen als zweite Gruppe (Hendrik:
+  // "ganz oben Titel und Notiz, 1 zu 1 wie bei ToDo"). Vorher stand die
+  // Notiz als letzte Zeile unten.
+  box.className = "kal-form kal-form-gruppiert";
   // Die Zeilen scrollen in einem eigenen Bereich, die Knopfreihe steht fest
   // darunter. Bis zum 26.09.2026 klebte sie nur per position:sticky im
   // mitscrollenden Inhalt - bei einer langen Notiz stand sie dann mitten im
@@ -2099,13 +2135,22 @@ function baueTerminFormular(tag, termin) {
   inhalt.className = "kal-form-inhalt";
   box.appendChild(inhalt);
 
+  // Aus dem Neu-Fenster heraus (anlegen.js): derselbe Kopf und derselbe
+  // Umschalter ToDo | Termin wie dort - es soll EIN Fenster sein.
+  if (f.ausNeu) inhalt.appendChild(baueNeuKopf(f));
+
+  const textGruppe = document.createElement("div");
+  textGruppe.className = "anlegen-gruppe kal-form-textgruppe";
+  const gruppe = document.createElement("div");
+  gruppe.className = "anlegen-gruppe kal-form-gruppe";
+
   // --- Titel mit Farbpunkt ---
   const titelZeile = document.createElement("div");
   titelZeile.className = "kal-form-titelzeile";
   const titel = document.createElement("input");
   titel.type = "text";
-  titel.className = "kal-form-titel";
-  titel.placeholder = "Titel";
+  titel.className = "kal-form-titel anlegen-titel";
+  titel.placeholder = f.ausNeu ? "Was steht an?" : "Titel";
   titel.setAttribute("aria-label", "Titel des Termins");
   titel.value = f.titel;
   titel.addEventListener("input", () => {
@@ -2154,7 +2199,18 @@ function baueTerminFormular(tag, termin) {
     }
     titelZeile.appendChild(wahl);
   }
-  inhalt.appendChild(titelZeile);
+  textGruppe.appendChild(titelZeile);
+
+  // --- Notiz, direkt unter dem Titel ---
+  const notiz = document.createElement("textarea");
+  notiz.className = "anlegen-notiz kal-form-notiz";
+  notiz.rows = 2;
+  notiz.placeholder = "Notiz";
+  notiz.setAttribute("aria-label", "Notiz");
+  notiz.value = f.notiz;
+  notiz.addEventListener("input", () => { f.notiz = notiz.value; passeNotizHoeheAn(notiz); });
+  textGruppe.appendChild(notiz);
+  inhalt.appendChild(textGruppe);
 
   // --- Ganztaegig ---
   const ganz = document.createElement("label");
@@ -2170,7 +2226,7 @@ function baueTerminFormular(tag, termin) {
   // Hier darf neu gebaut werden: die Uhrzeitfelder kommen oder gehen.
   schalter.addEventListener("change", () => { f.ganztags = schalter.checked; zeichneTerminPopup(); });
   ganz.append(formSymbol("uhr"), ganzText, schalter);
-  inhalt.appendChild(ganz);
+  gruppe.appendChild(ganz);
 
   // --- Von -> Bis nebeneinander ---
   const zeitraum = document.createElement("div");
@@ -2198,7 +2254,7 @@ function baueTerminFormular(tag, termin) {
     seite(f.endDatum, f.bisZeit,
       v => { setzeEnde(f, v, f.bisZeit); aktualisiereZeitraum(); },
       v => { setzeEnde(f, f.endDatum, v); aktualisiereZeitraum(); }, "Ende", "ende"));
-  inhalt.appendChild(zeitraum);
+  gruppe.appendChild(zeitraum);
 
   // --- Ort ---
   const ort = document.createElement("label");
@@ -2211,7 +2267,7 @@ function baueTerminFormular(tag, termin) {
   ortFeld.value = f.ort;
   ortFeld.addEventListener("input", () => { f.ort = ortFeld.value; });
   ort.append(formSymbol("ort"), ortFeld);
-  inhalt.appendChild(ort);
+  gruppe.appendChild(ort);
 
   // --- Wiederholung: fuehrt auf die eigene Seite ---
   const wdh = document.createElement("button");
@@ -2225,24 +2281,49 @@ function baueTerminFormular(tag, termin) {
   weiter.textContent = "›";
   wdh.append(formSymbol("wdh"), wdhText, weiter);
   wdh.addEventListener("click", () => { f.seite = "wiederholung"; zeichneTerminPopup(); });
-  inhalt.appendChild(wdh);
-
-  // --- Notizen ---
-  const notizReihe = document.createElement("label");
-  notizReihe.className = "kal-form-reihe kal-form-reihe-oben";
-  const notiz = document.createElement("textarea");
-  notiz.className = "kal-form-eingabe kal-form-notiz";
-  notiz.rows = 1;
-  notiz.placeholder = "Notizen";
-  notiz.setAttribute("aria-label", "Notizen");
-  notiz.value = f.notiz;
-  notiz.addEventListener("input", () => { f.notiz = notiz.value; passeNotizHoeheAn(notiz); });
-  notizReihe.append(formSymbol("notiz"), notiz);
-  inhalt.appendChild(notizReihe);
+  gruppe.appendChild(wdh);
+  inhalt.appendChild(gruppe);
 
   box.appendChild(baueFuss(f, termin));
   fuelleWdhZeile(wdh, f);
   return box;
+}
+
+// Kopf "Neu" und Umschalter ToDo | Termin fuer einen Termin, der aus dem
+// Neu-Fenster kommt (seit 19.11.2026). "ToDo" fuehrt zurueck ins Neu-Fenster
+// (anlegen.js) und nimmt Titel und Notiz mit - wie das Umschalten dort.
+function baueNeuKopf(f) {
+  const teile = document.createDocumentFragment();
+  const kopf = document.createElement("div");
+  kopf.className = "anlegen-kopf";
+  const titel = document.createElement("span");
+  titel.className = "anlegen-kopf-titel";
+  titel.textContent = "Neu";
+  kopf.appendChild(titel);
+  teile.appendChild(kopf);
+  if (!aktiveListe) return teile;   // ohne Liste gibt es kein ToDo zum Umschalten
+  const reiter = document.createElement("div");
+  reiter.className = "anlegen-reiter";
+  reiter.setAttribute("role", "tablist");
+  reiter.setAttribute("aria-label", "Was anlegen?");
+  for (const [art, text] of [["todo", "ToDo"], ["termin", "Termin"]]) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "anlegen-reiter-knopf";
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", String(art === "termin"));
+    b.textContent = text;
+    if (art === "todo") {
+      b.addEventListener("click", () => {
+        const mit = { titel: f.titel, notiz: f.notiz };
+        schliesseTerminFormular();
+        window.anlegenZuToDo?.(mit);
+      });
+    }
+    reiter.appendChild(b);
+  }
+  teile.appendChild(reiter);
+  return teile;
 }
 
 // Farbe des Punkts: die eigene Farbe des Termins oder die des Kalenders. Ohne
@@ -2398,7 +2479,7 @@ function baueFuss(f, termin) {
     // Abbrechen schliesst - wie Speichern (Hendriks Wunsch, 26.09.2026). Einen
     // Tag lang fuehrte es beim Bearbeiten zurueck in die Ansicht.
     knopf("Abbrechen", "", schliesseTerminFormular);
-    knopf("Speichern", "primaer", () => speichereTermin(termin)).disabled = f.speichert;
+    knopf(f.modus === "neu" ? "Anlegen" : "Speichern", "primaer", () => speichereTermin(termin)).disabled = f.speichert;
   }
   return fuss;
 }
@@ -3320,8 +3401,12 @@ function setzePanel(offen, sofort) {
   // dort, wo man sie verlassen hat (im Test gefunden).
   if (wechselt && alsAnsicht) window.scrollTo(0, 0);
 
-  try { localStorage.setItem(ANSICHT_KEY, offen ? "kalender" : "liste"); }
-  catch (e) { /* voller Speicher - dann eben ungemerkt */ }
+  // Am PC entscheiden die Schalter in den Einstellungen, nicht der letzte
+  // Zustand (seit 19.11.2026).
+  if (!split) {
+    try { localStorage.setItem(ANSICHT_KEY, offen ? "kalender" : "liste"); }
+    catch (e) { /* voller Speicher - dann eben ungemerkt */ }
+  }
 
   // Die Tagesansicht ueber den ToDos zeigt bei offenem Kalender den gewaehlten
   // Tag, bei zugeklapptem heute - sie haengt also an genau diesem Zustand.
@@ -3409,7 +3494,8 @@ function stelleAnsichtHer() {
   // Ohne gemerkten Zustand entscheidet der Platz: am Rechner steht der
   // Streifen gleich daneben, am Handy naehme er der Liste den Bildschirm weg.
   // Alte Werte ("tag", "fokus") heissen "kalender" - alles ausser "liste".
-  const auf = gemerkt ? gemerkt !== "liste" : istSplit();
+  // Am PC gelten die Schalter "Kalender" und "Heute" (seit 19.11.2026).
+  const auf = istSplit() ? pcPanelSollOffen() : (gemerkt ? gemerkt !== "liste" : false);
   if (!auf) { setzePanel(false, true); return; }
   frischOeffnen();
   kalOffen = true;
@@ -3434,6 +3520,41 @@ function oeffneKalender() {
 }
 
 window.kalenderIstOffen = () => kalOffen;
+
+// ---------- Schalter "Kalender anzeigen" / "Heute anzeigen" (PC) ----------
+// In den Einstellungen, nur ab SPLIT_AB sichtbar (seit 19.11.2026). Ein
+// Wechsel greift sofort: pflegeSplit gleicht das Panel mit den Schaltern ab.
+const pcKalenderSwitch = document.getElementById("pcKalenderSwitch");
+const pcHeuteSwitch = document.getElementById("pcHeuteSwitch");
+function zeigePcSchalter() {
+  pcKalenderSwitch.checked = pcKalenderAn;
+  document.getElementById("pcKalenderLabel").textContent = pcKalenderAn ? "An" : "Aus";
+  pcHeuteSwitch.checked = pcHeuteAn;
+  document.getElementById("pcHeuteLabel").textContent = pcHeuteAn ? "An" : "Aus";
+}
+function schaltePc(key, an) {
+  if (key === PC_KALENDER_KEY) pcKalenderAn = an; else pcHeuteAn = an;
+  try { localStorage.setItem(key, an ? "an" : "aus"); }
+  catch (e) { /* voller Speicher - gilt dann bis zum Neuladen */ }
+  zeigePcSchalter();
+  // Ohne Raster gibt es keinen anderen Tag zu waehlen: die Heute-Spalte
+  // zeigt dann wieder heute.
+  if (!pcKalenderAn) kalAuswahl = todayStr();
+  const warDrei = document.documentElement.classList.contains("dreispaltig");
+  pflegeSplit();
+  // Blieb das Panel offen, hat sich aber sein Aufbau geaendert (Heute-Spalte
+  // dazu oder weg, nur Heute): frisch zeichnen.
+  if (kalOffen && istSplit()) {
+    setzePanel(true, true);
+    zeichneHeuteSpalte();
+    if (warDrei !== istDrei()) { vollbildPlaetze = 0; }
+    zeichneKalender();
+  }
+  zeichneTagOben();
+}
+zeigePcSchalter();
+pcKalenderSwitch.addEventListener("change", () => schaltePc(PC_KALENDER_KEY, pcKalenderSwitch.checked));
+pcHeuteSwitch.addEventListener("change", () => schaltePc(PC_HEUTE_KEY, pcHeuteSwitch.checked));
 // Fuer fokus.js: steht die Heute-Spalte da (ab 1380 px)? Dann wohnen die
 // Gewohnheiten dort und nicht unter der Tagesansicht ueber den ToDos.
 window.kalenderDreispaltig = istDrei;
@@ -3814,7 +3935,6 @@ for (const seg of document.querySelectorAll(".fuss-ansicht")) {
     oeffneKalender();
   });
 }
-document.getElementById("kalZu").addEventListener("click", schliesseKalender);
 
 // Die gezogene Breite ueberschreibt --kal-breite am :root. Alles, was daran
 // haengt (body-padding im Split, Panelbreite, Versatz der Snackbar), zieht von
@@ -4007,6 +4127,7 @@ function schliesseObersteEbene() {
   // alle stehen ueber dem Streifen. Escape fangen sie selbst ab; hierher kommt
   // vor allem die Zurueck-Taste am Handy.
   if (window.hilfeSchliesseOberste?.()) return true;   // Hilfe (hilfe.js)
+  if (window.bearbeitenSchliesseOberste?.()) return true;   // ToDo bearbeiten (bearbeiten.js)
   if (window.zeitSchliesseOberste?.()) return true;
   if (window.gewSchliesseOberste?.()) return true;
   if (frageAufloesen) { beantworteFrage(null); return true; }
@@ -4028,6 +4149,9 @@ function schliesseObersteEbene() {
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape" || !kalOffen) return;
   if (schliesseObersteEbene()) return;
+  // Am PC ist der Kalender eine Einstellung, kein Fenster (seit 19.11.2026):
+  // Escape schliesst nur, was darueber liegt.
+  if (istSplit()) return;
   schliesseKalender();
 });
 
@@ -4049,6 +4173,17 @@ function pflegeSplit() {
   // Fokus-Panel haengt ebenfalls daran.
   pflegeBreit();
   const anders = istSplit() !== warBreit || istDrei() !== warDrei;
+  // Am PC steht rechts, was die Schalter sagen (seit 19.11.2026) - auch nach
+  // dem Groesserziehen des Fensters. Wird es schmaler als der Split, bleibt
+  // die Liste stehen statt ploetzlich der Kalender als ganze Ansicht.
+  if (istSplit()) {
+    const soll = pcPanelSollOffen();
+    if (soll && !kalOffen) { oeffneKalender(); return; }
+    if (!soll && kalOffen) { schliesseKalender(); zeichneTagOben(); return; }
+  } else if (warBreit && kalOffen) {
+    schliesseKalender();
+    return;
+  }
   // Zugeklappt kann sich trotzdem aendern, ob die Tagesansicht ueber den
   // ToDos steht (z. B. Fenster ueber 1380 px gezogen).
   if (!kalOffen) { if (anders) zeichneTagOben(); return; }

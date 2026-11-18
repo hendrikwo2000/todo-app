@@ -11,6 +11,7 @@ const SYMBOL_PFADE = {
   etikett: '<path d="M3.5 12.2V5.5a2 2 0 0 1 2-2h6.7l8.3 8.3a2 2 0 0 1 0 2.8l-5.9 5.9a2 2 0 0 1-2.8 0z"/><circle class="voll" cx="8" cy="8" r="1.5"/>',
   checkliste: '<path d="M3.5 6.5l1.6 1.6 2.8-3M3.5 13.5l1.6 1.6 2.8-3M11 7h9.5M11 14h9.5M11 19.5h6"/>',
   stift: '<path d="M15 5l4 4M4 20l1-5L16 4l4 4L9 19z"/>',
+  uhr: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.6 1.6M9.8 3h4.4M12 3v3"/>',
   papierkorb: '<path d="M4.5 6.5h15M9.5 6.5V4.5h5v2M6.5 6.5l1 13a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-13M10 10.5v6.5M14 10.5v6.5"/>',
   kreuz: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
   flamme: '<path class="voll" d="M12 21.5c-3.7 0-6.2-2.5-6.2-5.8 0-3.6 2.7-5.4 3.7-8.7.4 1.9 1.7 2.9 2.7 3.3.5-2.6 1.5-5.3 1.1-7.6 3.5 2.3 5 6.2 5 10.2 0 5.9-2.6 8.6-6.3 8.6z"/>',
@@ -63,7 +64,6 @@ let addingCat = null;      // Bereich, dessen Eingabefeld gerade aufgeklappt ist
 let addingThema = null;    // Ueber-Thema fuer das offene Eingabefeld (null = frei)
 let farbePickerFuer = null; // id des Bereichs, dessen Farbauswahl gerade offen ist
 let themaWerkzeugeFuer = null; // id des Bereichs, dessen "+Thema"/Farbe-Zeile offen ist
-let unterpunktEingabeOffen = null; // id des ToDos, dessen "+Unterpunkt"-Feld im Bearbeiten-Dialog offen ist
 let werkzeugeFuer = null;  // id des ToDos, das am Finger gerade Bleistift und Muelleimer zeigt
 
 // Feste Palette fuer die Bereichsfarbe (Punkt am Namen + Streifen am
@@ -134,8 +134,31 @@ const streifenTimerLabel         = document.getElementById("streifenTimerLabel")
 // Seit 15.11.2026 gibt es nur noch das Zahnrad in der Leiste (navigation.js),
 // die mit ihm erscheint - vor der Anmeldung stuende sie unter der Anmeldemaske.
 const einKnoepfe = [...document.querySelectorAll(".ein-knopf")];
+
+// "‹ Einstellungen" (seit 19.11.2026): Hilfe, "Verlauf & Statistik" und die
+// Statistik der Zeiterfassung schliessen beim Oeffnen aus den Einstellungen
+// heraus die Einstellungen (zwei Vollbilder uebereinander waeren zu viel).
+// Zurueck ging es dann nicht mehr - Hendrik: "wenn ich unter Hilfe bin, komme
+// ich nicht wieder in die normalen Einstellungen". Der Knopf links oben im
+// Fenster zeigt sich nur, wenn es aus den Einstellungen kam, und stellt sie so
+// wieder her, wie man sie verlassen hat (Reiter, offener Abschnitt).
+function einstellungenVerlassenFuer(fenster) {
+  const ausEinstellungen = !einstellungenPopup.hidden;
+  einstellungenPopup.hidden = true;
+  const zurueck = fenster.querySelector(".ein-zurueck");
+  if (zurueck) zurueck.hidden = !ausEinstellungen;
+}
+for (const k of document.querySelectorAll(".ein-zurueck")) {
+  k.addEventListener("click", () => {
+    // Ueber den eigenen Schliessen-Knopf: der raeumt auf, was das Fenster
+    // beim Schliessen sonst noch tut.
+    k.closest(".admin-popup").querySelector(".ein-schliessen").click();
+    einstellungenPopup.hidden = false;
+  });
+}
 function zeigeEinstellungenKnopf() {
   for (const b of einKnoepfe) b.hidden = false;
+  for (const b of document.querySelectorAll(".kopf-knopf.neu-knopf")) b.hidden = false;
   document.getElementById("fusszeile").hidden = false;
 }
 const listenMenue  = document.getElementById("listenMenue");
@@ -2479,19 +2502,22 @@ function deleteUnterpunkt(id) {
 // wieder geoeffnet -> ToDo wieder offen. Beide Faelle laufen ueber
 // toggleDone() (nicht direkt t.done setzen), damit z. B. eine Wiederholung
 // beim Automatik-Abhaken genauso ausgeloest wird wie beim manuellen.
-function toggleUnterpunkt(id) {
-  const u = state.unterpunkte.find(x => x.id === id);
+// boardId (seit 19.11.2026): der Fokus-Bildschirm der Zeiterfassung hakt auch
+// Unterpunkte eines ToDos aus einer anderen als der aktiven Liste ab.
+function toggleUnterpunkt(id, boardId = aktiveListe) {
+  const inhalt = daten[boardId] || state;
+  const u = (inhalt.unterpunkte || []).find(x => x.id === id);
   if (!u) return;
   u.done = !u.done;
-  const t = findTodo(u.todoId);
+  const t = findTodo(u.todoId, inhalt);
   if (t) {
-    const geschwister = unterpunkteVon(u.todoId);
+    const geschwister = unterpunkteVon(u.todoId, inhalt);
     const alleFertig = geschwister.length > 0 && geschwister.every(x => x.done);
-    if (u.done && alleFertig && !t.done) { toggleDone(t.id); return; }
-    if (!u.done && t.done) { toggleDone(t.id); return; }
+    if (u.done && alleFertig && !t.done) { toggleDone(t.id, boardId); return; }
+    if (!u.done && t.done) { toggleDone(t.id, boardId); return; }
   }
   render();
-  save();
+  save(boardId);
 }
 
 // Naechste freie Sortiernummer fuer termin-lose, offene ToDos einer Gruppe.
@@ -2602,57 +2628,13 @@ function hideSnackbar() { snackbar.classList.remove("show"); }
 // erzeugt hat, raeumen wir mit weg - sie ueberlebt das Neuzeichnen sonst
 // sichtbar.
 function startEdit(id) {
+  // Seit 19.11.2026 ein eigenes Fenster (bearbeiten.js) statt der Zeile in
+  // der Karte. editingId bleibt gesetzt, solange es offen ist: so wartet das
+  // Nachladen vom Server (tipptGerade), bis man fertig ist.
   editingId = id;
-  unterpunktEingabeOffen = null;
-  render();
+  window.oeffneBearbeiten?.(id);
   const auswahl = window.getSelection && window.getSelection();
   if (auswahl && auswahl.removeAllRanges) auswahl.removeAllRanges();
-}
-
-function saveEdit(id) {
-  const t = findTodo(id);
-  if (!t) return;
-  const textInput = document.querySelector(`[data-edit-text="${id}"]`);
-  const dateInput = document.querySelector(`[data-edit-date="${id}"]`);
-  const noteInput = document.querySelector("[data-edit-note]");
-  const text = textInput.value.trim();
-  if (!text) { textInput.focus(); return; }
-  t.text = text;
-  t.due = dateInput.value || null;
-  t.note = noteInput && noteInput.value.trim() ? noteInput.value.trim() : null;
-  // Vorlauf nur mit Termin (siehe imVorlauf); leer = Standard.
-  const vorlaufSelect = document.querySelector(`[data-edit-vorlauf="${id}"]`);
-  t.vorlauf = (t.due && vorlaufSelect && vorlaufSelect.value !== "")
-    ? Number(vorlaufSelect.value) : null;
-  // Bereich-Auswahl (nur bei ToDos, die gerade "Ohne Bereich" liegen). Ein
-  // Wechsel in einen echten Bereich stellt das ToDo dort frei ein (ohne Thema)
-  // und reiht das termin-lose ToDo hinten in den Zielbereich ein.
-  const bereichSelect = document.querySelector(`[data-edit-bereich="${id}"]`);
-  if (bereichSelect && bereichSelect.value && bereichSelect.value !== t.categoryId) {
-    t.categoryId = bereichSelect.value;
-    t.themaId = null;
-    if (!t.due && !t.done) t.order = nextOrder(t.categoryId, null);
-  }
-  // Ueber-Thema aus dem Dropdown (nur da, wenn der Bereich Themen hat). Beim
-  // Wechsel das termin-lose ToDo hinten in die neue Gruppe einsortieren.
-  const themaSelect = document.querySelector(`[data-edit-thema="${id}"]`);
-  if (themaSelect) {
-    const neu = themaSelect.value || null;
-    if ((t.themaId || null) !== neu) {
-      t.themaId = neu;
-      if (!t.due && !t.done) t.order = nextOrder(t.categoryId, neu);
-    }
-  }
-  editingId = null;
-  unterpunktEingabeOffen = null;
-  render();
-  save();
-}
-
-function cancelEdit() {
-  editingId = null;
-  unterpunktEingabeOffen = null;
-  render();
 }
 
 // ---------- Aktionen: Bereiche ----------
@@ -2796,15 +2778,6 @@ function commitAddFromDOM() {
   const note = widget.querySelector(".add-note").value;
   if (text.trim()) addTodoTo(addingCat, addingThema, text, due, note);
   else closeAdd();
-}
-
-// Laufende Bearbeitung uebernehmen (Klick aus der Bearbeiten-Zeile heraus).
-function commitEditFromDOM() {
-  if (!editingId) return;
-  const textInput = document.querySelector(`[data-edit-text="${editingId}"]`);
-  if (!textInput) return;
-  if (textInput.value.trim()) saveEdit(editingId);
-  else cancelEdit();
 }
 
 // ---------- Drag & Drop: Umsortieren ----------
@@ -3725,86 +3698,6 @@ function updateDateButton(calBtn, clearBtn, value) {
   clearBtn.hidden = !has;
 }
 
-/**
- * Symbol-Knopf plus verstecktes <select> - dasselbe Muster wie beim
- * Vorlauf. Der Knopf traegt den gewaehlten Namen, damit man ihn sieht,
- * ohne die Liste zu oeffnen; ohne Auswahl bleibt nur das Symbol stehen.
- */
-function verdrahteWahlSymbol(wrap, art, symbol, wortLeer, titelLeer) {
-  const knopf = wrap.querySelector(`[data-act="${art}"]`);
-  if (!knopf) return;   // Bereich gibt es nur "ohne Bereich", Thema nur mit Themen
-  const feld = knopf.parentElement.querySelector("select");
-  const nachziehen = () => {
-    const name = feld.selectedOptions[0] ? feld.selectedOptions[0].textContent : "";
-    // Die leere Option traegt einen Platzhaltertext ("— kein Über-Thema —"),
-    // der als Beschriftung des Knopfes keinen Sinn ergaebe.
-    const gesetzt = !!feld.value;
-    // Namen sind frei waehlbar und koennen lang sein - ungekuerzt schoebe einer
-    // die ganze Knopfreihe auseinander. Der volle Name steht im title.
-    const kurz = name.length > 18 ? name.slice(0, 17) + "…" : name;
-    knopf.classList.toggle("active", gesetzt);
-    knopf.innerHTML = symbolMitText(symbol, gesetzt ? kurz : wortLeer);
-    knopf.title = gesetzt ? `${name} – zum Ändern klicken` : titelLeer;
-  };
-  nachziehen();
-  knopf.addEventListener("click", () => openDatePicker(feld));
-  feld.addEventListener("change", nachziehen);
-}
-
-// Analog zu updateDateButton: beim Standard nur das Symbol, sonst die Kurzform
-// ("⏳ 4 Wochen"), damit man eine eigene Einstellung ohne Aufklappen sieht.
-// Das <select> dahinter bleibt unsichtbar, ein Klick oeffnet es (renderTodo).
-function updateVorlaufButton(btn, value) {
-  const v = value === "" ? null : VORLAEUFE.find(x => String(x.tage) === value);
-  btn.classList.toggle("active", !!v);
-  btn.innerHTML = symbolMitText("sanduhr", v ? v.kurz : "Vorlauf");
-  btn.title = v
-    ? `${v.name} unter Heute – zum Ändern klicken`
-    : "Unter Heute ab 2 Wochen vor dem Termin – zum Ändern klicken";
-}
-
-// Checklisten-Abschnitt im Bearbeiten-Dialog: bestehende Punkte (Haekchen,
-// Text, Loeschen). Das Eingabefeld fuer einen NEUEN Punkt sitzt seit der
-// Kompakt-Zeile hinter dem ✓-Knopf in .edit-buttons (siehe renderTodo), nicht
-// mehr hier. Kein Umbenennen weiterhin - Tippfehler heisst loeschen und neu
-// anlegen.
-function baueUnterpunkteBearbeiten(t) {
-  const box = document.createElement("div");
-  box.className = "edit-unterpunkte";
-
-  unterpunkteVon(t.id).forEach(u => {
-    const zeile = document.createElement("div");
-    zeile.className = "edit-unterpunkt-zeile";
-
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.className = "check";
-    cb.checked = u.done;
-    cb.addEventListener("change", () => toggleUnterpunkt(u.id));
-    const cbTap = document.createElement("label");
-    cbTap.className = "check-tap";
-    cbTap.appendChild(cb);
-    zeile.appendChild(cbTap);
-
-    const text = document.createElement("span");
-    text.className = "edit-unterpunkt-text" + (u.done ? " is-done" : "");
-    text.textContent = u.text;
-    zeile.appendChild(text);
-
-    const del = document.createElement("button");
-    del.type = "button";
-    del.className = "act del";
-    del.title = "Unterpunkt löschen";
-    del.innerHTML = symbolSvg("papierkorb");
-    del.addEventListener("click", () => deleteUnterpunkt(u.id));
-    zeile.appendChild(del);
-
-    box.appendChild(zeile);
-  });
-
-  return box;
-}
-
 // Checkliste auf der Karte selbst - direkt abhakbar, nicht nur im
 // Bearbeiten-Dialog (sonst waere Abhaken einzelner Punkte im Alltag
 // umstaendlich, z. B. beim Einkaufen). Blendet sich aus, sobald das ToDo
@@ -3845,129 +3738,8 @@ function renderTodo(t) {
   li.className = "todo" + (t.done ? " is-done" : stripe);
   li.dataset.id = t.id;
 
-  // --- Bearbeiten-Modus ---
-  if (editingId === t.id) {
-    const wrap = document.createElement("div");
-    wrap.className = "edit-row";
-    // Ueber-Thema-Auswahl nur, wenn der Bereich ueberhaupt Themen hat. Das ist
-    // der verlaessliche (auch mobile) Weg, ein ToDo zuzuordnen oder wieder frei
-    // zu stellen - Drag & Drop ist nur der Desktop-Komfort obendrauf.
-    const themenDesBereichs = themenIn(t.categoryId);
-    // Wie die Wiederholung: sichtbar ist nur ein Symbol, das <select> liegt
-    // unsichtbar darunter und wird per showPicker() geoeffnet. Als breites
-    // Auswahlfeld nahmen die beiden zwei ganze Zeilen ueber der Knopfreihe ein.
-    const themaWahl = themenDesBereichs.length ? `
-      <span class="date-field">
-        <button type="button" class="add-icon" data-act="thema"></button>
-        <select class="edit-thema" data-edit-thema="${t.id}" aria-label="Über-Thema" tabindex="-1">
-          <option value="">— kein Über-Thema —</option>
-          ${themenDesBereichs.map(th =>
-            `<option value="${escapeHtml(th.id)}"${th.id === t.themaId ? " selected" : ""}>${escapeHtml(th.name)}</option>`
-          ).join("")}
-        </select>
-      </span>` : "";
-    // Bereich-Auswahl nur bei ToDos, die gerade "Ohne Bereich" liegen - der
-    // verlaessliche (auch mobile) Weg, sie einem Bereich zuzuordnen. Zugeordnete
-    // ToDos verschiebt man wie bisher per Drag & Drop.
-    const echteBereiche = state.categories.filter(c => !istOhneBereich(c.id));
-    const bereichWahl = (istOhneBereich(t.categoryId) && echteBereiche.length) ? `
-      <span class="date-field">
-        <button type="button" class="add-icon" data-act="bereich"></button>
-        <select class="edit-thema edit-bereich" data-edit-bereich="${t.id}" aria-label="Bereich zuordnen" tabindex="-1">
-          <option value="">— Ohne Bereich —</option>
-          ${echteBereiche.map(c =>
-            `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`
-          ).join("")}
-        </select>
-      </span>` : "";
-    const unterpunktOffen = unterpunktEingabeOffen === t.id;
-    wrap.innerHTML = `
-      <div class="edit-felder">
-        <input type="text" data-edit-text="${t.id}" value="${escapeHtml(t.text)}" aria-label="Titel">
-        <textarea data-edit-note placeholder="Notiz" rows="2" aria-label="Notiz"></textarea>
-      </div>
-      <div class="edit-buttons">
-        <span class="date-field">
-          <button type="button" class="add-icon add-cal" data-act="cal"></button>
-          <input type="date" data-edit-date="${t.id}" value="${t.due || ""}" tabindex="-1" aria-label="Termin">
-        </span>
-        <button type="button" class="add-icon date-clear" title="Termin entfernen" aria-label="Termin entfernen" hidden>${symbolSvg("kreuz")}</button>
-        <span class="date-field">
-          <button type="button" class="add-icon" data-act="vorlauf" hidden></button>
-          <select class="edit-vorlauf" data-edit-vorlauf="${t.id}" aria-label="Unter Heute ab" tabindex="-1">
-            <option value="">2 Wochen vorher (Standard)</option>
-            ${VORLAEUFE.map(v =>
-              `<option value="${v.tage}"${t.vorlauf === v.tage ? " selected" : ""}>${v.name}</option>`
-            ).join("")}
-          </select>
-        </span>
-        ${bereichWahl}${themaWahl}
-        ${unterpunktOffen
-          ? `<input type="text" class="edit-unterpunkt-neu" data-neuer-unterpunkt="${t.id}" placeholder="Unterpunkt" autocomplete="off">`
-          : `<button type="button" class="add-icon" data-act="unterpunkt" title="Unterpunkt hinzufügen">${symbolMitText("checkliste", "Unterpunkt")}</button>`}
-      </div>
-      <div class="edit-knoepfe">
-        <button type="button" class="btn" data-act="cancel">Abbrechen</button>
-        <button type="button" class="btn primary" data-act="save">Fertig</button>
-      </div>`;
-    wrap.appendChild(baueUnterpunkteBearbeiten(t));
-    const textInput = wrap.querySelector(`[data-edit-text="${t.id}"]`);
-    const noteInput = wrap.querySelector("[data-edit-note]");
-    const dateInput = wrap.querySelector(`[data-edit-date="${t.id}"]`);
-    const calBtn    = wrap.querySelector('[data-act="cal"]');
-    const clearBtn  = wrap.querySelector(".date-clear");
-    const vorlaufSelect = wrap.querySelector(".edit-vorlauf");
-    const vorlaufBtn = wrap.querySelector('[data-act="vorlauf"]');
-    noteInput.value = t.note || "";
-    verdrahteNotizHoehe(noteInput);   // NACH dem Setzen des Werts, sonst misst es leer
-
-    const syncDateUi = () => {
-      updateDateButton(calBtn, clearBtn, dateInput.value);
-      vorlaufBtn.hidden = !dateInput.value;
-      updateVorlaufButton(vorlaufBtn, vorlaufSelect.value);
-    };
-    syncDateUi();
-    calBtn.addEventListener("click", () => openDatePicker(dateInput));
-    clearBtn.addEventListener("click", () => { dateInput.value = ""; syncDateUi(); textInput.focus(); });
-    dateInput.addEventListener("change", syncDateUi);
-    vorlaufBtn.addEventListener("click", () => openDatePicker(vorlaufSelect));
-    vorlaufSelect.addEventListener("change", syncDateUi);
-
-    // Bereich und Ueber-Thema nach demselben Muster: Symbol oeffnet die Liste,
-    // und sobald etwas gewaehlt ist, steht der Name daneben. Ohne ihn muesste
-    // man die Liste aufklappen, nur um zu sehen, wo das ToDo gerade liegt.
-    verdrahteWahlSymbol(wrap, "bereich", "ordner", "Bereich", "Bereich zuordnen");
-    verdrahteWahlSymbol(wrap, "thema", "etikett", "Thema", "Über-Thema wählen");
-
-    const unterpunktBtn = wrap.querySelector('[data-act="unterpunkt"]');
-    if (unterpunktBtn) {
-      unterpunktBtn.addEventListener("click", () => {
-        unterpunktEingabeOffen = t.id;
-        render();
-        const feld = document.querySelector(`[data-neuer-unterpunkt="${t.id}"]`);
-        if (feld) feld.focus();
-      });
-    }
-    const unterpunktNeuInput = wrap.querySelector(".edit-unterpunkt-neu");
-    if (unterpunktNeuInput) {
-      // Enter delegiert an blur() statt selbst addUnterpunkt aufzurufen: sonst
-      // wuerde der re-render() aus addUnterpunkt das (dann verwaiste) alte
-      // Feld aus dem DOM nehmen, was seinerseits ein blur ausloest - und ohne
-      // diesen Umweg damit denselben Unterpunkt ein zweites Mal anlegen wuerde.
-      unterpunktNeuInput.addEventListener("keydown", e => { if (e.key === "Enter") unterpunktNeuInput.blur(); });
-      unterpunktNeuInput.addEventListener("blur", () => addUnterpunkt(t.id, unterpunktNeuInput.value));
-    }
-
-    textInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") saveEdit(t.id);
-      if (e.key === "Escape") { e.stopPropagation(); cancelEdit(); }
-    });
-    noteInput.addEventListener("keydown", e => { if (e.key === "Escape") { e.stopPropagation(); cancelEdit(); } });
-    wrap.querySelector('[data-act="save"]').addEventListener("click", () => saveEdit(t.id));
-    wrap.querySelector('[data-act="cancel"]').addEventListener("click", cancelEdit);
-    li.appendChild(wrap);
-    return li;
-  }
+  // Die Bearbeiten-Zeile in der Karte gibt es seit 19.11.2026 nicht mehr -
+  // bearbeitet wird im Fenster (bearbeiten.js).
 
   if (!t.done && !t.due) li.classList.add("undated");
   // Am Finger haengen die Werkzeuge an dieser Klasse statt an :hover - beim
@@ -4051,6 +3823,22 @@ function renderTodo(t) {
   // Bearbeiten als eigener Knopf, obwohl Doppelklick und Doppeltipp auf die
   // Zeile es auch koennen: der Knopf sagt, DASS es geht - eine Geste, die man
   // nicht kennt, findet man nicht.
+  // Die Uhr (seit 19.11.2026, Hendrik: "die Zeiterfassung soll einfacher
+  // gehen ... am ToDo eine Uhr?"): startet die Zeit auf genau diesem ToDo, der
+  // Fokus-Bildschirm geht auf. Nur mit eingeschalteter Zeiterfassung (Schalter
+  // "Anzeige" im Reiter Timer) und nur an offenen ToDos. Laeuft die Uhr schon
+  // darauf, ist sie blau und holt den Fokus-Bildschirm zurueck.
+  if (!t.done && window.zeitErlaubt?.()) {
+    const uhr = document.createElement("button");
+    const laeuft = !!window.zeitLaeuftAuf?.(t.id);
+    uhr.className = "act uhr" + (laeuft ? " laeuft" : "");
+    uhr.title = laeuft ? "Uhr läuft – Fokus zeigen" : "Zeit starten";
+    uhr.innerHTML = symbolSvg("uhr");
+    uhr.setAttribute("aria-label", uhr.title);
+    uhr.addEventListener("click", e => { e.stopPropagation(); window.zeitStarteAuf?.(t.id); });
+    actions.appendChild(uhr);
+  }
+
   const edit = document.createElement("button");
   edit.className = "act edit";
   edit.title = "Bearbeiten";
@@ -4197,10 +3985,6 @@ document.addEventListener("mousedown", e => {
   if (addingCat) {
     const widget = document.querySelector(".col-add.open");
     if (widget && !widget.contains(e.target)) { commitAddFromDOM(); return; }
-  }
-  if (editingId) {
-    const row = document.querySelector(".edit-row");
-    if (row && !row.contains(e.target)) { commitEditFromDOM(); return; }
   }
   if (editingCat) {
     // Auf den ganzen Kopf pruefen, nicht nur auf das Eingabefeld: sonst wuerde

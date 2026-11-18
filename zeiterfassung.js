@@ -101,6 +101,8 @@ let ztHeute = [];         // heute fertig gebuchte Eintraege, neueste zuerst
 let ztGekappt = [];       // gekappte Eintraege, die noch einen Hinweis brauchen
 let ztAuswahl = {};       // im Dropdown gewaehlt, bevor "Starten" kommt; {} = ohne
 let ztHeuteOffen = false; // "Heute gebucht" aufgeklappt
+let zfOffen = false;      // Fokus-Bildschirm zu sehen (seit 19.11.2026)
+let zfGeprueft = false;   // nach dem ersten Laden geprueft, ob er wieder auf soll
 
 // ---------- Kleine Helfer ----------
 function ztApi(pfad, optionen) {
@@ -530,6 +532,12 @@ async function ztLade() {
     ztFehler = "";
     ztGeladen = true;
     ztUebernimmLaufend(antwort.daten.laeuft);
+    // Nach dem Neuladen (oder einem neuen Service-Worker-Stand) wieder da,
+    // wenn der Fokus-Bildschirm offen war, als die Seite ging.
+    if (!zfGeprueft) {
+      zfGeprueft = true;
+      if (ztLaeuft && zfGemerkt()) zfZeige();
+    }
     ztHeute = antwort.daten.heute || [];
     ztGekappt = antwort.daten.gekappt || [];
   } else {
@@ -626,7 +634,7 @@ function ztZeichneHeute() {
   const summe = ztHeute.reduce((s, e) => s + e.sek, 0);
   ztHeuteSummeEl.textContent = ztHeute.length ? ztDauer(summe) : "noch nichts";
   ztHeuteKopf.setAttribute("aria-expanded", String(ztHeuteOffen));
-  ztHeuteKopf.querySelector(".zt-heute-pfeil").textContent = ztHeuteOffen ? "▾" : "▸";
+  // Der Pfeil › dreht sich per CSS ([aria-expanded="true"]), seit 19.11.2026.
   ztHeuteListeEl.hidden = !ztHeuteOffen;
   ztHeuteListeEl.replaceChildren();
   if (!ztHeuteOffen) return;
@@ -639,6 +647,7 @@ function ztZeichneHeute() {
 
 function ztZeichne() {
   ztZeichneKnoepfe();
+  zfZeichne();
   if (!ztOffen) return;
   ztInhaltEl.hidden = !ztGeladen;
   ztHinweisEl.hidden = ztGeladen && !ztFehler;
@@ -675,9 +684,15 @@ async function ztStarteMit(buchung, laeuftText) {
   if (vorher) teile.push(`${ztDauer(vorher.sek)} auf „${ztNameVon(vorher)}“ gebucht`);
   if (laeuftText) teile.push(laeuftText);
   if (teile.length) snackInfo(teile.join(", "));
+  // Seit 19.11.2026: wer die Uhr startet, sieht den Fokus-Bildschirm - auch
+  // nach "Starten" im Fenster und nach dem Ziehen auf ein ToDo.
+  if (ztOffen) ztSchliesse();
+  zfZeige();
   ztZeichne();
   await ztLade();
   ztNachAenderung();
+  // Die Uhr an der Karte ist jetzt blau.
+  render();
 }
 
 /* ---------- Uhr auf ein ToDo ziehen (seit 02.11.2026) ----------
@@ -751,13 +766,13 @@ document.addEventListener("drop", e => {
 });
 
 async function ztStarteAuf(todoId) {
-  if (ztLaeuft && ztLaeuft.todoId === todoId) {
-    snackInfo(`Die Uhr läuft schon auf „${ztNameVon(ztLaeuft)}“`);
-    return;
-  }
+  // Laeuft schon darauf: nur den Fokus-Bildschirm zeigen.
+  if (ztLaeuft && ztLaeuft.todoId === todoId) { zfZeige(); return; }
   const fund = ztFindeTodo(todoId);
   if (!fund) return;
-  await ztStarteMit(ztBuchungAus(fund), `Uhr läuft auf „${fund.todo.text}“`);
+  // Keine Meldung "Uhr laeuft auf ..." mehr - das sagt jetzt der
+  // Fokus-Bildschirm. Lief vorher eine, meldet ztStarteMit die gebuchte Zeit.
+  await ztStarteMit(ztBuchungAus(fund), null);
 }
 
 /**
@@ -812,6 +827,7 @@ async function ztStoppe(abgehakt) {
   ztZeichne();
   await ztLade();
   ztNachAenderung();
+  render();
 }
 
 // Statistik nachziehen, wenn sie offen ist.
@@ -849,17 +865,23 @@ function ztSchliesse() {
   ztDdLaufend.schliesse();
 }
 
-for (const k of ztKnoepfe) k.addEventListener("click", ztOeffne);
+// Laeuft die Uhr, holt der Knopf den Fokus-Bildschirm zurueck (seit 19.11.2026);
+// sonst oeffnet er das Fenster.
+for (const k of ztKnoepfe) k.addEventListener("click", () => (ztLaeuft ? zfZeige() : ztOeffne()));
 document.getElementById("timerZu").addEventListener("click", ztSchliesse);
 ztPopup.addEventListener("click", e => { if (e.target === ztPopup) ztSchliesse(); });
 document.getElementById("ztStarten").addEventListener("click", ztStarte);
 document.getElementById("ztStopp").addEventListener("click", () => ztStoppe(false));
 ztHeuteKopf.addEventListener("click", () => { ztHeuteOffen = !ztHeuteOffen; ztZeichneHeute(); });
 document.getElementById("ztNachtragen").addEventListener("click", () => ztOeffneDialog(null));
-document.getElementById("ztStatistikOeffnen").addEventListener("click", () => ztOeffneStatistik());
+document.getElementById("ztStatistikOeffnen").addEventListener("click", () => {
+  // Aus dem Zeit-Fenster heraus gibt es kein "‹ Einstellungen".
+  ztFenster.querySelector(".ein-zurueck").hidden = true;
+  ztOeffneStatistik();
+});
 document.getElementById("ztStatistikEinstellungen").addEventListener("click", () => {
   // Aus den Einstellungen heraus: die schliessen, wie beim Fenster Gewohnheiten.
-  if (!einstellungenPopup.hidden) einstellungenPopup.hidden = true;
+  einstellungenVerlassenFuer(document.getElementById("zeitFenster"));
   ztOeffneStatistik();
 });
 
@@ -1405,6 +1427,7 @@ function ztSchliesseOberste() {
   if (!ztDialog.hidden) { ztSchliesseDialog(); return true; }
   if (ztFensterIstOffen()) { ztSchliesseStatistik(); return true; }
   if (ztOffen) { ztSchliesse(); return true; }
+  if (zfOffen) { zfAusblenden(); return true; }
   return false;
 }
 
@@ -1422,7 +1445,7 @@ document.addEventListener("keydown", e => {
 }, true);
 
 window.zeitSchliesseOberste = ztSchliesseOberste;
-window.zeitFensterOffen = () => ztOffen || ztFensterIstOffen() || !ztDialog.hidden;
+window.zeitFensterOffen = () => ztOffen || zfOffen || ztFensterIstOffen() || !ztDialog.hidden;
 
 // Ein Schlag pro Sekunde, nur bei laufender Uhr. Er zeichnet nur; erreicht die
 // Uhr den Deckel, holt er den Stand neu - gekappt hat dann der Server.
@@ -1437,6 +1460,7 @@ setInterval(() => {
   }
   ztZeichneKnoepfe();
   if (ztOffen && !ztUhrEl.hidden) ztUhrZeitEl.textContent = ztUhrText(ztVerstrichen());
+  if (zfOffen) zfUhrEl.textContent = ztUhrText(ztVerstrichen());
 }, 1000);
 
 // Zurueck in der App: an einem anderen Geraet kann die Uhr gestartet oder
@@ -1456,6 +1480,7 @@ window.zeitNeuZeichnen = function () {
   if (ztBereit) {
     if (ztOffen) ztZeichne();
     if (!ztDialog.hidden) ztDdDialog.zeichne();
+    zfZeichne();
     return;
   }
   ztBereit = true;
@@ -1472,4 +1497,105 @@ window.zeitBeiAbhaken = function (id) {
 window.zeitEinstellungGeaendert = function () {
   ztZeichneKnoepfe();
   if (ztOffen && !ztErlaubt()) ztSchliesse();
+  if (zfOffen && !ztErlaubt()) zfAusblenden();
+  // Die Uhr an den Karten kommt oder geht mit dem Schalter.
+  render();
 };
+
+// Fuer app.js (Uhr an der Karte, seit 19.11.2026).
+window.zeitErlaubt = () => ztBereit && ztErlaubt();
+window.zeitLaeuftAuf = id => !!ztLaeuft && ztLaeuft.todoId === id;
+window.zeitStarteAuf = id => ztStarteAuf(id);
+
+/* ====================================================================
+   Fokus-Bildschirm (seit 19.11.2026)
+   Hendrik: "wenn ich in einem ToDo drin bin mit der Zeit, soll ein Focus
+   Screen kommen, wo ich nur die Zeit und das aktuelle ToDo sehe und im Notfall
+   den ausmachen kann, wenn ich noch was gucken muss." Seine Wahl aus zwei
+   Skizzen: mit Notiz, abhakbaren Unterpunkten und "Erledigt".
+   - Geht auf bei jedem Start (Uhr an der Karte, "Starten" im Fenster, Ziehen)
+     und beim Tipp auf die laufende Uhr in Kopf bzw. Leiste.
+   - "Ausblenden" (auch Escape, Zurueck-Taste) laesst die Uhr laufen.
+   - War er offen, als die Seite ging, ist er nach dem Neuladen wieder da
+     (gemerkt pro Geraet) - ausgeblendet bleibt ausgeblendet.
+   - "Zeiterfassung" oben rechts oeffnet das Fenster darueber: dort ordnet man
+     einer Uhr ohne ToDo eins zu, traegt nach, sieht die Statistik.
+   - Erledigt hakt das ToDo ab, das stoppt die Uhr (wie bisher beim Abhaken).
+   ==================================================================== */
+const zfEl = document.getElementById("zeitFokus");
+const zfOrtEl = document.getElementById("zfOrt");
+const zfTitelEl = document.getElementById("zfTitel");
+const zfUhrEl = document.getElementById("zfUhr");
+const zfGruppeEl = document.getElementById("zfGruppe");
+const zfNotizEl = document.getElementById("zfNotiz");
+const zfUpEl = document.getElementById("zfUnterpunkte");
+const zfErledigtEl = document.getElementById("zfErledigt");
+const ZF_KEY = "zeitFokusOffen";
+
+function zfGemerkt() {
+  try { return localStorage.getItem(ZF_KEY) === "1"; } catch (e) { return false; }
+}
+function zfMerke(offen) {
+  try { localStorage.setItem(ZF_KEY, offen ? "1" : "0"); } catch (e) { /* dann eben nicht */ }
+}
+
+function zfZeige() {
+  if (!ztLaeuft || !ztErlaubt()) return;
+  zfOffen = true;
+  zfEl.hidden = false;
+  zfMerke(true);
+  zfZeichne();
+}
+
+function zfAusblenden() {
+  if (!zfOffen) return;
+  zfOffen = false;
+  zfEl.hidden = true;
+  zfMerke(false);
+}
+
+function zfZeichne() {
+  if (!zfOffen) return;
+  // Gestoppt (hier, an einem anderen Geraet, durch Abhaken oder den Deckel):
+  // der Bildschirm geht von selbst.
+  if (!ztLaeuft) { zfAusblenden(); return; }
+  const fund = ztLaeuft.todoId ? ztFindeTodo(ztLaeuft.todoId) : null;
+  zfTitelEl.textContent = ztNameVon(ztLaeuft);
+  zfTitelEl.classList.toggle("ohne", !ztLaeuft.todoId);
+  const ort = ztOrtVon(ztLaeuft);
+  zfOrtEl.textContent = ort || (ztLaeuft.todoId ? "" : "Über „Zeiterfassung“ lässt sich ein ToDo zuordnen");
+  zfOrtEl.style.setProperty("--zt-farbe", ztFarbwert(fund?.farbe));
+  zfOrtEl.classList.toggle("mit-farbe", !!fund?.farbe);
+  zfUhrEl.textContent = ztUhrText(ztVerstrichen());
+
+  const notiz = fund?.todo.note || "";
+  zfNotizEl.textContent = notiz;
+  zfNotizEl.hidden = !notiz;
+  const punkte = fund ? (daten[fund.boardId]?.unterpunkte || []).filter(u => u.todoId === fund.todo.id) : [];
+  zfUpEl.replaceChildren(...punkte.map(u => {
+    const zeile = document.createElement("label");
+    zeile.className = "zf-up" + (u.done ? " is-done" : "");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "check";
+    cb.checked = u.done;
+    cb.addEventListener("change", () => toggleUnterpunkt(u.id, fund.boardId));
+    const text = document.createElement("span");
+    text.textContent = u.text;
+    zeile.append(cb, text);
+    return zeile;
+  }));
+  zfUpEl.hidden = !punkte.length;
+  zfGruppeEl.hidden = !notiz && !punkte.length;
+  zfErledigtEl.hidden = !fund || fund.todo.done;
+}
+
+document.getElementById("zfAusblenden").addEventListener("click", zfAusblenden);
+document.getElementById("zfMehr").addEventListener("click", ztOeffne);
+document.getElementById("zfStopp").addEventListener("click", () => ztStoppe(false));
+zfErledigtEl.addEventListener("click", () => {
+  const fund = ztLaeuft?.todoId ? ztFindeTodo(ztLaeuft.todoId) : null;
+  if (!fund || fund.todo.done) return;
+  // toggleDone ruft zeitBeiAbhaken - das stoppt die Uhr und meldet die Zeit.
+  toggleDone(fund.todo.id, fund.boardId);
+});

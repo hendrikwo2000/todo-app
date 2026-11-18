@@ -250,7 +250,7 @@ html.ohne-zoom { touch-action: pan-x pan-y; }
    Falle wie bei .offline-banner und #einstellungenBtn. Heute versteckt sie
    niemand per Attribut; die Zeile steht hier, damit es beim naechsten Mal
    nicht stillschweigend nicht wirkt. */
-.ansicht-schalter[hidden], .kal-ansicht-zeile[hidden] { display: none; }
+.ansicht-schalter[hidden] { display: none; }
 .ansicht-schalter {
   display: inline-flex;
   flex: none;
@@ -1852,25 +1852,9 @@ html.kal-split .kalender {
    knappem Split unter das Panel (z-index 50 gegen 56). Sie gehoert zum Board,
    also zentriert sie sich auch darueber. */
 html.kal-split .snackbar { left: calc(50% - var(--kal-breite) / 2); }
-/* Der Umschalter steht im breiten Fenster in der Kopfzeile der App, die dort
-   sichtbar bleibt. Ein zweiter im Streifen waere nur doppelt - die ZEILE
-   bleibt aber stehen, weil das ✕ darin sitzt (frueher lag es bei den
-   Monatspfeilen; seit das Raster unten steht, waere es dort mitten im Panel
-   statt in der Ecke). */
-html.breit .kal-ansicht-zeile > .ein-knopf,
-html.breit .kal-ansicht-zeile > .timer-knopf,
-html.breit .kal-ansicht-zeile > .ansicht-schalter { display: none; }
-/* Ohne Pille braucht die Zeile auch deren Hoehe nicht: min-height und
-   padding-top sind dazu da, den Umschalter auf die Mittellinie der
-   App-Titelzeile zu heben. Fuer ein ✕ allein waeren das 18 px, die dem
-   Tagesbereich darunter fehlen. */
-html.breit .kal-ansicht-zeile { min-height: 0; padding-top: 0; }
-/* Umgekehrt im schmalen Fenster: dort sitzt die Pille in dieser Zeile und
-   fuehrt zurueck zur Liste - ein ✕ daneben waere derselbe Weg zweimal.
-   Escape und der Wisch nach rechts schliessen weiterhin. */
-html:not(.breit) #kalZu { display: none; }
-/* Das ✕ aussen rechts, unabhaengig davon, was links davon steht. */
-.kal-ansicht-zeile #kalZu { margin-left: auto; }
+/* Die Zeile ueber dem Kopf (.kal-ansicht-zeile, mit ✕ am PC und der Leiste am
+   iPad) gibt es seit 19.11.2026 nicht mehr: am PC schalten die Einstellungen
+   den Kalender, darunter steht die Leiste unten. */
 
 
 .kalender {
@@ -1899,43 +1883,6 @@ html:not(.breit) #kalZu { display: none; }
    herein (Fund vom 19.10.2026, behoben 15.11.2026). Waehrend des Wischens
    steht die Verschiebung inline am Panel - dann bleibt der Schatten. */
 html:not(.kal-offen) .kalender:not([style*="translate"]) { box-shadow: none; }
-
-/* Eigene Zeile ueber dem Kopf, damit der Umschalter genau dort sitzt wie in
-   der Listen-Ansicht: oben rechts. In die Kopfzeile selbst passt er auf einem
-   schmalen Handy nicht mehr neben Monatsname, "Heute" und ⤢ - der Monatsname
-   bliebe als abgeschnittener Rest uebrig.
-
-   Die Abstaende holen die Differenz zu .app nach (24/26 dort gegen 14 hier):
-   der Schalter soll beim Umschalten an Ort und Stelle stehen bleiben, sonst
-   springt genau das Bedienelement, an dem man sich festhaelt. Sobald ein
-   Geraeterand (safe-area) groesser ist als der jeweilige Grundabstand, zaehlt
-   ohnehin auf beiden Seiten der Rand - dann faellt die Differenz auf 0. */
-.kal-ansicht-zeile {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  /* Derselbe Abstand wie zwischen Zahnrad und Umschalter in der Kopfzeile -
-     die Ecke soll in beiden Ansichten gleich aussehen. */
-  gap: 12px;
-  /* Die Zeile ist genauso hoch wie die Titelzeile der App (h1: 24px auf
-     line-height 1.4). Zusammen mit align-items:center landet die Pille damit
-     auf derselben Mittellinie wie dort - egal wie hoch sie gerade ist. Ein
-     fester Versatz stimmte nur fuer EINE Pillengroesse und ginge schief,
-     sobald sie sich aendert (am Handy ist sie schlanker).
-     content-box ist dabei Pflicht: mit dem global gesetzten border-box
-     steckte das padding-top schon in den 34px, die Zeile waere damit sofort
-     hoeher als ihr Mindestmass und richtete gar nichts mehr aus. */
-  box-sizing: content-box;
-  min-height: 34px;
-  padding-top: max(0px, calc(24px - max(14px, var(--oben))));
-  padding-right: max(0px, calc(26px - max(14px, env(safe-area-inset-right))));
-}
-/* Muss HIER stehen und nicht oben beim Umschalter: die Basisregel darueber
-   kommt spaeter in der Datei und schluege eine gleich spezifische Regel von
-   dort. Der Wert zieht mit der column-gap der Kopfzeile gleich. */
-@media (max-width: 480px) {
-  .kal-ansicht-zeile { gap: 8px; }
-}
 
 .kal-kopf { display: flex; align-items: center; gap: 4px; }
 /* Und wieder die [hidden]-Falle: display:flex oben schlaegt das eingebaute
@@ -2431,7 +2378,7 @@ html.dreispaltig .kalender {
   column-gap: 14px;
   row-gap: 0;
 }
-html.dreispaltig .kal-ansicht-zeile { grid-column: 1 / -1; grid-row: 1; margin-bottom: 9px; }
+
 html.dreispaltig .kal-oben { grid-column: 2; grid-row: 2; }
 /* Die Heute-Spalte sieht aus wie eine Spalte im Board: grauer Kasten bis
    unten. */
@@ -4538,22 +4485,8 @@ body:has(#einstellungenPopup:not([hidden]), #gewFenster:not([hidden]), #hilfeFen
   .fuss-ansicht[aria-pressed="true"]:hover { color: var(--accent); }
 }
 
-/* --- Oben: Kopfzeile (PC, iPad) bzw. Zeile oben im Kalender (iPad hoch) --- */
-.fusszeile.oben:not([hidden]) {
-  display: flex;
-  flex: none;
-  gap: 2px;
-  margin-left: auto;
-}
-.fusszeile.oben .fuss-knopf { flex: none; width: 68px; padding: 2px 0; }
-.fusszeile.oben .fuss-knopf.timer-knopf { padding: 2px 0; }
-/* Board neben Heute und Kalender schmal (html.board-schmal, unter 600 px):
-   die Leiste bekommt eine eigene Zeile unter dem Titel und teilt sie auf. */
-html.board-schmal.kal-split .fusszeile.oben { order: 3; flex: 1 1 100%; margin-left: 0; }
-html.board-schmal.kal-split .fusszeile.oben .fuss-knopf { flex: 1 1 0; width: auto; }
-
-/* --- Unten: Handy --- */
-@media (max-width: 560px) {
+/* --- Unten: Handy und (seit 19.11.2026) iPad, alles unter der Split-Grenze --- */
+@media (max-width: 999px) {
   .mit-fuss { display: inline; }
   .ohne-fuss { display: none; }
 
@@ -4581,7 +4514,6 @@ html.board-schmal.kal-split .fusszeile.oben .fuss-knopf { flex: 1 1 0; width: au
   /* Kalender: keine Zeile oben (die Leiste steht unten). Das Panel endet ueber
      der Leiste, sonst laege die letzte Rasterzeile dahinter; den Geraeterand
      unten traegt die Leiste. */
-  .kal-ansicht-zeile { display: none; }
   .kalender { bottom: calc(var(--fuss-hoehe) + env(safe-area-inset-bottom)); }
   /* Kein Nachfedern der Seite in der Kalenderansicht: es gibt dort nichts zu
      scrollen, und auf dem iPhone zoege das Federn die Leiste mit hoch (siehe
@@ -5095,62 +5027,8 @@ body:has(#timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fuss-knopf.time
 body:has(#einstellungenPopup:not([hidden]), #gewFenster:not([hidden]), #hilfeFenster:not([hidden])) .fuss-knopf.ein-knopf .fuss-symbol svg,
 body:has(#timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fuss-knopf.timer-knopf .fuss-symbol svg { stroke-width: 2.2; }
 
-/* Oben (PC, iPad): Segment mittig, ＋ und Zahnrad rechts. */
-.fusszeile.oben:not([hidden]) { flex: 1 1 auto; align-items: center; gap: 4px; margin-left: 0; }
-.fusszeile.oben .fuss-segment {
-  display: inline-flex;
-  margin: 0 auto;
-  padding: 2px;
-  gap: 0;
-  border-radius: 9px;
-  background: var(--fuellung3);
-}
-.fusszeile.oben .fuss-segment .fuss-knopf,
-.fusszeile.oben .fuss-segment .fuss-knopf.timer-knopf {
-  flex-direction: row;
-  gap: 6px;
-  width: auto;
-  min-width: 96px;
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 7px;
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 500;
-}
-.fusszeile.oben .fuss-segment .fuss-symbol { height: auto; }
-.fusszeile.oben .fuss-segment .fuss-symbol svg { width: 18px; height: 18px; stroke-width: 1.9; }
-.fusszeile.oben .fuss-segment .fuss-ansicht[aria-pressed="true"],
-body:has(#timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fusszeile.oben .fuss-segment .timer-knopf {
-  background: var(--segment-aktiv);
-  box-shadow: var(--schatten-klein);
-  color: var(--text);
-  font-weight: 600;
-}
-body:has(#einstellungenPopup:not([hidden]), #gewFenster:not([hidden]), #hilfeFenster:not([hidden]), #timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fusszeile.oben .fuss-segment .fuss-ansicht[aria-pressed="true"] {
-  background: none; box-shadow: none; color: var(--text); font-weight: 500;
-}
-.fusszeile.oben .fuss-segment .timer-knopf.laeuft { color: var(--accent); }
-.fusszeile.oben #fussPlus,
-.fusszeile.oben .ein-knopf {
-  flex: none;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border-radius: 22px;
-  color: var(--accent);
-}
-.fusszeile.oben #fussPlus .fuss-text,
-.fusszeile.oben .ein-knopf .fuss-text { display: none; }
-.fusszeile.oben #fussPlus svg, .fusszeile.oben .ein-knopf svg { width: 24px; height: 24px; stroke-width: 2; }
-@media (hover: hover) {
-  .fusszeile.oben #fussPlus:hover, .fusszeile.oben .ein-knopf:hover { color: var(--accent); opacity: .7; }
-  .fusszeile.oben .fuss-segment .fuss-knopf:hover { color: var(--text); }
-}
-html.board-schmal.kal-split .fusszeile.oben .fuss-segment .fuss-knopf { min-width: 0; flex: 1 1 0; }
-html.board-schmal.kal-split .fusszeile.oben .fuss-segment { flex: 1 1 auto; }
 
-@media (max-width: 560px) {
+@media (max-width: 999px) {
   /* Unten: Reihenfolge ToDos | Kalender | ＋ | Zeit | Einstellungen */
   .fuss-ansicht[data-ansicht="liste"] { order: 1; }
   .fuss-ansicht[data-ansicht="kalender"] { order: 2; }
@@ -5164,13 +5042,15 @@ html.board-schmal.kal-split .fusszeile.oben .fuss-segment { flex: 1 1 auto; }
     border-top: .5px solid var(--line);
   }
   .fuss-knopf { color: var(--tab-aus); font-size: 10.5px; }
-  /* "Nichts fällig." unter Ueberfaelligem: ohne Zwischenkoepfe sagt es nichts. */
-  #tagOben .kal-leer-todos { display: none; }
-  #tagOben .tag-gruppe:not(:has(> :not(.kal-leer-todos))) { display: none; }
   .fuss-ansicht[aria-pressed="true"],
   body:has(#einstellungenPopup:not([hidden]), #gewFenster:not([hidden]), #hilfeFenster:not([hidden])) .fuss-knopf.ein-knopf,
   body:has(#timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fuss-knopf.timer-knopf,
   .fuss-knopf.timer-knopf.laeuft { color: var(--accent); }
+}
+@media (max-width: 560px) {
+  /* "Nichts fällig." unter Ueberfaelligem: ohne Zwischenkoepfe sagt es nichts. */
+  #tagOben .kal-leer-todos { display: none; }
+  #tagOben .tag-gruppe:not(:has(> :not(.kal-leer-todos))) { display: none; }
 
   /* Den Listennamen braucht es am Handy nicht (Hendrik) - "Heute" ist der
      Titel. Ausser es gibt mehrere Listen: dann ist er der Umschalter. */
@@ -6076,13 +5956,6 @@ html.kal-split .kal-popup-kopf .kal-schliessen {
 .kal-popup-kopf .kal-schliessen::before { content: none; }
 .kal-wahl-fuss .btn, .kal-popup-box .btn { border-radius: 11px; min-height: 40px; }
 
-/* Kalender-Panel-Schliessen am PC (ueber dem Raster): ebenso */
-html.kal-split .kal-ansicht-zeile .kal-schliessen {
-  width: 30px; height: 30px; padding: 0; border-radius: 15px;
-  display: grid; place-items: center;
-  background: var(--fuellung3); color: var(--muted); font-size: 13px; font-weight: 700;
-}
-
 /* ===================== Gewohnheiten: Flamme als Symbol ===================== */
 .fok-flammen-zahl.aktiv,
 .gw-kal-block-flamme {
@@ -6150,7 +6023,6 @@ html.kal-split .kal-ansicht-zeile .kal-schliessen {
 :root[data-theme="dark"] .kal-tag.gewaehlt:not(.heute) .kal-zahl { background: #fff; color: #000; }
 :root[data-theme="dark"] .hinweis,
 :root[data-theme="dark"] .offline-banner { background: #1c1c1e; }
-:root[data-theme="dark"] .fusszeile.oben .fuss-segment { background: rgba(118, 118, 128, .24); }
 :root[data-theme="dark"] .todo:has(.edit-row),
 :root[data-theme="dark"] .column[data-farbe] .col-koerper .todo:not(.is-done):has(.edit-row) { background: rgba(118, 118, 128, .18); }
 
@@ -6158,8 +6030,6 @@ html.kal-split .kal-ansicht-zeile .kal-schliessen {
    das Zahnrad aus der Leiste. Es steht klein unter dem Listennamen. */
 .topbar > .save-status { position: absolute; left: 2px; top: 100%; margin: 0; font-size: 12px; white-space: nowrap; }
 body.verwaltung .topbar > .save-status { position: static; }
-.fusszeile.oben .fuss-segment .fuss-knopf,
-.fusszeile.oben .fuss-segment .fuss-knopf.timer-knopf { min-width: 0; padding: 0 13px; }
 
 /* ---------- Restliche Flaechen mit altem 1px-Rand (Runde 3, Durchsicht) ----------
    Alle Regeln, die noch "1px solid var(--line)" trugen, einzeln durchgegangen:
@@ -6228,8 +6098,9 @@ body.verwaltung .topbar > .save-status { position: static; }
 .kal-anlegen { border-top: .5px solid var(--line); }
 .ansicht-schalter { border: 0; background: var(--fuellung3); }
 
-/* Kalender: Abstand oben am Handy wie bei "Heute" */
-@media (max-width: 560px) {
+/* Kalender: Abstand oben am Handy (und seit 19.11.2026 am iPad, wo die Zeile
+   mit der Leiste darueber weggefallen ist) wie bei "Heute" */
+@media (max-width: 999px) {
   .kal-kopf { padding-top: 14px; margin-bottom: 6px; }
 }
 .gw-pillen button { border-radius: 999px; }
@@ -6266,3 +6137,476 @@ body.verwaltung .topbar > .save-status { position: static; }
 .zt-eintrag:first-child, .gw-zeile:first-child { border-top: 0; }
 .zt-gesamt, .zt-knoten { border-bottom: .5px solid var(--line); }
 a.btn { text-decoration: none; }
+
+/* ===================== Kopf am PC (seit 19.11.2026) =====================
+   Hendrik: "Am Desktop habe ich Kalender immer an, also brauche ich die 2
+   Knoepfe gar nicht." Ab der Split-Grenze (html.breit, 1000 px) gibt es keine
+   Leiste mehr. Uhr und ＋ stehen rechts in der Kopfzeile der ToDos (seine Wahl
+   "Uhr neben dem ＋"), das Zahnrad ganz rechts in der Ecke: im Panel, solange
+   es offen ist, sonst am Ende der Kopfzeile. Alle als blaue Symbole ohne
+   Flaeche (Symbolknopf aus Tageswerte/DESIGN.md) - "alle Buttons gleich". */
+.kopf-knoepfe, .kopf-knopf { display: none; }
+html.breit .kopf-knoepfe { display: flex; align-items: center; gap: 2px; margin-left: auto; flex: none; }
+html.breit .kopf-knopf:not([hidden]) {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 22px;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.kopf-knopf svg { flex: none; width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.kopf-knopf .fuss-symbol { display: flex; width: auto; height: auto; border-radius: 0; background: none; }
+.kopf-knopf .timer-zeit { font-size: 16px; font-weight: 600; }
+.kopf-knopf.timer-knopf.hinweis::after { top: 9px; right: 9px; }
+.kopf-knopf:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (hover: hover) {
+  html.breit .kopf-knopf:hover { opacity: .7; }
+}
+/* Zahnrad: genau eines ist zu sehen. */
+html.breit.kal-split .kopf-zahnrad-app { display: none; }
+html:not(.kal-split) .kopf-zahnrad-panel { display: none; }
+html.breit.kal-split .kopf-zahnrad-panel:not([hidden]) {
+  position: absolute;
+  top: 24px;
+  right: 14px;
+  z-index: 3;
+  padding: 0;
+}
+/* Platz fuer das Zahnrad in der Ecke: rechts im Kalenderkopf bzw. - nur Heute
+   - im Kopf der Heute-Spalte. */
+html.kal-split .kal-kopf { padding-right: 48px; }
+
+/* Das Panel ohne die Zeile darueber: Kopf auf die Mittellinie der App-
+   Kopfzeile (24 px Rand + 44 px Zeile). */
+html.kal-split .kalender { padding-top: max(26px, var(--oben)); }
+
+/* Nur Heute (Kalender am PC aus, Heute an, ab 1380 px): das Panel ist dann
+   nur so breit wie die Heute-Spalte, ohne Raster und ohne Breiten-Griff. */
+html.nur-heute.kal-split body { padding-right: var(--heute-breite); }
+html.nur-heute.kal-split .kalender {
+  width: var(--heute-breite);
+  grid-template-columns: minmax(0, 1fr);
+}
+html.nur-heute .kal-oben,
+html.nur-heute .kal-griff-breite { display: none; }
+html.nur-heute.kal-split .snackbar { left: calc(50% - var(--heute-breite) / 2); }
+html.nur-heute .kalender .kal-liste { padding-right: 0; }
+html.nur-heute #kalTagesliste > :first-child { padding-right: 44px; }
+
+/* Schalter "Kalender" und "Heute" in den Einstellungen gelten nur am PC. */
+html:not(.breit) .nur-pc { display: none; }
+
+/* "‹ Einstellungen" links oben in Hilfe, Verlauf & Statistik und der
+   Zeit-Statistik, wenn sie aus den Einstellungen kamen (seit 19.11.2026). */
+.ein-zurueck {
+  flex: none;
+  margin-left: -6px;
+  padding: 8px 6px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 17px;
+  cursor: pointer;
+}
+.ein-zurueck[hidden] { display: none; }
+@media (hover: hover) { .ein-zurueck:hover { opacity: .7; } }
+.gw-kopfzeile:has(.ein-zurueck:not([hidden])) .gw-titel { flex: 1; text-align: center; }
+
+/* Termin an der Karte farbig (seit 19.11.2026, Hendriks Wahl "farbige
+   Schrift"): vorher stand "bis Mi 25.11." grau wie die Notiz. Jetzt in der
+   Farbe des Streifens - gelb-braun fuer einen Termin, rot fuer dringend
+   (auch "bis morgen", der Streifen ist dort schon rot), orange bleibt heute. */
+:root { --bis-farbe: #8a5d00; }
+:root[data-theme="dark"] { --bis-farbe: #e3b341; }
+.todo.dated .due { color: var(--bis-farbe); font-weight: 600; }
+.todo.urgent .due:not(.today) { color: var(--red); font-weight: 600; }
+
+/* ===================== Bearbeiten-Fenster (seit 19.11.2026) =====================
+   Dasselbe Blatt wie das Neu-Fenster (bearbeiten.js). Titel groesser als die
+   Notiz - in beiden Fenstern und im Termin (Hendrik: "den Titel etwas
+   groesser"). */
+.admin-popup-box input.anlegen-titel,
+.admin-popup-box input.anlegen-titel:focus { padding: 13px 15px; }
+.admin-popup-box input.anlegen-titel,
+.admin-popup-box input.anlegen-titel:focus,
+.kal-form input.anlegen-titel { font-size: 20px; font-weight: 600; }
+.anlegen-etikett-breit { flex: none; width: auto; white-space: nowrap; }
+.bearbeiten-up-liste[hidden] { display: none; }
+.bearbeiten-up {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 4px 6px 4px 15px;
+}
+.bearbeiten-up + .bearbeiten-up::before,
+.bearbeiten-up-liste:not([hidden]) + .bearbeiten-up-neu::before {
+  content: ""; position: absolute; top: 0; left: 49px; right: 0; border-top: .5px solid var(--line);
+}
+.bearbeiten-up .check { width: 22px; height: 22px; }
+.bearbeiten-up .check-tap { width: 34px; height: 34px; margin: -6px; display: grid; place-items: center; }
+.bearbeiten-up-text { flex: 1; min-width: 0; font-size: 16px; overflow-wrap: anywhere; }
+.bearbeiten-up.is-done .bearbeiten-up-text { color: var(--muted); text-decoration: line-through; }
+.bearbeiten-up-weg {
+  flex: none;
+  display: grid; place-items: center;
+  width: 40px; height: 40px;
+  border: 0; border-radius: 20px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.bearbeiten-up-weg svg { width: 18px; height: 18px; }
+@media (hover: hover) { .bearbeiten-up-weg:hover { color: var(--red); } }
+.bearbeiten-up-neu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 15px;
+  cursor: text;
+}
+.bearbeiten-up-plus { width: 22px; text-align: center; color: var(--accent); font-size: 18px; }
+.admin-popup-box input.bearbeiten-up-feld,
+.admin-popup-box input.bearbeiten-up-feld:focus {
+  flex: 1; min-width: 0;
+  padding: 12px 0;
+  border: 0; border-radius: 0;
+  background: none; box-shadow: none; outline: none;
+  color: var(--text);
+  font: inherit; font-size: 16px;
+}
+.bearbeiten-up-feld::placeholder { color: var(--accent); }
+/* Lange Unterpunkt-Listen: das Blatt blaettert, die Knoepfe bleiben sichtbar. */
+.bearbeiten-popup .anlegen-box { max-height: calc(100dvh - max(8vh, calc(var(--oben) + 12px)) - 20px); overflow-y: auto; }
+
+/* ===================== Termin-Formular gruppiert (seit 19.11.2026) =====================
+   Wie das Neu-Fenster der ToDos: Titel und Notiz als weisse Gruppe oben,
+   darunter Ganztaegig, Zeitraum, Ort und Wiederholung als zweite Gruppe, auf
+   grauem Grund; unten Abbrechen | Anlegen bzw. Speichern als Flaechen. */
+#kalTerminPopup .kal-popup-box:has(> .kal-form-gruppiert) { background: var(--bg); }
+.kal-form-gruppiert .kal-form-inhalt { gap: 16px; }
+.kal-form-textgruppe .kal-form-titelzeile { padding: 0 12px 0 15px; border: 0; }
+.kal-form-gruppiert input.kal-form-titel,
+.kal-form-gruppiert input.kal-form-titel:focus {
+  padding: 13px 0;
+  border-radius: 0;
+  background: none;
+  font-size: 20px;
+  font-weight: 600;
+}
+.kal-form-gruppiert .kal-form-notiz,
+.kal-form-gruppiert .kal-form-notiz:focus {
+  min-height: 62px;
+  padding: 10px 15px 12px;
+  border: 0;
+  border-top: .5px solid var(--line);
+  border-radius: 0;
+  background: none;
+  font-size: 15px;
+  line-height: 1.35;
+}
+/* Titel fehlt beim Speichern: die Gruppe bekommt einen roten Rand. */
+.kal-form-textgruppe:has(.kal-form-titelzeile.fehlt) { box-shadow: inset 0 0 0 1.5px var(--red); }
+.kal-form-gruppe > .kal-form-reihe,
+.kal-form-gruppe > .kal-form-zeitraum { padding-left: 15px; padding-right: 15px; }
+.kal-form-gruppe > .kal-form-reihe { min-height: 50px; }
+.kal-form-gruppe > :last-child { border-bottom: 0; }
+.kal-form-gruppe .kal-form-eingabe,
+.kal-form-gruppe .kal-form-eingabe:focus { background: none; border-radius: 0; padding: 0; }
+.kal-form-gruppiert .kal-farbwahl { right: 8px; }
+.kal-form-gruppiert .kal-form-fuss {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 10px;
+  padding-top: 16px;
+  background: none;
+}
+.kal-form-gruppiert .kal-fuss-knopf { background: var(--fuellung3); }
+.kal-form-gruppiert .kal-fuss-knopf.primaer { background: var(--accent); color: #fff; }
+@media (hover: hover) {
+  .kal-form-gruppiert .kal-fuss-knopf:hover { background: var(--fuellung3); opacity: .8; }
+  .kal-form-gruppiert .kal-fuss-knopf.primaer:hover { background: var(--accent); }
+}
+
+/* Aus dem Neu-Fenster: dieselbe Lage und Groesse wie dort, auch am Handy kein
+   Vollbild - so bleibt es beim Umschalten ToDo | Termin "ein Fenster". */
+#kalTerminPopup.wie-neu {
+  z-index: 120;
+  align-items: flex-start;
+  padding: max(8vh, calc(var(--oben) + 12px)) 20px 20px;
+  background: rgba(0, 0, 0, .35);
+}
+#kalTerminPopup.wie-neu .kal-popup-box {
+  width: min(420px, 100%);
+  height: auto;
+  max-height: 100%;
+  padding: 0 16px 16px;
+  border: 0;
+  border-radius: 14px;
+}
+#kalTerminPopup.wie-neu .kal-form-inhalt { gap: 16px; }
+@media (max-width: 560px) {
+  #kalTerminPopup.wie-neu { padding-left: 8px; padding-right: 8px; }
+}
+/* Das Farbmenue haengt am Titel und ragt ueber die Gruppe hinaus. */
+.anlegen-gruppe.kal-form-textgruppe { overflow: visible; }
+
+/* ===================== Uhr an der Karte (seit 19.11.2026) ===================== */
+/* Steht mit Stift und Papierkorb in den Werkzeugen der Zeile (beim
+   Drueberfahren bzw. nach einem Tipp). Laeuft die Uhr darauf, ist sie blau. */
+.act.uhr.laeuft { color: var(--accent); }
+@media (hover: hover) { .act.uhr:hover { color: var(--accent); } }
+
+/* ===================== Fokus-Bildschirm (seit 19.11.2026) ===================== */
+.zeit-fokus {
+  position: fixed;
+  inset: 0;
+  z-index: 115;          /* ueber Leiste (58), Kalender (56-60), Sperre (100); unter den Fenstern (120) */
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  padding: max(10px, var(--oben)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.zeit-fokus[hidden] { display: none; }
+.zf-kopf { display: flex; justify-content: space-between; align-items: center; min-height: 44px; }
+.zf-textknopf {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 17px;
+  cursor: pointer;
+}
+@media (hover: hover) { .zf-textknopf:hover { opacity: .7; } }
+.zf-inhalt {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6vh 0 20px;
+  text-align: center;
+}
+.zf-ort { font-size: 15px; font-weight: 600; color: var(--muted); }
+.zf-ort.mit-farbe { color: color-mix(in srgb, var(--zt-farbe) 75%, var(--text)); }
+.zf-titel { margin: 6px 0 0; font-size: 28px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.zf-titel.ohne { color: var(--muted); }
+.zf-uhr {
+  margin: 4vh 0;
+  font-size: clamp(56px, 16vw, 96px);
+  font-weight: 300;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+.zf-gruppe { width: 100%; text-align: left; }
+.zf-gruppe[hidden], .zf-notiz[hidden], .zf-unterpunkte[hidden] { display: none; }
+.zf-notiz { margin: 0; padding: 13px 15px; font-size: 16px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.zf-notiz:not([hidden]) + .zf-unterpunkte { border-top: .5px solid var(--line); }
+.zf-up {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 4px 15px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.zf-up + .zf-up::before { content: ""; position: absolute; top: 0; left: 49px; right: 0; border-top: .5px solid var(--line); }
+.zf-up .check { width: 22px; height: 22px; flex: none; }
+.zf-up.is-done span { color: var(--muted); text-decoration: line-through; }
+.zf-knoepfe {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: min(560px, 100%);
+  margin: 0 auto;
+}
+.zf-knoepfe:has(.zf-erledigt[hidden]) { grid-template-columns: 1fr; }
+.zf-knopf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 54px;
+  border: 0;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.zf-knopf[hidden] { display: none; }
+.zf-stopp { background: var(--fuellung3); color: var(--red); }
+.zf-stopp-quadrat { width: 12px; height: 12px; border-radius: 2px; background: currentColor; }
+.zf-erledigt { background: var(--accent); color: #fff; }
+@media (hover: hover) { .zf-knopf:hover { opacity: .85; } }
+
+/* ===================== Zeiterfassung im Einstellungen-Look (seit 19.11.2026) =====================
+   Hendrik: "Das Zeiterfassungs-Fenster passt nicht richtig in das Design." Jetzt
+   wie Einstellungen und Neu-Fenster: grauer Grund, weisse Gruppen, kleine graue
+   Abschnittskoepfe, Zeilen mit ›. Die Auswahl der ToDos sieht aus wie das Board:
+   jeder Bereich eine weisse Gruppe mit getoenter Kopfzeile. */
+.admin-popup-box.timer-box { background: var(--bg); padding: 4px 16px 18px; gap: 6px; }
+.admin-popup-box.timer-box h2.timer-titel { font-size: 20px; font-weight: 700; }
+.zt-inhalt { gap: 22px; }
+.zt-abschnitt {
+  margin: 0 0 6px 15px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.zt-start { gap: 0; }
+.zt-start .zt-dd { margin-bottom: 14px; }
+.admin-popup-box .btn.zt-starten { min-height: 50px; border-radius: 12px; font-size: 17px; }
+
+/* Auswahl-Knopf: eine weisse Zeile wie in einer Gruppe, Termin-Streifen links
+   wie an der Karte. */
+.zt-dd-knopf,
+.zt-dd-knopf[aria-expanded="true"] {
+  min-height: 52px;
+  padding: 8px 14px 8px 15px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 12px;
+  background: var(--row);
+}
+.zt-dd-knopf[data-termin="gelb"] { border-left-color: var(--yellow); }
+.zt-dd-knopf[data-termin="rot"] { border-left-color: var(--red); }
+.zt-dd-name { font-size: 16px; font-weight: 500; }
+.zt-dd-name.ohne { color: var(--text); font-weight: 400; }
+.zt-dd-ort { font-size: 13px; }
+.zt-dd-pfeil { font-size: 15px; }
+
+/* Die aufgeklappte Liste: im Fluss, ohne Kasten und Schatten - Gruppen auf
+   dem grauen Grund des Fensters. */
+.zt-dd-panel,
+:root[data-theme="dark"] .zt-dd-panel {
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.admin-popup-box input.zt-dd-filter,
+.admin-popup-box input.zt-dd-filter:focus {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--fuellung3);
+  box-shadow: none;
+  font-size: 16px;
+}
+.zt-dd-liste { gap: 12px; max-height: min(50vh, 420px); }
+.zt-dd-liste-kopf { padding: 4px 15px 0; font-size: 13px; font-weight: 400; }
+.zt-dd-gruppe {
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--row);
+}
+.zt-dd-bereich {
+  padding: 9px 15px;
+  background: color-mix(in srgb, var(--zt-farbe, var(--row)) 14%, var(--row));
+  font-size: 15px;
+  font-weight: 700;
+}
+:root[data-theme="dark"] .zt-dd-bereich { background: color-mix(in srgb, var(--zt-farbe, var(--row)) 19%, var(--row)); }
+.zt-dd-thema { padding: 10px 15px 2px; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; }
+.zt-dd-eintrag {
+  position: relative;
+  align-items: center;
+  min-height: 46px;
+  padding: 10px 14px 10px 15px;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  font-size: 16px;
+}
+.zt-dd-eintrag.im-thema { padding-left: 15px; }
+.zt-dd-eintrag + .zt-dd-eintrag::before {
+  content: ""; position: absolute; top: 0; left: 15px; right: 0; border-top: .5px solid var(--line);
+}
+/* "Ohne ToDo" als eigene kleine Gruppe ganz oben. */
+.zt-dd-eintrag.zt-dd-ohne { padding-left: 15px; border-radius: 12px; background: var(--row); color: var(--text); }
+.zt-dd-eintrag[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+@media (hover: hover) {
+  .zt-dd-eintrag:hover { background: var(--fuellung3); }
+  .zt-dd-eintrag.zt-dd-ohne:hover { background: var(--row); opacity: .8; }
+}
+
+/* Heute: eine Gruppe mit drei Zeilen. */
+.zt-heute { gap: 0; padding-top: 0; border-top: 0; }
+.zt-gruppe { overflow: hidden; }
+.zt-zeile,
+.zt-heute-kopf {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 4px 15px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+.zt-zeile + .zt-zeile::before,
+.zt-eintraege + .zt-zeile::before {
+  content: ""; position: absolute; top: 0; left: 15px; right: 0; border-top: .5px solid var(--line);
+}
+.zt-zeile-text, .zt-heute-titel { flex: 1; min-width: 0; }
+.zt-heute-titel { font-size: 16px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text); }
+.zt-heute-kopf .zt-summe { font-size: 16px; font-weight: 400; color: var(--muted); }
+.zt-pfeil, .zt-heute-pfeil { flex: none; width: auto; font-size: 20px; line-height: 1; color: var(--text3, var(--muted)); transition: transform .15s; }
+.zt-heute-kopf[aria-expanded="true"] .zt-heute-pfeil { transform: rotate(90deg); }
+@media (hover: hover) {
+  .zt-zeile:hover { background: var(--fuellung3); }
+  .zt-heute-kopf:hover .zt-heute-titel { color: var(--text); }
+}
+.zt-eintraege { padding: 0 6px 4px 15px; border-top: .5px solid var(--line); }
+.zt-eintrag { padding: 8px 0; }
+.zt-eintrag-name { font-size: 15px; }
+
+/* Laufende Uhr im Fenster (aus dem Fokus-Bildschirm geoeffnet). */
+.zt-uhr-zeit { font-size: 48px; font-weight: 300; color: var(--text); }
+.zt-stopp { color: var(--red); }
+.zt-stopp-kreis { background: var(--fuellung3); box-shadow: none; }
+.zt-stopp-kreis::before { background: var(--red); }
+/* Die Gruppen in der blaetternden Liste nicht zusammendruecken. */
+.zt-dd-liste > * { flex: none; }
+
+/* Nebenbei (19.11.2026): als eigene Ansicht (unter 1000 px) nimmt der Kalender
+   die ganze Breite. Zwischen 621 und 999 px (iPad hoch) stand er bisher 480 px
+   breit rechts, links daneben eine leere Flaeche - das Board ist dort ja weg. */
+html.kal-ansicht .kalender { width: 100vw; border-left: 0; padding-left: max(14px, env(safe-area-inset-left)); }
