@@ -225,6 +225,7 @@ for (const k of anlegenReiter.children) {
 }
 anlegenForm.addEventListener("submit", e => { e.preventDefault(); legeAusFensterAn(); });
 document.getElementById("anlegenAbbrechen").addEventListener("click", schliesseAnlegen);
+document.getElementById("anlegenKopfZu").addEventListener("click", schliesseAnlegen);
 anlegenBereichLink.addEventListener("click", () => waehleAnlegenArt("bereich"));
 anlegenPopup.addEventListener("click", e => { if (e.target === anlegenPopup) schliesseAnlegen(); });
 anlegenBereich.addEventListener("change", zeigeAnlegenThema);

@@ -1483,6 +1483,17 @@ die Tageskarte):**
 * **Neu am Handy im Vollbild** wie Bearbeiten (auch der Termin aus dem
   Neu-Fenster).
 
+**Dritter Nachtrag (Hendriks iPhone-Screenshots):**
+* **✕ und ✓ oben in den Ecken** von Neu, Bearbeiten und dem Termin aus dem
+  Neu-Fenster, nur am Handy (`.kopf-rund`): mit offener Tastatur waren die
+  Knöpfe unten nicht zu sehen. Hendriks Idee „so wie Apple“; die Knöpfe unten
+  bleiben für den Daumen. Das ✓ ist im Neu- und Bearbeiten-Fenster ein
+  `type="submit"` - es ist damit auch der Knopf, den Enter auslöst (am PC
+  ausgeblendet, Enter speichert trotzdem, getestet).
+* **„ToDo löschen“** als rote Zeile im Bearbeiten-Fenster: ohne Rückfrage,
+  danach „Rückgängig“ in der Leiste (`deleteTodo`) - nach Apples HIG keine
+  Rückfrage für etwas, das sich zurücknehmen lässt.
+
 ## Notizfeld
 
 Wächst mit dem Inhalt nach unten statt zu scrollen — im Anlege-Feld wie im

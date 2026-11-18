@@ -6806,3 +6806,55 @@ html.breit.kopf-klein .topbar > .save-status { opacity: 0; }
   #anlegenPopup .anlegen-knoepfe { margin-top: auto; }
   #kalTerminPopup.wie-neu .kal-form { flex: 1; }
 }
+
+/* ===================== ✕ und ✓ oben in den Blaettern (seit 19.11.2026) =====================
+   Hendrik: "Wenn die Tastatur da ist, sehe ich die Buttons unten nicht" -
+   seine Idee "so wie Apple, oben links ein X und oben rechts ein Haken". Nur am
+   Handy, wo Neu, Bearbeiten und der Termin aus dem Neu-Fenster den ganzen
+   Bildschirm fuellen; die Knoepfe unten bleiben (Daumen). Wie in iOS: ✕ in
+   einem grauen Kreis, ✓ in einem blauen. */
+.kopf-rund { display: none; }
+@media (max-width: 560px) {
+  .anlegen-kopf {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    align-items: center;
+    height: auto;
+    margin: 4px 0 -4px;
+  }
+  .anlegen-kopf > .anlegen-kopf-titel { grid-column: 2; }
+  .kopf-rund {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--fuellung3);
+    color: var(--text);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .kopf-rund.kopf-abbrechen { grid-column: 1; justify-self: start; }
+  .kopf-rund.kopf-ok { grid-column: 3; justify-self: end; background: var(--accent); color: #fff; }
+  .kopf-rund svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .kopf-rund:active { opacity: .55; }
+}
+
+/* "ToDo löschen" im Bearbeiten-Fenster: eine weisse Zeile mit roter Schrift,
+   wie "Ereignis löschen" in Apples Kalender. */
+.bearbeiten-loeschen {
+  justify-content: center;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 15px;
+  border: 0;
+  color: var(--red);
+  font: inherit;
+  font-size: 17px;
+  text-align: center;
+  cursor: pointer;
+}
+.bearbeiten-loeschen:active { opacity: .55; }
+@media (hover: hover) { .bearbeiten-loeschen:hover { opacity: .75; } }

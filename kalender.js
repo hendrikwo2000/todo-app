@@ -2296,10 +2296,26 @@ function baueNeuKopf(f) {
   const teile = document.createDocumentFragment();
   const kopf = document.createElement("div");
   kopf.className = "anlegen-kopf";
+  // Am Handy ✕ und ✓ oben in den Ecken wie im Neu-Fenster (seit 19.11.2026):
+  // mit offener Tastatur sind die Knoepfe unten nicht zu sehen.
+  const zu = document.createElement("button");
+  zu.type = "button";
+  zu.className = "kopf-rund kopf-abbrechen";
+  zu.setAttribute("aria-label", "Abbrechen");
+  zu.title = "Abbrechen";
+  zu.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
+  zu.addEventListener("click", schliesseTerminFormular);
   const titel = document.createElement("span");
   titel.className = "anlegen-kopf-titel";
   titel.textContent = "Neu";
-  kopf.appendChild(titel);
+  const ok = document.createElement("button");
+  ok.type = "button";
+  ok.className = "kopf-rund kopf-ok";
+  ok.setAttribute("aria-label", "Anlegen");
+  ok.title = "Anlegen";
+  ok.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  ok.addEventListener("click", () => speichereTermin(formularTermin));
+  kopf.append(zu, titel, ok);
   teile.appendChild(kopf);
   if (!aktiveListe) return teile;   // ohne Liste gibt es kein ToDo zum Umschalten
   const reiter = document.createElement("div");

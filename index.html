@@ -213,8 +213,13 @@
     <form id="anlegenForm" class="admin-popup-box anlegen-box" role="dialog" aria-label="Neu anlegen" novalidate>
       <!-- Kopf: nur der Titel. Abbrechen und Anlegen stehen unten, dort
            kommt der Daumen hin (Hendrik, 18.11.2026). -->
+      <!-- Am Handy zusaetzlich ✕ und ✓ oben in den Ecken (seit 19.11.2026, wie
+           Apples Blaetter): mit offener Tastatur sind die Knoepfe unten nicht
+           zu sehen (Hendriks Screenshots). Am PC ausgeblendet. -->
       <div class="anlegen-kopf">
+        <button type="button" class="kopf-rund kopf-abbrechen" id="anlegenKopfZu" aria-label="Abbrechen" title="Abbrechen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
         <span id="anlegenKopfTitel" class="anlegen-kopf-titel">Neu</span>
+        <button type="submit" class="kopf-rund kopf-ok" aria-label="Anlegen" title="Anlegen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
       </div>
       <div id="anlegenReiter" class="anlegen-reiter" role="tablist" aria-label="Was anlegen?">
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="todo">ToDo</button>
@@ -275,7 +280,9 @@
   <div id="bearbeitenPopup" class="admin-popup anlegen-popup bearbeiten-popup" hidden>
     <form id="bearbeitenForm" class="admin-popup-box anlegen-box" role="dialog" aria-label="ToDo bearbeiten" novalidate>
       <div class="anlegen-kopf">
+        <button type="button" class="kopf-rund kopf-abbrechen" id="bearbeitenKopfZu" aria-label="Abbrechen" title="Abbrechen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
         <span class="anlegen-kopf-titel">ToDo</span>
+        <button type="submit" class="kopf-rund kopf-ok" aria-label="Fertig" title="Fertig"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
       </div>
       <div class="anlegen-gruppe anlegen-textgruppe">
         <input type="text" id="bearbeitenTitel" class="eingabe-feld anlegen-titel" autocomplete="off"
@@ -315,6 +322,9 @@
                  enterkeyhint="enter" placeholder="Unterpunkt hinzufügen" aria-label="Unterpunkt hinzufügen">
         </label>
       </div>
+      <!-- Loeschen (seit 19.11.2026, Hendrik): ohne Rueckfrage, danach steht
+           unten "Rueckgaengig" wie beim Papierkorb an der Zeile. -->
+      <button type="button" id="bearbeitenLoeschen" class="anlegen-gruppe bearbeiten-loeschen">ToDo löschen</button>
       <div class="anlegen-knoepfe knopfreihe">
         <button type="button" id="bearbeitenAbbrechen" class="btn">Abbrechen</button>
         <button type="submit" id="bearbeitenOk" class="btn primary">Fertig</button>

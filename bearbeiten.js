@@ -208,6 +208,14 @@ function speichereBearbeiten() {
 // ---------- Verdrahtung ----------
 bearbeitenForm.addEventListener("submit", e => { e.preventDefault(); speichereBearbeiten(); });
 document.getElementById("bearbeitenAbbrechen").addEventListener("click", () => { schliesseBearbeiten(); render(); });
+document.getElementById("bearbeitenKopfZu").addEventListener("click", () => { schliesseBearbeiten(); render(); });
+// Loeschen ohne Rueckfrage: deleteTodo zeigt danach "Rueckgaengig" (Apple
+// HIG: keine Rueckfrage fuer etwas, das sich rueckgaengig machen laesst).
+document.getElementById("bearbeitenLoeschen").addEventListener("click", () => {
+  const id = bearbeitenId;
+  schliesseBearbeiten();
+  if (id) deleteTodo(id);
+});
 bearbeitenPopup.addEventListener("click", e => { if (e.target === bearbeitenPopup) { schliesseBearbeiten(); render(); } });
 bearbeitenBereich.addEventListener("change", () => zeigeBearbeitenThema(""));
 bearbeitenBis.addEventListener("input", zeigeBearbeitenBis);
