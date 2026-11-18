@@ -3993,7 +3993,9 @@ function renderTodo(t) {
     const info = dueInfo(t.due);
     const due = document.createElement("span");
     due.className = "due" + (!t.done && info && info.cls ? " " + info.cls : "");
-    due.textContent = `📅 ${terminText(t.due, t.done)}`;
+    // Seit 18.11.2026 ohne 📅 davor (iOS-Look: keine Emoji) - die Farbe und der
+    // Streifen an der Zeile sagen schon, dass es ein Datum ist.
+    due.textContent = terminText(t.due, t.done);
     due.title = DATUM_LANG.format(isoAlsDate(t.due));
     main.appendChild(due);
   }

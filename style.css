@@ -5305,7 +5305,7 @@ html.board-schmal.kal-split .fusszeile.oben .fuss-segment { flex: 1 1 auto; }
     border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
   }
   #tagOben > .tag-gruppe ~ .fok-oben { margin-top: 0; border-top: .5px solid var(--line); border-radius: 0 0 12px 12px; }
-  .tag-oben { margin-bottom: 4px; }
+  .tag-oben { margin-bottom: 22px; }
 }
 
 /* Heute-Spalte am PC: kein grauer Kasten mehr, Gruppen auf dem Grund. */
@@ -5456,7 +5456,7 @@ html.dreispaltig .kalender .kal-liste { background: none; padding: 0 0 14px; bor
 .anlegen-wahl:focus, .anlegen-datum input[type="date"]:focus, .anlegen-zeit:focus { color: var(--accent); }
 .anlegen-datum-leer { left: auto; right: 0; color: var(--muted); }
 /* Am Rechner zeigt Chrome rechts sein Kalender-Symbol - davor stehen. */
-@media (pointer: fine) { .anlegen-datum-leer { right: 26px; } }
+@media (pointer: fine) { .anlegen-datum-leer { right: 32px; } }
 .anlegen-datum input[type="date"]::-webkit-date-and-time-value { text-align: right; }
 @media (pointer: coarse) {
   .anlegen-datum input[type="date"], .anlegen-zeit { text-align: right; }
@@ -5599,3 +5599,297 @@ html.dreispaltig .kalender .kal-liste { background: none; padding: 0 0 14px; bor
   #einstellungenPopup .ein-kopfzeile { display: none; }
   #einstellungenPopup .admin-popup-box.einstellungen { padding-top: max(18px, var(--oben)); }
 }
+
+/* =====================================================================
+   iOS-Look, Runde 2 (18.11.2026 abends) - Hendrik nach dem ersten Live-Test:
+   "zu kantig", Farbflaeche hinter den ToDos und harte Linien gefielen nicht.
+   - Bereiche: Variante C aus drei Handybildern - weisse Gruppe, der Name
+     sitzt in einer zart getoenten Kopfzeile OBEN IN der Gruppe.
+   - Linien eingerueckt und weicher, nie ueber die volle Breite.
+   - Kalenderraster wie im ersten Entwurf (doch mit umgebaut): keine Kaesten,
+     Linie je Woche, heute als blauer Kreis, Termine als getoente Chips.
+   - Neu-Fenster: Abbrechen | Anlegen unten (Daumen).
+   - Verwaltung und alle Fenster im selben Look ("Fertig" statt ✕).
+   ===================================================================== */
+:root { --line: rgba(60, 60, 67, .16); }
+:root[data-theme="dark"] { --line: rgba(84, 84, 88, .55); }
+
+/* ===================== Bereiche: Variante C ===================== */
+.board-spalte { gap: 18px; }
+.column {
+  --kopf-ton: var(--fuellung3);
+  background: var(--row);
+  border-radius: 14px;
+  gap: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+}
+:root[data-theme="dark"] .column { box-shadow: none; }
+.column[data-farbe] { --kopf-ton: color-mix(in srgb, var(--col-farbe) 15%, var(--row)); }
+:root[data-theme="dark"] .column[data-farbe] { --kopf-ton: color-mix(in srgb, var(--col-farbe) 26%, var(--row)); }
+.column.drop-target { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.column.drop-target .col-koerper { outline: 0; }
+.col-head {
+  min-height: 46px;
+  padding: 7px 10px 7px 15px;
+  border-radius: 14px 14px 0 0;
+  background: var(--kopf-ton);
+}
+.col-title { font-size: 17px; }
+.col-count, .col-count.zero, .col-count.normal, .col-count.urgent { font-size: 14px; }
+.col-add-btn, .col-thema-btn { font-size: 15px; }
+.col-koerper,
+.column[data-farbe] .col-koerper,
+:root[data-theme="dark"] .column[data-farbe] .col-koerper {
+  --gruppe-grund: var(--row);
+  background: none;
+  border-radius: 0 0 14px 14px;
+}
+.column.ohne-bereich:not(.drop-target) { background: var(--row); border-radius: 14px; }
+.column.ohne-bereich .col-koerper { border-radius: 14px; }
+.column.ohne-bereich:not(.drop-target):has(.col-koerper:empty) { background: none; box-shadow: none; }
+
+/* Linien eingerueckt: zwischen ToDos ab dem Text, vor Themen und "Erledigt"
+   ab dem Rand des Inhalts - nie ueber die volle Breite. */
+.col-koerper > .todo-list.frei:not(:empty) ~ .thema-gruppe::before,
+.col-koerper > .thema-gruppe + .thema-gruppe::before,
+.col-koerper > .todo-list.frei:not(:empty) ~ .done-section::before,
+.col-koerper > .thema-gruppe ~ .done-section::before,
+.col-koerper > .empty ~ .done-section::before { left: 15px; }
+.thema-head { padding: 13px 10px 1px 15px; }
+.thema-toggle { padding-left: 0; }
+
+/* ===================== Kalenderraster wie im ersten Entwurf ===================== */
+/* Der Zellrand bleibt 1px breit (die Breite der mehrtaegigen Balken rechnet
+   damit), er ist nur unsichtbar. Die Wochenlinie liegt als ::before in der
+   2px-Rasterluecke darueber und ueberbrueckt die Spaltenluecke mit. */
+.kal-tag,
+.kal-tag.heute,
+.kal-tag.gewaehlt {
+  border-color: transparent;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding-top: 4px;
+  position: relative;
+}
+.kal-tag::before {
+  content: "";
+  position: absolute;
+  top: -2px; left: -1px; right: -3px;
+  border-top: .5px solid var(--line);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .kal-tag:hover { background: var(--hover); border-radius: 8px; }
+}
+.kal-zahl {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  font-family: var(--ios-rund);
+  font-size: 15px;
+  font-weight: 500;
+}
+.kal-tag.heute .kal-zahl { background: var(--accent); color: #fff; font-weight: 700; }
+.kal-tag.gewaehlt:not(.heute) .kal-zahl { background: var(--text); color: var(--bg); font-weight: 700; }
+.kal-tag.faellig:not(.heute):not(.gewaehlt) .kal-zahl { color: var(--red); }
+.kal-wochentage { font-weight: 500; }
+.kal-kw { padding-top: 10px; }
+.kal-balken:not(.kal-balken-luecke) {
+  border-left-color: transparent;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--balken-farbe) 18%, var(--row));
+}
+:root[data-theme="dark"] .kal-balken:not(.kal-balken-luecke) {
+  background: color-mix(in srgb, var(--balken-farbe) 26%, var(--bg));
+}
+.kal-balken.serie:not(.kal-balken-luecke) { background: transparent; }
+
+/* ===================== Neu-Fenster: Knoepfe unten ===================== */
+.anlegen-kopf { display: block; height: auto; margin: 14px 0 -2px; text-align: center; }
+.anlegen-knoepfe {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+.anlegen-knoepfe .btn { min-height: 50px; padding: 0 12px; border-radius: 12px; font-size: 17px; align-items: center; }
+.anlegen-box .anlegen-knoepfe .btn.primary { margin-top: 0; min-height: 50px; font-size: 17px; }
+.anlegen-knoepfe .btn:disabled { opacity: .5; cursor: progress; }
+.anlegen-fuss:not(:has(> :not([hidden]))) { display: none; }
+
+/* ===================== Einstellungen: Symbole buendig ===================== */
+/* Die Haarlinie haengt bei aufklappbaren Zeilen an der Kopfzeile (summary):
+   ein ::before am <details> selbst rueckte dessen Inhalt nach rechts. */
+.ein-gruppe > details.ein-abschnitt:not([hidden]) ~ .ein-abschnitt::before,
+.ein-gruppe > .ein-abschnitt:not([hidden]) ~ details.ein-abschnitt::before,
+.ein-reiterinhalt > .ein-abschnitt:not([hidden]) ~ details.ein-abschnitt::before { content: none; }
+.ein-gruppe > .ein-abschnitt:not([hidden]) ~ details.ein-abschnitt > .ein-kopf,
+.ein-reiterinhalt > .ein-abschnitt:not([hidden]) ~ details.ein-abschnitt > .ein-kopf { position: relative; }
+.ein-gruppe > .ein-abschnitt:not([hidden]) ~ details.ein-abschnitt > .ein-kopf::before,
+.ein-reiterinhalt > .ein-abschnitt:not([hidden]) ~ details.ein-abschnitt > .ein-kopf::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 59px; right: 0;
+  border-top: .5px solid var(--line);
+  pointer-events: none;
+}
+.ein-kopf-icon { flex: none; }
+.ein-kopf-sub { margin-left: auto; }
+.ein-kopf-pfeil { margin-left: 6px; }
+.ein-kopf-text + .ein-kopf-pfeil { margin-left: auto; }
+.ein-zeile-knopf .ein-kopf-weiter { color: var(--text3); }
+/* Einfache Zeilen (Schalter, Pfeil) bekamen durch die Gruppen-Regel oben
+   padding 0 und klebten am Rand - sie brauchen denselben Innenabstand wie
+   die aufklappbaren (Hendrik: "Icons teilweise nicht richtig platziert"). */
+.ein-gruppe > .ein-abschnitt.ein-zeile,
+.ein-reiterinhalt > .ein-abschnitt.ein-zeile,
+.ein-reiterinhalt > .ein-abschnitt:not([hidden]) ~ .ein-abschnitt.ein-zeile { padding: 9px 15px; }
+/* Rechts nicht an der Bildlaufleiste kleben */
+.ein-blaettern { padding-right: 2px; scrollbar-width: thin; }
+
+/* ===================== Alle Fenster ===================== */
+/* Schliessen heisst wie in iOS "Fertig" (blau, rechts oben). Das ✕ bleibt im
+   HTML (Bildschirmleser, Tastatur), sichtbar ist nur das Wort. */
+.ein-schliessen,
+.kal-schliessen {
+  font-size: 0;
+  color: var(--accent);
+  padding: 8px 6px;
+  margin-right: -6px;
+}
+.ein-schliessen::before,
+.kal-schliessen::before { content: "Fertig"; font-size: 17px; font-weight: 600; }
+.ein-schliessen:hover, .kal-schliessen:hover { background: none; color: var(--accent); }
+@media (hover: hover) { .ein-schliessen:hover, .kal-schliessen:hover { opacity: .7; } }
+/* Im Kalender am PC steht das ✕ ueber dem Raster - dort bleibt es ein Zeichen. */
+html.kal-split .kal-schliessen { font-size: 15px; color: var(--muted); }
+html.kal-split .kal-schliessen::before { content: none; }
+
+/* Fenster: grauer Grund, Inhalt in weissen Gruppen - wie die Einstellungen. */
+.admin-popup-box,
+.kal-popup-box,
+.lock-box {
+  border: 0;
+  border-radius: 14px;
+  box-shadow: var(--schatten-gross);
+}
+.admin-popup-icon { display: none; }
+.admin-popup-box h2,
+.lock-box h2 { font-size: 20px; font-weight: 700; letter-spacing: .01em; }
+.admin-popup-box p { font-size: 14px; }
+.admin-popup-box .lock-link,
+.lock-box .lock-link { color: var(--accent); font-size: 15px; padding: 8px; }
+.admin-popup-box .lock-link:hover, .lock-box .lock-link:hover { color: var(--accent); opacity: .7; }
+.eingabe-feld,
+.lock-box input,
+.admin-popup-box input[type="email"],
+.admin-popup-box input[type="text"] {
+  border: 0;
+  border-radius: 10px;
+  background: var(--fuellung3);
+  color: var(--text);
+}
+.eingabe-feld:focus, .lock-box input:focus { box-shadow: 0 0 0 2px var(--accent); border: 0; }
+.admin-popup-box input.anlegen-titel, .admin-popup-box input.anlegen-titel:focus { background: none; box-shadow: none; }
+.lock-box button:not(.lock-link) { border-radius: 12px; }
+.lock { background: var(--bg); }
+
+/* Kopf der Fenster: Titel fett links, "Fertig" rechts */
+.timer-kopfzeile, .gw-kopfzeile, .zt-dialog-kopf { align-items: center; }
+.admin-popup-box.timer-box h2.timer-titel,
+.admin-popup-box .zt-dialog-kopf h2 { font-size: 20px; }
+
+/* Listen in Fenstern (Gewohnheiten, Zeit, Mitglieder, Listen): Zeilen ohne
+   Kasten, weiche Linie dazwischen */
+.listen-zeile { border: 0; background: var(--fuellung3); border-radius: 12px; }
+.fok-gew { border-radius: 12px; border-color: transparent; background: var(--fuellung3); }
+.fok-oben .fok-gew, .fok-heute .fok-gew { background: none; }
+
+/* Kleine Menues (Farbe, Listen-Umschalter, Kalender-Quellen) */
+.farbe-popup, .listen-menue, .kal-filter {
+  border: 0;
+  border-radius: 12px;
+  box-shadow: var(--schatten-gross);
+  background: var(--row);
+}
+:root[data-theme="dark"] .farbe-popup,
+:root[data-theme="dark"] .listen-menue,
+:root[data-theme="dark"] .kal-filter { background: #2c2c2e; }
+
+/* Meldung unten: Pille wie in Tageswerte */
+.snackbar {
+  border: 0;
+  border-radius: 22px;
+  background: var(--row);
+  color: var(--text);
+  box-shadow: var(--schatten-gross);
+  font-weight: 600;
+}
+:root[data-theme="dark"] .snackbar { background: #2c2c2e; }
+
+/* Hilfe-Karten und Chips weicher */
+.hilfe-chips li { border: 0; background: var(--fuellung3); }
+.hilfe-zeile { border-top: .5px solid var(--line); }
+
+/* ===================== Verwaltung (admin.html) ===================== */
+body.verwaltung .app { max-width: 760px; }
+body.verwaltung .topbar { flex-direction: column; align-items: flex-start; gap: 2px; margin-bottom: 20px; }
+body.verwaltung .topbar h1 { font-size: 2rem; line-height: 1.15; flex: none; max-width: none; }
+.zurueck-knopf {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  margin-left: -8px;
+  color: var(--accent);
+  font-size: 17px;
+  text-decoration: none;
+}
+.zurueck-knopf svg { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+@media (hover: hover) { .zurueck-knopf:hover { opacity: .7; } }
+.admin-block { margin-bottom: 26px; }
+.admin-block h2 {
+  margin: 0 16px 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.admin-block h2 .zahl { background: none; padding: 0; font-size: 12.5px; font-family: var(--ios-rund); }
+.admin-liste {
+  gap: 0;
+  background: var(--row);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.admin-liste:empty { display: none; }
+.admin-zeile {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 12px 15px;
+}
+.admin-zeile + .admin-zeile::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 15px; right: 0;
+  border-top: .5px solid var(--line);
+}
+.admin-name { font-size: 16px; }
+.admin-meta { font-size: 13.5px; }
+.admin-leer { padding: 12px 15px; margin: 0; }
+.admin-rechte .switch { background: none; padding: 0; }
+.admin-marke { background: var(--fuellung3); color: var(--muted); }
+.admin-hinweis { border: 0; border-radius: 14px; }
+.btn.primaer { background: var(--accent); color: #fff; }
+/* Rueckfragen in den Einstellungen (Abmelden, Trennen, Loeschen): Text mittig wie der Titel. */
+#kontoAbmeldenFrage p, #googleTrennenFrage p, #kontoLoeschenFrage p { text-align: center; }
+/* Verwaltung: der Titel ist kein Listenname - am Handy nicht ausblenden. Die
+   Knoepfe einer Zeile duerfen umbrechen statt rechts hinauszulaufen. */
+body.verwaltung .topbar h1:not(.titel-schaltbar) { display: block; }
+.admin-aktionen { flex-shrink: 1; flex-wrap: wrap; }

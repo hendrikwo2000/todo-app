@@ -5,15 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Verwaltung · ToDo-Liste</title>
   <link rel="icon" href="icon-192.png">
-  <meta name="theme-color" content="#4f63d2">
+  <meta name="theme-color" content="#f2f2f7">
   <meta name="robots" content="noindex">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="verwaltung">
   <div class="app">
+    <!-- Seit 18.11.2026 im iOS-Look wie die App: Zurueck oben links, grosser
+         Titel darunter, Listen als weisse Gruppen. -->
     <header class="topbar">
+      <a href="/" class="zurueck-knopf"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg>Zur Liste</a>
       <h1>Verwaltung</h1>
-      <a href="/" class="btn">← Zur Liste</a>
     </header>
 
     <!-- Nur ein Hinweis. Die eigentliche Sperre sitzt im Server: /api/admin/*

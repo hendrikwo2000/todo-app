@@ -188,12 +188,10 @@
        Umschalten, und am Handy laege die Mitte halb unter der Tastatur. -->
   <div id="anlegenPopup" class="admin-popup anlegen-popup" hidden>
     <form id="anlegenForm" class="admin-popup-box anlegen-box" role="dialog" aria-label="Neu anlegen" novalidate>
-      <!-- Kopf wie ein iOS-Blatt (seit 18.11.2026): Abbrechen | Titel | Anlegen.
-           Die Knoepfe sind dieselben wie vorher, nur nach oben gewandert. -->
+      <!-- Kopf: nur der Titel. Abbrechen und Anlegen stehen unten, dort
+           kommt der Daumen hin (Hendrik, 18.11.2026). -->
       <div class="anlegen-kopf">
-        <button type="button" id="anlegenAbbrechen" class="anlegen-kopf-knopf">Abbrechen</button>
         <span id="anlegenKopfTitel" class="anlegen-kopf-titel">Neu</span>
-        <button type="submit" id="anlegenOk" class="anlegen-kopf-knopf fett">Anlegen</button>
       </div>
       <div id="anlegenReiter" class="anlegen-reiter" role="tablist" aria-label="Was anlegen?">
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="todo">ToDo</button>
@@ -253,6 +251,10 @@
       <div class="anlegen-fuss">
         <button type="button" id="anlegenBereichLink" class="lock-link anlegen-link">Neuer Bereich</button>
         <button type="button" id="anlegenMehr" class="lock-link anlegen-link" hidden>Mehr (Ort, Wiederholung) ›</button>
+      </div>
+      <div class="anlegen-knoepfe">
+        <button type="button" id="anlegenAbbrechen" class="btn">Abbrechen</button>
+        <button type="submit" id="anlegenOk" class="btn primary">Anlegen</button>
       </div>
     </form>
   </div>
@@ -962,7 +964,7 @@
 
         <details class="ein-abschnitt ein-abschnitt-erste" data-hilfe="start">
           <summary class="ein-kopf">
-            <span class="ein-kopf-icon">🚀</span>
+            <span class="ein-kopf-icon kachel kachel-indigo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3c3 2 4.5 5.5 4.5 9.5L14 16h-4l-2.5-3.5C7.5 8.5 9 5 12 3z"/><circle cx="12" cy="9.5" r="1.6"/><path d="M10 16l-1.5 4M14 16l1.5 4"/></svg></span>
             <span class="ein-kopf-text">Erste Schritte</span>
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
@@ -991,7 +993,7 @@
 
         <details class="ein-abschnitt" data-hilfe="todos">
           <summary class="ein-kopf">
-            <span class="ein-kopf-icon">☑️</span>
+            <span class="ein-kopf-icon kachel kachel-gruen" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.8 2.8L16.2 9.5"/></svg></span>
             <span class="ein-kopf-text">ToDos</span>
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
@@ -1027,7 +1029,7 @@
 
         <details class="ein-abschnitt" data-hilfe="bereiche">
           <summary class="ein-kopf">
-            <span class="ein-kopf-icon">🗂️</span>
+            <span class="ein-kopf-icon kachel kachel-orange" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.2h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg></span>
             <span class="ein-kopf-text">Bereiche &amp; Themen</span>
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
