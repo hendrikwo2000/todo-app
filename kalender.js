@@ -1193,14 +1193,8 @@ function zeichneWahl() {
   const stand = document.createElement("span");
   stand.className = "kal-wahl-stand";
   kopf.appendChild(stand);
-  const zu = document.createElement("button");
-  zu.type = "button";
-  zu.className = "kal-schliessen";
-  zu.setAttribute("aria-label", "Abbrechen");
-  zu.title = "Abbrechen";
-  zu.textContent = "✕";
-  zu.addEventListener("click", schliesseWahl);
-  kopf.appendChild(zu);
+  // Das ✕ oben ist seit 19.11.2026 "Abbrechen" unten neben "Uebernehmen" -
+  // dieselbe Knopfreihe wie in allen Fenstern.
   kalWahlBox.appendChild(kopf);
 
   const rad = document.createElement("div");
@@ -1226,7 +1220,13 @@ function zeichneWahl() {
   kalWahlBox.appendChild(rad);
 
   const fuss = document.createElement("div");
-  fuss.className = "kal-wahl-fuss";
+  fuss.className = "kal-wahl-fuss knopfreihe";
+  const abbrechen = document.createElement("button");
+  abbrechen.type = "button";
+  abbrechen.className = "btn";
+  abbrechen.textContent = "Abbrechen";
+  abbrechen.addEventListener("click", schliesseWahl);
+  fuss.appendChild(abbrechen);
   const ok = document.createElement("button");
   ok.type = "button";
   ok.className = "btn primary";
@@ -2459,7 +2459,7 @@ function baueTerminAnsicht(f, termin) {
 //   neu / bearbeiten    Abbrechen | Speichern
 function baueFuss(f, termin) {
   const fuss = document.createElement("div");
-  fuss.className = "kal-form-fuss";
+  fuss.className = "kal-form-fuss knopfreihe";
   const knopf = (text, klasse, aktion) => {
     const b = document.createElement("button");
     b.type = "button";
@@ -2776,8 +2776,18 @@ function frage(titel, text, optionen) {
       erklaerung.textContent = text;
       kalFrageBox.appendChild(erklaerung);
     }
+    // Eine Wahl: Abbrechen | Wahl nebeneinander wie in allen Fenstern (seit
+    // 19.11.2026). Mehrere (Serientermin: welche?): untereinander wie ein
+    // Aktionsblatt, Abbrechen zuletzt.
+    const einzeln = optionen.length === 1;
     const knoepfe = document.createElement("div");
-    knoepfe.className = "kal-frage-knoepfe";
+    knoepfe.className = einzeln ? "kal-frage-knoepfe knopfreihe" : "kal-frage-knoepfe";
+    const abbrechen = document.createElement("button");
+    abbrechen.type = "button";
+    abbrechen.className = "btn";
+    abbrechen.textContent = "Abbrechen";
+    abbrechen.addEventListener("click", () => beantworteFrage(null));
+    if (einzeln) knoepfe.appendChild(abbrechen);
     for (const o of optionen) {
       const b = document.createElement("button");
       b.type = "button";
@@ -2786,15 +2796,10 @@ function frage(titel, text, optionen) {
       b.addEventListener("click", () => beantworteFrage(o.wert));
       knoepfe.appendChild(b);
     }
-    const abbrechen = document.createElement("button");
-    abbrechen.type = "button";
-    abbrechen.className = "btn";
-    abbrechen.textContent = "Abbrechen";
-    abbrechen.addEventListener("click", () => beantworteFrage(null));
-    knoepfe.appendChild(abbrechen);
+    if (!einzeln) knoepfe.appendChild(abbrechen);
     kalFrageBox.appendChild(knoepfe);
     kalFrage.hidden = false;
-    if (!("ontouchstart" in window)) knoepfe.firstChild.focus();
+    if (!("ontouchstart" in window)) (einzeln ? knoepfe.lastChild : knoepfe.firstChild).focus();
   });
 }
 
@@ -3108,15 +3113,30 @@ function baueEintrag(t, mitDatum, faellig, mitBis = false) {
 
   // Herkunft: Listenname nur, wenn es NICHT die gerade aktive Liste ist -
   // sonst steht bei jedem Eintrag dieselbe Selbstverstaendlichkeit.
+  // Der Bereich in seiner Farbe (seit 19.11.2026, Hendrik: "wenn das ToDo
+  // einen Bereich hat, den Bereich in der gewaehlten Farbe"). Die Farbe nur aus
+  // der festen Palette (FARBEN in app.js), nie als freier Text in einen Stil.
   const teile = [];
   if (mitDatum) teile.push(formatDate(t.due));
   if (t.boardId !== aktiveListe && t.boardName) teile.push(t.boardName);
-  if (t.bereich) teile.push(t.bereich);
+  if (t.bereich) {
+    const bereich = document.createElement("span");
+    bereich.className = "kal-eintrag-bereich";
+    bereich.textContent = t.bereich;
+    if (t.farbe && FARBEN.some(f => f.id === t.farbe)) {
+      bereich.classList.add("mit-farbe");
+      bereich.style.setProperty("--bereich-farbe", `var(--farbe-${t.farbe})`);
+    }
+    teile.push(bereich);
+  }
   if (mitBis) teile.push(bisText(t.due));
   if (teile.length) {
     const meta = document.createElement("span");
     meta.className = "kal-eintrag-meta";
-    meta.textContent = teile.join(" › ");
+    teile.forEach((teil, i) => {
+      if (i) meta.appendChild(document.createTextNode(" › "));
+      meta.append(teil);
+    });
     text.appendChild(meta);
   }
 

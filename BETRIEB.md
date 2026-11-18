@@ -1418,6 +1418,31 @@ doppelte IDs. **Ungeprüft:** echtes iPhone/iPad; Termin wirklich bei Google
 anlegen (lokal kein Google, Formular nur mit vorgetäuschtem Schreibrecht
 angesehen); echter Mauszug der Uhr.
 
+**Nachtrag am selben Tag (Hendrik nach dem ersten Blick):**
+* **Zahnrad neben dem ＋** („besser die Einstellungen rechts neben dem Plus“):
+  Uhr, ＋ und Zahnrad stehen am PC zusammen in der Kopfzeile der ToDos; das
+  Zahnrad in der Ecke des Panels ist wieder weg.
+* **Knopfreihe** (`.knopfreihe`, CSS am Ende von `style.css`): „Abbrechen und
+  Fertig sollte immer gleich groß sein“, dazu sollten die Knöpfe nach Apples
+  Regeln aussehen - Hendrik nannte „das bekannte Repo“, gemeint war
+  `raintree-technology/apple-hig-skills` (HIG als Skills, nach
+  `~/.claude/skills/hig-*` installiert). Daraus: den Vorzug zeigt der Stil, nicht
+  die Größe; Abbrechen links grau getönt mit blauer Schrift, die Aktion rechts
+  blau gefüllt, Zerstörendes rote Schrift auf Grau; Druck-Zustand. Gleich breit,
+  44 px hoch (vorher 50 px und 1 : 1,6). Gilt für Neu, Bearbeiten, Termin,
+  Monat wählen (das ✕ oben ist jetzt „Abbrechen“ unten), Gewohnheit, Tag,
+  Zeit nachtragen sowie `textEingabe`, `bestaetigen` (vorher Aktion breit und
+  „Abbrechen“ als Link darunter) und `frage` mit nur einer Wahl. Mehrere Wahlen
+  (Serientermin) bleiben untereinander, im selben Stil. Hendriks Wahl gegen
+  „streng nach Apple: Textknöpfe oben im Kopf“ - unten bleibt für den Daumen.
+* **Bearbeiten am Handy als Vollbild**, Knöpfe unten am Rand; am PC 560 statt
+  420 px breit.
+* **Unter Heute steht der Bereich in seiner Farbe** (`.kal-eintrag-bereich`,
+  Farbe nur aus `FARBEN`, mit 22 % Text gemischt, damit Limette und Himmelblau
+  lesbar bleiben).
+* **Bereich ohne Farbe**: weiße Kopfzeile mit feiner Linie statt Grau (Hendrik:
+  „Standardfarbe passt irgendwie nicht“; die genaue Form war mein Call).
+
 ## Notizfeld
 
 Wächst mit dem Inhalt nach unten statt zu scrollen — im Anlege-Feld wie im

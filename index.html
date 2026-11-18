@@ -58,10 +58,10 @@
       <!-- Umschalter zwischen den Listen. Inhalt kommt per JS, erscheint nur
            bei mehr als einer Liste. -->
       <div id="listenMenue" class="listen-menue" hidden></div>
-      <!-- Am PC (ab 1000 px) seit 19.11.2026 statt der Leiste: Uhr und ＋ neben
-           dem Titel (Hendriks Wahl "Uhr neben dem ＋"), das Zahnrad in der Ecke.
-           Ist das Panel rechts offen, steht das Zahnrad dort
-           (.kopf-zahnrad-panel), sonst hier. Unter 1000 px ist die Gruppe weg -
+      <!-- Am PC (ab 1000 px) seit 19.11.2026 statt der Leiste: Uhr, ＋ und Zahnrad
+           rechts neben dem Titel (Hendriks Wahl "Uhr neben dem ＋", am selben Tag
+           "Einstellungen rechts neben dem Plus" - erst stand das Zahnrad oben
+           rechts in der Ecke des Kalenders). Unter 1000 px ist die Gruppe weg -
            dort traegt die Leiste unten dieselben Knoepfe. Verdrahtet ueber die
            Klassen wie die Felder der Leiste: .timer-knopf (zeiterfassung.js),
            .neu-knopf (anlegen.js), .ein-knopf (app.js). -->
@@ -148,20 +148,18 @@
   <div id="snackbar" class="snackbar" aria-live="polite"></div>
 
   <!-- Die Leiste ToDos | Kalender | ＋ | Zeit | Einstellungen (seit 15.11.2026,
-       Hendriks Wahl). Heisst aus Geschichte "fusszeile": am Handy (bis 560 px)
-       steht sie unten wie in jeder App, darueber oben rechts in der Kopfzeile
-       bzw. in der Zeile oben im Kalender - es ist immer DIESES eine Element,
-       navigation.js haengt es um (Klasse .unten / .oben).
+       Hendriks Wahl). Heisst aus Geschichte "fusszeile". Seit 19.11.2026 nur
+       noch unter 1000 px, immer unten (Handy und iPad hoch); am PC stehen Uhr,
+       ＋ und Zahnrad in der Kopfzeile (.kopf-knoepfe).
        Die Knoepfe haengen an der vorhandenen Verdrahtung: .fuss-ansicht an
        derselben wie die Pille 📋|📅 (kalender.js), .timer-knopf an der
        Zeiterfassung, .ein-knopf am Zahnrad. Das ＋ oeffnet das Anlegen-Fenster
        (anlegen.js). Sichtbar erst mit der Anmeldung (zeigeEinstellungenKnopf
        in app.js), sonst stuende sie unter der Anmeldemaske. -->
   <nav id="fusszeile" class="fusszeile" aria-label="Navigation" hidden>
-    <!-- Seit 18.11.2026 (iOS-Look): ToDos, Kalender und Zeit sind am PC ein
-         Segment-Schalter in der Mitte, ＋ und Zahnrad stehen rechts. Am Handy
-         loest sich die Gruppe auf (display: contents), die Reihenfolge
-         ToDos | Kalender | ＋ | Zeit | Einstellungen setzt dort order. -->
+    <!-- Die Gruppe loest sich auf (display: contents), die Reihenfolge
+         ToDos | Kalender | ＋ | Zeit | Einstellungen setzt order. Bis 19.11.2026
+         war sie am PC ein Segment-Schalter in der Kopfzeile. -->
     <div class="fuss-segment">
     <button type="button" class="fuss-knopf fuss-ansicht" data-ansicht="liste" aria-pressed="true" title="ToDo-Liste">
       <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
@@ -260,7 +258,7 @@
       <div class="anlegen-fuss">
         <button type="button" id="anlegenBereichLink" class="lock-link anlegen-link">Neuer Bereich</button>
       </div>
-      <div class="anlegen-knoepfe">
+      <div class="anlegen-knoepfe knopfreihe">
         <button type="button" id="anlegenAbbrechen" class="btn">Abbrechen</button>
         <button type="submit" id="anlegenOk" class="btn primary">Anlegen</button>
       </div>
@@ -317,7 +315,7 @@
                  enterkeyhint="enter" placeholder="Unterpunkt hinzufügen" aria-label="Unterpunkt hinzufügen">
         </label>
       </div>
-      <div class="anlegen-knoepfe">
+      <div class="anlegen-knoepfe knopfreihe">
         <button type="button" id="bearbeitenAbbrechen" class="btn">Abbrechen</button>
         <button type="submit" id="bearbeitenOk" class="btn primary">Fertig</button>
       </div>
@@ -338,17 +336,6 @@
          tabindex="0" aria-orientation="vertical"
          aria-label="Breite des Kalenders"
          title="Breite ziehen, Doppelklick setzt zurück"></div>
-    <!-- Zahnrad in der Ecke oben rechts (seit 19.11.2026, Hendrik: "Einstellungen
-         immer ganz rechts in der Ecke"). Steht das Panel am PC da, sitzt es hier;
-         ist es zu, das Gegenstueck am Ende der App-Kopfzeile (.kopf-zahnrad-app).
-         Unterhalb der Split-Grenze ist es weg, dort traegt die Leiste unten das
-         Zahnrad. Bis dahin stand hier eine Zeile mit ✕ (PC) bzw. der Leiste (iPad). -->
-    <button type="button" class="kopf-knopf ein-knopf kopf-zahnrad-panel" title="Einstellungen" aria-label="Einstellungen" hidden>
-      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-        <path d="M10.21 4.82 L10.58 2.51 L13.42 2.51 L13.79 4.82 L15.81 5.66 L17.71 4.28 L19.72 6.29 L18.34 8.19 L19.18 10.21 L21.49 10.58 L21.49 13.42 L19.18 13.79 L18.34 15.81 L19.72 17.71 L17.71 19.72 L15.81 18.34 L13.79 19.18 L13.42 21.49 L10.58 21.49 L10.21 19.18 L8.19 18.34 L6.29 19.72 L4.28 17.71 L5.66 15.81 L4.82 13.79 L2.51 13.42 L2.51 10.58 L4.82 10.21 L5.66 8.19 L4.28 6.29 L6.29 4.28 L8.19 5.66 Z"/>
-        <circle cx="12" cy="12" r="3.2"/>
-      </svg>
-    </button>
 
     <!-- Der gewaehlte Tag als eigene Heute-Spalte neben dem Raster - nur ab
          1380 px (html.dreispaltig). Darunter steht der Tag ueber den ToDos
@@ -1324,7 +1311,7 @@
       </div>
       <p id="ztDialogDauer" class="zt-dialog-dauer"></p>
       <p class="lock-msg" id="ztDialogMsg" aria-live="polite"></p>
-      <div class="gw-knoepfe">
+      <div class="gw-knoepfe knopfreihe">
         <button type="button" class="btn" id="ztDialogAbbrechen">Abbrechen</button>
         <button type="button" class="btn primary" id="ztDialogSpeichern">Speichern</button>
       </div>
@@ -1422,7 +1409,7 @@
         <input type="number" id="gewWochenziel" class="eingabe-feld" min="1" max="7" step="1" value="3" inputmode="numeric">
       </div>
       <p class="lock-msg" id="gewDialogMsg" aria-live="polite"></p>
-      <div class="gw-knoepfe">
+      <div class="gw-knoepfe knopfreihe">
         <button type="button" class="btn" id="gewAbbrechen">Abbrechen</button>
         <button type="button" class="btn primary" id="gewSpeichern">Speichern</button>
       </div>
@@ -1448,7 +1435,7 @@
         </div>
       </div>
       <p class="lock-msg" id="gewTagMsg" aria-live="polite"></p>
-      <div class="gw-knoepfe">
+      <div class="gw-knoepfe knopfreihe">
         <button type="button" class="btn" id="gewTagAbbrechen">Abbrechen</button>
         <button type="button" class="btn primary" id="gewTagSpeichern">Speichern</button>
       </div>

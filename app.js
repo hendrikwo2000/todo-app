@@ -1754,20 +1754,26 @@ function textEingabe(optionen) {
     if (readonly) feld.readOnly = true;
     box.appendChild(feld);
 
-    const ok = document.createElement("button");
-    ok.type = "button";
-    ok.className = "btn primary";
-    ok.textContent = okText;
-    box.appendChild(ok);
-
+    // Seit 19.11.2026 wie in allen Fenstern: Abbrechen links, die Aktion
+    // rechts, beide gleich gross (Apple HIG: der Vorzug zeigt sich am Stil,
+    // nicht an der Groesse). Vorher stand die Aktion breit da und Abbrechen
+    // als kleiner Link darunter.
+    const reihe = document.createElement("div");
+    reihe.className = "knopfreihe";
     let ab = null;
     if (!readonly) {
       ab = document.createElement("button");
       ab.type = "button";
-      ab.className = "lock-link";
+      ab.className = "btn";
       ab.textContent = "Abbrechen";
-      box.appendChild(ab);
+      reihe.appendChild(ab);
     }
+    const ok = document.createElement("button");
+    ok.type = "button";
+    ok.className = "btn primary";
+    ok.textContent = okText;
+    reihe.appendChild(ok);
+    box.appendChild(reihe);
 
     let fertig = false;
     const schliess = (ergebnis) => {
@@ -1825,17 +1831,19 @@ function bestaetigen(optionen) {
       box.appendChild(p);
     }
 
+    // Abbrechen links, die Aktion rechts, gleich gross (seit 19.11.2026).
+    const reihe = document.createElement("div");
+    reihe.className = "knopfreihe";
+    const ab = document.createElement("button");
+    ab.type = "button";
+    ab.className = "btn";
+    ab.textContent = "Abbrechen";
     const ok = document.createElement("button");
     ok.type = "button";
     ok.className = o.neutral ? "btn primary" : "btn gefahr";
     ok.textContent = okText;
-    box.appendChild(ok);
-
-    const ab = document.createElement("button");
-    ab.type = "button";
-    ab.className = "lock-link";
-    ab.textContent = "Abbrechen";
-    box.appendChild(ab);
+    reihe.append(ab, ok);
+    box.appendChild(reihe);
 
     let fertig = false;
     const schliess = (ergebnis) => {

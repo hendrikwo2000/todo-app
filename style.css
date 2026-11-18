@@ -5596,8 +5596,6 @@ html.dreispaltig .kalender .kal-liste { background: none; padding: 0 0 14px; bor
   gap: 10px;
   margin-top: 4px;
 }
-.anlegen-knoepfe .btn { min-height: 50px; padding: 0 12px; border-radius: 12px; font-size: 17px; align-items: center; }
-.anlegen-box .anlegen-knoepfe .btn.primary { margin-top: 0; min-height: 50px; font-size: 17px; }
 .anlegen-knoepfe .btn:disabled { opacity: .5; cursor: progress; }
 .anlegen-fuss:not(:has(> :not([hidden]))) { display: none; }
 
@@ -6175,20 +6173,6 @@ html.breit .kopf-knopf:not([hidden]) {
 @media (hover: hover) {
   html.breit .kopf-knopf:hover { opacity: .7; }
 }
-/* Zahnrad: genau eines ist zu sehen. */
-html.breit.kal-split .kopf-zahnrad-app { display: none; }
-html:not(.kal-split) .kopf-zahnrad-panel { display: none; }
-html.breit.kal-split .kopf-zahnrad-panel:not([hidden]) {
-  position: absolute;
-  top: 24px;
-  right: 14px;
-  z-index: 3;
-  padding: 0;
-}
-/* Platz fuer das Zahnrad in der Ecke: rechts im Kalenderkopf bzw. - nur Heute
-   - im Kopf der Heute-Spalte. */
-html.kal-split .kal-kopf { padding-right: 48px; }
-
 /* Das Panel ohne die Zeile darueber: Kopf auf die Mittellinie der App-
    Kopfzeile (24 px Rand + 44 px Zeile). */
 html.kal-split .kalender { padding-top: max(26px, var(--oben)); }
@@ -6204,7 +6188,6 @@ html.nur-heute .kal-oben,
 html.nur-heute .kal-griff-breite { display: none; }
 html.nur-heute.kal-split .snackbar { left: calc(50% - var(--heute-breite) / 2); }
 html.nur-heute .kalender .kal-liste { padding-right: 0; }
-html.nur-heute #kalTagesliste > :first-child { padding-right: 44px; }
 
 /* Schalter "Kalender" und "Heute" in den Einstellungen gelten nur am PC. */
 html:not(.breit) .nur-pc { display: none; }
@@ -6331,20 +6314,6 @@ html:not(.breit) .nur-pc { display: none; }
 .kal-form-gruppe .kal-form-eingabe,
 .kal-form-gruppe .kal-form-eingabe:focus { background: none; border-radius: 0; padding: 0; }
 .kal-form-gruppiert .kal-farbwahl { right: 8px; }
-.kal-form-gruppiert .kal-form-fuss {
-  display: grid;
-  grid-template-columns: 1fr 1.6fr;
-  gap: 10px;
-  padding-top: 16px;
-  background: none;
-}
-.kal-form-gruppiert .kal-fuss-knopf { background: var(--fuellung3); }
-.kal-form-gruppiert .kal-fuss-knopf.primaer { background: var(--accent); color: #fff; }
-@media (hover: hover) {
-  .kal-form-gruppiert .kal-fuss-knopf:hover { background: var(--fuellung3); opacity: .8; }
-  .kal-form-gruppiert .kal-fuss-knopf.primaer:hover { background: var(--accent); }
-}
-
 /* Aus dem Neu-Fenster: dieselbe Lage und Groesse wie dort, auch am Handy kein
    Vollbild - so bleibt es beim Umschalten ToDo | Termin "ein Fenster". */
 #kalTerminPopup.wie-neu {
@@ -6610,3 +6579,114 @@ html:not(.breit) .nur-pc { display: none; }
    die ganze Breite. Zwischen 621 und 999 px (iPad hoch) stand er bisher 480 px
    breit rechts, links daneben eine leere Flaeche - das Board ist dort ja weg. */
 html.kal-ansicht .kalender { width: 100vw; border-left: 0; padding-left: max(14px, env(safe-area-inset-left)); }
+
+/* ===================== Knopfreihe (seit 19.11.2026) =====================
+   Hendrik: "Die Buttons sind nicht einheitlich ... Abbrechen und Fertig sollte
+   immer gleich gross sein." Nach Apples HIG (Skill hig-components-menus,
+   Buttons): den Vorzug zeigt der Stil, nicht die Groesse - Abbrechen links grau
+   getoent mit blauer Schrift, die Aktion rechts blau gefuellt, Zerstoerendes
+   rote Schrift auf Grau (nie die gefuellte Hauptaktion); jeder Knopf hat einen
+   sichtbaren Druck-Zustand. Eine Reihe fuer ALLE Fenster: Neu, Bearbeiten,
+   Termin, Monat waehlen, Gewohnheit, Tag, Zeit nachtragen, Rueckfragen und
+   Eingaben. Gleich breit, 44 px hoch (vorher 50 px und 1 : 1,6). */
+.knopfreihe,
+.admin-popup-box .knopfreihe,
+.kal-popup-box .knopfreihe,
+.kal-form-gruppiert .knopfreihe {
+  display: grid;
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 0;
+  background: none;
+}
+.knopfreihe > :is(.btn, .kal-fuss-knopf),
+.admin-popup-box .knopfreihe > .btn,
+.kal-popup-box .knopfreihe > :is(.btn, .kal-fuss-knopf) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--fuellung3);
+  color: var(--accent);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  filter: none;
+  transition: opacity .12s;
+}
+.knopfreihe > :is(.primary, .primaer),
+.admin-popup-box .knopfreihe > .btn.primary,
+.kal-popup-box .knopfreihe > :is(.primary, .primaer) { background: var(--accent); color: #fff; }
+.knopfreihe > :is(.gefahr),
+.admin-popup-box .knopfreihe > .btn.gefahr,
+.kal-popup-box .knopfreihe > .gefahr { background: var(--fuellung3); color: var(--red); }
+.knopfreihe > [hidden] { display: none !important; }
+.knopfreihe > :disabled { opacity: .45; cursor: progress; }
+.knopfreihe > :active:not(:disabled) { opacity: .55; }
+@media (hover: hover) {
+  .knopfreihe > :hover:not(:disabled) { opacity: .8; }
+}
+/* Hover darf die Farben oben nicht ueberschreiben. */
+@media (hover: hover) {
+  .knopfreihe > :is(.btn, .kal-fuss-knopf):hover:not(.primary):not(.primaer):not(.gefahr) { background: var(--fuellung3); color: var(--accent); }
+  .knopfreihe > :is(.primary, .primaer):hover { background: var(--accent); color: #fff; }
+  .knopfreihe > .gefahr:hover { background: var(--fuellung3); color: var(--red); }
+}
+/* Mehrere Wahlen (Serientermin) untereinander, im selben Stil. */
+.kal-frage-knoepfe:not(.knopfreihe) .btn { min-height: 44px; border-radius: 12px; font-size: 17px; }
+/* Monat waehlen: Kopf ohne ✕, Reihe ueber die volle Breite. */
+.kal-wahl-fuss.knopfreihe { justify-content: stretch; }
+/* "Starten" in der Zeiterfassung ist dieselbe Hauptaktion: dieselbe Hoehe. */
+.admin-popup-box .btn.zt-starten { min-height: 44px; height: 44px; }
+/* Nebenaktionen unter der Reihe (Archivieren, Eintrag loeschen) als Textknopf. */
+.admin-popup-box .knopfreihe + .lock-link { align-self: center; font-size: 15px; color: var(--accent); }
+#ztDialogLoeschen { color: var(--red) !important; }
+
+/* ===================== Bearbeiten: Handy Vollbild, PC breiter (seit 19.11.2026) ===================== */
+@media (min-width: 561px) {
+  #bearbeitenPopup .anlegen-box { width: min(560px, 100%); }
+}
+@media (max-width: 560px) {
+  #bearbeitenPopup { padding: 0; align-items: stretch; }
+  #bearbeitenPopup .admin-popup-box.anlegen-box {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: max(6px, var(--oben)) 16px max(16px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  /* Die Knoepfe stehen unten am Daumen, auch wenn wenig darueber steht. */
+  #bearbeitenPopup .anlegen-knoepfe { margin-top: auto; }
+}
+
+/* ===================== Zahnrad neben dem ＋ (seit 19.11.2026) =====================
+   Hendrik nach dem ersten Tag: "besser die Einstellungen rechts neben dem
+   Plus". Uhr, ＋ und Zahnrad stehen am PC zusammen in der Kopfzeile der ToDos;
+   das Zahnrad in der Ecke des Panels ist wieder weg. */
+
+/* ===================== Bereiche: Farbe unter Heute, ohne Farbe weiss (seit 19.11.2026) ===================== */
+/* Unter Heute steht der Bereich in seiner Farbe (Hendrik: "wenn das ToDo einen
+   Bereich hat, den Bereich in der gewaehlten Farbe"). Mit etwas Text gemischt,
+   damit auch Limette und Himmelblau auf Weiss lesbar bleiben. */
+.kal-eintrag-bereich { font-weight: 600; color: var(--muted); }
+.kal-eintrag-bereich.mit-farbe { color: color-mix(in srgb, var(--bereich-farbe) 78%, var(--text)); }
+/* Bereich ohne Farbe: weisse Kopfzeile mit feiner Linie statt Grau (Hendrik:
+   "Standardfarbe passt irgendwie nicht"). */
+.column:not([data-farbe]) { --kopf-ton: var(--row); }
+.column:not([data-farbe]) .col-head { box-shadow: inset 0 -.5px 0 var(--line); }
