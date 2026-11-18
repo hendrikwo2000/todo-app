@@ -3191,10 +3191,19 @@ function renderColumn(cat) {
     }
   }
 
+  // --- Koerper: alles unter dem Kopf ---
+  // Seit 18.11.2026 (iOS-Look, Hendriks Wahl "getoente Gruppe"): der Kopf steht
+  // frei ueber dem Bereich, nur der Koerper traegt den Farbton, die ToDos darin
+  // sind Zeilen mit Haarlinien statt eigener Karten. Die Spalte selbst bleibt
+  // Ablage und Messobjekt (ordneBereiche, verdrahteDropZone) wie bisher.
+  const koerper = document.createElement("div");
+  koerper.className = "col-koerper";
+  col.appendChild(koerper);
+
   // --- Das aufgeklappte Eingabefeld fuer ein freies ToDo ---
   // "Ohne Bereich" bekommt keine eigene Werkzeugzeile - der globale "＋ ToDo"
   // im Header legt genau dort an, eine zweite waere redundant.
-  if (addingCat === cat.id && addingThema === null) col.appendChild(baueAddWidget(cat, null));
+  if (addingCat === cat.id && addingThema === null) koerper.appendChild(baueAddWidget(cat, null));
 
   // --- Freie ToDos (ohne Ueber-Thema), direkt in der Spalte ---
   const frei = open.filter(t => !t.themaId).sort(sortOpen);
@@ -3202,7 +3211,7 @@ function renderColumn(cat) {
   freieUl.className = "todo-list frei";
   freieUl.dataset.thema = "";
   frei.forEach(t => freieUl.appendChild(renderTodo(t)));
-  col.appendChild(freieUl);
+  koerper.appendChild(freieUl);
 
   // Leer-Hinweis nur, wenn im Bereich wirklich gar nichts Offenes und kein
   // Thema steht - sonst tragen die Themen die Struktur. Der grosse Knopf
@@ -3222,17 +3231,17 @@ function renderColumn(cat) {
       btn.addEventListener("click", () => oeffneAnlegen({ bereich: cat.id }));   // anlegen.js
       wrap.appendChild(empty);
       wrap.appendChild(btn);
-      col.appendChild(wrap);
+      koerper.appendChild(wrap);
     } else {
       const empty = document.createElement("p");
       empty.className = "empty";
       empty.textContent = "Keine offenen ToDos.";
-      col.appendChild(empty);
+      koerper.appendChild(empty);
     }
   }
 
   // --- Ueber-Themen als eigene Gruppen darunter ---
-  themen.forEach(th => col.appendChild(renderThemaGruppe(cat, th, open)));
+  themen.forEach(th => koerper.appendChild(renderThemaGruppe(cat, th, open)));
 
   // --- Erledigte ToDos (einklappbar) ---
   if (done.length) {
@@ -3257,7 +3266,7 @@ function renderColumn(cat) {
       done.forEach(t => doneList.appendChild(renderTodo(t)));
       section.appendChild(doneList);
     }
-    col.appendChild(section);
+    koerper.appendChild(section);
   }
 
   // --- Drag & Drop: die Spalte selbst ist die "frei"-Ablage. Ueber-Themen

@@ -36,6 +36,8 @@ const anlegenForm        = document.getElementById("anlegenForm");
 const anlegenReiter      = document.getElementById("anlegenReiter");
 const anlegenUeberschrift = document.getElementById("anlegenUeberschrift");
 const anlegenTitel       = document.getElementById("anlegenTitel");
+const anlegenNotiz       = document.getElementById("anlegenNotiz");
+const anlegenKopfTitel   = document.getElementById("anlegenKopfTitel");
 const anlegenBereich     = document.getElementById("anlegenBereich");
 const anlegenThemaZeile  = document.getElementById("anlegenThemaZeile");
 const anlegenThema       = document.getElementById("anlegenThema");
@@ -79,6 +81,7 @@ function oeffneAnlegen(vorgabe = {}) {
 
   anlegenReiter.hidden = !(todo && termin);
   anlegenTitel.value = "";
+  anlegenNotiz.value = "";
   fuelleAnlegenBereiche();
   if (vorgabe.bereich && !istOhneBereich(vorgabe.bereich)
       && state.categories.some(c => c.id === vorgabe.bereich)) {
@@ -112,7 +115,11 @@ function waehleAnlegenArt(art) {
   // "Neuer Bereich" hat keinen Umschalter, dafuer eine Ueberschrift.
   const bereich = art === "bereich";
   if (bereich) anlegenReiter.hidden = true;
-  anlegenUeberschrift.hidden = !bereich;
+  // Die Ueberschrift steht seit 18.11.2026 mittig im Kopf (Abbrechen | Titel |
+  // Anlegen); das alte h2 bleibt zu.
+  anlegenUeberschrift.hidden = true;
+  anlegenKopfTitel.textContent = bereich ? "Neuer Bereich" : "Neu";
+  anlegenNotiz.hidden = bereich;
   anlegenTitel.placeholder = ANLEGEN_PLATZHALTER[art];
   for (const z of anlegenForm.querySelectorAll("[data-fuer]")) z.hidden = z.dataset.fuer !== art;
   zeigeAnlegenThema();
@@ -199,7 +206,7 @@ async function legeAusFensterAn() {
     anlegenSpeichert = true;
     anlegenOk.disabled = true;
     const ok = await terminAnfrage("POST", {
-      titel: text, ...anlegenZeitraum(), farbe: "", notiz: "", ort: "",
+      titel: text, ...anlegenZeitraum(), farbe: "", notiz: anlegenNotiz.value.trim(), ort: "",
       zeitzone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin",
     });
     anlegenSpeichert = false;
@@ -225,7 +232,7 @@ async function legeAusFensterAn() {
   const bereichName = state.categories.find(c => c.id === bereich)?.name || OHNE_NAME;
   const themaName = thema ? state.themen.find(th => th.id === thema)?.name : null;
   schliesseAnlegen();
-  addTodoTo(bereich, thema, text, anlegenBis.value || null, null);   // rendert und speichert selbst
+  addTodoTo(bereich, thema, text, anlegenBis.value || null, anlegenNotiz.value);   // rendert und speichert selbst
   // Das neue ToDo kann ausserhalb des Bildes landen (anderer Bereich, im
   // Kalender gar nicht zu sehen) - kurz sagen, dass und wo es liegt.
   const wo = istOhneBereich(bereich) ? "" : ` in ${bereichName}${themaName ? " › " + themaName : ""}`;
@@ -235,11 +242,12 @@ async function legeAusFensterAn() {
 // "Mehr": ins volle Termin-Formular, mit allem, was schon im Fenster steht.
 function anlegenZumFormular() {
   const titel = anlegenTitel.value.trim();
+  const notiz = anlegenNotiz.value.trim();
   const zeitraum = anlegenZeitraum();
   schliesseAnlegen();
   oeffneTerminFormular(zeitraum.startDatum, null);
   if (!formularFelder) return;
-  Object.assign(formularFelder, zeitraum, { titel });
+  Object.assign(formularFelder, zeitraum, { titel }, notiz ? { notiz } : {});
   zeichneTerminPopup();
 }
 

@@ -18,7 +18,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <meta name="theme-color" content="#4f63d2">
+  <meta name="theme-color" content="#f2f2f7">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -90,7 +90,7 @@
     <section id="fokOben" class="fok-oben zu" aria-label="Gewohnheiten heute" hidden>
       <div class="fok-oben-kopfzeile">
         <button type="button" id="fokObenEinstellungen" class="fok-titel-knopf" title="Gewohnheiten einstellen">
-          <span aria-hidden="true">🔥</span>
+          <svg class="flamme-symbol" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path class="voll" d="M12 21.5c-3.7 0-6.2-2.5-6.2-5.8 0-3.6 2.7-5.4 3.7-8.7.4 1.9 1.7 2.9 2.7 3.3.5-2.6 1.5-5.3 1.1-7.6 3.5 2.3 5 6.2 5 10.2 0 5.9-2.6 8.6-6.3 8.6z"/></svg>
           <span>Gewohnheiten</span>
           <span class="fok-titel-pfeil" aria-hidden="true">›</span>
         </button>
@@ -133,6 +133,11 @@
        (anlegen.js). Sichtbar erst mit der Anmeldung (zeigeEinstellungenKnopf
        in app.js), sonst stuende sie unter der Anmeldemaske. -->
   <nav id="fusszeile" class="fusszeile" aria-label="Navigation" hidden>
+    <!-- Seit 18.11.2026 (iOS-Look): ToDos, Kalender und Zeit sind am PC ein
+         Segment-Schalter in der Mitte, ＋ und Zahnrad stehen rechts. Am Handy
+         loest sich die Gruppe auf (display: contents), die Reihenfolge
+         ToDos | Kalender | ＋ | Zeit | Einstellungen setzt dort order. -->
+    <div class="fuss-segment">
     <button type="button" class="fuss-knopf fuss-ansicht" data-ansicht="liste" aria-pressed="true" title="ToDo-Liste">
       <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <rect x="4" y="4" width="16" height="16" rx="3.5"/>
@@ -147,12 +152,6 @@
       </svg></span>
       <span class="fuss-text">Kalender</span>
     </button>
-    <button type="button" id="fussPlus" class="fuss-knopf fuss-plus" aria-haspopup="dialog" title="Neu anlegen">
-      <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-        <path d="M12 5v14M5 12h14"/>
-      </svg></span>
-      <span class="fuss-text">Neu</span>
-    </button>
     <!-- .timer-zeit fuellt zeiterfassung.js, solange die Uhr laeuft - dann
          steht die Zeit statt "Zeit" da. hidden, solange die Zeiterfassung aus
          ist; die Fusszeile hat dann vier Felder. -->
@@ -163,6 +162,13 @@
       </svg></span>
       <span class="fuss-text fuss-text-ruhe">Zeit</span>
       <span class="fuss-text timer-zeit"></span>
+    </button>
+    </div>
+    <button type="button" id="fussPlus" class="fuss-knopf fuss-plus" aria-haspopup="dialog" title="Neu anlegen">
+      <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+        <path d="M12 5v14M5 12h14"/>
+      </svg></span>
+      <span class="fuss-text">Neu</span>
     </button>
     <button type="button" class="fuss-knopf ein-knopf" title="Einstellungen" hidden>
       <span class="fuss-symbol"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
@@ -182,14 +188,26 @@
        Umschalten, und am Handy laege die Mitte halb unter der Tastatur. -->
   <div id="anlegenPopup" class="admin-popup anlegen-popup" hidden>
     <form id="anlegenForm" class="admin-popup-box anlegen-box" role="dialog" aria-label="Neu anlegen" novalidate>
+      <!-- Kopf wie ein iOS-Blatt (seit 18.11.2026): Abbrechen | Titel | Anlegen.
+           Die Knoepfe sind dieselben wie vorher, nur nach oben gewandert. -->
+      <div class="anlegen-kopf">
+        <button type="button" id="anlegenAbbrechen" class="anlegen-kopf-knopf">Abbrechen</button>
+        <span id="anlegenKopfTitel" class="anlegen-kopf-titel">Neu</span>
+        <button type="submit" id="anlegenOk" class="anlegen-kopf-knopf fett">Anlegen</button>
+      </div>
       <div id="anlegenReiter" class="anlegen-reiter" role="tablist" aria-label="Was anlegen?">
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="todo">ToDo</button>
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="termin">Termin</button>
       </div>
       <!-- Nur fuer "Neuer Bereich": dort gibt es keinen Umschalter. -->
       <h2 id="anlegenUeberschrift" class="anlegen-ueberschrift" hidden>Neuer Bereich</h2>
-      <input type="text" id="anlegenTitel" class="eingabe-feld anlegen-titel" autocomplete="off"
-             enterkeyhint="done" aria-label="Titel">
+      <div class="anlegen-gruppe anlegen-textgruppe">
+        <input type="text" id="anlegenTitel" class="eingabe-feld anlegen-titel" autocomplete="off"
+               enterkeyhint="done" aria-label="Titel">
+        <!-- Notiz gleich beim Anlegen (Hendrik, 18.11.2026). Fuer ToDos und Termine. -->
+        <textarea id="anlegenNotiz" class="anlegen-notiz" rows="2" placeholder="Notiz" aria-label="Notiz"></textarea>
+      </div>
+      <div class="anlegen-gruppe anlegen-felder">
 
       <!-- ToDo -->
       <label class="anlegen-zeile" data-fuer="todo">
@@ -231,9 +249,8 @@
         <input type="time" id="anlegenBisZeit" class="anlegen-zeit" aria-label="Ende">
       </div>
 
-      <button type="submit" id="anlegenOk" class="btn primary">Anlegen</button>
+      </div>
       <div class="anlegen-fuss">
-        <button type="button" id="anlegenAbbrechen" class="lock-link">Abbrechen</button>
         <button type="button" id="anlegenBereichLink" class="lock-link anlegen-link">Neuer Bereich</button>
         <button type="button" id="anlegenMehr" class="lock-link anlegen-link" hidden>Mehr (Ort, Wiederholung) ›</button>
       </div>
@@ -283,7 +300,7 @@
         <h3 class="kal-gruppe">
           <span class="kal-gruppe-text">
             <button type="button" id="fokHeuteEinstellungen" class="fok-titel-knopf" title="Gewohnheiten einstellen">
-              <span class="kal-gruppe-symbol" aria-hidden="true">🔥</span>Gewohnheiten
+              <span class="kal-gruppe-symbol" aria-hidden="true"><svg class="flamme-symbol" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path class="voll" d="M12 21.5c-3.7 0-6.2-2.5-6.2-5.8 0-3.6 2.7-5.4 3.7-8.7.4 1.9 1.7 2.9 2.7 3.3.5-2.6 1.5-5.3 1.1-7.6 3.5 2.3 5 6.2 5 10.2 0 5.9-2.6 8.6-6.3 8.6z"/></svg></span>Gewohnheiten
               <span class="fok-titel-pfeil" aria-hidden="true">›</span>
             </button>
             <span class="kal-heute-chip">heute</span>
@@ -305,6 +322,9 @@
          ueber den Gewohnheiten navigiert durch nichts. Das ✕ sitzt deshalb
          oben in der Ansicht-Zeile. -->
     <div class="kal-kopf">
+      <!-- "‹ 2026" oben links wie in Apples Kalender (seit 18.11.2026), nur am
+           Handy - oeffnet die Monats- und Jahreswahl wie der Monatsname. -->
+      <button type="button" id="kalJahrKnopf" class="kal-jahr-knopf" aria-label="Monat und Jahr wählen"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><span></span></button>
       <button type="button" id="kalZurueck" class="kal-pfeil" aria-label="Vorheriger Monat">‹</button>
       <button type="button" id="kalMonatName" class="kal-monat" aria-haspopup="true"></button>
       <button type="button" id="kalVor" class="kal-pfeil" aria-label="Nächster Monat">›</button>
@@ -439,86 +459,94 @@
         <div class="admin-popup-icon">⚙️</div>
         <h2>Einstellungen</h2>
 
-        <div class="ein-abschnitt ein-zeile ein-abschnitt-erste" data-abschnitt="darstellung">
-          <span class="ein-kopf-icon">🎨</span>
-          <span class="ein-kopf-text">Darstellung</span>
-          <label class="switch" id="themeSwitchWrap">
-            <input type="checkbox" id="themeSwitch">
-            <span class="switch-label" id="themeSwitchLabel">Hell</span>
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-          </label>
+        <!-- Seit 18.11.2026 (iOS-Look, Hendrik: "1 zu 1 so übernehmen"): die
+             globalen Zeilen stehen in zwei weissen Gruppen - Konto allein
+             oben, darunter Darstellung bis Verwaltung. -->
+        <div class="ein-gruppe">
+          <details class="ein-abschnitt" data-abschnitt="konto">
+            <summary class="ein-kopf">
+              <span class="ein-kopf-icon kachel kachel-grau" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg></span>
+              <span class="ein-kopf-text">Konto</span>
+              <span id="kontoAdminBadge" class="pille" hidden>Admin</span>
+              <span class="ein-kopf-sub" id="subKonto"></span>
+              <span class="ein-kopf-pfeil">▾</span>
+            </summary>
+            <div class="ein-inhalt">
+              <p id="kontoName" class="ein-konto-name">Konto</p>
+              <p id="kontoAdresse" class="ein-konto-mail"></p>
+              <!-- Drei Knoepfe in einer Reihe (seit 18.10.2026, vorher je einer
+                   ueber die volle Breite):
+                   - "Konto wechseln" nur, wenn ein Admin im Browser angemeldet
+                     ist (konto.js) - die Auswahl steckt in der Anmeldemaske.
+                   - "Konto loeschen" immer rechts, rote Schrift statt des
+                     frueheren roten Kastens "Unwiderruflich": die Rueckfrage
+                     verlangt ohnehin die abgetippte Adresse. Fuer Admins
+                     ausgeblendet (app.js) - der einzige Admin darf sich nicht
+                     loeschen, der Server sperrt das zusaetzlich.
+                   Bis Oktober 2026 stand hier auch "ToDo-Zugang aufgeben". -->
+              <div class="ein-konto-knoepfe">
+                <button type="button" id="kontoWechseln" class="btn" hidden>Konto wechseln</button>
+                <button type="button" id="kontoAbmelden" class="btn">Abmelden</button>
+                <button type="button" id="kontoLoeschenStart" class="btn gefahr">Konto löschen</button>
+              </div>
+            </div>
+          </details>
         </div>
+        <div class="ein-gruppe">
+          <div class="ein-abschnitt ein-zeile ein-abschnitt-erste" data-abschnitt="darstellung">
+            <span class="ein-kopf-icon kachel kachel-blau" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19.5 14.6A8.2 8.2 0 0 1 9.4 4.5a8.2 8.2 0 1 0 10.1 10.1z"/></svg></span>
+            <span class="ein-kopf-text">Dunkelmodus</span>
+            <label class="switch" id="themeSwitchWrap">
+              <input type="checkbox" id="themeSwitch">
+              <span class="switch-label" id="themeSwitchLabel">Hell</span>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
 
-        <!-- Nur am Touchscreen sichtbar (JS blendet es ein): am Rechner zoomt
-             man mit Strg+Mausrad, und daran aendert ein Viewport-Eintrag
-             nichts - ein Schalter, der dort nichts tut, waere schlimmer als
-             keiner. Gilt pro Geraet (localStorage), wie die Darstellung. -->
-        <div class="ein-abschnitt ein-zeile" id="zoomZeile" data-abschnitt="zoom" hidden>
-          <span class="ein-kopf-icon">🔍</span>
-          <span class="ein-kopf-text">Zoom mit zwei Fingern</span>
-          <label class="switch" id="zoomSwitchWrap">
-            <input type="checkbox" id="zoomSwitch">
-            <span class="switch-label" id="zoomSwitchLabel">Aus</span>
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-          </label>
-        </div>
+          <!-- Nur am Touchscreen sichtbar (JS blendet es ein): am Rechner zoomt
+               man mit Strg+Mausrad, und daran aendert ein Viewport-Eintrag
+               nichts - ein Schalter, der dort nichts tut, waere schlimmer als
+               keiner. Gilt pro Geraet (localStorage), wie die Darstellung. -->
+          <div class="ein-abschnitt ein-zeile" id="zoomZeile" data-abschnitt="zoom" hidden>
+            <span class="ein-kopf-icon kachel kachel-grau" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></span>
+            <span class="ein-kopf-text">Zoom mit zwei Fingern</span>
+            <label class="switch" id="zoomSwitchWrap">
+              <input type="checkbox" id="zoomSwitch">
+              <span class="switch-label" id="zoomSwitchLabel">Aus</span>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
 
-        <div class="ein-abschnitt ein-zeile" data-abschnitt="benachrichtigungen">
-          <span class="ein-kopf-icon">🔔</span>
-          <span class="ein-kopf-text">Benachrichtigungen</span>
-          <label class="switch" id="pushSwitchWrap">
-            <input type="checkbox" id="pushSwitch">
-            <span class="switch-label" id="pushSwitchLabel">Aus</span>
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-          </label>
+          <div class="ein-abschnitt ein-zeile" data-abschnitt="benachrichtigungen">
+            <span class="ein-kopf-icon kachel kachel-rot" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15zM10 20.5h4"/></svg></span>
+            <span class="ein-kopf-text">Benachrichtigungen</span>
+            <label class="switch" id="pushSwitchWrap">
+              <input type="checkbox" id="pushSwitch">
+              <span class="switch-label" id="pushSwitchLabel">Aus</span>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+
+
+          <!-- Hilfe (seit 19.10.2026): oeffnet das Fenster #hilfeFenster
+               (hilfe.js), wie "Verlauf & Statistik" ein Eintrag mit Pfeil nach
+               rechts statt eines Akkordeons. Hendriks Wahl: bei den globalen
+               Zeilen, eigenes Fenster. -->
+          <button type="button" id="hilfeOeffnen" class="ein-abschnitt ein-zeile ein-zeile-knopf" data-abschnitt="hilfe">
+            <span class="ein-kopf-icon kachel kachel-gruen" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.8"/><circle class="voll" cx="12" cy="17" r="1.1"/></svg></span>
+            <span class="ein-kopf-text">Hilfe</span>
+            <span class="ein-kopf-pfeil ein-kopf-weiter" aria-hidden="true">›</span>
+          </button>
+
+          <!-- Nur fuer Admins sichtbar (JS blendet es je nach Rolle ein). Frueher
+               hinter einem Doppelklick auf den Titel versteckt. -->
+          <a href="/admin" id="adminAbschnitt" class="ein-abschnitt ein-zeile ein-link" hidden data-abschnitt="verwaltung">
+            <span class="ein-kopf-icon kachel kachel-dunkelgrau" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8-7.5 9.5-4.3-1.5-7.5-4.9-7.5-9.5V6z"/></svg></span>
+            <span class="ein-kopf-text">Verwaltung</span>
+          </a>
+
         </div>
         <p id="pushHinweis" class="ein-hinweis" hidden></p>
-
-        <details class="ein-abschnitt" data-abschnitt="konto">
-          <summary class="ein-kopf">
-            <span class="ein-kopf-icon">👤</span>
-            <span class="ein-kopf-text">Konto</span>
-            <span id="kontoAdminBadge" class="pille" hidden>Admin</span>
-            <span class="ein-kopf-sub" id="subKonto"></span>
-            <span class="ein-kopf-pfeil">▾</span>
-          </summary>
-          <div class="ein-inhalt">
-            <p id="kontoName" class="ein-konto-name">Konto</p>
-            <p id="kontoAdresse" class="ein-konto-mail"></p>
-            <!-- Drei Knoepfe in einer Reihe (seit 18.10.2026, vorher je einer
-                 ueber die volle Breite):
-                 - "Konto wechseln" nur, wenn ein Admin im Browser angemeldet
-                   ist (konto.js) - die Auswahl steckt in der Anmeldemaske.
-                 - "Konto loeschen" immer rechts, rote Schrift statt des
-                   frueheren roten Kastens "Unwiderruflich": die Rueckfrage
-                   verlangt ohnehin die abgetippte Adresse. Fuer Admins
-                   ausgeblendet (app.js) - der einzige Admin darf sich nicht
-                   loeschen, der Server sperrt das zusaetzlich.
-                 Bis Oktober 2026 stand hier auch "ToDo-Zugang aufgeben". -->
-            <div class="ein-konto-knoepfe">
-              <button type="button" id="kontoWechseln" class="btn" hidden>Konto wechseln</button>
-              <button type="button" id="kontoAbmelden" class="btn">Abmelden</button>
-              <button type="button" id="kontoLoeschenStart" class="btn gefahr">Konto löschen</button>
-            </div>
-          </div>
-        </details>
-
-        <!-- Hilfe (seit 19.10.2026): oeffnet das Fenster #hilfeFenster
-             (hilfe.js), wie "Verlauf & Statistik" ein Eintrag mit Pfeil nach
-             rechts statt eines Akkordeons. Hendriks Wahl: bei den globalen
-             Zeilen, eigenes Fenster. -->
-        <button type="button" id="hilfeOeffnen" class="ein-abschnitt ein-zeile ein-zeile-knopf" data-abschnitt="hilfe">
-          <span class="ein-kopf-icon">❓</span>
-          <span class="ein-kopf-text">Hilfe</span>
-          <span class="ein-kopf-pfeil ein-kopf-weiter" aria-hidden="true">›</span>
-        </button>
-
-        <!-- Nur fuer Admins sichtbar (JS blendet es je nach Rolle ein). Frueher
-             hinter einem Doppelklick auf den Titel versteckt. -->
-        <a href="/admin" id="adminAbschnitt" class="ein-abschnitt ein-zeile ein-link" hidden data-abschnitt="verwaltung">
-          <span class="ein-kopf-icon">🛡️</span>
-          <span class="ein-kopf-text">Verwaltung</span>
-        </a>
 
         <!-- Zwei Reiter fuer das, was nicht global ist, als Karteikarten: der
              gewaehlte Reiter geht nahtlos in den Inhalt darunter ueber (siehe
@@ -542,7 +570,7 @@
                  hinterlegt sind - dann gibt es die Funktion schlicht nicht. -->
             <details class="ein-abschnitt" id="googleAbschnitt" hidden data-abschnitt="google">
               <summary class="ein-kopf">
-                <span class="ein-kopf-icon">📆</span>
+                <span class="ein-kopf-icon kachel kachel-blau" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span>
                 <span class="ein-kopf-text">Google Kalender</span>
                 <span class="ein-kopf-sub" id="subGoogle"></span>
                 <span class="ein-kopf-pfeil">▾</span>
@@ -566,7 +594,7 @@
 
             <details class="ein-abschnitt" data-abschnitt="listen">
               <summary class="ein-kopf">
-                <span class="ein-kopf-icon">📋</span>
+                <span class="ein-kopf-icon kachel kachel-orange" aria-hidden="true"><svg viewBox="0 0 24 24"><circle class="voll" cx="5.5" cy="7" r="1.4"/><circle class="voll" cx="5.5" cy="12" r="1.4"/><circle class="voll" cx="5.5" cy="17" r="1.4"/><path d="M10 7h10M10 12h10M10 17h10"/></svg></span>
                 <span class="ein-kopf-text">Meine Listen</span>
                 <span class="ein-kopf-sub" id="subListen"></span>
                 <span class="ein-kopf-pfeil">▾</span>
@@ -582,7 +610,7 @@
 
             <details class="ein-abschnitt" id="geteiltAbschnitt" hidden data-abschnitt="geteilt">
               <summary class="ein-kopf">
-                <span class="ein-kopf-icon">🔗</span>
+                <span class="ein-kopf-icon kachel kachel-tuerkis" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></span>
                 <span class="ein-kopf-text">Geteilt mit mir</span>
                 <span class="ein-kopf-sub" id="subGeteilt"></span>
                 <span class="ein-kopf-pfeil">▾</span>
@@ -608,7 +636,7 @@
                  Rechner die Gewohnheiten mitlaufen laesst, will sie am Handy
                  nicht zwangslaeufig auch. -->
             <div class="ein-abschnitt ein-zeile" data-abschnitt="streifen">
-              <span class="ein-kopf-icon">🧩</span>
+              <span class="ein-kopf-icon kachel kachel-lila" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg></span>
               <span class="ein-kopf-text">Anzeige</span>
               <label class="switch">
                 <input type="checkbox" id="streifenGewohnheitenSwitch">
@@ -621,7 +649,7 @@
                  fokus_einstellungen). Angehakt = "In Reihe". Gefuellt aus
                  gewohnheiten-dialoge.js. -->
             <div class="ein-abschnitt ein-zeile" id="gewFlammenZeile" data-abschnitt="flamme">
-              <span class="ein-kopf-icon">🔥</span>
+              <span class="ein-kopf-icon kachel kachel-orange" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="voll" d="M12 21.5c-3.7 0-6.2-2.5-6.2-5.8 0-3.6 2.7-5.4 3.7-8.7.4 1.9 1.7 2.9 2.7 3.3.5-2.6 1.5-5.3 1.1-7.6 3.5 2.3 5 6.2 5 10.2 0 5.9-2.6 8.6-6.3 8.6z"/></svg></span>
               <span class="ein-kopf-text">Flamme zählt</span>
               <label class="switch">
                 <input type="checkbox" id="gewFlammenSwitch">
@@ -637,7 +665,7 @@
                  gewohnheiten.js (gewZeichneVerwalten). -->
             <details class="ein-abschnitt" data-abschnitt="verwalten">
               <summary class="ein-kopf">
-                <span class="ein-kopf-icon">✅</span>
+                <span class="ein-kopf-icon kachel kachel-gruen" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.8 2.8L16.2 9.5"/></svg></span>
                 <span class="ein-kopf-text">Gewohnheiten</span>
                 <span class="ein-kopf-sub" id="subGewVerwalten"></span>
                 <span class="ein-kopf-pfeil">▾</span>
@@ -658,7 +686,7 @@
                  Fokuszeit war bis dahin dessen dritter Reiter und hat jetzt ein
                  eigenes Fenster (Reiter Timer). -->
             <button type="button" id="gewVerlaufOeffnen" class="ein-abschnitt ein-zeile ein-zeile-knopf">
-              <span class="ein-kopf-icon">📅</span>
+              <span class="ein-kopf-icon kachel kachel-rot" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.5 19.5v-6M10 19.5V6M14.5 19.5v-9M19 19.5V9" stroke-width="2.6"/></svg></span>
               <span class="ein-kopf-text">Verlauf &amp; Statistik</span>
               <span class="ein-kopf-pfeil ein-kopf-weiter" aria-hidden="true">›</span>
             </button>
@@ -674,7 +702,7 @@
             <!-- Der Timer-Knopf ⏱ in der Kopfzeile. Gilt pro Geraet
                  (localStorage), wie die Anzeige der Gewohnheiten. -->
             <div class="ein-abschnitt ein-zeile" data-abschnitt="timer-anzeige">
-              <span class="ein-kopf-icon">🧩</span>
+              <span class="ein-kopf-icon kachel kachel-lila" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg></span>
               <span class="ein-kopf-text">Anzeige</span>
               <label class="switch">
                 <input type="checkbox" id="streifenTimerSwitch">
@@ -685,7 +713,7 @@
 
             <!-- Oeffnet das Fenster "Statistik" der Zeiterfassung (#zeitFenster). -->
             <button type="button" id="ztStatistikEinstellungen" class="ein-abschnitt ein-zeile ein-zeile-knopf">
-              <span class="ein-kopf-icon">📊</span>
+              <span class="ein-kopf-icon kachel kachel-indigo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.5 19.5v-6M10 19.5V6M14.5 19.5v-9M19 19.5V9" stroke-width="2.6"/></svg></span>
               <span class="ein-kopf-text">Statistik</span>
               <span class="ein-kopf-sub">Zeit pro Liste und ToDo</span>
               <span class="ein-kopf-pfeil ein-kopf-weiter" aria-hidden="true">›</span>
@@ -1024,7 +1052,7 @@
 
         <details class="ein-abschnitt" data-hilfe="listen">
           <summary class="ein-kopf">
-            <span class="ein-kopf-icon">📋</span>
+            <span class="ein-kopf-icon kachel kachel-orange" aria-hidden="true"><svg viewBox="0 0 24 24"><circle class="voll" cx="5.5" cy="7" r="1.4"/><circle class="voll" cx="5.5" cy="12" r="1.4"/><circle class="voll" cx="5.5" cy="17" r="1.4"/><path d="M10 7h10M10 12h10M10 17h10"/></svg></span>
             <span class="ein-kopf-text">Listen &amp; Teilen</span>
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
@@ -1049,7 +1077,7 @@
 
         <details class="ein-abschnitt" data-hilfe="farben">
           <summary class="ein-kopf">
-            <span class="ein-kopf-icon">🎨</span>
+            <span class="ein-kopf-icon kachel kachel-blau" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19.5 14.6A8.2 8.2 0 0 1 9.4 4.5a8.2 8.2 0 1 0 10.1 10.1z"/></svg></span>
             <span class="ein-kopf-text">Farben</span>
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
@@ -1088,7 +1116,7 @@
 
         <details class="ein-abschnitt" data-hilfe="kalender">
           <summary class="ein-kopf">
-            <span class="ein-kopf-icon">📅</span>
+            <span class="ein-kopf-icon kachel kachel-rot" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5.5 19.5v-6M10 19.5V6M14.5 19.5v-9M19 19.5V9" stroke-width="2.6"/></svg></span>
             <span class="ein-kopf-text">Kalender</span>
             <span class="ein-kopf-pfeil">▾</span>
           </summary>
@@ -1115,7 +1143,7 @@
 
         <details class="ein-abschnitt" data-hilfe="gewohnheiten">
           <summary class="ein-kopf">
-            <span class="ein-kopf-icon">🔥</span>
+            <span class="ein-kopf-icon kachel kachel-orange" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="voll" d="M12 21.5c-3.7 0-6.2-2.5-6.2-5.8 0-3.6 2.7-5.4 3.7-8.7.4 1.9 1.7 2.9 2.7 3.3.5-2.6 1.5-5.3 1.1-7.6 3.5 2.3 5 6.2 5 10.2 0 5.9-2.6 8.6-6.3 8.6z"/></svg></span>
             <span class="ein-kopf-text">Gewohnheiten &amp; Zeit</span>
             <span class="ein-kopf-pfeil">▾</span>
           </summary>

@@ -72,6 +72,8 @@ const kalFrageBox    = kalFrage.querySelector(".kal-frage-box");
 
 const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const MONAT_FORMAT = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
+const MONAT_NAME   = new Intl.DateTimeFormat("de-DE", { month: "long" });
+const kalJahrKnopf = document.getElementById("kalJahrKnopf");
 const TAG_FORMAT   = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
 const UHR_FORMAT   = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" });
 
@@ -710,7 +712,13 @@ function zeichneKalender() {
   const tageTermine = termineNachTagen();
   const heute = todayStr();
 
-  kalMonatName.textContent = MONAT_FORMAT.format(new Date(kalJahr, kalMonatNr, 1));
+  // Monat und Jahr getrennt (seit 18.11.2026, iOS-Look): am PC "November 2026"
+  // mit grauem Jahr, am Handy gross nur "November" und das Jahr als "‹ 2026"
+  // oben links (#kalJahrKnopf, oeffnet dieselbe Monats- und Jahreswahl).
+  const monatDatum = new Date(kalJahr, kalMonatNr, 1);
+  kalMonatName.innerHTML = `<span class="kal-monat-m">${MONAT_NAME.format(monatDatum)}</span> <span class="kal-monat-j">${kalJahr}</span>`;
+  kalMonatName.setAttribute("aria-label", MONAT_FORMAT.format(monatDatum));
+  if (kalJahrKnopf) kalJahrKnopf.lastChild.textContent = String(kalJahr);
 
   // Ueberfaellig-Chip: nur wenn es welche gibt. Zaehlt AUSSCHLIESSLICH ToDos -
   // ein vergangener Google-Termin ist nicht "ueberfaellig", den kann man nicht
@@ -1529,12 +1537,19 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
   if (titel && !karte) {
     const kopf = document.createElement("h3");
     kopf.className = "kal-liste-kopf";
-    kopf.textContent = titel;
+    // Seit 18.11.2026 (iOS-Look): heute steht "Heute" gross als Titel, das
+    // Datum klein darunter - statt Datum plus Chip "heute". Andere Tage
+    // tragen das Datum als Titel.
+    const kopfTitel = document.createElement("span");
+    kopfTitel.className = "kal-liste-titel";
+    kopfTitel.textContent = tag === heute ? "Heute" : titel;
+    kopf.appendChild(kopfTitel);
     if (tag === heute) {
-      const heuteChip = document.createElement("span");
-      heuteChip.className = "kal-heute-chip";
-      heuteChip.textContent = "heute";
-      kopf.appendChild(heuteChip);
+      kopf.classList.add("ist-heute");
+      const datum = document.createElement("span");
+      datum.className = "kal-liste-datum";
+      datum.textContent = titel;
+      kopf.appendChild(datum);
     }
     if (ruhig && todoPlus) {
       const plus = document.createElement("button");
@@ -1582,7 +1597,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
       for (const t of todosDesTages) {
         ziel.appendChild(baueEintrag(t, false, faelligHeute && isUrgent(t.due), faelligHeute));
       }
-      if (!todosDesTages.length) ziel.appendChild(baueLeerZeile("Nichts fällig."));
+      if (!todosDesTages.length) ziel.appendChild(baueLeerZeile("Nichts fällig.", "kal-leer-todos"));
     }
 
     // Termine stehen unter den ToDos: der Streifen beantwortet zuerst "was
@@ -1629,6 +1644,24 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
     hinweis.className = "kal-leer kal-google-fehler";
     hinweis.textContent = "Google-Termine gerade nicht erreichbar.";
     ziel.appendChild(hinweis);
+  }
+
+  // Gruppen wie in einer iOS-Liste (seit 18.11.2026): alles zwischen zwei
+  // Ueberschriften kommt in eine weisse Gruppe mit Haarlinien. Nicht in der
+  // Tages-Karte - die ist selbst schon die weisse Flaeche.
+  if (!karte) gruppiereTagesliste(ziel);
+}
+
+function gruppiereTagesliste(ziel) {
+  let gruppe = null;
+  for (const el of [...ziel.children]) {
+    if (el.matches(".kal-liste-kopf, .kal-gruppe")) { gruppe = null; continue; }
+    if (!gruppe) {
+      gruppe = document.createElement("div");
+      gruppe.className = "tag-gruppe";
+      ziel.insertBefore(gruppe, el);
+    }
+    gruppe.appendChild(el);
   }
 }
 
@@ -2805,9 +2838,9 @@ function baueGruppenKopf(text, beimPlus, einzahl, faellig, symbol) {
   return kopf;
 }
 
-function baueLeerZeile(text) {
+function baueLeerZeile(text, extra = "") {
   const p = document.createElement("p");
-  p.className = "kal-leer";
+  p.className = "kal-leer" + (extra ? " " + extra : "");
   p.textContent = text;
   return p;
 }
@@ -3814,6 +3847,7 @@ zieheGriff(document.getElementById("kalGriffBreite"), {
 });
 
 kalMonatName.addEventListener("click", schalteWahl);
+if (kalJahrKnopf) kalJahrKnopf.addEventListener("click", schalteWahl);
 // Auch die Pfeile blaettern mit Gleiten - derselbe Weg wie der Wisch.
 document.getElementById("kalZurueck").addEventListener("click", () => blaettere("monat", -1));
 document.getElementById("kalVor").addEventListener("click", () => blaettere("monat", 1));
