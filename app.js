@@ -416,6 +416,13 @@ function passeAlleNotizfelderAn() {
   document.querySelectorAll(".add-note, [data-edit-note]").forEach(passeNotizHoeheAn);
 }
 
+// Notiz zum Anzeigen (seit 19.11.2026): mehrere Leerzeilen hintereinander
+// werden zu einer - an der Karte und im Fokus-Bildschirm standen sonst grosse
+// Loecher. Gespeichert bleibt die Notiz, wie sie getippt wurde.
+function notizKompakt(text) {
+  return String(text || "").replace(/(?:[ \t]*\r?\n){3,}/g, "\n\n").trim();
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => (
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
@@ -2593,6 +2600,29 @@ function toggleDone(id, boardId = aktiveListe) {
   save(boardId);
 }
 
+// Abhaken mit kurzer Rueckmeldung (seit 19.11.2026, wie in Apples
+// Erinnerungen): der Haken steht, die Zeile streicht sich durch und gleitet
+// weg, erst dann springt das ToDo nach "Erledigt". Vorher sprang es sofort.
+// Nur beim Abhaken; Wieder-Oeffnen bleibt ohne Verzoegerung. Ein zweiter Tipp
+// waehrend der Animation zaehlt nicht (sonst waere es gleich wieder offen).
+const ABHAKEN_MS = 320;
+const abhakenLaeuft = new Set();
+const wenigBewegung = window.matchMedia("(prefers-reduced-motion: reduce)");
+function hakeAbMitAnimation(zeile, id, boardId = aktiveListe) {
+  if (abhakenLaeuft.has(id)) return;
+  const t = findTodo(id, daten[boardId] || state);
+  if (!t || t.done || wenigBewegung.matches) { toggleDone(id, boardId); return; }
+  abhakenLaeuft.add(id);
+  zeile.classList.add("abhaken");
+  setTimeout(() => {
+    abhakenLaeuft.delete(id);
+    // Inzwischen anderswo erledigt (anderes Geraet, Fokus-Bildschirm)?
+    const jetzt = findTodo(id, daten[boardId] || state);
+    if (jetzt && !jetzt.done) toggleDone(id, boardId);
+    else render();
+  }, ABHAKEN_MS);
+}
+
 function deleteTodo(id) {
   const idx = state.todos.findIndex(x => x.id === id);
   if (idx < 0) return;
@@ -2640,6 +2670,7 @@ function startEdit(id) {
   // der Karte. editingId bleibt gesetzt, solange es offen ist: so wartet das
   // Nachladen vom Server (tipptGerade), bis man fertig ist.
   editingId = id;
+  if (werkzeugeFuer) zeigeWerkzeuge(null);
   window.oeffneBearbeiten?.(id);
   const auswahl = window.getSelection && window.getSelection();
   if (auswahl && auswahl.removeAllRanges) auswahl.removeAllRanges();
@@ -3781,7 +3812,7 @@ function renderTodo(t) {
   cb.className = "check";
   cb.checked = t.done;
   cb.title = t.done ? "Wieder als offen markieren" : "Als erledigt abhaken";
-  cb.addEventListener("change", () => toggleDone(t.id));
+  cb.addEventListener("change", () => hakeAbMitAnimation(li, t.id));
   const cbTap = document.createElement("label");
   cbTap.className = "check-tap";
   cbTap.appendChild(cb);
@@ -3814,7 +3845,7 @@ function renderTodo(t) {
   if (t.note && !t.done) {
     const note = document.createElement("div");
     note.className = "todo-note";
-    note.textContent = t.note;
+    note.textContent = notizKompakt(t.note);
     main.appendChild(note);
   }
   if (!t.done) {
@@ -3864,6 +3895,9 @@ function renderTodo(t) {
   actions.appendChild(del);
 
   li.appendChild(actions);
+  // Wie viele Knoepfe beim Wischen am Finger herauskommen (style.css, Breite
+  // der Wisch-Knoepfe mal Anzahl).
+  li.style.setProperty("--aktionen", actions.children.length);
   return li;
 }
 
@@ -4211,29 +4245,27 @@ document.addEventListener("touchend", e => {
 });
 document.addEventListener("touchcancel", abbrechenFingerZug);
 
-// ---------- Werkzeuge am Finger + Doppeltipp zum Bearbeiten ----------
-// Zwei Dinge haengen an derselben Beruehrung, deshalb stehen sie zusammen:
+// ---------- Am Finger: Tipp = bearbeiten, nach links wischen = Werkzeuge ----------
+// Seit 19.11.2026 wie in Apples Erinnerungen und Mail (Hendriks Wahl): ein
+// Tipp auf ein ToDo oeffnet das Bearbeiten-Fenster, nach links wischen holt
+// rechts die Knoepfe Uhr, Bearbeiten und Loeschen hervor. Vorher zeigte ein
+// Tipp die Werkzeuge und erst ein Doppeltipp oeffnete das Bearbeiten.
+// Am Rechner bleibt alles beim Alten (:hover zeigt die Werkzeuge, Doppelklick
+// bearbeitet); das Aussehen der Wisch-Knoepfe steht in style.css unter
+// @media (hover: none).
 //
-// EIN Tipp auf eine Zeile zeigt ihren Bleistift und ihren Muelleimer. Am
-// Rechner erledigt das :hover; am Finger darf es das NICHT, weil der Browser
-// den ersten Tipp verschluckt, sobald er einen Hover-Effekt sichtbar macht
-// (siehe .todo.werkzeuge-offen in style.css). Genau eine Zeile zeigt sie: ein
-// Tipp auf eine andere nimmt sie mit, ein zweiter Tipp auf dieselbe legt sie
-// wieder weg.
-//
-// ZWEI Tipps oeffnen das Bearbeiten - `dblclick` gibt es am Touchscreen nicht,
-// also von Hand: zwei Beruehrungen derselben Karte, kurz hintereinander und
-// ohne den Finger nennenswert zu bewegen.
+// Genau eine Zeile ist offen (werkzeugeFuer). Ein Tipp irgendwo klappt sie
+// erst wieder zu, statt gleich etwas anderes zu tun. Langes Druecken bleibt
+// das Ziehen (fingerZug oben): bewegt sich der Finger vorher, ist es keins.
+// Der rechte Rand gehoert der Kalender-Geste (RAND in kalender.js).
 //
 // Sitzt am Board statt an jeder Zeile: die Karten werden bei jedem render()
-// neu gebaut, ein Handler pro Karte muesste dabei jedes Mal mit. Titel und
-// Koepfe nehmen stattdessen doppeltippAuf() (siehe Hilfsfunktionen); den
-// Merker letzterTipp teilen sich beide Wege.
+// neu gebaut, ein Handler pro Karte muesste dabei jedes Mal mit.
 
 // Setzt die Klasse direkt am DOM statt ueber render(): ein kompletter Neubau
-// des Boards fuer zwei eingeblendete Knoepfe waere zu viel, und er wuerde
-// nebenbei jede offene Eingabe einkassieren. renderTodo() liest die Variable
-// beim naechsten echten Neubau selbst aus.
+// des Boards fuer eingeblendete Knoepfe waere zu viel, und er wuerde nebenbei
+// jede offene Eingabe einkassieren. renderTodo() liest die Variable beim
+// naechsten echten Neubau selbst aus.
 function zeigeWerkzeuge(id) {
   werkzeugeFuer = id;
   for (const el of board.querySelectorAll(".todo")) {
@@ -4241,27 +4273,82 @@ function zeigeWerkzeuge(id) {
   }
 }
 
+const WISCH_KNOPF = 64;      // px je Knopf - gehoert zu den Wisch-Knoepfen in style.css
+const WISCH_SCHWELLE = 8;    // px, ab denen sich waagerecht gegen senkrecht entscheidet
+const WISCH_RAND = 24;       // px am rechten Rand: dort beginnt die Kalender-Geste
+let wisch = null;            // { id, karte, x, y, achse, offen, breite, pos, bewegt }
+
+board.addEventListener("touchstart", e => {
+  wisch = null;
+  if (e.touches.length !== 1 || editingId || addingCat) return;
+  const karte = e.target.closest(".todo");
+  if (!karte || !karte.dataset.id) return;
+  if (e.target.closest("input, textarea, select, a, .actions")) return;
+  const t = e.touches[0];
+  const offen = karte.classList.contains("werkzeuge-offen");
+  if (!offen && window.innerWidth - t.clientX <= WISCH_RAND) return;
+  const aktionen = karte.querySelector(".actions");
+  wisch = {
+    id: karte.dataset.id, karte, x: t.clientX, y: t.clientY, achse: null, offen,
+    breite: (aktionen ? aktionen.children.length : 0) * WISCH_KNOPF,
+    pos: offen ? -1 : 0, bewegt: false,
+  };
+}, { passive: true });
+
+document.addEventListener("touchmove", e => {
+  if (!wisch) return;
+  if (fingerZug && fingerZug.aktiv) { wisch = null; return; }
+  const t = e.touches[0];
+  const dx = t.clientX - wisch.x;
+  const dy = t.clientY - wisch.y;
+  if (!wisch.achse) {
+    if (Math.abs(dx) < WISCH_SCHWELLE && Math.abs(dy) < WISCH_SCHWELLE) return;
+    wisch.bewegt = true;
+    if (Math.abs(dy) >= Math.abs(dx) || !wisch.breite) { wisch.achse = "y"; return; }
+    wisch.achse = "x";
+    wisch.karte.classList.add("wischt");
+  }
+  if (wisch.achse !== "x") return;
+  e.preventDefault();   // die Seite bleibt stehen, solange gewischt wird
+  let pos = Math.min(0, (wisch.offen ? -wisch.breite : 0) + dx);
+  // Ueber die Knoepfe hinaus geht es nur zaeh weiter, wie bei iOS.
+  if (pos < -wisch.breite) pos = -wisch.breite + (pos + wisch.breite) * 0.3;
+  wisch.pos = pos;
+  wisch.karte.style.setProperty("--wisch", pos + "px");
+}, { passive: false });
+
 board.addEventListener("touchend", e => {
+  const w = wisch;
+  wisch = null;
   if (editingId || addingCat) return;
   if (e.changedTouches.length !== 1) return;
-  // Ein Zug ist kein Tipp - und der Bereich unter dem Text (Haken, Knoepfe,
-  // Unterpunkte) hat eigene Aufgaben.
+  // Ein Zug ist kein Tipp.
   if (fingerZug && fingerZug.aktiv) return;
+  if (w && w.achse === "x") {
+    e.preventDefault();
+    w.karte.classList.remove("wischt");
+    w.karte.style.removeProperty("--wisch");
+    zeigeWerkzeuge(w.pos < -w.breite / 2 ? w.id : null);
+    return;
+  }
+  // Gescrollt, nicht getippt.
+  if (w && w.bewegt) return;
+  // Der Bereich unter dem Text (Haken, Knoepfe, Unterpunkte) hat eigene Aufgaben.
   const main = e.target.closest(".todo-main");
   if (!main || e.target.closest("input, textarea, button, label, select, a")) return;
   const karte = main.closest(".todo");
   if (!karte || !karte.dataset.id) return;
-
-  if (!istDoppeltipp(karte.dataset.id, e.changedTouches[0])) {
-    zeigeWerkzeuge(werkzeugeFuer === karte.dataset.id ? null : karte.dataset.id);
-    return;
-  }
-
-  // Haelt den nachgeschobenen Klick vom Browser zurueck - der landete sonst
-  // im gerade geoeffneten Eingabefeld und setzte den Cursor irgendwohin.
+  // Haelt den nachgeschobenen Klick vom Browser zurueck.
   e.preventDefault();
-  zeigeWerkzeuge(null);   // im Bearbeiten-Dialog stehen eigene Knoepfe
+  // Ist irgendwo eine Zeile offen, klappt der Tipp sie nur zu.
+  if (werkzeugeFuer) { zeigeWerkzeuge(null); return; }
   startEdit(karte.dataset.id);
+});
+document.addEventListener("touchcancel", () => {
+  if (!wisch) return;
+  wisch.karte.classList.remove("wischt");
+  wisch.karte.style.removeProperty("--wisch");
+  wisch = null;
 });
 
 // Daneben getippt heisst: fertig. Ohne das bliebe die zuletzt angetippte Zeile

@@ -53,7 +53,6 @@ const ztInhaltEl      = document.getElementById("ztInhalt");
 const ztGekapptEl     = document.getElementById("ztGekappt");
 const ztStartBlock    = document.getElementById("ztStartBlock");
 const ztUhrEl         = document.getElementById("ztUhr");
-const ztUhrZeitEl     = document.getElementById("ztUhrZeit");
 const ztHeuteKopf     = document.getElementById("ztHeuteKopf");
 const ztHeuteSummeEl  = document.getElementById("ztHeuteSumme");
 const ztHeuteListeEl  = document.getElementById("ztHeuteListe");
@@ -659,7 +658,6 @@ function ztZeichne() {
   if (ztLaeuft) {
     ztDdStart.schliesse();
     ztDdLaufend.zeichne();
-    ztUhrZeitEl.textContent = ztUhrText(ztVerstrichen());
   } else {
     ztDdLaufend.schliesse();
     ztDdStart.zeichne();
@@ -871,7 +869,6 @@ for (const k of ztKnoepfe) k.addEventListener("click", () => (ztLaeuft ? zfZeige
 document.getElementById("timerZu").addEventListener("click", ztSchliesse);
 ztPopup.addEventListener("click", e => { if (e.target === ztPopup) ztSchliesse(); });
 document.getElementById("ztStarten").addEventListener("click", ztStarte);
-document.getElementById("ztStopp").addEventListener("click", () => ztStoppe(false));
 ztHeuteKopf.addEventListener("click", () => { ztHeuteOffen = !ztHeuteOffen; ztZeichneHeute(); });
 document.getElementById("ztNachtragen").addEventListener("click", () => ztOeffneDialog(null));
 document.getElementById("ztStatistikOeffnen").addEventListener("click", () => {
@@ -1459,7 +1456,6 @@ setInterval(() => {
     return;
   }
   ztZeichneKnoepfe();
-  if (ztOffen && !ztUhrEl.hidden) ztUhrZeitEl.textContent = ztUhrText(ztVerstrichen());
   if (zfOffen) zfUhrEl.textContent = ztUhrText(ztVerstrichen());
 }, 1000);
 
@@ -1568,7 +1564,7 @@ function zfZeichne() {
   zfOrtEl.classList.toggle("mit-farbe", !!fund?.farbe);
   zfUhrEl.textContent = ztUhrText(ztVerstrichen());
 
-  const notiz = fund?.todo.note || "";
+  const notiz = notizKompakt(fund?.todo.note);
   zfNotizEl.textContent = notiz;
   zfNotizEl.hidden = !notiz;
   const punkte = fund ? (daten[fund.boardId]?.unterpunkte || []).filter(u => u.todoId === fund.todo.id) : [];

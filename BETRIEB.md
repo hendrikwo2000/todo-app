@@ -1443,6 +1443,46 @@ angesehen); echter Mauszug der Uhr.
 * **Bereich ohne Farbe**: weiße Kopfzeile mit feiner Linie statt Grau (Hendrik:
   „Standardfarbe passt irgendwie nicht“; die genaue Form war mein Call).
 
+**Zweiter Nachtrag (Hendrik: „1 bis 9 umsetzen“ aus meiner Ideenliste, dazu
+die Tageskarte):**
+* **Kopfzeile am PC bleibt stehen** (`html.breit .topbar` sticky): sobald
+  gescrollt ist (`html.kopf-klein`, `navKopfKlein` in `navigation.js`),
+  durchscheinender Grund mit Unschärfe, feine Linie, Titel 20 px. Die Höhe
+  bleibt gleich, sonst sprang der Inhalt am Übergang.
+* **Termin-Ansicht gruppiert** wie das Formular (Titel + Notiz oben, Zeitraum,
+  Ort, Wiederholung darunter); unten Löschen | Bearbeiten | Schließen gleich
+  breit.
+* **Unter Heute kein Punkt mehr vor dem Titel** - die Farbe trägt der
+  Bereichsname.
+* **Notizen ohne große Lücken**: `notizKompakt()` in `app.js` macht beim
+  Anzeigen (Karte, Fokus) aus mehreren Leerzeilen eine; gespeichert bleibt,
+  was getippt wurde.
+* „Unter Heute ab“: Standard heißt „2 Wochen (Standard)“ (wurde am Handy
+  abgeschnitten). Reiter **„Timer“ heißt jetzt „Zeit“** wie überall sonst.
+* **Zeit-Fenster bei laufender Uhr**: nur noch „Läuft gerade auf“ (zum
+  Zuordnen) und „Heute“ - Zeit und Stoppen stehen im Fokus-Bildschirm, aus
+  dem man hierherkommt.
+* **Abhaken mit Rückmeldung** (`hakeAbMitAnimation` in `app.js`, am Board und
+  in den Heute-Zeilen): Haken, Zeile streicht sich durch und gleitet weg
+  (320 ms), dann erst „Erledigt“. Nur beim Abhaken, nicht beim Öffnen; ein
+  zweiter Tipp in der Zeit zählt nicht; mit „weniger Bewegung“ sofort.
+* **Am Finger: Tipp = Bearbeiten, nach links wischen = Werkzeuge** (wie Apples
+  Erinnerungen; ersetzt „ein Tipp zeigt Stift/Papierkorb, zwei Tipps
+  bearbeiten“). Uhr, Bearbeiten, Löschen kommen rechts als farbige Felder über
+  die volle Zeilenhöhe hervor (CSS unter `@media (hover: none)`, Breite je
+  Knopf `WISCH_KNOPF` = 64 px, Anzahl `--aktionen` aus `renderTodo`). Eine
+  Zeile ist offen; ein Tipp irgendwo klappt sie erst zu. Senkrecht bleibt
+  Scrollen, langes Drücken bleibt Ziehen, die rechten 24 px gehören der
+  Kalender-Geste. Am Rechner unverändert (:hover, Doppelklick).
+* **Tageskarte**: das kleine ＋ an „ToDos“ ist weg; das runde ＋ öffnet das
+  Neu-Fenster mit „Termin“ vorgewählt, dem Tag der Karte und ohne „Neuer
+  Bereich“ (`oeffneAnlegen({ art, tag, ohneBereich })`; die Vorgabe reist über
+  `formularFelder.neuVorgabe` mit, wenn man zu „ToDo“ wechselt - dort ist der
+  Tag das „bis“). Hendriks Wahl: nur der Link „Neuer Bereich“ fällt weg, die
+  Zeile „Bereich“ bleibt.
+* **Neu am Handy im Vollbild** wie Bearbeiten (auch der Termin aus dem
+  Neu-Fenster).
+
 ## Notizfeld
 
 Wächst mit dem Inhalt nach unten statt zu scrollen — im Anlege-Feld wie im

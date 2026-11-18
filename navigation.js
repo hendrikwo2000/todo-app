@@ -24,6 +24,14 @@
 const navLeiste = document.getElementById("fusszeile");
 navLeiste.classList.add("unten");
 
+// Kopfzeile am PC: sobald die Seite gescrollt ist, wird sie zur schmalen,
+// durchscheinenden Leiste (style.css, html.kopf-klein; seit 19.11.2026).
+function navKopfKlein() {
+  document.documentElement.classList.toggle("kopf-klein", window.scrollY > 4);
+}
+window.addEventListener("scroll", navKopfKlein, { passive: true });
+navKopfKlein();
+
 // ---------- Fenster der Leiste ----------
 // Einstellungen samt den Fenstern, die man aus ihnen oeffnet (Hilfe, Verlauf
 // & Statistik der Gewohnheiten), und Zeit samt Statistik.

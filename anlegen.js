@@ -56,6 +56,10 @@ const ANLEGEN_PLATZHALTER = {
 };
 
 let anlegenArt = "todo";
+// Was beim Oeffnen mitkam (seit 19.11.2026): tag = Tag aus der Tageskarte
+// (Termin-Beginn bzw. "bis"), ohneBereich = kein Link "Neuer Bereich" (aus dem
+// Kalender heraus ergibt ein neuer Bereich keinen Sinn - Hendriks Wahl).
+let anlegenVorgabe = {};
 
 function anlegenTerminMoeglich() {
   return !!(googleZustand.verbunden && googleZustand.schreiben);
@@ -64,18 +68,25 @@ function anlegenTerminMoeglich() {
 // Der Tag, an dem ein Termin vorbelegt startet: mit offenem Kalender dessen
 // Auswahl, sonst heute.
 function anlegenStartTag() {
-  return (kalOffen && kalAuswahl) || todayStr();
+  return anlegenVorgabe.tag || (kalOffen && kalAuswahl) || todayStr();
 }
 
 // vorgabe.bereich: der Bereich, aus dem heraus geoeffnet wurde ("＋ ToDo" im
 // Bereichskopf) - dann ist er vorgewaehlt. vorgabe.titel/.notiz: was schon
-// getippt war (Rueckweg aus dem Termin-Formular).
+// getippt war (Rueckweg aus dem Termin-Formular). vorgabe.art = "termin":
+// gleich der Termin (das runde ＋ der Tageskarte), vorgabe.tag/.ohneBereich
+// siehe anlegenVorgabe.
 function oeffneAnlegen(vorgabe = {}) {
   const todo = !!aktiveListe;
   const termin = anlegenTerminMoeglich();
   if (!todo && !termin) return;
-  // Ohne Liste gibt es nur Termine - dann gleich ins Termin-Formular.
-  if (!todo) { anlegenZumTermin(vorgabe.titel || "", vorgabe.notiz || ""); return; }
+  anlegenVorgabe = { tag: vorgabe.tag || null, ohneBereich: !!vorgabe.ohneBereich };
+  // Ohne Liste gibt es nur Termine - dann gleich ins Termin-Formular. Ebenso,
+  // wenn der Termin vorgewaehlt sein soll und es ihn gibt.
+  if (!todo || (vorgabe.art === "termin" && termin)) {
+    anlegenZumTermin(vorgabe.titel || "", vorgabe.notiz || "");
+    return;
+  }
 
   anlegenTitel.value = vorgabe.titel || "";
   anlegenNotiz.value = vorgabe.notiz || "";
@@ -87,7 +98,7 @@ function oeffneAnlegen(vorgabe = {}) {
   // In der Kalenderansicht am Handy hat ein neues ToDo den gewaehlten Tag als
   // "bis" (wie das ＋ an "ToDos" in der Tages-Karte); sonst keins.
   const kalAnsicht = kalOffen && !istSplit();
-  setzeAnlegenBis(kalAnsicht ? anlegenStartTag() : "");
+  setzeAnlegenBis(anlegenVorgabe.tag || (kalAnsicht ? anlegenStartTag() : ""));
   waehleAnlegenArt("todo");
   anlegenPopup.hidden = false;
   passeNotizHoeheAn(anlegenNotiz);
@@ -125,7 +136,7 @@ function waehleAnlegenArt(art) {
   anlegenTitel.placeholder = ANLEGEN_PLATZHALTER[art];
   for (const z of anlegenForm.querySelectorAll("[data-fuer]")) z.hidden = z.dataset.fuer !== art;
   zeigeAnlegenThema();
-  anlegenBereichLink.hidden = art !== "todo";
+  anlegenBereichLink.hidden = art !== "todo" || anlegenVorgabe.ohneBereich;
   anlegenTitel.focus();
 }
 
@@ -134,7 +145,11 @@ function anlegenZumTermin(titel, notiz) {
   schliesseAnlegen();
   oeffneTerminFormular(anlegenStartTag(), null);
   if (!formularFelder) return;
-  Object.assign(formularFelder, { titel: titel.trim(), notiz: notiz || "", ausNeu: true });
+  Object.assign(formularFelder, {
+    titel: titel.trim(), notiz: notiz || "", ausNeu: true,
+    // Fuer den Rueckweg zu "ToDo": Tag und "ohne Neuer Bereich" bleiben.
+    neuVorgabe: { ...anlegenVorgabe },
+  });
   zeichneTerminPopup();
   // Wie beim Formular selbst: von allein ins Titelfeld nur am Rechner (am
   // Handy schoebe die Tastatur das halbe Fenster weg).

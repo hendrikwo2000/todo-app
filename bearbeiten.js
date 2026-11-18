@@ -68,7 +68,7 @@ function oeffneBearbeiten(id) {
   zeigeBearbeitenThema(t.themaId || "");
 
   bearbeitenVorlauf.replaceChildren(
-    new Option("2 Wochen vorher (Standard)", ""),
+    new Option("2 Wochen (Standard)", ""),
     ...VORLAEUFE.map(v => new Option(v.name, String(v.tage))));
   bearbeitenVorlauf.value = typeof t.vorlauf === "number" ? String(t.vorlauf) : "";
   setzeBearbeitenBis(t.due || "");

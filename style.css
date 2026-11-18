@@ -6690,3 +6690,119 @@ html.kal-ansicht .kalender { width: 100vw; border-left: 0; padding-left: max(14p
    "Standardfarbe passt irgendwie nicht"). */
 .column:not([data-farbe]) { --kopf-ton: var(--row); }
 .column:not([data-farbe]) .col-head { box-shadow: inset 0 -.5px 0 var(--line); }
+
+/* ===================== Kopfzeile am PC bleibt stehen (seit 19.11.2026) =====================
+   Wer im Board nach unten scrollte, verlor Uhr, ＋ und Zahnrad. Jetzt klebt die
+   Zeile oben; sobald gescrollt ist (html.kopf-klein, navigation.js), bekommt
+   sie einen durchscheinenden Grund mit Unschaerfe und eine feine Linie, und der
+   grosse Titel wird kleiner - wie die Navigationsleiste in iOS. Die Hoehe
+   bleibt dabei gleich, sonst sprang der Inhalt beim Uebergang. */
+html.breit .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  margin: calc(-1 * max(24px, var(--oben))) calc(-1 * max(26px, env(safe-area-inset-right))) 12px calc(-1 * max(26px, env(safe-area-inset-left)));
+  padding: max(24px, var(--oben)) max(26px, env(safe-area-inset-right)) 6px max(26px, env(safe-area-inset-left));
+  transition: background-color .2s, box-shadow .2s;
+}
+html.breit .topbar h1 { transition: font-size .2s; }
+html.breit.kopf-klein .topbar {
+  background: var(--leiste);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: inset 0 -.5px 0 var(--line);
+}
+html.breit.kopf-klein .topbar h1 { font-size: 20px; }
+html.breit.kopf-klein .topbar > .save-status { opacity: 0; }
+
+/* Termin-Ansicht gruppiert (seit 19.11.2026): Titel wie im Formular, Notiz in
+   derselben Gruppe darunter. */
+.kal-form-gruppiert .kal-form-textgruppe .kal-ansicht-titel { padding: 12px 0; font-size: 20px; }
+.kal-form-gruppiert .kal-form-notiztext {
+  padding: 10px 15px 12px;
+  border-top: .5px solid var(--line);
+  font-size: 15px;
+}
+.kal-form-gruppiert .kal-form-zeitraum { padding-top: 12px; padding-bottom: 12px; }
+
+/* Laufende Uhr im Fenster: nur noch das ToDo zum Zuordnen. */
+.zt-uhr { gap: 0; }
+
+/* ===================== Abhaken mit Rueckmeldung (seit 19.11.2026) ===================== */
+@keyframes abhakenWeg {
+  0%   { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateX(18px); }
+}
+.todo.abhaken,
+.kal-todo-zeile.abhaken { animation: abhakenWeg .26s ease-in .06s forwards; pointer-events: none; }
+.todo.abhaken .todo-text,
+.kal-todo-zeile.abhaken .kal-eintrag-titel { text-decoration: line-through; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  .todo.abhaken, .kal-todo-zeile.abhaken { animation: none; }
+}
+
+/* ===================== Wischen am Finger (seit 19.11.2026) =====================
+   Nach links wischen schiebt die Zeile zur Seite, rechts kommen die Knoepfe
+   als farbige Felder ueber die volle Hoehe hervor - wie in Apples Erinnerungen.
+   Breite je Knopf: WISCH_KNOPF in app.js. --wisch setzt app.js beim Ziehen,
+   offen steht die Zeile um die Breite aller Knoepfe (--aktionen) versetzt. */
+@media (hover: none) {
+  #board .todo { overflow: hidden; --wisch-offen: calc(var(--aktionen, 2) * -64px); }
+  #board .todo.werkzeuge-offen:not(.wischt) { --wisch: var(--wisch-offen); }
+  #board .todo > .check-tap,
+  #board .todo > .todo-main {
+    transform: translateX(var(--wisch, 0px));
+    transition: transform .25s cubic-bezier(.32, .72, 0, 1);
+  }
+  #board .todo .actions {
+    top: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    gap: 0;
+    padding: 0;
+    background: none;
+    opacity: 1;
+    pointer-events: none;
+    transform: translateX(calc(100% + var(--wisch, 0px)));
+    transition: transform .25s cubic-bezier(.32, .72, 0, 1);
+  }
+  #board .todo.werkzeuge-offen .actions { pointer-events: auto; }
+  #board .todo.wischt > .check-tap,
+  #board .todo.wischt > .todo-main,
+  #board .todo.wischt .actions { transition: none; }
+  #board .todo .actions .act {
+    width: 64px;
+    height: auto;
+    align-self: stretch;
+    border-radius: 0;
+    background: #8e8e93;
+    color: #fff;
+  }
+  #board .todo .actions .act.uhr { background: var(--accent); }
+  #board .todo .actions .act.del { background: var(--red); }
+  #board .todo .actions .act .sym { width: 22px; height: 22px; }
+}
+
+/* ===================== Tageskarte: nur das runde ＋ (seit 19.11.2026) ===================== */
+/* Es oeffnet das Neu-Fenster mit "Termin" vorgewaehlt (anlegen.js); das
+   kleine ＋ an "ToDos" in der Karte ist weg. */
+.kal-tagkarte .kal-gruppe-plus { display: none; }
+
+/* ===================== Neu am Handy im Vollbild (seit 19.11.2026) ===================== */
+@media (max-width: 560px) {
+  #anlegenPopup,
+  #kalTerminPopup.wie-neu { padding: 0; align-items: stretch; }
+  #anlegenPopup .admin-popup-box.anlegen-box,
+  #kalTerminPopup.wie-neu .kal-popup-box {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: max(6px, var(--oben)) 16px max(16px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  #anlegenPopup .anlegen-knoepfe { margin-top: auto; }
+  #kalTerminPopup.wie-neu .kal-form { flex: 1; }
+}

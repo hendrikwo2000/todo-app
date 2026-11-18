@@ -2315,7 +2315,7 @@ function baueNeuKopf(f) {
     b.textContent = text;
     if (art === "todo") {
       b.addEventListener("click", () => {
-        const mit = { titel: f.titel, notiz: f.notiz };
+        const mit = { titel: f.titel, notiz: f.notiz, ...(f.neuVorgabe || {}) };
         schliesseTerminFormular();
         window.anlegenZuToDo?.(mit);
       });
@@ -2348,7 +2348,9 @@ function faerbePunkt(punkt, f) {
  */
 function baueTerminAnsicht(f, termin) {
   const box = document.createElement("div");
-  box.className = "kal-form kal-form-ansicht";
+  // Seit 19.11.2026 gruppiert wie das Formular: Titel (und Notiz) als Gruppe
+  // oben, Zeitraum, Ort und Wiederholung als zweite Gruppe darunter.
+  box.className = "kal-form kal-form-ansicht kal-form-gruppiert";
   // Die Zeilen scrollen in einem eigenen Bereich, die Knopfreihe steht fest
   // darunter. Bis zum 26.09.2026 klebte sie nur per position:sticky im
   // mitscrollenden Inhalt - bei einer langen Notiz stand sie dann mitten im
@@ -2367,7 +2369,21 @@ function baueTerminAnsicht(f, termin) {
   punkt.setAttribute("aria-hidden", "true");
   faerbePunkt(punkt, f);
   titelZeile.append(titel, punkt);
-  inhalt.appendChild(titelZeile);
+  const textGruppe = document.createElement("div");
+  textGruppe.className = "anlegen-gruppe kal-form-textgruppe";
+  textGruppe.appendChild(titelZeile);
+  // --- Notiz, nur wenn es eine gibt: Text mit klickbaren Links ---
+  // Nur http/https (siehe textMitLinks), Zeilenumbrueche aus Google bleiben.
+  const notizText = f.notiz.trim() ? beschreibungAlsText(f.notiz) : "";
+  if (notizText) {
+    const text = document.createElement("div");
+    text.className = "kal-form-notiztext";
+    text.appendChild(textMitLinks(notizText));
+    textGruppe.appendChild(text);
+  }
+  inhalt.appendChild(textGruppe);
+  const gruppe = document.createElement("div");
+  gruppe.className = "anlegen-gruppe kal-form-gruppe";
 
   // --- Zeitraum als Text ---
   const zeitraum = document.createElement("div");
@@ -2404,7 +2420,7 @@ function baueTerminAnsicht(f, termin) {
     hinweis.textContent = "Ganztägig";
     zeitraum.appendChild(hinweis);
   }
-  inhalt.appendChild(zeitraum);
+  gruppe.appendChild(zeitraum);
 
   // --- Ort, nur wenn es einen gibt: Link zu Google Maps ---
   // Bewusst der Web-Link und kein geo:-Schema: am Handy uebernimmt ihn die
@@ -2420,7 +2436,7 @@ function baueTerminAnsicht(f, termin) {
     link.title = "Auf Google Maps zeigen";
     link.textContent = f.ort;
     ort.append(formSymbol("ort"), link);
-    inhalt.appendChild(ort);
+    gruppe.appendChild(ort);
   }
 
   // --- Wiederholung, nur bei einer Serie ---
@@ -2431,22 +2447,10 @@ function baueTerminAnsicht(f, termin) {
     const wdhText = document.createElement("span");
     wdhText.className = "kal-form-reihe-text kal-form-wdh-text";
     wdh.append(formSymbol("wdh"), wdhText);
-    inhalt.appendChild(wdh);
+    gruppe.appendChild(wdh);
     fuelleWdhZeile(wdh, f);
   }
-
-  // --- Notiz, nur wenn es eine gibt: Text mit klickbaren Links ---
-  // Nur http/https (siehe textMitLinks), Zeilenumbrueche aus Google bleiben.
-  const notizText = f.notiz.trim() ? beschreibungAlsText(f.notiz) : "";
-  if (notizText) {
-    const notizReihe = document.createElement("div");
-    notizReihe.className = "kal-form-reihe kal-form-reihe-oben kal-form-anzeige";
-    const text = document.createElement("div");
-    text.className = "kal-form-notiztext";
-    text.appendChild(textMitLinks(notizText));
-    notizReihe.append(formSymbol("notiz"), text);
-    inhalt.appendChild(notizReihe);
-  }
+  inhalt.appendChild(gruppe);
 
   box.appendChild(baueFuss(f, termin));
   return box;
@@ -3090,7 +3094,7 @@ function baueEintrag(t, mitDatum, faellig, mitBis = false) {
   kasten.type = "checkbox";
   kasten.className = "check";
   kasten.checked = !!t.done;
-  kasten.addEventListener("change", () => toggleDone(t.id, t.boardId));
+  kasten.addEventListener("change", () => hakeAbMitAnimation(zeile, t.id, t.boardId));
   haken.appendChild(kasten);
   zeile.appendChild(haken);
 
@@ -3098,10 +3102,8 @@ function baueEintrag(t, mitDatum, faellig, mitBis = false) {
   knopf.type = "button";
   knopf.className = "kal-eintrag";
   knopf.addEventListener("click", () => springeZuToDo(t.boardId, t.id));
-
-  const punkt = document.createElement("span");
-  punkt.className = "kal-punkt" + (t.farbe ? " farbe-" + t.farbe : "");
-  knopf.appendChild(punkt);
+  // Der farbige Punkt vor dem Titel ist seit 19.11.2026 weg: die Farbe traegt
+  // jetzt der Bereichsname darunter (doppelt war es nur unruhig).
 
   const text = document.createElement("span");
   text.className = "kal-eintrag-text";
@@ -4129,8 +4131,13 @@ kalTagStreifen.addEventListener("click", e => {
   e.stopPropagation();
   e.preventDefault();
 }, true);
+// Das runde ＋ der Tageskarte (seit 19.11.2026, Hendrik): dasselbe Neu-Fenster
+// wie das ＋ der Leiste, aber mit "Termin" vorgewaehlt, dem Tag der Karte und
+// ohne "Neuer Bereich". Das kleine ＋ an "ToDos" in der Karte ist weg (CSS).
 kalTagKarte.querySelector(".kal-tagkarte-plus")
-  .addEventListener("click", () => { if (kalAuswahl) oeffneTerminFormular(kalAuswahl, null); });
+  .addEventListener("click", () => {
+    if (kalAuswahl) oeffneAnlegen({ art: "termin", tag: kalAuswahl, ohneBereich: true });
+  });
 // Ein Tipp auf eine hervorschauende Nachbarkarte blaettert dorthin.
 for (const karte of kalTagKarten) {
   const schritt = Number(karte.dataset.schritt);

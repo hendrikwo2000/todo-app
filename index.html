@@ -634,7 +634,7 @@
           <div class="ein-reiter" role="tablist" aria-label="Einstellungen">
             <button type="button" class="ein-reiter-seg" id="einReiterKnopfTodo" role="tab" data-ein-reiter="todo" aria-selected="true" aria-controls="einReiterTodo">ToDo</button>
             <button type="button" class="ein-reiter-seg" id="einReiterKnopfGewohnheiten" role="tab" data-ein-reiter="gewohnheiten" aria-selected="false" aria-controls="einReiterGewohnheiten">Gewohnheiten</button>
-            <button type="button" class="ein-reiter-seg" id="einReiterKnopfTimer" role="tab" data-ein-reiter="timer" aria-selected="false" aria-controls="einReiterTimer">Timer</button>
+            <button type="button" class="ein-reiter-seg" id="einReiterKnopfTimer" role="tab" data-ein-reiter="timer" aria-selected="false" aria-controls="einReiterTimer">Zeit</button>
           </div>
 
           <div id="einReiterTodo" class="ein-reiterinhalt" role="tabpanel" aria-labelledby="einReiterKnopfTodo">
@@ -885,14 +885,12 @@
           <div id="ztDdStart" class="zt-dd"></div>
           <button type="button" id="ztStarten" class="btn primary zt-starten">▶ Starten</button>
         </section>
-        <!-- Die laufende Uhr. Im Sekundentakt wird nur die Zeit gesetzt. -->
+        <!-- Bei laufender Uhr nur noch das ToDo zum Zuordnen (seit 19.11.2026):
+             Zeit und Stoppen stehen im Fokus-Bildschirm, aus dem man hierher
+             kommt - doppelt war es nur unruhig. -->
         <section id="ztUhr" class="zt-uhr" hidden>
+          <h3 class="zt-abschnitt">Läuft gerade auf</h3>
           <div id="ztDdLaufend" class="zt-dd"></div>
-          <div id="ztUhrZeit" class="zt-uhr-zeit">0:00:00</div>
-          <button type="button" id="ztStopp" class="zt-stopp">
-            <span class="zt-stopp-kreis" aria-hidden="true"></span>
-            <span>Stoppen</span>
-          </button>
         </section>
         <!-- Seit 19.11.2026 eine Gruppe wie in den Einstellungen (Hendrik: das
              Fenster "passt nicht richtig in das Design"): Gebucht (klappt die
@@ -1083,10 +1081,10 @@
           </summary>
           <div class="ein-inhalt hilfe-text">
             <dl class="hilfe-zeilen">
-              <div class="hilfe-zeile"><dt>Bearbeiten</dt><dd>ToDo 2× antippen, oder berühren, dann Stift</dd></div>
+              <div class="hilfe-zeile"><dt>Bearbeiten</dt><dd>Am Handy antippen, am Rechner 2× klicken</dd></div>
               <div class="hilfe-zeile"><dt>Verschieben</dt><dd>In einen Bereich ziehen, am Handy erst lange drücken</dd></div>
-              <div class="hilfe-zeile"><dt>Löschen</dt><dd>ToDo berühren, dann Papierkorb</dd></div>
-              <div class="hilfe-zeile"><dt>Zeit messen</dt><dd>ToDo berühren, dann Uhr</dd></div>
+              <div class="hilfe-zeile"><dt>Löschen</dt><dd>Nach links wischen bzw. Maus darüber, dann Papierkorb</dd></div>
+              <div class="hilfe-zeile"><dt>Zeit messen</dt><dd>Nach links wischen bzw. Maus darüber, dann Uhr</dd></div>
               <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kästchen antippen</dd></div>
             </dl>
             <p class="hilfe-zwischen">Im Fenster „Bearbeiten“</p>
@@ -1098,7 +1096,7 @@
             <details class="hilfe-mehr">
               <summary>Mehr dazu</summary>
               <ul>
-                <li><b>Berühren</b> heißt: am Rechner die Maus darüber, am Handy einmal tippen. Dann erscheinen Uhr, Stift und Papierkorb.</li>
+                <li><b>Am Handy</b> ein ToDo nach links wischen: rechts kommen Uhr, Bearbeiten und Löschen hervor. Ein Tipp daneben klappt sie wieder zu. <b>Am Rechner</b> erscheinen sie, wenn die Maus darüber steht.</li>
                 <li><b>Verschieben:</b> Neben den Spalten losgelassen, landet das ToDo wieder ohne Bereich.</li>
                 <li><b>Löschen:</b> Unten steht danach ein paar Sekunden lang „Rückgängig“.</li>
                 <li><b>Termin heißt „bis“:</b> Ab 2 Wochen vorher steht das ToDo jeden Tag unter Heute, nach Termin sortiert, rot ab dem Tag davor. „Unter Heute ab“ ändert das für ein einzelnes ToDo, von „Erst am Tag“ bis „Sofort“.</li>
@@ -1211,7 +1209,7 @@
               <div class="hilfe-zeile"><dt>Monat wechseln</dt><dd>‹ › antippen oder wischen</dd></div>
               <div class="hilfe-zeile"><dt>Filtern</dt><dd>Trichter: Quellen, Kalenderwochen</dd></div>
               <div class="hilfe-zeile"><dt>Verbinden</dt><dd>Einstellungen › ToDo › Google Kalender</dd></div>
-              <div class="hilfe-zeile"><dt>Termin anlegen</dt><dd>＋, dann „Termin“: alle Felder auf einmal</dd></div>
+              <div class="hilfe-zeile"><dt>Termin anlegen</dt><dd>＋, dann „Termin“; in der Tageskarte das runde ＋</dd></div>
             </dl>
             <details class="hilfe-mehr">
               <summary>Mehr dazu</summary>
@@ -1239,9 +1237,9 @@
               <div class="hilfe-zeile"><dt>Tag nachtragen</dt><dd>Namen antippen, dann den Tag</dd></div>
               <div class="hilfe-zeile"><dt>Ändern</dt><dd>Namen antippen, dann den Stift</dd></div>
               <div class="hilfe-zeile"><dt>Anlegen, ordnen</dt><dd>Überschrift „Gewohnheiten ›“ antippen</dd></div>
-              <div class="hilfe-zeile"><dt>Zeit messen</dt><dd>ToDo berühren, dann Uhr</dd></div>
+              <div class="hilfe-zeile"><dt>Zeit messen</dt><dd>Am ToDo die Uhr (wischen bzw. Maus darüber)</dd></div>
               <div class="hilfe-zeile"><dt>Fokus</dt><dd>Läuft die Uhr: Zeit und ToDo groß, „Ausblenden“ oben links</dd></div>
-              <div class="hilfe-zeile"><dt>Auswertung</dt><dd>Einstellungen › Timer › Statistik</dd></div>
+              <div class="hilfe-zeile"><dt>Auswertung</dt><dd>Einstellungen › Zeit › Statistik</dd></div>
             </dl>
             <details class="hilfe-mehr">
               <summary>Mehr dazu</summary>
