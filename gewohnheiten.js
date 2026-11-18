@@ -231,7 +231,7 @@ function gewZeichneBlock(g) {
   if (flamme > 0) {
     const f = document.createElement("span");
     f.className = "gw-kal-block-flamme";
-    f.textContent = `🔥 ${gewMitEinheit(flamme, gewFlammenEinheitVon(g))}`;
+    f.textContent = gewMitEinheit(flamme, gewFlammenEinheitVon(g));
     kopf.appendChild(f);
   }
   kopf.appendChild(gewStiftKnopf(g));
@@ -358,7 +358,7 @@ async function gewSchalteTag(g, datum, zelle) {
     if (r.offline) text += " – ohne Verbindung gemerkt";
     else if (neu && datum !== gewBestand.heute && r.straehne > flammeVorher) {
       // Kurz wie auf der Karte: am Handy passt die Leiste so in eine Zeile.
-      text += ` – 🔥 ${gewMitEinheit(r.straehne, gewFlammenEinheitVon(g))}`;
+      text += ` – Flamme ${gewMitEinheit(r.straehne, gewFlammenEinheitVon(g))}`;
     }
     showUndo(text, () => gewSchreibeTag(g, datum, vorher));
   } finally {

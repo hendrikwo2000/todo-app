@@ -73,7 +73,6 @@ const kalFrageBox    = kalFrage.querySelector(".kal-frage-box");
 const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const MONAT_FORMAT = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
 const MONAT_NAME   = new Intl.DateTimeFormat("de-DE", { month: "long" });
-const kalJahrKnopf = document.getElementById("kalJahrKnopf");
 const TAG_FORMAT   = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
 const UHR_FORMAT   = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" });
 
@@ -713,12 +712,11 @@ function zeichneKalender() {
   const heute = todayStr();
 
   // Monat und Jahr getrennt (seit 18.11.2026, iOS-Look): am PC "November 2026"
-  // mit grauem Jahr, am Handy gross nur "November" und das Jahr als "‹ 2026"
-  // oben links (#kalJahrKnopf, oeffnet dieselbe Monats- und Jahreswahl).
+  // mit grauem Jahr, am Handy gross nur "November" - das Jahr darueber wollte
+  // Hendrik dort nicht. Ein Tipp auf den Namen oeffnet die Monats-/Jahreswahl.
   const monatDatum = new Date(kalJahr, kalMonatNr, 1);
   kalMonatName.innerHTML = `<span class="kal-monat-m">${MONAT_NAME.format(monatDatum)}</span> <span class="kal-monat-j">${kalJahr}</span>`;
   kalMonatName.setAttribute("aria-label", MONAT_FORMAT.format(monatDatum));
-  if (kalJahrKnopf) kalJahrKnopf.lastChild.textContent = String(kalJahr);
 
   // Ueberfaellig-Chip: nur wenn es welche gibt. Zaehlt AUSSCHLIESSLICH ToDos -
   // ein vergangener Google-Termin ist nicht "ueberfaellig", den kann man nicht
@@ -1583,7 +1581,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
     // zu suchen, dort ist es weder faellig noch entstanden.
     if (faelligHeute && ueberfaellige.length) {
       ziel.appendChild(baueGruppenKopf(
-        `Überfällig (${ueberfaellige.length})`, null, null, true, "⚠️"));
+        `Überfällig (${ueberfaellige.length})`, null, null, true, ""));
       for (const t of ueberfaellige) ziel.appendChild(baueEintrag(t, true, true));
     }
 
@@ -1592,7 +1590,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
       // das Kommende darunter bleibt ruhig, auch die Ueberschrift, solange
       // nur Kommendes dasteht.
       ziel.appendChild(baueGruppenKopf("ToDos", todoPlus,
-        "ToDo", faelligHeute && todosDesTages.some(t => isUrgent(t.due)), "☑️"));
+        "ToDo", faelligHeute && todosDesTages.some(t => isUrgent(t.due)), ""));
       if (aktiv && todoEingabeOffen && aktiveListe) ziel.appendChild(baueAnlegeZeile(tag));
       for (const t of todosDesTages) {
         ziel.appendChild(baueEintrag(t, false, faelligHeute && isUrgent(t.due), faelligHeute));
@@ -1614,7 +1612,7 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
     const ganztags = termineDesTages.filter(e => e.termin.ganztags);
     const mitZeit  = termineDesTages.filter(e => !e.termin.ganztags);
 
-    ziel.appendChild(baueGruppenKopf("Termine", terminePlus, "Termin", false, "📅"));
+    ziel.appendChild(baueGruppenKopf("Termine", terminePlus, "Termin", false, ""));
     // Symbol und Startzeit stehen wie bei Samsung nur einmal - beim ersten
     // ganztaegigen bzw. beim ersten Termin einer Uhrzeit.
     ganztags.forEach((e, i) => ziel.appendChild(baueTerminZeile(e.termin, i === 0)));
@@ -3847,7 +3845,6 @@ zieheGriff(document.getElementById("kalGriffBreite"), {
 });
 
 kalMonatName.addEventListener("click", schalteWahl);
-if (kalJahrKnopf) kalJahrKnopf.addEventListener("click", schalteWahl);
 // Auch die Pfeile blaettern mit Gleiten - derselbe Weg wie der Wisch.
 document.getElementById("kalZurueck").addEventListener("click", () => blaettere("monat", -1));
 document.getElementById("kalVor").addEventListener("click", () => blaettere("monat", 1));

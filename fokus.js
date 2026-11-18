@@ -247,7 +247,7 @@ function zeichneKarte(g) {
   const flamme = document.createElement("span");
   flamme.className = "fok-flammen-zahl" + (g.straehne > 0 ? " aktiv" : "");
   flamme.textContent = g.straehne > 0
-    ? `🔥 ${flammenText(g.straehne, g.straehneEinheit)}`
+    ? flammenText(g.straehne, g.straehneEinheit)
     : "keine Flamme";
   zeile.appendChild(flamme);
 

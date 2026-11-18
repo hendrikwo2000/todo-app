@@ -13,38 +13,38 @@
        JavaScript und ohne Anmeldung lesbar sein (Google prueft sie vor der
        Freigabe). Farben wie die App, Hell/Dunkel nach dem System. */
     :root {
-      --bg: #f4f5f7; --row: #ffffff; --text: #1f2430; --muted: #5b6477;
-      --line: #e3e6ee; --accent: #4f63d2;
+      --bg: #f2f2f7; --row: #ffffff; --text: #000000; --muted: #6c6c70;
+      --line: rgba(60, 60, 67, .16); --accent: #0068da;
       color-scheme: light dark;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #15171c; --row: #262a31; --text: #e6e8ee; --muted: #9aa3b5;
-        --line: #333842; --accent: #8c9bf5;
+        --bg: #000000; --row: #1c1c1e; --text: #ffffff; --muted: #98989f;
+        --line: rgba(84, 84, 88, .55); --accent: #0a84ff;
       }
     }
     * { box-sizing: border-box; }
     body {
       margin: 0; background: var(--bg); color: var(--text);
-      font: 16px/1.6 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, Roboto, sans-serif;
     }
     main {
       max-width: 760px; margin: 0 auto; padding: 28px 18px 60px;
     }
     a { color: var(--accent); }
-    .zurueck { display: inline-block; margin-bottom: 18px; font-size: 14px; }
-    h1 { font-size: 26px; line-height: 1.25; margin: 0 0 4px; }
+    .zurueck { display: inline-block; margin-bottom: 18px; font-size: 17px; text-decoration: none; }
+    h1 { font-size: 2rem; line-height: 1.15; margin: 0 0 4px; }
     .stand { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
     h2 {
       font-size: 19px; margin: 34px 0 6px; padding-top: 6px;
-      border-top: 1px solid var(--line);
+      border-top: .5px solid var(--line);
     }
     h3 { font-size: 16px; margin: 20px 0 2px; }
     p, ul { margin: 8px 0; }
     ul { padding-left: 22px; }
     li { margin: 4px 0; }
     .kasten {
-      background: var(--row); border: 1px solid var(--line);
+      background: var(--row); border: 0;
       border-radius: 12px; padding: 4px 16px 10px; margin: 14px 0;
     }
     code {
@@ -57,7 +57,7 @@
 </head>
 <body>
 <main>
-  <a class="zurueck" href="/">← Zur ToDo-Liste</a>
+  <a class="zurueck" href="/">‹ Zur ToDo-Liste</a>
   <h1>Datenschutzerklärung</h1>
   <p class="stand">ToDo-Liste von IT Wolf · todo.it-wolf.org · Stand: 18. Oktober 2026</p>
 

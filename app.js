@@ -1,5 +1,29 @@
 "use strict";
 
+/* ---------- Symbole (seit 18.11.2026, iOS-Look) ----------
+   Gezeichnete Linien im Stil der SF Symbols statt Emoji - Emoji sehen auf
+   jedem System anders aus und passen nicht zur Leiste. Gleiche Form wie in
+   Tageswerte: 24er Raster, runde Enden, Strichstaerke per CSS (.sym). */
+const SYMBOL_PFADE = {
+  kalender: '<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  sanduhr: '<path d="M7 3.5h10M7 20.5h10M8 3.5v2.8c0 3 4 4.2 4 5.7s-4 2.7-4 5.7v2.8M16 3.5v2.8c0 3-4 4.2-4 5.7s4 2.7 4 5.7v2.8"/>',
+  ordner: '<path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.2h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>',
+  etikett: '<path d="M3.5 12.2V5.5a2 2 0 0 1 2-2h6.7l8.3 8.3a2 2 0 0 1 0 2.8l-5.9 5.9a2 2 0 0 1-2.8 0z"/><circle class="voll" cx="8" cy="8" r="1.5"/>',
+  checkliste: '<path d="M3.5 6.5l1.6 1.6 2.8-3M3.5 13.5l1.6 1.6 2.8-3M11 7h9.5M11 14h9.5M11 19.5h6"/>',
+  stift: '<path d="M15 5l4 4M4 20l1-5L16 4l4 4L9 19z"/>',
+  papierkorb: '<path d="M4.5 6.5h15M9.5 6.5V4.5h5v2M6.5 6.5l1 13a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-13M10 10.5v6.5M14 10.5v6.5"/>',
+  kreuz: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+  flamme: '<path class="voll" d="M12 21.5c-3.7 0-6.2-2.5-6.2-5.8 0-3.6 2.7-5.4 3.7-8.7.4 1.9 1.7 2.9 2.7 3.3.5-2.6 1.5-5.3 1.1-7.6 3.5 2.3 5 6.2 5 10.2 0 5.9-2.6 8.6-6.3 8.6z"/>',
+  zahnrad: '<circle cx="12" cy="12" r="3.2"/><path d="M10.2 4.8l.4-2.3h2.8l.4 2.3 2 .8 1.9-1.4 2 2-1.4 1.9.8 2 2.3.4v2.8l-2.3.4-.8 2 1.4 1.9-2 2-1.9-1.4-2 .8-.4 2.3h-2.8l-.4-2.3-2-.8-1.9 1.4-2-2 1.4-1.9-.8-2-2.3-.4v-2.8l2.3-.4.8-2-1.4-1.9 2-2 1.9 1.4z"/>',
+};
+function symbolSvg(name, klasse = "") {
+  return `<svg class="sym${klasse ? " " + klasse : ""}" viewBox="0 0 24 24" aria-hidden="true">${SYMBOL_PFADE[name] || ""}</svg>`;
+}
+// Knopf-Inhalt: Symbol, dahinter optional ein Text.
+function symbolMitText(name, text) {
+  return symbolSvg(name) + (text ? `<span>${escapeHtml(text)}</span>` : "");
+}
+
 /* ====================================================================
    ToDo-Liste – Board-Ansicht (Cloud-Version)
    - Eigenes, einklappbares Eingabefeld pro Spalte (Termin per Kalender-Icon)
@@ -380,6 +404,8 @@ function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   themeSwitch.checked = theme === "dark";
   themeSwitchLabel.textContent = theme === "dark" ? "Dunkel" : "Hell";
+  // Browserleiste (Android, Safari) in der Farbe des Grunds - hell grau, dunkel schwarz.
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#000000" : "#f2f2f7");
 }
 
 // ---------- Zugang ----------
@@ -1258,7 +1284,7 @@ function baueEigeneZeile(b) {
   loeschBtn.type = "button";
   loeschBtn.className = "act del lz-loeschen";
   loeschBtn.title = "Liste löschen";
-  loeschBtn.textContent = "🗑️";
+  loeschBtn.innerHTML = symbolSvg("papierkorb");
   loeschBtn.addEventListener("click", () => loescheListe(b));
   knoepfe.appendChild(loeschBtn);
   row.appendChild(knoepfe);
@@ -2172,7 +2198,7 @@ async function loadState() {
     } catch (e) {
       serverErreichbar = false;
       wiederherstellenAusCache();
-      setStatus("⚠ Server nicht erreichbar", "err");
+      setStatus("Server nicht erreichbar", "err");
       zeigeAktiveListe();
       return;
     }
@@ -2189,7 +2215,7 @@ async function loadState() {
     if (!res.ok) {
       serverErreichbar = false;
       wiederherstellenAusCache();
-      setStatus("⚠ Server nicht erreichbar", "err");
+      setStatus("Server nicht erreichbar", "err");
       zeigeAktiveListe();
       return;
     }
@@ -2367,7 +2393,7 @@ async function save(boardId = aktiveListe) {
       // lassen.
       serverErreichbar = true;
       loeschePending(boardId);
-      setStatus("⚠ Nicht gespeichert", "err");
+      setStatus("Nicht gespeichert", "err");
       snackInfo(boardName + ": kein Zugriff mehr, nicht gespeichert.");
       ergebnis = "verboten";
     } else if (!res.ok) {
@@ -2388,7 +2414,7 @@ async function save(boardId = aktiveListe) {
     // Netzwerkfehler oder Server-Fehler: nicht verloren, sondern lokal
     // vormerken - wird beim naechsten Reconnect automatisch nachgereicht.
     serverErreichbar = false;
-    setStatus("⚠ Nicht gespeichert", "err");
+    setStatus("Nicht gespeichert", "err");
     setzePending(boardId, boardName);
     speichereCacheLokal();
   } finally {
@@ -2978,7 +3004,8 @@ function baueHinweis(schluessel, text) {
   const zu = document.createElement("button");
   zu.type = "button";
   zu.title = "Hinweis ausblenden";
-  zu.textContent = "✕";
+  zu.setAttribute("aria-label", "Hinweis ausblenden");
+  zu.innerHTML = symbolSvg("kreuz");
   zu.addEventListener("click", () => {
     localStorage.setItem(schluessel, "1");
     p.remove();
@@ -2994,11 +3021,11 @@ function zeigeHinweise() {
   const leiste = document.getElementById("hinweisleiste");
   if (istMobil() && !istStandalone() && !localStorage.getItem("hinweisHomeGesehen")) {
     leiste.appendChild(baueHinweis("hinweisHomeGesehen",
-      "📱 Zum Home-Bildschirm hinzufügen (Teilen- bzw. Menü-Symbol des Browsers) — startet dann wie eine eigene App."));
+      "Zum Home-Bildschirm hinzufügen (Teilen- bzw. Menü-Symbol des Browsers) — startet dann wie eine eigene App."));
   }
   if (!localStorage.getItem("hinweisEinstellungenGesehen")) {
     leiste.appendChild(baueHinweis("hinweisEinstellungenGesehen",
-      "⚙️ Unter Einstellungen kannst du Listen umbenennen, teilen oder eine neue anlegen."));
+      "Unter Einstellungen kannst du Listen umbenennen, teilen oder eine neue anlegen."));
   }
 }
 
@@ -3136,7 +3163,7 @@ function renderColumn(cat) {
         <input type="text" class="cat-edit" data-edit-cat="${cat.id}"
                value="${escapeHtml(cat.name)}" autocomplete="off">
         <div class="col-actions">
-          <button type="button" class="act del" title="Bereich löschen" data-act="del">🗑️</button>
+          <button type="button" class="act del" title="Bereich löschen" data-act="del">${symbolSvg("papierkorb")}</button>
         </div>`;
       const input = head.querySelector(".cat-edit");
       input.addEventListener("keydown", e => {
@@ -3373,7 +3400,7 @@ function renderThemaGruppe(cat, th, open) {
     head.innerHTML = `
       <input type="text" class="thema-edit" data-edit-thema-name="${th.id}"
              value="${escapeHtml(th.name)}" autocomplete="off">
-      <button type="button" class="act del" title="Thema auflösen" data-act="del-thema">🗑️</button>`;
+      <button type="button" class="act del" title="Thema auflösen" data-act="del-thema">${symbolSvg("papierkorb")}</button>`;
     const input = head.querySelector(".thema-edit");
     input.addEventListener("keydown", e => {
       if (e.key === "Enter") saveThemaName(th.id);
@@ -3557,12 +3584,12 @@ function baueAddWidget(cat, themaId) {
     <div class="add-line">
       <input type="text" class="add-text" placeholder="z. B. Wäsche waschen" autocomplete="off">
       <span class="date-field">
-        <button type="button" class="add-icon add-cal">📅</button>
+        <button type="button" class="add-icon add-cal">${symbolSvg("kalender")}</button>
         <input type="date" class="add-date" tabindex="-1" aria-label="Termin">
       </span>
       <button type="button" class="add-icon date-clear" title="Termin entfernen" hidden>✕</button>
     </div>
-    ${istErstesTodo ? `<p class="add-hint">📅 antippen, um ein Datum zu setzen — optional.</p>` : ""}
+    ${istErstesTodo ? `<p class="add-hint">Kalender antippen, um ein Datum zu setzen — optional.</p>` : ""}
     <textarea class="add-note" placeholder="Notiz (optional) …" rows="2"></textarea>
     <div class="add-knoepfe">
       <button type="button" class="btn klein primary add-ok">Anlegen</button>
@@ -3693,7 +3720,7 @@ function verdrahteDropZone(zone, cat, themaId, ul) {
 function updateDateButton(calBtn, clearBtn, value) {
   const has = !!value;
   calBtn.classList.toggle("active", has);
-  calBtn.textContent = has ? `📅 ${formatDateShort(value)}` : "📅";
+  calBtn.innerHTML = symbolMitText("kalender", has ? formatDateShort(value) : "Datum");
   calBtn.title = has ? `Termin ${formatDate(value)} – zum Ändern klicken` : "Termin wählen";
   clearBtn.hidden = !has;
 }
@@ -3703,7 +3730,7 @@ function updateDateButton(calBtn, clearBtn, value) {
  * Vorlauf. Der Knopf traegt den gewaehlten Namen, damit man ihn sieht,
  * ohne die Liste zu oeffnen; ohne Auswahl bleibt nur das Symbol stehen.
  */
-function verdrahteWahlSymbol(wrap, art, symbol, titelLeer) {
+function verdrahteWahlSymbol(wrap, art, symbol, wortLeer, titelLeer) {
   const knopf = wrap.querySelector(`[data-act="${art}"]`);
   if (!knopf) return;   // Bereich gibt es nur "ohne Bereich", Thema nur mit Themen
   const feld = knopf.parentElement.querySelector("select");
@@ -3716,7 +3743,7 @@ function verdrahteWahlSymbol(wrap, art, symbol, titelLeer) {
     // die ganze Knopfreihe auseinander. Der volle Name steht im title.
     const kurz = name.length > 18 ? name.slice(0, 17) + "…" : name;
     knopf.classList.toggle("active", gesetzt);
-    knopf.textContent = gesetzt ? `${symbol} ${kurz}` : symbol;
+    knopf.innerHTML = symbolMitText(symbol, gesetzt ? kurz : wortLeer);
     knopf.title = gesetzt ? `${name} – zum Ändern klicken` : titelLeer;
   };
   nachziehen();
@@ -3730,7 +3757,7 @@ function verdrahteWahlSymbol(wrap, art, symbol, titelLeer) {
 function updateVorlaufButton(btn, value) {
   const v = value === "" ? null : VORLAEUFE.find(x => String(x.tage) === value);
   btn.classList.toggle("active", !!v);
-  btn.textContent = v ? `⏳ ${v.kurz}` : "⏳";
+  btn.innerHTML = symbolMitText("sanduhr", v ? v.kurz : "Vorlauf");
   btn.title = v
     ? `${v.name} unter Heute – zum Ändern klicken`
     : "Unter Heute ab 2 Wochen vor dem Termin – zum Ändern klicken";
@@ -3768,7 +3795,7 @@ function baueUnterpunkteBearbeiten(t) {
     del.type = "button";
     del.className = "act del";
     del.title = "Unterpunkt löschen";
-    del.textContent = "🗑️";
+    del.innerHTML = symbolSvg("papierkorb");
     del.addEventListener("click", () => deleteUnterpunkt(u.id));
     zeile.appendChild(del);
 
@@ -3831,7 +3858,7 @@ function renderTodo(t) {
     // Auswahlfeld nahmen die beiden zwei ganze Zeilen ueber der Knopfreihe ein.
     const themaWahl = themenDesBereichs.length ? `
       <span class="date-field">
-        <button type="button" class="add-icon" data-act="thema">🏷️</button>
+        <button type="button" class="add-icon" data-act="thema"></button>
         <select class="edit-thema" data-edit-thema="${t.id}" aria-label="Über-Thema" tabindex="-1">
           <option value="">— kein Über-Thema —</option>
           ${themenDesBereichs.map(th =>
@@ -3845,7 +3872,7 @@ function renderTodo(t) {
     const echteBereiche = state.categories.filter(c => !istOhneBereich(c.id));
     const bereichWahl = (istOhneBereich(t.categoryId) && echteBereiche.length) ? `
       <span class="date-field">
-        <button type="button" class="add-icon" data-act="bereich">📂</button>
+        <button type="button" class="add-icon" data-act="bereich"></button>
         <select class="edit-thema edit-bereich" data-edit-bereich="${t.id}" aria-label="Bereich zuordnen" tabindex="-1">
           <option value="">— Ohne Bereich —</option>
           ${echteBereiche.map(c =>
@@ -3855,16 +3882,18 @@ function renderTodo(t) {
       </span>` : "";
     const unterpunktOffen = unterpunktEingabeOffen === t.id;
     wrap.innerHTML = `
-      <input type="text" data-edit-text="${t.id}" value="${escapeHtml(t.text)}">
-      <textarea data-edit-note placeholder="Notiz (optional)" rows="2"></textarea>
+      <div class="edit-felder">
+        <input type="text" data-edit-text="${t.id}" value="${escapeHtml(t.text)}" aria-label="Titel">
+        <textarea data-edit-note placeholder="Notiz" rows="2" aria-label="Notiz"></textarea>
+      </div>
       <div class="edit-buttons">
         <span class="date-field">
-          <button type="button" class="add-icon add-cal" data-act="cal">📅</button>
+          <button type="button" class="add-icon add-cal" data-act="cal"></button>
           <input type="date" data-edit-date="${t.id}" value="${t.due || ""}" tabindex="-1" aria-label="Termin">
         </span>
-        <button type="button" class="add-icon date-clear" title="Termin entfernen" hidden>✕</button>
+        <button type="button" class="add-icon date-clear" title="Termin entfernen" aria-label="Termin entfernen" hidden>${symbolSvg("kreuz")}</button>
         <span class="date-field">
-          <button type="button" class="add-icon" data-act="vorlauf" hidden>⏳</button>
+          <button type="button" class="add-icon" data-act="vorlauf" hidden></button>
           <select class="edit-vorlauf" data-edit-vorlauf="${t.id}" aria-label="Unter Heute ab" tabindex="-1">
             <option value="">2 Wochen vorher (Standard)</option>
             ${VORLAEUFE.map(v =>
@@ -3874,10 +3903,12 @@ function renderTodo(t) {
         </span>
         ${bereichWahl}${themaWahl}
         ${unterpunktOffen
-          ? `<input type="text" class="edit-unterpunkt-neu" data-neuer-unterpunkt="${t.id}" placeholder="＋ Unterpunkt" autocomplete="off">`
-          : `<button type="button" class="add-icon" data-act="unterpunkt" title="Unterpunkt hinzufügen">✅</button>`}
-        <button class="btn primary" data-act="save">OK</button>
-        <button class="btn" data-act="cancel">Abbrechen</button>
+          ? `<input type="text" class="edit-unterpunkt-neu" data-neuer-unterpunkt="${t.id}" placeholder="Unterpunkt" autocomplete="off">`
+          : `<button type="button" class="add-icon" data-act="unterpunkt" title="Unterpunkt hinzufügen">${symbolMitText("checkliste", "Unterpunkt")}</button>`}
+      </div>
+      <div class="edit-knoepfe">
+        <button type="button" class="btn" data-act="cancel">Abbrechen</button>
+        <button type="button" class="btn primary" data-act="save">Fertig</button>
       </div>`;
     wrap.appendChild(baueUnterpunkteBearbeiten(t));
     const textInput = wrap.querySelector(`[data-edit-text="${t.id}"]`);
@@ -3905,8 +3936,8 @@ function renderTodo(t) {
     // Bereich und Ueber-Thema nach demselben Muster: Symbol oeffnet die Liste,
     // und sobald etwas gewaehlt ist, steht der Name daneben. Ohne ihn muesste
     // man die Liste aufklappen, nur um zu sehen, wo das ToDo gerade liegt.
-    verdrahteWahlSymbol(wrap, "bereich", "📂", "Bereich zuordnen");
-    verdrahteWahlSymbol(wrap, "thema", "🏷️", "Über-Thema wählen");
+    verdrahteWahlSymbol(wrap, "bereich", "ordner", "Bereich", "Bereich zuordnen");
+    verdrahteWahlSymbol(wrap, "thema", "etikett", "Thema", "Über-Thema wählen");
 
     const unterpunktBtn = wrap.querySelector('[data-act="unterpunkt"]');
     if (unterpunktBtn) {
@@ -4023,14 +4054,16 @@ function renderTodo(t) {
   const edit = document.createElement("button");
   edit.className = "act edit";
   edit.title = "Bearbeiten";
-  edit.textContent = "✏️";
+  edit.innerHTML = symbolSvg("stift");
+  edit.setAttribute("aria-label", "Bearbeiten");
   edit.addEventListener("click", () => startEdit(t.id));
   actions.appendChild(edit);
 
   const del = document.createElement("button");
   del.className = "act del";
   del.title = "Endgültig löschen";
-  del.textContent = "🗑️";
+  del.innerHTML = symbolSvg("papierkorb");
+  del.setAttribute("aria-label", "Endgültig löschen");
   del.addEventListener("click", () => deleteTodo(t.id));
   actions.appendChild(del);
 

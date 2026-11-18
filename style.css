@@ -5893,3 +5893,376 @@ body.verwaltung .topbar h1 { font-size: 2rem; line-height: 1.15; flex: none; max
    Knoepfe einer Zeile duerfen umbrechen statt rechts hinauszulaufen. */
 body.verwaltung .topbar h1:not(.titel-schaltbar) { display: block; }
 .admin-aktionen { flex-shrink: 1; flex-wrap: wrap; }
+
+/* =====================================================================
+   iOS-Look, Runde 3 (18.11.2026 spaet) - Hendrik: "wirklich alles in dem
+   neuen Design", Bearbeiten besser, Monat linksbuendig, am Handy kein Jahr
+   ueber dem Monat, Dunkelmodus am PC schoen.
+   ===================================================================== */
+
+/* Gezeichnete Symbole (symbolSvg in app.js) */
+.sym {
+  flex: none;
+  width: 18px; height: 18px;
+  fill: none; stroke: currentColor; stroke-width: 1.9;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.sym .voll { fill: currentColor; stroke: none; }
+.act .sym { width: 18px; height: 18px; }
+.act { color: var(--muted); }
+@media (hover: hover) {
+  .act:hover { background: var(--fuellung3); color: var(--accent); }
+  .act.del:hover { background: var(--del-soft); color: var(--red); }
+}
+.hinweis button { display: inline-grid; place-items: center; color: var(--muted); }
+.hinweis button .sym { width: 16px; height: 16px; }
+
+/* ===================== Bearbeiten (Zeile im Bereich) ===================== */
+/* Wie das Neu-Fenster: Titel und Notiz als EINE weisse Gruppe, darunter die
+   Zusaetze als Pillen mit Symbol und Wort, ganz unten Abbrechen | Fertig. */
+.todo:has(.edit-row),
+.column[data-farbe] .col-koerper .todo:not(.is-done):has(.edit-row) { padding: 12px 12px 14px; background: var(--fuellung3); }
+.todo:has(.edit-row)::after { display: none; }
+.edit-row { gap: 10px; }
+.edit-felder {
+  display: flex;
+  flex-direction: column;
+  background: var(--row);
+  border-radius: 12px;
+  overflow: hidden;
+}
+:root[data-theme="dark"] .edit-felder { background: #2c2c2e; }
+.edit-felder input[type="text"],
+.edit-felder input[type="text"]:focus {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding: 11px 13px;
+  font-size: 16px;
+  font-weight: 500;
+}
+.edit-row .edit-felder textarea,
+.edit-row .edit-felder textarea:focus {
+  border: 0;
+  border-top: .5px solid var(--line);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding: 9px 13px 11px;
+  font-size: 14.5px;
+  min-height: 52px;
+}
+.edit-felder textarea::placeholder { color: var(--muted); }
+.edit-row .edit-buttons { gap: 6px; }
+.edit-row .add-icon,
+.col-add .add-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--row);
+  color: var(--accent);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+:root[data-theme="dark"] .edit-row .add-icon,
+:root[data-theme="dark"] .col-add .add-icon { background: #2c2c2e; }
+.edit-row .add-icon .sym, .col-add .add-icon .sym { width: 16px; height: 16px; }
+.edit-row .add-icon.active, .col-add .add-icon.active { background: var(--accent); color: #fff; }
+.edit-row .add-icon:hover, .col-add .add-icon:hover { border: 0; color: var(--accent); }
+.edit-row .add-icon.active:hover, .col-add .add-icon.active:hover { color: #fff; }
+.edit-row .date-clear,
+.col-add .date-clear {
+  width: 32px; min-width: 32px; padding: 0;
+  justify-content: center;
+  background: none;
+  color: var(--muted);
+}
+.edit-row .date-clear:hover { color: var(--red); background: none; }
+.edit-row .edit-unterpunkt-neu {
+  height: 32px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--row);
+  padding: 0 12px;
+  font-size: 13.5px;
+}
+:root[data-theme="dark"] .edit-row .edit-unterpunkt-neu { background: #2c2c2e; }
+.edit-knoepfe { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+.edit-row .edit-knoepfe .btn {
+  margin: 0;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 11px;
+  font-size: 15px;
+  justify-content: center;
+}
+.edit-row .edit-knoepfe .btn:not(.primary) { background: var(--row); }
+:root[data-theme="dark"] .edit-row .edit-knoepfe .btn:not(.primary) { background: #2c2c2e; }
+.edit-unterpunkte { gap: 0; }
+.edit-unterpunkt-zeile { padding: 2px 0; }
+.edit-unterpunkt-text { font-size: 14.5px; }
+
+/* Inline-Anlegen (Thema) und Namen bearbeiten: gleiche Felder */
+.col-add .add-text, .col-add .add-note, .cat-edit, .thema-edit {
+  border: 0;
+  border-radius: 10px;
+  background: var(--fuellung3);
+  box-shadow: none;
+}
+.cat-edit:focus, .thema-edit:focus, .col-add .add-text:focus, .col-add .add-note:focus {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.col-add-btn.open, .col-add.open { gap: 8px; }
+
+/* ===================== Kalenderkopf ===================== */
+/* Monat linksbuendig - auch am PC, und ohne Flaeche dahinter. */
+.kal-monat,
+.kal-monat:hover,
+.kal-monat.offen {
+  flex: 0 1 auto;
+  text-align: left;
+  background: none;
+}
+.kal-monat.offen .kal-monat-m { color: var(--accent); }
+@media (hover: hover) { .kal-monat:hover { opacity: .75; } }
+#kalZurueck, #kalVor { color: var(--accent); }
+@media (hover: hover) {
+  #kalZurueck, #kalVor { font-size: 28px; padding: 0 10px 3px; color: var(--accent); }
+  #kalZurueck:hover, #kalVor:hover { background: none; opacity: .7; }
+}
+@media (max-width: 560px) {
+  /* Eine Zeile: grosser Monat links, Filter und "Heute" rechts. */
+  .kal-kopf { flex-wrap: nowrap; align-items: center; padding-top: 6px; }
+  .kal-monat {
+    order: -1;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-basis: auto;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Monatswahl und Termin-Fenster: Kopf wie ein iOS-Blatt */
+.kal-popup-box { padding: 18px 18px 16px; }
+.kal-popup-kopf { font-size: 17px; font-weight: 700; }
+.kal-wahl-stand { color: var(--muted); font-weight: 500; }
+.kal-rad-fenster { background: var(--fuellung3); }
+.kal-rad-wert { color: var(--muted); }
+/* Schliessen in Kalender-Fenstern: grauer Kreis mit ✕ wie in iOS-Blaettern
+   (dort heisst es Abbrechen, nicht Fertig). */
+.kal-popup-kopf .kal-schliessen,
+html.kal-split .kal-popup-kopf .kal-schliessen {
+  display: grid;
+  place-items: center;
+  width: 30px; height: 30px;
+  padding: 0;
+  margin: 0 -4px 0 auto;
+  border-radius: 15px;
+  background: var(--fuellung3);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.kal-popup-kopf .kal-schliessen::before { content: none; }
+.kal-wahl-fuss .btn, .kal-popup-box .btn { border-radius: 11px; min-height: 40px; }
+
+/* Kalender-Panel-Schliessen am PC (ueber dem Raster): ebenso */
+html.kal-split .kal-ansicht-zeile .kal-schliessen {
+  width: 30px; height: 30px; padding: 0; border-radius: 15px;
+  display: grid; place-items: center;
+  background: var(--fuellung3); color: var(--muted); font-size: 13px; font-weight: 700;
+}
+
+/* ===================== Gewohnheiten: Flamme als Symbol ===================== */
+.fok-flammen-zahl.aktiv,
+.gw-kal-block-flamme {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #c45500;
+  font-weight: 600;
+}
+:root[data-theme="dark"] .fok-flammen-zahl.aktiv,
+:root[data-theme="dark"] .gw-kal-block-flamme { color: #ff9f0a; }
+.fok-flammen-zahl.aktiv::before,
+.gw-kal-block-flamme::before {
+  content: "";
+  width: 12px; height: 12px;
+  background: #ff9500;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21.5c-3.7 0-6.2-2.5-6.2-5.8 0-3.6 2.7-5.4 3.7-8.7.4 1.9 1.7 2.9 2.7 3.3.5-2.6 1.5-5.3 1.1-7.6 3.5 2.3 5 6.2 5 10.2 0 5.9-2.6 8.6-6.3 8.6z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21.5c-3.7 0-6.2-2.5-6.2-5.8 0-3.6 2.7-5.4 3.7-8.7.4 1.9 1.7 2.9 2.7 3.3.5-2.6 1.5-5.3 1.1-7.6 3.5 2.3 5 6.2 5 10.2 0 5.9-2.6 8.6-6.3 8.6z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+/* Abhaken der Gewohnheit: runder Kreis wie bei den ToDos, erledigt blau */
+.fok-haken { border-width: 1.5px; border-color: var(--check-border); color: transparent; }
+.fok-haken.an { background: var(--accent); border-color: var(--accent); color: #fff; }
+@media (hover: hover) { .fok-haken:hover { border-color: var(--accent); color: transparent; } .fok-haken.an:hover { color: #fff; } }
+
+/* Leere Gruppen-Symbole (ehemals Emoji) nehmen keinen Platz */
+.kal-gruppe-symbol:empty { display: none; }
+
+/* Anmeldung und Freischalten: kein Emoji-Symbol mehr ueber dem Titel */
+.lock-icon:not(.lock-haken) { display: none; }
+
+/* Hilfe: Symbol-Pillen wie die Knoepfe beim Bearbeiten */
+.hilfe-chips li { display: inline-flex; align-items: center; gap: 5px; color: var(--accent); }
+.hilfe-chips li .sym { width: 15px; height: 15px; }
+
+/* Offline-Hinweis ruhiger */
+.offline-banner { border: 0; border-radius: 12px; background: var(--row); }
+.offline-banner::before {
+  content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--orange);
+}
+
+/* ===================== Dunkelmodus ===================== */
+/* Apple-Stil: schwarzer Grund, Gruppen #1c1c1e, Erhobenes (Fenster, Menues)
+   #2c2c2e, Farben in der Schrift statt satter Flaechen. */
+:root[data-theme="dark"] {
+  --leiste: rgba(22, 22, 23, .86);
+}
+:root[data-theme="dark"] .column { background: #1c1c1e; }
+:root[data-theme="dark"] .column[data-farbe] { --kopf-ton: color-mix(in srgb, var(--col-farbe) 19%, #1c1c1e); }
+:root[data-theme="dark"] .column.ohne-bereich:not(.drop-target) { background: #1c1c1e; }
+:root[data-theme="dark"] .admin-popup-box,
+:root[data-theme="dark"] .kal-popup-box,
+:root[data-theme="dark"] .lock-box { background: #1c1c1e; }
+:root[data-theme="dark"] .admin-popup-box.einstellungen,
+:root[data-theme="dark"] .admin-popup-box.anlegen-box { background: #000; }
+:root[data-theme="dark"] .admin-popup-box.einstellungen .ein-gruppe,
+:root[data-theme="dark"] .admin-popup-box.einstellungen .ein-reiterinhalt,
+:root[data-theme="dark"] .anlegen-gruppe { background: #1c1c1e; }
+:root[data-theme="dark"] .admin-popup { background: rgba(0, 0, 0, .6); }
+:root[data-theme="dark"] .kalender { background: #000; border-left-color: rgba(84, 84, 88, .4); }
+:root[data-theme="dark"] .tag-gruppe,
+:root[data-theme="dark"] .fok-oben,
+:root[data-theme="dark"] .fok-heute .fok-inhalt { background: #1c1c1e; }
+:root[data-theme="dark"] .kal-zahl { color: #fff; }
+:root[data-theme="dark"] .kal-tag.nachbar .kal-zahl { color: #8e8e93; }
+:root[data-theme="dark"] .kal-tag.gewaehlt:not(.heute) .kal-zahl { background: #fff; color: #000; }
+:root[data-theme="dark"] .hinweis,
+:root[data-theme="dark"] .offline-banner { background: #1c1c1e; }
+:root[data-theme="dark"] .fusszeile.oben .fuss-segment { background: rgba(118, 118, 128, .24); }
+:root[data-theme="dark"] .todo:has(.edit-row),
+:root[data-theme="dark"] .column[data-farbe] .col-koerper .todo:not(.is-done):has(.edit-row) { background: rgba(118, 118, 128, .18); }
+
+/* "Gespeichert ✓" nimmt in der Kopfzeile keinen Platz: sonst schob es am PC
+   das Zahnrad aus der Leiste. Es steht klein unter dem Listennamen. */
+.topbar > .save-status { position: absolute; left: 2px; top: 100%; margin: 0; font-size: 12px; white-space: nowrap; }
+body.verwaltung .topbar > .save-status { position: static; }
+.fusszeile.oben .fuss-segment .fuss-knopf,
+.fusszeile.oben .fuss-segment .fuss-knopf.timer-knopf { min-width: 0; padding: 0 13px; }
+
+/* ---------- Restliche Flaechen mit altem 1px-Rand (Runde 3, Durchsicht) ----------
+   Alle Regeln, die noch "1px solid var(--line)" trugen, einzeln durchgegangen:
+   Eingaben und kleine Knoepfe werden graue Fuellflaechen ohne Rand, Karten in
+   Fenstern getoente Flaechen ohne Rand, Trennlinien in Formularen haarfein. */
+
+/* Eingaben und kleine Knoepfe */
+.fok-menge button, .fok-menge input,
+.gw-menge button, .gw-menge input,
+.kal-anlegen-feld,
+.zt-dd-knopf,
+.gw-pfeil,
+.gw-pillen button,
+.gw-wahl button,
+.kal-gruppe-plus,
+.lock-box .lock-konto,
+.kal-form input[type="text"], .kal-form textarea,
+#kontoLoeschenEmail {
+  border: 0;
+  border-radius: 9px;
+  background: var(--fuellung3);
+  color: var(--text);
+  box-shadow: none;
+}
+.fok-menge button, .gw-menge button, .gw-pfeil, .kal-gruppe-plus { color: var(--accent); font-weight: 600; }
+.fok-menge button:hover, .gw-menge button:hover { background: var(--fuellung); }
+.kal-anlegen-feld:focus, .fok-menge input:focus, .gw-menge input:focus { box-shadow: 0 0 0 2px var(--accent); }
+.gw-pillen button[aria-selected="true"], .gw-pillen button[aria-pressed="true"],
+.gw-wahl button[aria-pressed="true"], .gw-wahl button.an, .gw-wahl button.aktiv {
+  background: var(--accent); color: #fff;
+}
+/* Das Titelfeld im Termin-Formular ist eine Zeile, kein Kasten */
+.kal-form input.kal-form-titel { background: none; padding-left: 0; }
+
+/* Karten in Fenstern */
+.gw-karte, .gw-kachel,
+.hilfe-karte,
+.kal-tagkarte .kal-eintrag, .kal-tagkarte .kal-todo-zeile {
+  border: 0;
+  border-radius: 12px;
+  background: var(--fuellung3);
+}
+.kal-tagkarte .kal-todo-zeile .kal-eintrag { background: none; }
+.hilfe-karte { border-left: 3px solid transparent; }
+.hilfe-karte.rot { border-left-color: var(--red); }
+.hilfe-karte.gelb { border-left-color: var(--yellow); }
+.zt-chip { border: 0; border-radius: 14px; background: var(--fuellung3); }
+.gw-blaettern { border: 0; }
+
+/* Aufklapp-Menues */
+.zt-dd-panel, .kal-farbwahl {
+  border: 0;
+  border-radius: 12px;
+  background: var(--row);
+  box-shadow: var(--schatten-gross);
+}
+:root[data-theme="dark"] .zt-dd-panel,
+:root[data-theme="dark"] .kal-farbwahl { background: #2c2c2e; }
+
+/* Trennlinien in Formularen und Listen: haarfein */
+.kal-form-titelzeile, .kal-form-reihe, .kal-form-zeitraum, .kal-wdh-zeile {
+  border-color: var(--line);
+  border-width: 0 0 .5px;
+}
+.gw-kal-block + .gw-kal-block { border-top: .5px solid var(--line); }
+.kal-anlegen { border-top: .5px solid var(--line); }
+.ansicht-schalter { border: 0; background: var(--fuellung3); }
+
+/* Kalender: Abstand oben am Handy wie bei "Heute" */
+@media (max-width: 560px) {
+  .kal-kopf { padding-top: 14px; margin-bottom: 6px; }
+}
+.gw-pillen button { border-radius: 999px; }
+
+/* Tages-Karte (Handy, iPad hoch): Kopf mit feiner Linie, Abschnittskoepfe wie
+   ueberall grau und klein. */
+.kal-tagkarte-kopf { border-bottom: .5px solid var(--line); }
+.kal-tagkarte .kal-gruppe {
+  border-top: .5px solid var(--line);
+  font-size: 12.5px; font-weight: 500; letter-spacing: .02em; color: var(--muted);
+}
+.kal-tagkarte .kal-gruppe:first-child, .kal-tagkarte .kal-tagkarte-kopf + .kal-gruppe { border-top: 0; }
+.kal-tagkarte .kal-gruppe.faellig { color: var(--red); font-weight: 600; }
+
+/* Hilfe: die Kapitel als EINE weisse Gruppe wie die Einstellungen. */
+.hilfe-blaettern { gap: 0; }
+.hilfe-blaettern > details.ein-abschnitt { position: relative; margin: 0; padding: 0; border-top: 0; background: var(--row); }
+.hilfe-blaettern > details.ein-abschnitt-erste { border-radius: 12px 12px 0 0; margin-top: 8px; }
+.hilfe-blaettern > details.ein-abschnitt:last-of-type { border-radius: 0 0 12px 12px; margin-bottom: 8px; }
+.hilfe-blaettern > details.ein-abschnitt + details.ein-abschnitt > .ein-kopf::before {
+  content: ""; position: absolute; top: 0; left: 59px; right: 0; border-top: .5px solid var(--line); pointer-events: none;
+}
+.hilfe-blaettern > details.ein-abschnitt > .ein-kopf { position: relative; }
+.hilfe-blaettern .ein-inhalt { padding: 4px 15px 16px; }
+/* Karten in Fenstern mit grauem Grund (Einstellungen-Familie): weiss statt grau. */
+.admin-popup-box.gw-box :is(.gw-karte, .gw-kachel) { background: var(--row); }
+/* Termin-Formular: Ort und Notizen sind Zeilen mit Linie - kein Kasten darin. */
+.kal-form input[type="text"], .kal-form textarea { background: none; border-radius: 0; padding-left: 0; }
+.kal-form input[type="text"]:focus, .kal-form textarea:focus { box-shadow: none; }
+/* Zeilen mit Trennlinie (Zeiterfassung, Statistik-Baum, Gewohnheiten-Liste):
+   bleiben Zeilen, nur die Linie wird haarfein. */
+.zt-heute { border-top: .5px solid var(--line); }
+.zt-eintrag, .gw-zeile { border-top: .5px solid var(--line); }
+.zt-eintrag:first-child, .gw-zeile:first-child { border-top: 0; }
+.zt-gesamt, .zt-knoten { border-bottom: .5px solid var(--line); }
+a.btn { text-decoration: none; }
