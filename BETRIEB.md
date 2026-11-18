@@ -1490,7 +1490,8 @@ die Tageskarte):**
   bleiben für den Daumen. Das ✓ ist im Neu- und Bearbeiten-Fenster ein
   `type="submit"` - es ist damit auch der Knopf, den Enter auslöst (am PC
   ausgeblendet, Enter speichert trotzdem, getestet).
-* **„ToDo löschen“** als rote Zeile im Bearbeiten-Fenster: ohne Rückfrage,
+* **„ToDo löschen“** als rote Zeile ganz unten im Bearbeiten-Fenster, unter
+  Abbrechen | Fertig (Hendriks Wunsch, erst stand sie darüber): ohne Rückfrage,
   danach „Rückgängig“ in der Leiste (`deleteTodo`) - nach Apples HIG keine
   Rückfrage für etwas, das sich zurücknehmen lässt.
 
