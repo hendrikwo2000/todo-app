@@ -23,6 +23,8 @@
    Zweite Runde am selben Abend (wieder gefragt, mit Skizzen):
    - Statt Suche und Vorschlagsliste ein DROPDOWN nach Liste › Bereich mit der
      Bereichsfarbe, oben ein Feld zum Eingrenzen. Auswaehlen, dann "Starten".
+     Seit 19.11.2026 keine aufklappende Liste mehr, sondern eine Zeile, die eine
+     eigene Seite aufschiebt (ztDropdown, Hendriks Wahl nach Mockup).
    - "Wechseln" ist weg ("ich waehle ein ToDo aus und arbeite daran, warum
      wechseln"). Bei laufender Uhr steht oben dasselbe Dropdown: wer ohne ToDo
      gestartet hat oder sich vertippt hat, waehlt dort, und die Zeit zaehlt AB
@@ -270,7 +272,7 @@ function ztFarbwert(farbe) {
 }
 
 /* ====================================================================
-   Das Dropdown: offene ToDos nach Liste › Bereich, mit Bereichsfarbe
+   Die Auswahl: offene ToDos nach Liste › Bereich, mit Bereichsfarbe
    ==================================================================== */
 
 // Wie auf dem Board: mit Termin zuerst (frueheste oben), dann die ohne in ihrer
@@ -322,158 +324,181 @@ function ztGruppen(suche) {
   return gruppen;
 }
 
-// Die Termin-Ampel wie an der Karte am Board (.todo.dated/.todo.urgent): rot =
-// dringend (ueberfaellig, heute, morgen), gelb = jeder andere Termin, "" = keiner.
-// Sie steht als data-termin an der Zeile und am Knopf (Streifen links) und als
-// Chip rechts daneben.
-function ztTerminAmpel(due) {
-  if (!due) return "";
-  return isUrgent(due) ? "rot" : "gelb";
-}
-
-// Der Termin als kleiner Chip. Kurzform ohne Jahr, das Jahr nur, wenn es nicht
-// das laufende ist.
-function ztTerminChip(due) {
-  const chip = document.createElement("span");
-  chip.className = "zt-dd-termin" + (isUrgent(due) ? " dringend" : "");
-  chip.textContent = due.slice(0, 4) === todayStr().slice(0, 4) ? formatDateShort(due) : formatDate(due);
-  const hinweis = dueInfo(due)?.badge;
-  chip.title = hinweis ? `${hinweis} · ${formatDate(due)}` : formatDate(due);
-  return chip;
-}
-
 const ztDropdowns = [];
 
+// Der Termin als farbiger Text rechts in der Zeile (seit 19.11.2026 statt des
+// Chips): rot = dringend (ueberfaellig, heute, morgen) wie der Streifen an der
+// Karte, sonst gelbbraun wie "bis" an der Karte. Das Jahr nur, wenn es nicht das
+// laufende ist.
+function ztTerminText(due) {
+  const s = document.createElement("span");
+  s.className = "zt-seite-datum" + (isUrgent(due) ? " dringend" : "");
+  s.textContent = due.slice(0, 4) === todayStr().slice(0, 4) ? formatDateShort(due) : formatDate(due);
+  const hinweis = dueInfo(due)?.badge;
+  s.title = hinweis ? `${hinweis} · ${formatDate(due)}` : formatDate(due);
+  return s;
+}
+
+// Der Farbpunkt eines Bereichs; ohne Farbe ein leerer Ring.
+function ztPunkt(farbe) {
+  const p = document.createElement("span");
+  p.className = "zt-punkt";
+  p.setAttribute("aria-hidden", "true");
+  const wert = ztFarbwert(farbe);
+  if (wert) p.style.setProperty("--zt-farbe", wert); else p.classList.add("leer");
+  return p;
+}
+
+const ZT_PFEIL = '<svg class="zt-wahl-pfeil" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
+const ZT_HAKEN = '<svg class="zt-seite-haken" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
 /**
- * Ein Dropdown in `host` - im Fenster (vor dem Start und bei laufender Uhr) und
- * im Eintrag-Dialog dasselbe. Ein eigenes statt eines <select>: das kann keine
- * Farben, am iPhone schon gar nicht. Die Liste klappt im Fluss auf (kein
- * schwebendes Menue), so passt sie in jedes Fenster und blaettert selbst.
+ * Die Auswahl eines ToDos - im Fenster (vor dem Start und bei laufender Uhr)
+ * und im Eintrag-Dialog dieselbe. Seit 19.11.2026 nach Apple-Art (Hendriks
+ * Wahl "eigene Seite"): in `host` steht nur eine Zeile "ToDo  ● Name ›". Ein
+ * Tipp schiebt in `box` (das Fenster drumherum) eine eigene Seite herein: oben
+ * "‹ Zurück" und der Titel, darunter das Suchfeld und alle offenen ToDos nach
+ * Bereich, gestaltet wie die Einstellungen (Bereich klein ueber der Gruppe mit
+ * Farbpunkt, Termin als farbiger Text, Haken am gewaehlten). Ein Tipp waehlt
+ * und fuehrt zurueck. Vorher klappte die Liste im Fenster auf und blaetterte
+ * mit eigenem Balken ("Liste im Kasten"); jetzt blaettert das ganze Fenster.
  *
  * `buchung()` sagt, was gerade gewaehlt ist ({ todoId, todoText, listeName,
  * bereichName } oder {}), `beiWahl(fund)` bekommt die Wahl (null = ohne ToDo),
- * `ohneText()` steht im Knopf, wenn nichts gewaehlt ist.
+ * `ohneText()` steht in der Zeile, wenn nichts gewaehlt ist.
  */
-function ztDropdown(host, { buchung, beiWahl, ohneText }) {
+function ztDropdown(host, { buchung, beiWahl, ohneText, box }) {
+  const gruppe = document.createElement("div");
+  gruppe.className = "anlegen-gruppe zt-wahl-gruppe";
   const knopf = document.createElement("button");
   knopf.type = "button";
-  knopf.className = "zt-dd-knopf";
-  knopf.setAttribute("aria-haspopup", "listbox");
-  knopf.setAttribute("aria-expanded", "false");
-  const panel = document.createElement("div");
-  panel.className = "zt-dd-panel";
-  panel.hidden = true;
+  knopf.className = "zt-wahl-zeile";
+  gruppe.appendChild(knopf);
+  host.replaceChildren(gruppe);
+
+  const seite = document.createElement("div");
+  seite.className = "zt-seite";
+  seite.hidden = true;
+  const kopf = document.createElement("div");
+  kopf.className = "zt-seite-kopf";
+  const zurueck = document.createElement("button");
+  zurueck.type = "button";
+  zurueck.className = "zt-seite-zurueck";
+  zurueck.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Zurück</span>';
+  const titel = document.createElement("span");
+  titel.className = "zt-seite-titel";
+  titel.textContent = "ToDo";
+  // Ein leerer Platzhalter rechts haelt den Titel in der Mitte.
+  kopf.append(zurueck, titel, document.createElement("span"));
+  const suche = document.createElement("label");
+  suche.className = "zt-suche";
+  suche.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5l5 5"/></svg>';
   const filter = document.createElement("input");
   filter.type = "search";
-  filter.className = "eingabe-feld zt-dd-filter";
-  filter.placeholder = "Eingrenzen …";
+  filter.placeholder = "Suchen";
   filter.autocomplete = "off";
-  filter.setAttribute("aria-label", "ToDos eingrenzen");
+  filter.enterKeyHint = "search";
+  filter.setAttribute("aria-label", "ToDos suchen");
+  suche.appendChild(filter);
   const liste = document.createElement("div");
-  liste.className = "zt-dd-liste";
+  liste.className = "zt-seite-liste";
   liste.setAttribute("role", "listbox");
-  panel.append(filter, liste);
-  host.replaceChildren(knopf, panel);
+  liste.setAttribute("aria-label", "ToDo wählen");
+  seite.append(kopf, suche, liste);
+  box.appendChild(seite);
 
   const dd = { offen: false };
 
   function zeichneKnopf() {
     const b = buchung() || {};
     const f = b.todoId ? ztFindeTodo(b.todoId) : null;
-    const text = document.createElement("span");
-    text.className = "zt-dd-text";
+    const etikett = document.createElement("span");
+    etikett.className = "zt-wahl-etikett";
+    etikett.textContent = "ToDo";
+    const wert = document.createElement("span");
+    wert.className = "zt-wahl-wert" + (b.todoId ? "" : " ohne");
+    if (b.todoId) wert.appendChild(ztPunkt(f?.farbe));
     const name = document.createElement("span");
-    name.className = "zt-dd-name" + (b.todoId ? "" : " ohne");
+    name.className = "zt-wahl-name";
     name.textContent = b.todoId ? ztNameVon(b) : ohneText();
-    text.appendChild(name);
+    wert.appendChild(name);
+    knopf.replaceChildren(etikett, wert);
+    knopf.insertAdjacentHTML("beforeend", ZT_PFEIL);
+    // Wo das ToDo steht (Liste · Bereich › Thema), fuer die Maus als Hinweis.
     const ort = ztOrtVon(b);
-    if (ort) {
-      const o = document.createElement("span");
-      o.className = "zt-dd-ort";
-      o.textContent = ort;
-      text.appendChild(o);
-    }
-    const pfeil = document.createElement("span");
-    pfeil.className = "zt-dd-pfeil";
-    pfeil.setAttribute("aria-hidden", "true");
-    pfeil.textContent = dd.offen ? "▴" : "▾";
-    // Der Termin des gewaehlten ToDos wie in der Liste (seit 19.10.2026): Chip
-    // rechts, dazu der gelbe/rote Streifen. Den Bereich tragen der Farbton und
-    // der Name in der grauen Zeile.
-    const due = f?.todo.due || "";
-    knopf.replaceChildren(...[text, due ? ztTerminChip(due) : null, pfeil].filter(Boolean));
-    knopf.style.setProperty("--zt-farbe", ztFarbwert(f?.farbe));
-    if (due) knopf.dataset.termin = ztTerminAmpel(due); else delete knopf.dataset.termin;
-    knopf.setAttribute("aria-expanded", String(dd.offen));
+    knopf.title = ort || "";
+    knopf.setAttribute("aria-label", `ToDo: ${name.textContent}${ort ? ", " + ort : ""}`);
   }
 
-  function eintrag(fund, gewaehltId) {
+  function zeile(fund, gewaehltId) {
     const k = document.createElement("button");
     k.type = "button";
-    k.className = "zt-dd-eintrag" + (fund ? "" : " zt-dd-ohne");
+    k.className = "zt-seite-zeile";
     k.setAttribute("role", "option");
-    k.setAttribute("aria-selected", String((fund ? fund.todo.id : null) === (gewaehltId || null)));
-    const text = document.createElement("span");
-    text.className = "zt-dd-eintrag-text";
-    text.textContent = fund ? fund.todo.text : "Ohne ToDo";
-    k.appendChild(text);
-    // Termin als kleiner Chip rechts (seit 18.10.2026, vorher nur das rote Wort
-    // "heute"/"ueberfaellig"), seit 19.10.2026 dazu der Streifen links wie an der
-    // Karte am Board: dringend rot, jeder andere Termin gelb.
-    const due = fund?.todo.due;
-    if (due) {
-      k.dataset.termin = ztTerminAmpel(due);
-      k.appendChild(ztTerminChip(due));
-    }
+    const gewaehlt = (fund ? fund.todo.id : null) === (gewaehltId || null);
+    k.setAttribute("aria-selected", String(gewaehlt));
+    const name = document.createElement("span");
+    name.className = "zt-seite-name";
+    name.textContent = fund ? fund.todo.text : "Ohne ToDo";
+    k.appendChild(name);
+    if (fund?.todo.due) k.appendChild(ztTerminText(fund.todo.due));
+    if (gewaehlt) k.insertAdjacentHTML("beforeend", ZT_HAKEN);
     k.onclick = () => { dd.schliesse(); beiWahl(fund); };
     return k;
+  }
+
+  function neueGruppe() {
+    const g = document.createElement("div");
+    g.className = "anlegen-gruppe zt-seite-gruppe";
+    return g;
   }
 
   function zeichneListe() {
     const gewaehltId = (buchung() || {}).todoId || null;
     liste.replaceChildren();
-    const suche = filter.value;
-    if (!suche.trim()) liste.appendChild(eintrag(null, gewaehltId));
-    const gruppen = ztGruppen(suche);
+    const text = filter.value;
+    if (!text.trim()) {
+      const g = neueGruppe();
+      g.appendChild(zeile(null, gewaehltId));
+      liste.appendChild(g);
+    }
+    const gruppen = ztGruppen(text);
     for (const l of gruppen) {
       // Der Listenname nur, wenn es mehrere Listen gibt (Hendrik, 19.10.2026:
-      // "Meine ToDos ist mir zu praesent"); an einer einzigen gibt es nichts zu
-      // unterscheiden.
+      // "Meine ToDos ist mir zu praesent").
       if (listen.length > 1) {
-        const kopf = document.createElement("div");
-        kopf.className = "zt-dd-liste-kopf";
-        kopf.textContent = l.name;
-        liste.appendChild(kopf);
+        const lk = document.createElement("div");
+        lk.className = "zt-seite-listenname";
+        lk.textContent = l.name;
+        liste.appendChild(lk);
       }
-      for (const g of l.bereiche) {
-        // Der ganze Bereich liegt auf dem Farbton des Bereichs, wie die Spalte am
-        // Board (seit 19.10.2026 statt des Streifens links).
-        const gruppe = document.createElement("div");
-        gruppe.className = "zt-dd-gruppe";
-        gruppe.style.setProperty("--zt-farbe", ztFarbwert(g.farbe));
-        const name = document.createElement("div");
-        name.className = "zt-dd-bereich";
-        name.textContent = g.name;
-        gruppe.appendChild(name);
-        for (const fund of g.frei) gruppe.appendChild(eintrag(fund, gewaehltId));
-        // Die Themen als kleine graue Zwischenueberschrift, ihre ToDos ein Stueck
-        // weiter eingerueckt (seit 19.10.2026).
-        for (const th of g.themen) {
-          const kopf = document.createElement("div");
-          kopf.className = "zt-dd-thema";
-          kopf.textContent = th.name;
-          gruppe.appendChild(kopf);
+      for (const b of l.bereiche) {
+        const abschnitt = document.createElement("div");
+        abschnitt.className = "zt-seite-abschnitt";
+        const bn = document.createElement("span");
+        bn.textContent = b.name;
+        abschnitt.append(ztPunkt(b.farbe), bn);
+        liste.appendChild(abschnitt);
+        const g = neueGruppe();
+        for (const fund of b.frei) g.appendChild(zeile(fund, gewaehltId));
+        // Die Themen als kleine graue Zwischenzeile in der Gruppe, ihre ToDos
+        // ein Stueck eingerueckt (wie seit 19.10.2026).
+        for (const th of b.themen) {
+          const tk = document.createElement("div");
+          tk.className = "zt-seite-thema";
+          tk.textContent = th.name;
+          g.appendChild(tk);
           for (const fund of th.todos) {
-            const k = eintrag(fund, gewaehltId);
+            const k = zeile(fund, gewaehltId);
             k.classList.add("im-thema");
-            gruppe.appendChild(k);
+            g.appendChild(k);
           }
         }
-        liste.appendChild(gruppe);
+        liste.appendChild(g);
       }
     }
     if (!gruppen.length) {
-      liste.appendChild(ztHinweisZeile(suche.trim() ? "Kein offenes ToDo gefunden." : "Keine offenen ToDos."));
+      liste.appendChild(ztHinweisZeile(text.trim() ? "Kein offenes ToDo gefunden." : "Keine offenen ToDos."));
     }
   }
 
@@ -481,40 +506,38 @@ function ztDropdown(host, { buchung, beiWahl, ohneText }) {
   dd.oeffne = () => {
     for (const anderes of ztDropdowns) if (anderes !== dd) anderes.schliesse();
     dd.offen = true;
-    panel.hidden = false;
     filter.value = "";
-    dd.zeichne();
+    zeichneListe();
+    seite.hidden = false;
+    box.classList.add("zt-seite-offen");
+    box.scrollTop = 0;
     ztFokussiere(filter);
-    panel.scrollIntoView?.({ block: "nearest" });
   };
   dd.schliesse = () => {
     if (!dd.offen) return;
+    const hatteFokus = seite.contains(document.activeElement);
     dd.offen = false;
-    panel.hidden = true;
+    seite.hidden = true;
+    box.classList.remove("zt-seite-offen");
     zeichneKnopf();
+    // Mit der Tastatur weiter an der Zeile, von der man kam.
+    if (hatteFokus) knopf.focus({ preventScroll: true });
   };
-  dd.enthaelt = el => host.contains(el);
 
-  knopf.addEventListener("click", () => (dd.offen ? dd.schliesse() : dd.oeffne()));
+  knopf.addEventListener("click", dd.oeffne);
+  zurueck.addEventListener("click", dd.schliesse);
   filter.addEventListener("input", zeichneListe);
   // Enter nimmt den ersten Treffer - wer tippt, will nicht noch zielen.
   filter.addEventListener("keydown", e => {
     if (e.key !== "Enter") return;
     e.preventDefault();
-    liste.querySelector(".zt-dd-eintrag")?.click();
+    liste.querySelector(".zt-seite-zeile")?.click();
   });
 
   ztDropdowns.push(dd);
   zeichneKnopf();
   return dd;
 }
-
-// Ein Tipp daneben klappt zu. In der Einfangphase, damit die Pruefung vor dem
-// Klick-Handler des Ziels laeuft - der baut die Liste womoeglich neu, danach
-// haengt das Ziel nicht mehr im Dokument.
-document.addEventListener("click", e => {
-  for (const dd of ztDropdowns) if (dd.offen && !dd.enthaelt(e.target)) dd.schliesse();
-}, true);
 
 // ---------- Laden ----------
 function ztUebernimmLaufend(e) {
@@ -838,11 +861,13 @@ const ztDdStart = ztDropdown(document.getElementById("ztDdStart"), {
   buchung: () => ztAuswahl,
   beiWahl: fund => { ztAuswahl = ztBuchungAus(fund); ztDdStart.zeichne(); },
   ohneText: () => "Ohne ToDo",
+  box: ztPopup.querySelector(".timer-box"),
 });
 const ztDdLaufend = ztDropdown(document.getElementById("ztDdLaufend"), {
   buchung: () => ztLaeuft || {},
   beiWahl: ztOrdneZu,
-  ohneText: () => "Ohne ToDo – jetzt zuordnen",
+  ohneText: () => "Jetzt zuordnen",
+  box: ztPopup.querySelector(".timer-box"),
 });
 
 // ---------- Fenster oeffnen / schliessen ----------
@@ -893,6 +918,7 @@ const ztDdDialog = ztDropdown(document.getElementById("ztDdDialog"), {
   buchung: () => ztDialogBuchung,
   beiWahl: fund => { ztDialogBuchung = ztBuchungAus(fund); ztDdDialog.zeichne(); },
   ohneText: () => "Ohne ToDo",
+  box: ztDialog.querySelector(".zt-dialog-box"),
 });
 
 // Aus Tag und Uhrzeiten die Strecke. Liegt "Bis" nicht nach "Von", geht sie

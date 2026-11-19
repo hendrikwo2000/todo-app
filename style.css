@@ -3460,97 +3460,10 @@ body.zieht, body.zieht .todo {
 /* "Ohne ToDo" ist kein ToDo-Name - grau, damit es sich nicht wie einer liest. */
 .zt-eintrag-name.ohne { color: var(--muted); }
 
-/* ---------- Dropdown: ToDos nach Liste › Bereich ---------- */
-/* Eigenes statt <select>: das zeigt keine Farben. Der Bereich liegt auf seinem
-   Farbton (--zt-farbe, gesetzt in zeiterfassung.js, gemischt wie --col-ton an der
-   Spalte am Board, im dunklen Modus mit etwas mehr Farbe); bis 19.10.2026 war es
-   ein Streifen links. Der Streifen gehoert seitdem dem Termin, wie an der Karte:
-   rot = dringend, gelb = jeder andere Termin (data-termin="rot"/"gelb"). */
-.zt-dd, .zt-dd-knopf, .zt-dd-panel { --ton-anteil: 11%; }
-:root[data-theme="dark"] .zt-dd, :root[data-theme="dark"] .zt-dd-knopf, :root[data-theme="dark"] .zt-dd-panel { --ton-anteil: 15%; }
-.zt-dd { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.zt-dd-knopf {
-  display: flex; align-items: center; gap: 10px;
-  width: 100%; min-height: 50px;
-  padding: 7px 12px;
-  border: 1px solid var(--line);
-  border-left: 5px solid var(--line);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--zt-farbe, var(--bg)) var(--ton-anteil), var(--bg));
-  color: var(--text);
-  font: inherit; text-align: left;
-  cursor: pointer;
-}
-.zt-dd-knopf[aria-expanded="true"] { border-color: var(--accent); }
-.zt-dd-knopf[data-termin="gelb"] { border-left-color: var(--yellow); }
-.zt-dd-knopf[data-termin="rot"]  { border-left-color: var(--red); }
-.zt-dd-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.zt-dd-name { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
-.zt-dd-name.ohne { color: var(--muted); font-weight: 500; }
-.zt-dd-ort { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.zt-dd-pfeil { flex: none; font-size: 13px; color: var(--muted); }
-.zt-dd-panel {
-  display: flex; flex-direction: column; gap: 6px;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--bg);
-}
-.zt-dd-panel[hidden] { display: none; }
-.zt-dd-liste {
-  display: flex; flex-direction: column; gap: 2px;
-  max-height: min(46vh, 380px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-/* Der Listenname steht nur bei mehreren Listen da und bewusst leise. */
-.zt-dd-liste-kopf {
-  padding: 8px 4px 0;
-  font-size: 11px; font-weight: 500; color: var(--muted);
-}
-.zt-dd-gruppe {
-  display: flex; flex-direction: column;
-  padding: 2px 4px 4px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--zt-farbe, var(--bg)) var(--ton-anteil), var(--bg));
-}
-.zt-dd-bereich { padding: 6px 8px 2px; font-size: 12.5px; font-weight: 700; color: var(--text); }
-.zt-dd-eintrag {
-  display: flex; align-items: baseline; gap: 8px;
-  width: 100%; min-height: 40px;
-  padding: 8px 8px 8px 14px;
-  border: 0;
-  border-left: 4px solid transparent;
-  border-radius: 6px;
-  background: none;
-  color: var(--text);
-  font: inherit; font-size: 14px; text-align: left;
-  cursor: pointer;
-}
-.zt-dd-eintrag.zt-dd-ohne { padding-left: 6px; color: var(--muted); }  /* + 4 px Rand = wie vorher */
-/* Ueber-Thema im Bereich: kleine graue Ueberschrift, die ToDos darunter eingerueckt. */
-.zt-dd-thema { padding: 6px 8px 0 18px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
-.zt-dd-eintrag.im-thema { padding-left: 24px; }
-.zt-dd-eintrag[data-termin="gelb"] { border-left-color: var(--yellow); }
-.zt-dd-eintrag[data-termin="rot"]  { border-left-color: var(--red); }
-.zt-dd-eintrag[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-@media (hover: hover) {
-  .zt-dd-eintrag:hover { background: var(--row); }
-  .zt-dd-eintrag[aria-selected="true"]:hover { background: var(--accent-soft); }
-}
-.zt-dd-eintrag-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-/* Termin-Chip: gelb = hat einen Termin, rot = dringend (isUrgent in app.js, also
-   ueberfaellig, heute oder morgen - wie der Streifen am Board). Rot wie der
-   Zaehler am Bereich (.col-count.urgent). */
-.zt-dd-termin {
-  flex: none;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums;
-  color: var(--orange);
-  background: color-mix(in srgb, var(--yellow) 14%, transparent);
-}
-.zt-dd-termin.dringend { color: var(--red); background: var(--del-soft); }
+/* ---------- Auswahl eines ToDos ---------- */
+/* Seit 19.11.2026 eine Zeile mit eigener Seite (Block "Zeit: Auswahl als
+   eigene Seite" am Ende der Datei); das aufklappende Dropdown ist weg. */
+.zt-dd { display: flex; flex-direction: column; min-width: 0; }
 .admin-popup-box .zt-leer { margin: 4px 2px; font-size: 13px; }
 
 /* ---------- Heute gebucht: eine Zeile, aufklappbar ---------- */
@@ -5255,28 +5168,6 @@ html.dreispaltig .kalender .kal-liste { background: none; padding: 0 0 14px; bor
   gap: 16px;
   background: var(--bg);
 }
-.anlegen-kopf {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  height: 52px;
-  margin: 0 -8px -4px;
-}
-.anlegen-kopf-titel { font-size: 17px; font-weight: 600; text-align: center; }
-.anlegen-kopf-knopf {
-  justify-self: start;
-  height: 44px;
-  padding: 0 8px;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  font-size: 17px;
-  cursor: pointer;
-}
-.anlegen-kopf-knopf.fett { justify-self: end; font-weight: 600; }
-.anlegen-kopf-knopf:disabled { opacity: .4; cursor: progress; }
-@media (hover: hover) { .anlegen-kopf-knopf:hover { opacity: .7; } }
 
 .anlegen-reiter { border: 0; border-radius: 9px; padding: 2px; background: var(--fuellung3); }
 .anlegen-reiter-knopf { padding: 6px 10px; border-radius: 7px; color: var(--text); font-weight: 500; }
@@ -5589,7 +5480,8 @@ html.dreispaltig .kalender .kal-liste { background: none; padding: 0 0 14px; bor
 .kal-balken.serie:not(.kal-balken-luecke) { background: transparent; }
 
 /* ===================== Neu-Fenster: Knoepfe unten ===================== */
-.anlegen-kopf { display: block; height: auto; margin: 14px 0 -2px; text-align: center; }
+/* Kopf: seit 19.11.2026 der Blatt-Kopf (.blatt-kopf, Block am Ende der Datei). */
+.anlegen-box > .blatt-kopf { margin: 12px 0 -2px; }
 .anlegen-knoepfe {
   display: grid;
   grid-template-columns: 1fr 1.6fr;
@@ -6038,7 +5930,6 @@ body.verwaltung .topbar > .save-status { position: static; }
 .fok-menge button, .fok-menge input,
 .gw-menge button, .gw-menge input,
 .kal-anlegen-feld,
-.zt-dd-knopf,
 .gw-pfeil,
 .gw-pillen button,
 .gw-wahl button,
@@ -6078,13 +5969,12 @@ body.verwaltung .topbar > .save-status { position: static; }
 .gw-blaettern { border: 0; }
 
 /* Aufklapp-Menues */
-.zt-dd-panel, .kal-farbwahl {
+.kal-farbwahl {
   border: 0;
   border-radius: 12px;
   background: var(--row);
   box-shadow: var(--schatten-gross);
 }
-:root[data-theme="dark"] .zt-dd-panel,
 :root[data-theme="dark"] .kal-farbwahl { background: #2c2c2e; }
 
 /* Trennlinien in Formularen und Listen: haarfein */
@@ -6454,81 +6344,6 @@ html:not(.breit) .nur-pc { display: none; }
 .zt-start .zt-dd { margin-bottom: 14px; }
 .admin-popup-box .btn.zt-starten { min-height: 50px; border-radius: 12px; font-size: 17px; }
 
-/* Auswahl-Knopf: eine weisse Zeile wie in einer Gruppe, Termin-Streifen links
-   wie an der Karte. */
-.zt-dd-knopf,
-.zt-dd-knopf[aria-expanded="true"] {
-  min-height: 52px;
-  padding: 8px 14px 8px 15px;
-  border: 0;
-  border-left: 3px solid transparent;
-  border-radius: 12px;
-  background: var(--row);
-}
-.zt-dd-knopf[data-termin="gelb"] { border-left-color: var(--yellow); }
-.zt-dd-knopf[data-termin="rot"] { border-left-color: var(--red); }
-.zt-dd-name { font-size: 16px; font-weight: 500; }
-.zt-dd-name.ohne { color: var(--text); font-weight: 400; }
-.zt-dd-ort { font-size: 13px; }
-.zt-dd-pfeil { font-size: 15px; }
-
-/* Die aufgeklappte Liste: im Fluss, ohne Kasten und Schatten - Gruppen auf
-   dem grauen Grund des Fensters. */
-.zt-dd-panel,
-:root[data-theme="dark"] .zt-dd-panel {
-  gap: 10px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
-}
-.admin-popup-box input.zt-dd-filter,
-.admin-popup-box input.zt-dd-filter:focus {
-  min-height: 38px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--fuellung3);
-  box-shadow: none;
-  font-size: 16px;
-}
-.zt-dd-liste { gap: 12px; max-height: min(50vh, 420px); }
-.zt-dd-liste-kopf { padding: 4px 15px 0; font-size: 13px; font-weight: 400; }
-.zt-dd-gruppe {
-  padding: 0;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--row);
-}
-.zt-dd-bereich {
-  padding: 9px 15px;
-  background: color-mix(in srgb, var(--zt-farbe, var(--row)) 14%, var(--row));
-  font-size: 15px;
-  font-weight: 700;
-}
-:root[data-theme="dark"] .zt-dd-bereich { background: color-mix(in srgb, var(--zt-farbe, var(--row)) 19%, var(--row)); }
-.zt-dd-thema { padding: 10px 15px 2px; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; }
-.zt-dd-eintrag {
-  position: relative;
-  align-items: center;
-  min-height: 46px;
-  padding: 10px 14px 10px 15px;
-  border-left: 3px solid transparent;
-  border-radius: 0;
-  font-size: 16px;
-}
-.zt-dd-eintrag.im-thema { padding-left: 15px; }
-.zt-dd-eintrag + .zt-dd-eintrag::before {
-  content: ""; position: absolute; top: 0; left: 15px; right: 0; border-top: .5px solid var(--line);
-}
-/* "Ohne ToDo" als eigene kleine Gruppe ganz oben. */
-.zt-dd-eintrag.zt-dd-ohne { padding-left: 15px; border-radius: 12px; background: var(--row); color: var(--text); }
-.zt-dd-eintrag[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-@media (hover: hover) {
-  .zt-dd-eintrag:hover { background: var(--fuellung3); }
-  .zt-dd-eintrag.zt-dd-ohne:hover { background: var(--row); opacity: .8; }
-}
 
 /* Heute: eine Gruppe mit drei Zeilen. */
 .zt-heute { gap: 0; padding-top: 0; border-top: 0; }
@@ -6572,8 +6387,6 @@ html:not(.breit) .nur-pc { display: none; }
 .zt-stopp { color: var(--red); }
 .zt-stopp-kreis { background: var(--fuellung3); box-shadow: none; }
 .zt-stopp-kreis::before { background: var(--red); }
-/* Die Gruppen in der blaetternden Liste nicht zusammendruecken. */
-.zt-dd-liste > * { flex: none; }
 
 /* Nebenbei (19.11.2026): als eigene Ansicht (unter 1000 px) nimmt der Kalender
    die ganze Breite. Zwischen 621 und 999 px (iPad hoch) stand er bisher 480 px
@@ -6588,7 +6401,11 @@ html.kal-ansicht .kalender { width: 100vw; border-left: 0; padding-left: max(14p
    rote Schrift auf Grau (nie die gefuellte Hauptaktion); jeder Knopf hat einen
    sichtbaren Druck-Zustand. Eine Reihe fuer ALLE Fenster: Neu, Bearbeiten,
    Termin, Monat waehlen, Gewohnheit, Tag, Zeit nachtragen, Rueckfragen und
-   Eingaben. Gleich breit, 44 px hoch (vorher 50 px und 1 : 1,6). */
+   Eingaben. Gleich breit, 44 px hoch (vorher 50 px und 1 : 1,6).
+   Seit 19.11.2026 (Hendrik: "nicht so schoen", mehr wie Apple): Kapseln statt
+   12-px-Ecken, Abbrechen grau mit normaler Schrift (wie iOS 26 / macOS),
+   die Aktion halbfett. Wo die Reihe steht, regelt der Block "Knoepfe nach
+   Apple je Geraet" am Ende der Datei. */
 .knopfreihe,
 .admin-popup-box .knopfreihe,
 .kal-popup-box .knopfreihe,
@@ -6614,12 +6431,12 @@ html.kal-ansicht .kalender { width: 100vw; border-left: 0; padding-left: max(14p
   margin: 0;
   padding: 0 12px;
   border: 0;
-  border-radius: 12px;
-  background: var(--fuellung3);
-  color: var(--accent);
+  border-radius: 22px;
+  background: var(--fuellung);
+  color: var(--text);
   font: inherit;
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -6630,10 +6447,10 @@ html.kal-ansicht .kalender { width: 100vw; border-left: 0; padding-left: max(14p
 }
 .knopfreihe > :is(.primary, .primaer),
 .admin-popup-box .knopfreihe > .btn.primary,
-.kal-popup-box .knopfreihe > :is(.primary, .primaer) { background: var(--accent); color: #fff; }
+.kal-popup-box .knopfreihe > :is(.primary, .primaer) { background: var(--accent); color: #fff; font-weight: 600; }
 .knopfreihe > :is(.gefahr),
 .admin-popup-box .knopfreihe > .btn.gefahr,
-.kal-popup-box .knopfreihe > .gefahr { background: var(--fuellung3); color: var(--red); }
+.kal-popup-box .knopfreihe > .gefahr { background: var(--fuellung); color: var(--red); font-weight: 600; }
 .knopfreihe > [hidden] { display: none !important; }
 .knopfreihe > :disabled { opacity: .45; cursor: progress; }
 .knopfreihe > :active:not(:disabled) { opacity: .55; }
@@ -6642,19 +6459,19 @@ html.kal-ansicht .kalender { width: 100vw; border-left: 0; padding-left: max(14p
 }
 /* Hover darf die Farben oben nicht ueberschreiben. */
 @media (hover: hover) {
-  .knopfreihe > :is(.btn, .kal-fuss-knopf):hover:not(.primary):not(.primaer):not(.gefahr) { background: var(--fuellung3); color: var(--accent); }
+  .knopfreihe > :is(.btn, .kal-fuss-knopf):hover:not(.primary):not(.primaer):not(.gefahr) { background: var(--fuellung); color: var(--text); }
   .knopfreihe > :is(.primary, .primaer):hover { background: var(--accent); color: #fff; }
-  .knopfreihe > .gefahr:hover { background: var(--fuellung3); color: var(--red); }
+  .knopfreihe > .gefahr:hover { background: var(--fuellung); color: var(--red); }
 }
 /* Mehrere Wahlen (Serientermin) untereinander, im selben Stil. */
-.kal-frage-knoepfe:not(.knopfreihe) .btn { min-height: 44px; border-radius: 12px; font-size: 17px; }
+.kal-frage-knoepfe:not(.knopfreihe) .btn { min-height: 44px; border-radius: 22px; font-size: 17px; }
 /* Monat waehlen: Kopf ohne ✕, Reihe ueber die volle Breite. */
 .kal-wahl-fuss.knopfreihe { justify-content: stretch; }
 /* "Starten" in der Zeiterfassung ist dieselbe Hauptaktion: dieselbe Hoehe. */
 .admin-popup-box .btn.zt-starten { min-height: 44px; height: 44px; }
-/* Nebenaktionen unter der Reihe (Archivieren, Eintrag loeschen) als Textknopf. */
+/* Nebenaktion unter der Reihe (Archivieren) als Textknopf. "Eintrag loeschen"
+   ist seit 19.11.2026 der Papierkorb im Kopf. */
 .admin-popup-box .knopfreihe + .lock-link { align-self: center; font-size: 15px; color: var(--accent); }
-#ztDialogLoeschen { color: var(--red) !important; }
 
 /* ===================== Bearbeiten: Handy Vollbild, PC breiter (seit 19.11.2026) ===================== */
 @media (min-width: 561px) {
@@ -6807,54 +6624,342 @@ html.breit.kopf-klein .topbar > .save-status { opacity: 0; }
   #kalTerminPopup.wie-neu .kal-form { flex: 1; }
 }
 
-/* ===================== ✕ und ✓ oben in den Blaettern (seit 19.11.2026) =====================
-   Hendrik: "Wenn die Tastatur da ist, sehe ich die Buttons unten nicht" -
-   seine Idee "so wie Apple, oben links ein X und oben rechts ein Haken". Nur am
-   Handy, wo Neu, Bearbeiten und der Termin aus dem Neu-Fenster den ganzen
-   Bildschirm fuellen; die Knoepfe unten bleiben (Daumen). Wie in iOS: ✕ in
-   einem grauen Kreis, ✓ in einem blauen. */
-.kopf-rund { display: none; }
-@media (max-width: 560px) {
-  .anlegen-kopf {
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) 44px;
-    align-items: center;
-    height: auto;
-    margin: 4px 0 -4px;
-  }
-  .anlegen-kopf > .anlegen-kopf-titel { grid-column: 2; }
+
+/* ===================== Knoepfe nach Apple je Geraet (seit 19.11.2026) =====================
+   Hendrik: die Knoepfe "nicht so schoen", mehr an Apple orientieren (HIG
+   Buttons), "ToDo loeschen" zu praesent. Seine Wahl nach dem Mockup
+   (ToDo-Entwurf-iOS/zeit-knoepfe-*.png), jeweils meine Empfehlung:
+   - Am FINGER (Handy, iPad - auch quer): runde ✕ und ✓ oben im Blatt-Kopf wie
+     in iOS 26, die Knopfreihe unten (.blatt-fuss) faellt weg. Das loest
+     nebenbei "mit offener Tastatur sehe ich die Knoepfe unten nicht".
+   - Mit MAUS (PC): Abbrechen | Aktion unten rechts als kompakte Kapseln wie am
+     Mac, oben nur Titel und Papierkorb.
+   Entschieden wird nach dem Zeiger, nicht nach der Breite - sonst waere das
+   iPad quer (ueber 1000 px) ein PC. Ersetzt die Regel "✕ und ✓ nur unter
+   561 px" und die rote Zeile "ToDo loeschen".
+   Rueckfragen (bestaetigen, textEingabe, frage) behalten ueberall zwei gleich
+   breite Knoepfe unten - so macht es Apple bei Alerts.
+   Kopf-Aufbau: app.js (blattKopf) bzw. von Hand im HTML. */
+.blatt-kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  flex: none;
+}
+.blatt-kopf[hidden] { display: none; }
+/* Beide Seiten gleich breit, damit der Titel in der Mitte steht. */
+.blatt-links,
+.blatt-rechts {
+  flex: 1 1 0;
+  min-width: max-content;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.blatt-rechts { justify-content: flex-end; }
+.blatt-titel,
+.admin-popup-box h2.blatt-titel,
+.kal-popup-kopf .blatt-titel {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-align: center;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+.blatt-kopf.kal-popup-kopf { margin: 0; }
+/* Der gewaehlte Monat als Untertitel - neben dem Titel brach er am Handy um. */
+.kal-popup-kopf .blatt-titel .kal-wahl-stand { display: block; margin-top: 1px; font-size: 13px; font-weight: 400; }
+
+.kopf-rund,
+.kopf-korb,
+.kopf-text {
+  flex: none;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.kopf-rund,
+.kopf-text { display: none; }
+.kopf-rund:disabled,
+.kopf-text:disabled { opacity: .4; cursor: progress; }
+.kopf-rund:active:not(:disabled),
+.kopf-text:active:not(:disabled),
+.kopf-korb:active { opacity: .55; }
+/* Papierkorb: auf allen Geraeten oben rechts, rot, weg von "Fertig". */
+.kopf-korb {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: none;
+  color: var(--red);
+}
+.kopf-korb[hidden] { display: none; }
+.kopf-korb .sym { width: 21px; height: 21px; stroke-width: 1.9; }
+@media (hover: hover) {
+  .kopf-korb:hover { background: var(--del-soft); }
+}
+
+/* --- Am Finger: ✕ und ✓ oben, unten nichts --- */
+@media (hover: none), (pointer: coarse) {
   .kopf-rund {
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    border: 0;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: var(--fuellung3);
+    background: var(--fuellung);
     color: var(--text);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
   }
-  .kopf-rund.kopf-abbrechen { grid-column: 1; justify-self: start; }
-  .kopf-rund.kopf-ok { grid-column: 3; justify-self: end; background: var(--accent); color: #fff; }
+  .kopf-rund.kopf-ok { background: var(--accent); color: #fff; }
   .kopf-rund svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-  .kopf-rund:active { opacity: .55; }
+  .kopf-korb { width: 40px; height: 40px; background: var(--fuellung); }
+  .kopf-korb .sym { width: 19px; height: 19px; stroke-width: 2.1; }
+  .kopf-text {
+    display: inline-flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 20px;
+    background: var(--fuellung);
+    color: var(--accent);
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .blatt-fuss,
+  .admin-popup-box .blatt-fuss,
+  .kal-popup-box .blatt-fuss,
+  .kal-form-gruppiert .blatt-fuss { display: none !important; }
 }
 
-/* "ToDo löschen" im Bearbeiten-Fenster: eine weisse Zeile mit roter Schrift,
-   wie "Ereignis löschen" in Apples Kalender. */
-.bearbeiten-loeschen {
-  justify-content: center;
+/* --- Mit Maus: Kapseln unten rechts wie am Mac --- */
+@media (hover: hover) and (pointer: fine) {
+  .blatt-kopf.nur-finger { display: none; }
+  body .knopfreihe.blatt-fuss {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  body .knopfreihe.blatt-fuss > :is(.btn, .kal-fuss-knopf) {
+    flex: none;
+    min-width: 112px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0 18px;
+    border-radius: 18px;
+    font-size: 15px;
+  }
+}
+
+/* --- "Starten": die eine Hauptaktion im Zeit-Fenster, grosse Kapsel --- */
+.admin-popup-box .btn.zt-starten {
+  display: flex;
   align-items: center;
-  min-height: 46px;
-  padding: 0 15px;
+  justify-content: center;
+  gap: 8px;
+  height: 50px;
+  min-height: 50px;
+  border-radius: 25px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.zt-starten svg { width: 15px; height: 15px; fill: currentColor; stroke: none; }
+/* Stoppen | Erledigt im Fokus-Bildschirm: dieselbe Kapsel. */
+.zf-knopf { border-radius: 27px; }
+.zf-stopp { background: var(--fuellung); }
+
+/* ===================== Zeit: Auswahl als eigene Seite (seit 19.11.2026) =====================
+   Hendriks Wahl nach Mockup: keine aufklappende Liste mit eigenem Balken mehr.
+   Im Fenster eine Zeile "ToDo  ● Name ›", ein Tipp schiebt eine Seite herein
+   (zeiterfassung.js, ztDropdown). Die Liste sieht aus wie die Einstellungen:
+   Bereich klein ueber der Gruppe mit Farbpunkt, Termin als farbiger Text,
+   Haken am gewaehlten. Waehrend die Seite offen ist, blendet das Fenster
+   alles andere aus und blaettert als Ganzes. */
+.zt-wahl-gruppe { flex: none; }
+/* Im Dialog "Zeit nachtragen" ist der Grund weiss: dort traegt die Zeile die
+   graue Flaeche der anderen Felder, und die offene Seite den grauen Grund des
+   Zeit-Fensters (sonst verschwaenden die weissen Gruppen darin). */
+.zt-dialog-box .zt-wahl-gruppe { background: var(--fuellung3); }
+.admin-popup-box.zt-dialog-box.zt-seite-offen { background: var(--bg); }
+.zt-wahl-zeile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px 10px 16px;
   border: 0;
-  color: var(--red);
+  background: none;
+  color: var(--text);
   font: inherit;
   font-size: 17px;
-  text-align: center;
+  text-align: left;
   cursor: pointer;
 }
-.bearbeiten-loeschen:active { opacity: .55; }
-@media (hover: hover) { .bearbeiten-loeschen:hover { opacity: .75; } }
+.zt-wahl-etikett { flex: none; }
+.zt-wahl-wert {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  color: var(--muted);
+}
+.zt-wahl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zt-wahl-pfeil,
+.zt-seite-haken,
+.zt-seite-zurueck svg,
+.zt-suche svg {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.zt-wahl-pfeil { width: 15px; height: 15px; stroke-width: 2.6; color: var(--text3); }
+.zt-punkt {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--zt-farbe, transparent);
+}
+.zt-punkt.leer { background: none; box-shadow: inset 0 0 0 1.5px var(--text3); }
+
+.zt-seite-offen > :not(.zt-seite) { display: none !important; }
+/* Die Seite gleitet von rechts herein - ohne das hier zeigte das Fenster
+   dabei kurz einen waagerechten Balken. */
+.zt-seite-offen { overflow-x: hidden; }
+.zt-seite {
+  display: flex;
+  flex-direction: column;
+  background: inherit;
+  text-align: left;
+  animation: ztSeiteRein .24s cubic-bezier(.32, .72, 0, 1);
+}
+.zt-seite[hidden] { display: none; }
+@keyframes ztSeiteRein {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .zt-seite { animation: none; } }
+/* Der Kopf bleibt beim Blaettern stehen. */
+.zt-seite-kopf {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  background: inherit;
+}
+.zt-seite-kopf > * { flex: 1 1 0; }
+.zt-seite-titel { flex: 0 1 auto; font-size: 17px; font-weight: 600; text-align: center; }
+.zt-seite-zurueck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1px;
+  height: 44px;
+  margin-left: -6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 17px;
+  cursor: pointer;
+}
+.zt-seite-zurueck svg { width: 22px; height: 22px; stroke-width: 2.4; }
+@media (hover: hover) { .zt-seite-zurueck:hover { opacity: .7; } }
+.zt-suche {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  margin: 2px 0 14px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: var(--fuellung);
+  color: var(--muted);
+  cursor: text;
+}
+.zt-suche svg { width: 17px; height: 17px; stroke-width: 2.4; }
+.zt-suche input,
+.admin-popup-box .zt-suche input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  outline: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+}
+.zt-suche:focus-within { box-shadow: 0 0 0 2px var(--accent-soft); }
+.zt-seite-liste { display: flex; flex-direction: column; }
+.zt-seite-liste > * { flex: none; }
+.zt-seite-listenname { margin: 24px 4px 2px; font-size: 20px; font-weight: 700; }
+.zt-seite-abschnitt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 18px 16px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.zt-seite-zeile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  text-align: left;
+  cursor: pointer;
+}
+.zt-seite-zeile.im-thema { padding-left: 28px; }
+.zt-seite-thema { position: relative; padding: 9px 16px 3px; font-size: 13px; font-weight: 600; color: var(--muted); }
+/* Haarlinie zwischen den Zeilen, eingerueckt bis zum Text. */
+.zt-seite-gruppe > * + *::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  border-top: .5px solid var(--line);
+}
+.zt-seite-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.zt-seite-zeile[aria-selected="true"] .zt-seite-name { font-weight: 600; }
+.zt-seite-datum { flex: none; font-size: 15px; font-weight: 600; color: var(--bis-farbe); }
+.zt-seite-datum.dringend { color: var(--red); }
+.zt-seite-haken { width: 20px; height: 20px; stroke-width: 2.6; color: var(--accent); }
+.zt-seite-zeile:active,
+.zt-wahl-zeile:active { background: var(--hover); }
+@media (hover: hover) {
+  .zt-seite-zeile:hover,
+  .zt-wahl-zeile:hover { background: var(--hover); }
+}

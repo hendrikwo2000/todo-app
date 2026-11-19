@@ -1874,6 +1874,59 @@ function bestaetigen(optionen) {
   });
 }
 
+// ---------- Kopf fuer Blaetter (seit 19.11.2026, Hendriks Wahl "Apple je Geraet") ----------
+// Am Finger (Handy, iPad): ✕ links, Titel mittig, rechts Papierkorb und ✓ -
+// unten steht dort nichts mehr (.blatt-fuss ist ausgeblendet). Mit Maus (PC):
+// nur Titel und Papierkorb, Abbrechen und die Aktion stehen unten rechts wie
+// am Mac. Welche Seite gilt, entscheidet allein das CSS (hover/pointer).
+// Die Knoepfe bekommen ihre Aufgabe vom Aufrufer; zurueck kommen die Knoepfe,
+// damit er sie sperren oder ausblenden kann. Fuer die Fenster im HTML steht
+// derselbe Aufbau dort von Hand (index.html, .blatt-kopf).
+const BLATT_HAKEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const BLATT_KREUZ = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
+
+function blattKopf({ titel = "", zu, zuText = "Abbrechen", ok, okText = "Fertig", loeschen, loeschenText = "Löschen", textKnopf } = {}) {
+  const kopf = document.createElement("div");
+  kopf.className = "blatt-kopf";
+  const links = document.createElement("div");
+  links.className = "blatt-links";
+  const mitte = document.createElement("span");
+  mitte.className = "blatt-titel";
+  mitte.textContent = titel;
+  const rechts = document.createElement("div");
+  rechts.className = "blatt-rechts";
+  const knopf = (klasse, name, inhalt, aktion) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = klasse;
+    b.setAttribute("aria-label", name);
+    b.title = name;
+    b.innerHTML = inhalt;
+    b.addEventListener("click", aktion);
+    return b;
+  };
+  const teile = { kopf, titel: mitte };
+  if (zu) links.appendChild(teile.zu = knopf("kopf-rund kopf-abbrechen", zuText, BLATT_KREUZ, zu));
+  if (loeschen) rechts.appendChild(teile.loeschen = knopf("kopf-korb", loeschenText, symbolSvg("papierkorb"), loeschen));
+  if (textKnopf) {
+    teile.text = knopf("kopf-text", textKnopf.text, escapeHtml(textKnopf.text), textKnopf.aktion);
+    rechts.appendChild(teile.text);
+  }
+  if (ok) rechts.appendChild(teile.ok = knopf("kopf-rund kopf-ok", okText, BLATT_HAKEN, ok));
+  // Ohne Titel und Papierkorb hat der Kopf mit Maus nichts zu zeigen.
+  if (!titel && !loeschen) kopf.classList.add("nur-finger");
+  kopf.append(links, mitte, rechts);
+  return teile;
+}
+
+// Die Kopf-Knoepfe der Fenster im HTML (✕, ✓) loesen den Knopf unten aus, den
+// data-klickt nennt - so bleibt es bei EINER Logik je Aktion. click() auf einen
+// gesperrten Knopf tut nichts, das Sperren waehrend des Speicherns gilt also mit.
+document.addEventListener("click", e => {
+  const k = e.target.closest?.("[data-klickt]");
+  if (k) document.getElementById(k.dataset.klickt)?.click();
+});
+
 // Aktive Liste direkt im Titel umbenennen (nur eigene Listen). Der Titel wird
 // kurz zum Eingabefeld: Enter oder Klick daneben uebernimmt, Escape verwirft.
 function starteTitelUmbenennen() {

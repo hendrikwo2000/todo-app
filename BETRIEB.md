@@ -1495,6 +1495,90 @@ die Tageskarte):**
   danach „Rückgängig“ in der Leiste (`deleteTodo`) - nach Apples HIG keine
   Rückfrage für etwas, das sich zurücknehmen lässt.
 
+## Knöpfe nach Apple je Gerät, Zeit-Auswahl als Seite (seit 19.11.2026 abends)
+
+Hendrik nach dem Live-Test: das Zeit-Fenster und die ToDo-Auswahl „nicht so
+schön“, die Knöpfe sollen sich mehr an Apple orientieren (HIG Buttons), und
+„ToDo löschen“ war zu präsent – man traf es leicht. Vier Rückfragen mit
+ASCII-Skizzen, dann ein Mockup an seinen Einträgen
+(`Documents/Claude-Code/ToDo-Entwurf-iOS/zeit-knoepfe.html` und
+`zeit-knoepfe-zeit.png` / `-bearbeiten.png`). Er nahm jedes Mal meine Empfehlung.
+
+**Knöpfe je Gerät** (CSS-Block „Knöpfe nach Apple je Gerät“ am Ende von
+`style.css`). Entschieden wird nach dem **Zeiger**, nicht nach der Breite – sonst
+wäre das iPad quer (über 1000 px) ein PC:
+* **Am Finger** (`(hover: none), (pointer: coarse)` – Handy, iPad hoch und
+  quer): runde ✕ links und ✓ rechts oben im Blatt-Kopf wie in iOS 26, die
+  Knopfreihe unten (`.blatt-fuss`) ist ausgeblendet. Löst nebenbei „mit
+  offener Tastatur sehe ich die Knöpfe unten nicht“. Ersetzt die alte Regel
+  „✕/✓ nur unter 561 px, unten trotzdem die Reihe“.
+* **Mit Maus** (`(hover: hover) and (pointer: fine)`): Abbrechen | Aktion
+  unten rechts als kompakte Kapseln (36 px, mind. 112 px breit) wie am Mac;
+  oben nur Titel und Papierkorb. Ein Kopf ohne beides (`.nur-finger`, z. B.
+  Termin bearbeiten) ist dort unsichtbar.
+* **Rückfragen** (`bestaetigen`, `textEingabe`, `frage`) behalten überall zwei
+  gleich breite Knöpfe unten – so macht Apple es bei Alerts.
+* **Form:** alle Knöpfe der Reihe als Kapsel (Radius = halbe Höhe), Abbrechen
+  grau mit normaler schwarzer Schrift (vorher blaue Schrift), Aktion blau und
+  halbfett, Zerstörendes rote Schrift auf Grau. „Starten“ ist eine große
+  Kapsel (50 px) mit gezeichnetem ▶. Mitgezogen: „Stoppen | Erledigt“ im
+  Fokus-Bildschirm ebenfalls als Kapsel.
+
+**Der Blatt-Kopf** (`.blatt-kopf` mit `.blatt-links`, `.blatt-titel`,
+`.blatt-rechts`): beide Seiten gleich breit (`flex: 1 1 0`), damit der Titel in
+der Mitte steht. Gebaut von `blattKopf()` in `app.js` (Kalender: Termin-Formular,
+Termin aus Neu, Termin-Ansicht, Monat wählen) bzw. von Hand im HTML (Neu,
+Bearbeiten, Zeit nachtragen, Gewohnheit, Tag nachtragen). Die Kopf-Knöpfe im
+HTML tragen `data-klickt="<id>"` und lösen den Knopf unten aus (Handler in
+`app.js`) – eine Logik je Aktion; `click()` auf einen gesperrten Knopf tut
+nichts, das Sperren beim Speichern gilt also mit.
+
+**Papierkorb statt Lösch-Zeile** (`.kopf-korb`, rot, oben rechts, weg von
+„Fertig“) – immer mit Rückfrage:
+* Bearbeiten: „ToDo löschen?“ (`bestaetigen`), danach weiter „Rückgängig“
+  (`deleteTodo`). Die rote Zeile ganz unten ist weg. Escape bei offener
+  Rückfrage schließt nur die Rückfrage (Wächter in `bearbeiten.js` wie in
+  `zeiterfassung.js` / `gewohnheiten.js`).
+* Zeit nachtragen („Eintrag bearbeiten“): der Link „Eintrag löschen“ ist der
+  Papierkorb im Kopf (gleiche id `ztDialogLoeschen`, Rückfrage wie vorher).
+* Tag nachtragen (nur Menge mit Obergrenze): Papierkorb im Kopf (`gewTagLoeschen`),
+  jetzt mit Rückfrage („steht danach wieder auf offen“).
+* Termin-Ansicht: „Löschen“ unten links ist der Papierkorb im Kopf; unten
+  bleiben Bearbeiten | Schließen (Schließen blau). Am Finger oben ✕ und
+  „Bearbeiten“ als Textknopf wie in Apples Kalender.
+* „Archivieren“ bei der Gewohnheit bleibt ein Link – dabei geht nichts verloren.
+
+**Zeit: Auswahl als eigene Seite** (`ztDropdown` in `zeiterfassung.js`, Name und
+Schnittstelle `zeichne/oeffne/schliesse/offen` geblieben). Hendriks Wahl „eigene
+Seite“ statt der aufklappenden Liste mit eigenem Balken („Liste im Kasten“):
+* Im Fenster nur eine Zeile `ToDo  ● Name ›` (`.zt-wahl-zeile`; bei laufender
+  Uhr ohne ToDo „Jetzt zuordnen“). Liste · Bereich › Thema steht als `title`.
+* Ein Tipp legt die Seite (`.zt-seite`) in den Kasten (`box`-Parameter:
+  `.timer-box` bzw. `.zt-dialog-box`), der Kasten bekommt `.zt-seite-offen` und
+  blendet alles andere aus – er blättert als Ganzes, Kopf („‹ Zurück“, „ToDo“)
+  bleibt oben stehen. Die Seite gleitet von rechts herein (`overflow-x: hidden`,
+  sonst kurz ein waagerechter Balken).
+* Liste wie die Einstellungen (Hendriks Wahl): Bereich klein über der Gruppe
+  mit Farbpunkt (ohne Farbe ein leerer Ring), Themen als graue Zwischenzeile,
+  Termin als farbiger Text (rot = `isUrgent`, sonst `--bis-farbe`), Haken am
+  gewählten. Streifen links und Chips sind weg (`ztTerminChip`/`ztTerminAmpel`
+  gelöscht), ebenso der Klick-daneben-Handler – zurück geht es mit „‹ Zurück“
+  oder Escape.
+* Im weißen Dialog „Zeit nachtragen“ trägt die Zeile die graue Fläche der
+  anderen Felder, die offene Seite den grauen Grund des Zeit-Fensters.
+
+**Lokal getestet** (wrangler pages dev, Browser-Pane 1000 px mit Maus und
+390 px mit Touch-Emulation, hell und dunkel): Auswahl öffnen, suchen, Enter,
+Escape, „‹ Zurück“, wählen, Starten, Umbuchen bei laufender Uhr (Rückfrage),
+Auswahl im Dialog; Bearbeiten ✓ speichert, ✕ verwirft, Papierkorb → Rückfrage →
+Escape lässt das Fenster offen → Löschen → Rückgängig; Neu, Termin aus Neu,
+Termin-Ansicht (Papierkorb → Kalender-Rückfrage, Bearbeiten), Monat wählen
+(✓ übernimmt), Gewohnheit (✓ ohne Namen zeigt die Meldung), Zeit-Eintrag mit
+Papierkorb. **Ungeprüft:** echtes iPhone/iPad (das iPad lässt sich im
+Test-Browser nicht als Finger-Gerät nachstellen – über 767 px emuliert er
+keinen Touch), Enter im Bearbeiten-Titel (Aufbau mit dem versteckten ✓ als
+erstem submit-Knopf unverändert), Termin wirklich bei Google löschen.
+
 ## Notizfeld
 
 Wächst mit dem Inhalt nach unten statt zu scrollen — im Anlege-Feld wie im
@@ -3609,6 +3693,9 @@ ein Hinweis oben im Fenster mit „Korrigieren" (Dialog; jede Korrektur setzt
 
 ### Das Fenster hinter ⏱ (`#timerPopup`)
 
+- **Seit 19.11.2026 keine aufklappende Liste mehr, sondern eine Zeile mit eigener
+  Seite** - siehe „Knöpfe nach Apple je Gerät, Zeit-Auswahl als Seite“. Der Rest
+  dieses Punkts beschreibt den Stand davor.
 - **Dropdown** (`ztDropdown`, dreimal: vor dem Start `ztDdStart`, bei laufender
   Uhr `ztDdLaufend`, im Dialog `ztDdDialog`): ein Knopf wie ein Auswahlfeld (Name,
   darunter Liste · Bereich, links der Farbstreifen) und darunter **im Fluss** eine

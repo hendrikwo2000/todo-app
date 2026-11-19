@@ -209,12 +209,20 @@ function speichereBearbeiten() {
 bearbeitenForm.addEventListener("submit", e => { e.preventDefault(); speichereBearbeiten(); });
 document.getElementById("bearbeitenAbbrechen").addEventListener("click", () => { schliesseBearbeiten(); render(); });
 document.getElementById("bearbeitenKopfZu").addEventListener("click", () => { schliesseBearbeiten(); render(); });
-// Loeschen ohne Rueckfrage: deleteTodo zeigt danach "Rueckgaengig" (Apple
-// HIG: keine Rueckfrage fuer etwas, das sich rueckgaengig machen laesst).
-document.getElementById("bearbeitenLoeschen").addEventListener("click", () => {
+// Der Papierkorb oben (seit 19.11.2026, Hendriks Wahl): erst eine Rueckfrage,
+// weil ein Tipp daneben zu leicht passierte - danach zeigt deleteTodo trotzdem
+// "Rueckgaengig".
+document.getElementById("bearbeitenLoeschen").addEventListener("click", async () => {
   const id = bearbeitenId;
+  if (!id) return;
+  const name = findTodo(id)?.text || "";
+  const ok = await bestaetigen({
+    titel: "ToDo löschen?",
+    text: (name ? `„${name}“ wird gelöscht. ` : "") + "Direkt danach kannst du es noch rückgängig machen.",
+  });
+  if (!ok || bearbeitenId !== id) return;
   schliesseBearbeiten();
-  if (id) deleteTodo(id);
+  deleteTodo(id);
 });
 bearbeitenPopup.addEventListener("click", e => { if (e.target === bearbeitenPopup) { schliesseBearbeiten(); render(); } });
 bearbeitenBereich.addEventListener("change", () => zeigeBearbeitenThema(""));
@@ -233,6 +241,8 @@ bearbeitenUpNeu.addEventListener("keydown", e => {
 // Escape in der Einfangphase: sonst klappte der Kalender-Handler im selben
 // Druck noch etwas dahinter zu (wie beim Neu-Fenster).
 document.addEventListener("keydown", e => {
+  // Eine Rueckfrage darueber (Papierkorb) schliesst sich selbst zuerst.
+  if (document.querySelector(".eingabe-popup")) return;
   if (e.key === "Escape" && schliesseBearbeiten()) {
     e.preventDefault();
     e.stopImmediatePropagation();

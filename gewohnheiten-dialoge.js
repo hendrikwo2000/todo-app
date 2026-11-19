@@ -273,7 +273,15 @@ gewFeld("gewTagSpeichern").onclick = () => {
   }
   gewSpeichereTag(menge, false);
 };
-gewFeld("gewTagLoeschen").onclick = () => gewSpeichereTag(0, true);
+// Seit 19.11.2026 ein Papierkorb oben im Kopf - wie bei allen Papierkoerben in
+// den Fenstern erst eine Rueckfrage.
+gewFeld("gewTagLoeschen").onclick = async () => {
+  const ok = await bestaetigen({
+    titel: "Eintrag löschen?",
+    text: `${gewFormatDatum(gewTagDatum)} steht danach wieder auf offen.`,
+  });
+  if (ok && !gewTagDialog.hidden) gewSpeichereTag(0, true);
+};
 gewFeld("gewTagMenge").addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); gewFeld("gewTagSpeichern").click(); }
 });

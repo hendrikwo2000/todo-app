@@ -1171,6 +1171,16 @@ function markiereWalze(spalte, index) {
   }
 }
 
+// "Uebernehmen" der Monatswahl - unten und als ✓ oben (seit 19.11.2026).
+// Werte sichern: schliesseWahl() zeichnet neu, und zeigeMonat() setzt
+// kalJahr/kalMonatNr - der Entwurf soll dabei nicht unter der Hand
+// ueberschrieben werden.
+function uebernimmWahl() {
+  const j = wahlJahr, m = wahlMonat;
+  schliesseWahl();
+  zeigeMonat(j, m);
+}
+
 function zeichneWahl() {
   kalWahl.hidden = !wahlOffen;
   kalMonatName.classList.toggle("offen", wahlOffen);
@@ -1184,18 +1194,17 @@ function zeichneWahl() {
   radGebaut = true;
   kalWahlBox.replaceChildren();
 
-  const kopf = document.createElement("p");
-  kopf.className = "kal-popup-kopf";
-  kopf.appendChild(document.createTextNode("Monat wählen"));
+  // Kopf wie alle Blaetter (seit 19.11.2026): am Finger ✕ und ✓ oben, mit
+  // Maus nur der Titel, "Abbrechen | Uebernehmen" unten rechts.
+  const k = blattKopf({ titel: "Monat wählen", zu: schliesseWahl, ok: () => uebernimmWahl(), okText: "Übernehmen" });
+  k.kopf.classList.add("kal-popup-kopf");
   // Was gerade gewaehlt IST, in Worten. Die Markierung im Rad allein reichte
   // nicht: sie zeigt zwei Walzen getrennt, und welche Kombination daraus
   // gilt, musste man sich zusammenreimen.
   const stand = document.createElement("span");
   stand.className = "kal-wahl-stand";
-  kopf.appendChild(stand);
-  // Das ✕ oben ist seit 19.11.2026 "Abbrechen" unten neben "Uebernehmen" -
-  // dieselbe Knopfreihe wie in allen Fenstern.
-  kalWahlBox.appendChild(kopf);
+  k.titel.appendChild(stand);
+  kalWahlBox.appendChild(k.kopf);
 
   const rad = document.createElement("div");
   rad.className = "kal-rad";
@@ -1220,7 +1229,7 @@ function zeichneWahl() {
   kalWahlBox.appendChild(rad);
 
   const fuss = document.createElement("div");
-  fuss.className = "kal-wahl-fuss knopfreihe";
+  fuss.className = "kal-wahl-fuss knopfreihe blatt-fuss";
   const abbrechen = document.createElement("button");
   abbrechen.type = "button";
   abbrechen.className = "btn";
@@ -1231,14 +1240,7 @@ function zeichneWahl() {
   ok.type = "button";
   ok.className = "btn primary";
   ok.textContent = "Übernehmen";
-  ok.addEventListener("click", () => {
-    // Werte sichern: schliesseWahl() zeichnet neu, und zeigeMonat() setzt
-    // kalJahr/kalMonatNr - der Entwurf soll dabei nicht unter der Hand
-    // ueberschrieben werden.
-    const j = wahlJahr, m = wahlMonat;
-    schliesseWahl();
-    zeigeMonat(j, m);
-  });
+  ok.addEventListener("click", uebernimmWahl);
   fuss.appendChild(ok);
   kalWahlBox.appendChild(fuss);
 
@@ -2137,7 +2139,19 @@ function baueTerminFormular(tag, termin) {
 
   // Aus dem Neu-Fenster heraus (anlegen.js): derselbe Kopf und derselbe
   // Umschalter ToDo | Termin wie dort - es soll EIN Fenster sein.
+  // Sonst (seit 19.11.2026) derselbe Blatt-Kopf wie in allen Fenstern: am
+  // Finger ✕ und ✓ oben (unten steht dort nichts mehr), mit Maus ohne Titel
+  // unsichtbar - die Knoepfe stehen dann unten rechts.
   if (f.ausNeu) inhalt.appendChild(baueNeuKopf(f));
+  else {
+    const k = blattKopf({
+      zu: schliesseTerminFormular,
+      ok: () => speichereTermin(termin),
+      okText: f.modus === "neu" ? "Anlegen" : "Speichern",
+    });
+    k.ok.disabled = !!f.speichert;
+    inhalt.appendChild(k.kopf);
+  }
 
   const textGruppe = document.createElement("div");
   textGruppe.className = "anlegen-gruppe kal-form-textgruppe";
@@ -2294,29 +2308,16 @@ function baueTerminFormular(tag, termin) {
 // (anlegen.js) und nimmt Titel und Notiz mit - wie das Umschalten dort.
 function baueNeuKopf(f) {
   const teile = document.createDocumentFragment();
-  const kopf = document.createElement("div");
-  kopf.className = "anlegen-kopf";
-  // Am Handy ✕ und ✓ oben in den Ecken wie im Neu-Fenster (seit 19.11.2026):
-  // mit offener Tastatur sind die Knoepfe unten nicht zu sehen.
-  const zu = document.createElement("button");
-  zu.type = "button";
-  zu.className = "kopf-rund kopf-abbrechen";
-  zu.setAttribute("aria-label", "Abbrechen");
-  zu.title = "Abbrechen";
-  zu.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
-  zu.addEventListener("click", schliesseTerminFormular);
-  const titel = document.createElement("span");
-  titel.className = "anlegen-kopf-titel";
-  titel.textContent = "Neu";
-  const ok = document.createElement("button");
-  ok.type = "button";
-  ok.className = "kopf-rund kopf-ok";
-  ok.setAttribute("aria-label", "Anlegen");
-  ok.title = "Anlegen";
-  ok.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-  ok.addEventListener("click", () => speichereTermin(formularTermin));
-  kopf.append(zu, titel, ok);
-  teile.appendChild(kopf);
+  // Derselbe Blatt-Kopf wie im Neu-Fenster (seit 19.11.2026, app.js): am
+  // Finger ✕ und ✓ oben, mit Maus nur "Neu".
+  const k = blattKopf({
+    titel: "Neu",
+    zu: schliesseTerminFormular,
+    ok: () => speichereTermin(formularTermin),
+    okText: "Anlegen",
+  });
+  k.ok.disabled = !!f.speichert;
+  teile.appendChild(k.kopf);
   if (!aktiveListe) return teile;   // ohne Liste gibt es kein ToDo zum Umschalten
   const reiter = document.createElement("div");
   reiter.className = "anlegen-reiter";
@@ -2374,6 +2375,17 @@ function baueTerminAnsicht(f, termin) {
   const inhalt = document.createElement("div");
   inhalt.className = "kal-form-inhalt";
   box.appendChild(inhalt);
+  // Kopf wie alle Blaetter (seit 19.11.2026): Loeschen ist der Papierkorb oben
+  // (vorher ein Knopf unten links), am Finger dazu ✕ und "Bearbeiten" wie in
+  // Apples Kalender.
+  const schreibt = f.modus === "ansicht";
+  inhalt.appendChild(blattKopf({
+    zu: schliesseTerminFormular,
+    zuText: "Schließen",
+    loeschen: schreibt ? () => loescheTerminBeiGoogle(termin) : null,
+    loeschenText: "Termin löschen",
+    textKnopf: schreibt ? { text: "Bearbeiten", aktion: () => { f.modus = "bearbeiten"; zeichneTerminPopup(); } } : null,
+  }).kopf);
 
   const titelZeile = document.createElement("div");
   titelZeile.className = "kal-form-titelzeile";
@@ -2479,7 +2491,7 @@ function baueTerminAnsicht(f, termin) {
 //   neu / bearbeiten    Abbrechen | Speichern
 function baueFuss(f, termin) {
   const fuss = document.createElement("div");
-  fuss.className = "kal-form-fuss knopfreihe";
+  fuss.className = "kal-form-fuss knopfreihe blatt-fuss";
   const knopf = (text, klasse, aktion) => {
     const b = document.createElement("button");
     b.type = "button";
@@ -2490,11 +2502,11 @@ function baueFuss(f, termin) {
     return b;
   };
   if (f.modus === "ansicht") {
-    knopf("Löschen", "gefahr", () => loescheTerminBeiGoogle(termin));
+    // Loeschen steht seit 19.11.2026 als Papierkorb im Kopf.
     knopf("Bearbeiten", "", () => { f.modus = "bearbeiten"; zeichneTerminPopup(); });
-    knopf("Schließen", "", schliesseTerminFormular);
+    knopf("Schließen", "primaer", schliesseTerminFormular);
   } else if (f.modus === "lesen") {
-    knopf("Schließen", "", schliesseTerminFormular);
+    knopf("Schließen", "primaer", schliesseTerminFormular);
   } else {
     // Abbrechen schliesst - wie Speichern (Hendriks Wunsch, 26.09.2026). Einen
     // Tag lang fuehrte es beim Bearbeiten zurueck in die Ansicht.

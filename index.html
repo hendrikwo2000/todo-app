@@ -211,15 +211,19 @@
        Umschalten, und am Handy laege die Mitte halb unter der Tastatur. -->
   <div id="anlegenPopup" class="admin-popup anlegen-popup" hidden>
     <form id="anlegenForm" class="admin-popup-box anlegen-box" role="dialog" aria-label="Neu anlegen" novalidate>
-      <!-- Kopf: nur der Titel. Abbrechen und Anlegen stehen unten, dort
-           kommt der Daumen hin (Hendrik, 18.11.2026). -->
-      <!-- Am Handy zusaetzlich ✕ und ✓ oben in den Ecken (seit 19.11.2026, wie
-           Apples Blaetter): mit offener Tastatur sind die Knoepfe unten nicht
-           zu sehen (Hendriks Screenshots). Am PC ausgeblendet. -->
-      <div class="anlegen-kopf">
-        <button type="button" class="kopf-rund kopf-abbrechen" id="anlegenKopfZu" aria-label="Abbrechen" title="Abbrechen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
-        <span id="anlegenKopfTitel" class="anlegen-kopf-titel">Neu</span>
-        <button type="submit" class="kopf-rund kopf-ok" aria-label="Anlegen" title="Anlegen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+      <!-- Kopf wie in allen Blaettern (.blatt-kopf, seit 19.11.2026 "Apple je
+           Geraet"): am Finger ✕ links und ✓ rechts, unten nichts; mit Maus nur
+           der Titel, Abbrechen | Anlegen unten rechts. Das ✓ ist der submit-
+           Knopf - auch der, den Enter ausloest (am PC ausgeblendet, Enter
+           speichert trotzdem). -->
+      <div class="blatt-kopf">
+        <div class="blatt-links">
+          <button type="button" class="kopf-rund kopf-abbrechen" id="anlegenKopfZu" aria-label="Abbrechen" title="Abbrechen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+        </div>
+        <span id="anlegenKopfTitel" class="blatt-titel">Neu</span>
+        <div class="blatt-rechts">
+          <button type="submit" class="kopf-rund kopf-ok" aria-label="Anlegen" title="Anlegen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+        </div>
       </div>
       <div id="anlegenReiter" class="anlegen-reiter" role="tablist" aria-label="Was anlegen?">
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="todo">ToDo</button>
@@ -263,7 +267,7 @@
       <div class="anlegen-fuss">
         <button type="button" id="anlegenBereichLink" class="lock-link anlegen-link">Neuer Bereich</button>
       </div>
-      <div class="anlegen-knoepfe knopfreihe">
+      <div class="anlegen-knoepfe knopfreihe blatt-fuss">
         <button type="button" id="anlegenAbbrechen" class="btn">Abbrechen</button>
         <button type="submit" id="anlegenOk" class="btn primary">Anlegen</button>
       </div>
@@ -279,10 +283,18 @@
        Logik in bearbeiten.js. -->
   <div id="bearbeitenPopup" class="admin-popup anlegen-popup bearbeiten-popup" hidden>
     <form id="bearbeitenForm" class="admin-popup-box anlegen-box" role="dialog" aria-label="ToDo bearbeiten" novalidate>
-      <div class="anlegen-kopf">
-        <button type="button" class="kopf-rund kopf-abbrechen" id="bearbeitenKopfZu" aria-label="Abbrechen" title="Abbrechen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
-        <span class="anlegen-kopf-titel">ToDo</span>
-        <button type="submit" class="kopf-rund kopf-ok" aria-label="Fertig" title="Fertig"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+      <!-- Loeschen ist seit 19.11.2026 der Papierkorb oben (Hendrik: die rote
+           Zeile "ToDo loeschen" war zu praesent, man traf sie leicht) - mit
+           Rueckfrage, danach trotzdem "Rueckgaengig". -->
+      <div class="blatt-kopf">
+        <div class="blatt-links">
+          <button type="button" class="kopf-rund kopf-abbrechen" id="bearbeitenKopfZu" aria-label="Abbrechen" title="Abbrechen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+        </div>
+        <span class="blatt-titel">ToDo</span>
+        <div class="blatt-rechts">
+          <button type="button" id="bearbeitenLoeschen" class="kopf-korb" aria-label="ToDo löschen" title="ToDo löschen"><svg class="sym" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15M9.5 6.5V4.5h5v2M6.5 6.5l1 13a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-13M10 10.5v6.5M14 10.5v6.5"/></svg></button>
+          <button type="submit" class="kopf-rund kopf-ok" aria-label="Fertig" title="Fertig"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+        </div>
       </div>
       <div class="anlegen-gruppe anlegen-textgruppe">
         <input type="text" id="bearbeitenTitel" class="eingabe-feld anlegen-titel" autocomplete="off"
@@ -322,14 +334,10 @@
                  enterkeyhint="enter" placeholder="Unterpunkt hinzufügen" aria-label="Unterpunkt hinzufügen">
         </label>
       </div>
-      <div class="anlegen-knoepfe knopfreihe">
+      <div class="anlegen-knoepfe knopfreihe blatt-fuss">
         <button type="button" id="bearbeitenAbbrechen" class="btn">Abbrechen</button>
         <button type="submit" id="bearbeitenOk" class="btn primary">Fertig</button>
       </div>
-      <!-- Loeschen (seit 19.11.2026, Hendrik): ganz unten, unter Abbrechen |
-           Fertig. Ohne Rueckfrage, danach steht unten "Rueckgaengig" wie beim
-           Papierkorb an der Zeile. -->
-      <button type="button" id="bearbeitenLoeschen" class="anlegen-gruppe bearbeiten-loeschen">ToDo löschen</button>
     </form>
   </div>
 
@@ -894,7 +902,7 @@
         <section id="ztStartBlock" class="zt-start" hidden>
           <h3 class="zt-abschnitt" id="ztStartLabel">Woran arbeitest du?</h3>
           <div id="ztDdStart" class="zt-dd"></div>
-          <button type="button" id="ztStarten" class="btn primary zt-starten">▶ Starten</button>
+          <button type="button" id="ztStarten" class="btn primary zt-starten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15c0 .8.9 1.3 1.6.9l12-7.5c.6-.4.6-1.4 0-1.8l-12-7.5C7.9 3.2 7 3.7 7 4.5z"/></svg>Starten</button>
         </section>
         <!-- Bei laufender Uhr nur noch das ToDo zum Zuordnen (seit 19.11.2026):
              Zeit und Stoppen stehen im Fokus-Bildschirm, aus dem man hierher
@@ -1094,7 +1102,7 @@
             <dl class="hilfe-zeilen">
               <div class="hilfe-zeile"><dt>Bearbeiten</dt><dd>Am Handy antippen, am Rechner 2× klicken</dd></div>
               <div class="hilfe-zeile"><dt>Verschieben</dt><dd>In einen Bereich ziehen, am Handy erst lange drücken</dd></div>
-              <div class="hilfe-zeile"><dt>Löschen</dt><dd>Nach links wischen bzw. Maus darüber, dann Papierkorb</dd></div>
+              <div class="hilfe-zeile"><dt>Löschen</dt><dd>Nach links wischen bzw. Maus darüber, dann Papierkorb – oder oben im Bearbeiten-Fenster</dd></div>
               <div class="hilfe-zeile"><dt>Zeit messen</dt><dd>Nach links wischen bzw. Maus darüber, dann Uhr</dd></div>
               <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kästchen antippen</dd></div>
             </dl>
@@ -1281,15 +1289,23 @@
        gleichem z-index ueber beide. -->
   <div id="ztDialog" class="admin-popup gw-dialog zt-dialog" hidden>
     <div class="admin-popup-box gw-dialog-box zt-dialog-box" role="dialog" aria-labelledby="ztDialogTitel">
-      <header class="ein-kopfzeile zt-dialog-kopf">
-        <h2 id="ztDialogTitel">Zeit nachtragen</h2>
-        <button type="button" id="ztDialogZu" class="ein-schliessen"
-                aria-label="Schließen" title="Schließen">✕</button>
-      </header>
-      <div class="gw-feld">
-        <span class="gw-label">ToDo</span>
-        <div id="ztDdDialog" class="zt-dd"></div>
+      <!-- Kopf wie alle Blaetter (seit 19.11.2026): am Finger ✕ | Titel |
+           Papierkorb ✓, mit Maus Titel und Papierkorb. "Eintrag loeschen" war
+           ein Link unter den Knoepfen. data-klickt: das ✓ loest "Speichern"
+           unten aus (app.js). -->
+      <div class="blatt-kopf">
+        <div class="blatt-links">
+          <button type="button" id="ztDialogZu" class="kopf-rund kopf-abbrechen" aria-label="Abbrechen" title="Abbrechen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+        </div>
+        <h2 id="ztDialogTitel" class="blatt-titel">Zeit nachtragen</h2>
+        <div class="blatt-rechts">
+          <button type="button" id="ztDialogLoeschen" class="kopf-korb" aria-label="Eintrag löschen" title="Eintrag löschen" hidden><svg class="sym" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15M9.5 6.5V4.5h5v2M6.5 6.5l1 13a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-13M10 10.5v6.5M14 10.5v6.5"/></svg></button>
+          <button type="button" class="kopf-rund kopf-ok" data-klickt="ztDialogSpeichern" aria-label="Speichern" title="Speichern"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+        </div>
       </div>
+      <!-- Die Auswahl ist seit 19.11.2026 eine Zeile "ToDo  … ›", die eine
+           eigene Seite mit allen ToDos aufschiebt (zeiterfassung.js). -->
+      <div id="ztDdDialog" class="zt-dd"></div>
       <div class="gw-feld">
         <span class="gw-label">Tag</span>
         <div class="zt-tag-wahl">
@@ -1320,11 +1336,10 @@
       </div>
       <p id="ztDialogDauer" class="zt-dialog-dauer"></p>
       <p class="lock-msg" id="ztDialogMsg" aria-live="polite"></p>
-      <div class="gw-knoepfe knopfreihe">
+      <div class="gw-knoepfe knopfreihe blatt-fuss">
         <button type="button" class="btn" id="ztDialogAbbrechen">Abbrechen</button>
         <button type="button" class="btn primary" id="ztDialogSpeichern">Speichern</button>
       </div>
-      <button type="button" class="lock-link" id="ztDialogLoeschen" hidden>Eintrag löschen</button>
     </div>
   </div>
 
@@ -1360,7 +1375,15 @@
   <div id="gewDialog" class="admin-popup gw-dialog" hidden>
     <div class="admin-popup-box gw-dialog-box" role="dialog" aria-labelledby="gewDialogTitel">
       <div class="admin-popup-icon" id="gewDialogIcon">✨</div>
-      <h2 id="gewDialogTitel">Neue Gewohnheit</h2>
+      <div class="blatt-kopf">
+        <div class="blatt-links">
+          <button type="button" class="kopf-rund kopf-abbrechen" data-klickt="gewAbbrechen" aria-label="Abbrechen" title="Abbrechen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+        </div>
+        <h2 id="gewDialogTitel" class="blatt-titel">Neue Gewohnheit</h2>
+        <div class="blatt-rechts">
+          <button type="button" class="kopf-rund kopf-ok" data-klickt="gewSpeichern" aria-label="Speichern" title="Speichern"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+        </div>
+      </div>
       <div class="gw-feld">
         <label for="gewName">Name</label>
         <input type="text" id="gewName" class="eingabe-feld" maxlength="60" placeholder="z. B. Lesen" autocomplete="off">
@@ -1418,7 +1441,7 @@
         <input type="number" id="gewWochenziel" class="eingabe-feld" min="1" max="7" step="1" value="3" inputmode="numeric">
       </div>
       <p class="lock-msg" id="gewDialogMsg" aria-live="polite"></p>
-      <div class="gw-knoepfe knopfreihe">
+      <div class="gw-knoepfe knopfreihe blatt-fuss">
         <button type="button" class="btn" id="gewAbbrechen">Abbrechen</button>
         <button type="button" class="btn primary" id="gewSpeichern">Speichern</button>
       </div>
@@ -1429,7 +1452,19 @@
   <div id="gewTagDialog" class="admin-popup gw-dialog" hidden>
     <div class="admin-popup-box gw-dialog-box" role="dialog" aria-labelledby="gewTagTitel">
       <div class="admin-popup-icon">📅</div>
-      <h2 id="gewTagTitel">Tag nachtragen</h2>
+      <div class="blatt-kopf">
+        <div class="blatt-links">
+          <button type="button" class="kopf-rund kopf-abbrechen" data-klickt="gewTagAbbrechen" aria-label="Abbrechen" title="Abbrechen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+        </div>
+        <h2 id="gewTagTitel" class="blatt-titel">Tag nachtragen</h2>
+        <div class="blatt-rechts">
+          <!-- Nur bei einer Obergrenze noetig: dort ist die Menge 0 ein erledigter
+               Tag, "wieder auf offen" laesst sich also nicht ueber die Zahl sagen.
+               Seit 19.11.2026 der Papierkorb oben statt eines Links unten. -->
+          <button type="button" id="gewTagLoeschen" class="kopf-korb" aria-label="Eintrag löschen" title="Eintrag löschen" hidden><svg class="sym" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15M9.5 6.5V4.5h5v2M6.5 6.5l1 13a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-13M10 10.5v6.5M14 10.5v6.5"/></svg></button>
+          <button type="button" class="kopf-rund kopf-ok" data-klickt="gewTagSpeichern" aria-label="Speichern" title="Speichern"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+        </div>
+      </div>
       <p id="gewTagDatum" class="gw-mitte"></p>
       <div class="gw-feld">
         <label for="gewTagMenge" id="gewTagLabel">Menge</label>
@@ -1444,13 +1479,10 @@
         </div>
       </div>
       <p class="lock-msg" id="gewTagMsg" aria-live="polite"></p>
-      <div class="gw-knoepfe knopfreihe">
+      <div class="gw-knoepfe knopfreihe blatt-fuss">
         <button type="button" class="btn" id="gewTagAbbrechen">Abbrechen</button>
         <button type="button" class="btn primary" id="gewTagSpeichern">Speichern</button>
       </div>
-      <!-- Nur bei einer Obergrenze noetig: dort ist die Menge 0 ein erledigter
-           Tag, "wieder auf offen" laesst sich also nicht ueber die Zahl sagen. -->
-      <button type="button" class="lock-link" id="gewTagLoeschen" hidden>Eintrag löschen</button>
     </div>
   </div>
 
