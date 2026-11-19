@@ -1579,6 +1579,15 @@ Test-Browser nicht als Finger-Gerät nachstellen – über 767 px emuliert er
 keinen Touch), Enter im Bearbeiten-Titel (Aufbau mit dem versteckten ✓ als
 erstem submit-Knopf unverändert), Termin wirklich bei Google löschen.
 
+**Nachtrag: Überschrift der Tagesliste** (Heute-Spalte und Tagesansicht über
+den ToDos, `tagesUeberschrift()` in `kalender.js`). Hendrik: an anderen Tagen
+stand das Datum groß da – mit „November 2026“ oben im Kalender war der Monat
+zweimal fett; gestern und morgen sollten heißen wie heute. Jetzt groß „Heute“,
+„Morgen“, „Gestern“ (dezent daneben das volle Datum), sonst groß der Wochentag
+und dezent „16. November“ (mit Jahr, wenn nicht das laufende) – seine Wahl
+„Wochentag groß“ gegen „alles dezent“. Die Tages-Karte am Handy hat ihren
+eigenen Kopf und ist nicht betroffen.
+
 ## Notizfeld
 
 Wächst mit dem Inhalt nach unten statt zu scrollen — im Anlege-Feld wie im

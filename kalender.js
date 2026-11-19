@@ -74,6 +74,9 @@ const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const MONAT_FORMAT = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
 const MONAT_NAME   = new Intl.DateTimeFormat("de-DE", { month: "long" });
 const TAG_FORMAT   = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
+const WOCHENTAG_LANG = new Intl.DateTimeFormat("de-DE", { weekday: "long" });
+const TAG_MONAT      = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long" });
+const TAG_MONAT_JAHR = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric" });
 const UHR_FORMAT   = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" });
 
 // Schluessel der Sonder-Auswahl "Ueberfaellig" - steht anstelle eines
@@ -1513,6 +1516,25 @@ function baueTagesZelle(tag, spalte, ctx) {
   return zelle;
 }
 
+// Ueberschrift eines Tages in der Tagesliste (seit 19.11.2026 abends): gross
+// der Name - "Heute", "Morgen", "Gestern", sonst der Wochentag -, dezent
+// daneben das Datum. Hendrik: an anderen Tagen stand das Datum gross da, mit
+// dem Monat oben im Kalender also zweimal fett; und gestern/morgen sollten
+// heissen wie heute. Bei Heute/Morgen/Gestern bleibt das volle Datum klein
+// dabei, sonst "16. November" (mit Jahr, wenn es nicht das laufende ist).
+function tagesUeberschrift(tag, heute) {
+  const [j, m, t] = tag.split("-").map(Number);
+  const d = new Date(j, m - 1, t);
+  const [hj, hm, ht] = heute.split("-").map(Number);
+  const nah = {
+    [heute]: "Heute",
+    [isoVonDate(new Date(hj, hm - 1, ht + 1))]: "Morgen",
+    [isoVonDate(new Date(hj, hm - 1, ht - 1))]: "Gestern",
+  }[tag];
+  if (nah) return { gross: nah, klein: TAG_FORMAT.format(d) };
+  return { gross: WOCHENTAG_LANG.format(d), klein: (j === hj ? TAG_MONAT : TAG_MONAT_JAHR).format(d) };
+}
+
 // Schreibt den Inhalt eines Tages nach `ziel`: am Rechner in die Tagesliste
 // neben dem Raster, am Handy in die Tages-Karte (`karte`). Die Karte hat ihren
 // eigenen Kopf und unten das runde Plus fuer Termine - Tagestitel und das ＋
@@ -1568,19 +1590,19 @@ function zeichneTagesliste(tage, tageTermine, ueberfaellige, heute,
     const kopf = document.createElement("h3");
     kopf.className = "kal-liste-kopf";
     // Seit 18.11.2026 (iOS-Look): heute steht "Heute" gross als Titel, das
-    // Datum klein darunter - statt Datum plus Chip "heute". Andere Tage
-    // tragen das Datum als Titel.
+    // Datum klein daneben - statt Datum plus Chip "heute". Seit 19.11.2026
+    // abends jeder Tag so (tagesUeberschrift): Morgen, Gestern, sonst der
+    // Wochentag gross, das Datum dezent.
+    const { gross, klein } = tagesUeberschrift(tag, heute);
     const kopfTitel = document.createElement("span");
     kopfTitel.className = "kal-liste-titel";
-    kopfTitel.textContent = tag === heute ? "Heute" : titel;
+    kopfTitel.textContent = gross;
     kopf.appendChild(kopfTitel);
-    if (tag === heute) {
-      kopf.classList.add("ist-heute");
-      const datum = document.createElement("span");
-      datum.className = "kal-liste-datum";
-      datum.textContent = titel;
-      kopf.appendChild(datum);
-    }
+    if (tag === heute) kopf.classList.add("ist-heute");
+    const datum = document.createElement("span");
+    datum.className = "kal-liste-datum";
+    datum.textContent = klein;
+    kopf.appendChild(datum);
     if (ruhig && todoPlus) {
       const plus = document.createElement("button");
       plus.type = "button";
