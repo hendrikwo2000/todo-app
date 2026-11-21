@@ -9,7 +9,7 @@
  * Bis Oktober 2026 gab es daneben fokus_zugang fuer die eigene Fokus-App,
  * und diese Datei war deren Spiegelung. Seit der Fusion gehoeren Gewohnheiten
  * und Timer zu dieser App und haengen an genau dieser Pruefung - die Spalte
- * fokus_zugang steht noch in der Datenbank, gelesen wird sie nicht mehr.
+ * fokus_zugang ist seit dem 21.11.2026 aus der Datenbank geloescht.
  */
 
 import { angemeldeterNutzer } from "./session.js";

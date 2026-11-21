@@ -27,9 +27,10 @@
 --
 -- SEIT OKTOBER 2026: fokus_zugang wird nicht mehr gelesen. Die Fokus-App ist
 -- in der ToDo-App aufgegangen, Gewohnheiten und Timer haengen an todo_zugang
--- (siehe BETRIEB.md, "Gewohnheiten und Timer"). Spalte und waitlist.quelle
--- bleiben stehen, damit bestehende Datenbanken nichts umbauen muessen. Der
--- Rest dieses Kommentars beschreibt den Stand davor.
+-- (siehe BETRIEB.md, "Gewohnheiten und Timer"). Die Spalte fokus_zugang ist
+-- seit dem 21.11.2026 geloescht (live per ALTER TABLE ... DROP COLUMN);
+-- waitlist.quelle bleibt stehen. Der Rest dieses Kommentars beschreibt den
+-- Stand davor.
 --
 -- todo_zugang und fokus_zugang sind ZWEI EIGENE, von role unabhaengige
 -- Berechtigungen fuer je eine App auf dieser gemeinsamen Datenbank
@@ -52,7 +53,6 @@ CREATE TABLE users (
   name         TEXT,
   role         TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
   todo_zugang  INTEGER NOT NULL DEFAULT 1 CHECK (todo_zugang IN (0, 1)),
-  fokus_zugang INTEGER NOT NULL DEFAULT 0 CHECK (fokus_zugang IN (0, 1)),
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

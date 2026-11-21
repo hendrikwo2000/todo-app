@@ -817,8 +817,8 @@ Gewohnheiten hat, bekommt die Meldung trotzdem. Rechnung in
   waere Rauschen. Die verworfene Alternative war "in jedem Lauf und im Badge".
 - Vorher hatte die eigene Fokus-App einen zweiten Push-Weg (Tabelle
   `fokus_push_subscriptions`, eigener cron-job auf fokus.it-wolf.org). Null
-  Abos am 17.10.2026 - er faellt mit der Fokus-App weg, die Tabelle bleibt
-  ungenutzt stehen.
+  Abos am 17.10.2026 - er fiel mit der Fokus-App weg, die Tabelle ist seit
+  dem 21.11.2026 geloescht.
 - **Zum Testen:** `?abend=jetzt` erzwingt den Abendteil, `?trocken=1` rechnet
   nur und schickt nichts (weder Push noch WhatsApp); die Antwort enthaelt dann
   `vorschau` mit Text und Badge je Nutzer. Beides braucht das Geheimnis.
@@ -937,11 +937,11 @@ Bis zur Fusion gab es daneben `users.fokus_zugang` für die eigene Fokus-App,
 beide Apps schrieben in dieselbe `waitlist`, und `waitlist.quelle` entschied,
 welche Spalte das Freischalten setzte; dazu kamen Selbstbedienungs-Knöpfe in
 beiden Apps und ein Fokus-Schalter in der Nutzerliste. Das ist alles raus.
-**Beide Spalten stehen weiter in der Datenbank** (nie DROP) — `fokus_zugang`
-liest nur niemand mehr, `quelle` ist für neue Einträge immer `'todo'`.
+`fokus_zugang` ist seit dem 21.11.2026 gelöscht (bis dahin stand sie ungelesen
+weiter da); `waitlist.quelle` bleibt und ist für neue Einträge immer `'todo'`.
 
 **Selbstbedienung bleibt für den ToDo-Zugang:** Ein Konto ohne `todo_zugang`
-(etwa ein reines Dashboard-Konto) holt ihn sich mit dem nächsten
+(etwa ein früheres reines Fokus-Konto) holt ihn sich mit dem nächsten
 Login-Versuch still zurück — `request-code.js` und `link.js` setzen die Spalte,
 bevor sie den Code verschicken bzw. die Sitzung anlegen. In der Nutzerliste
 lässt sich `todo_zugang` jederzeit umlegen; beim eigenen Konto ist der
@@ -3203,7 +3203,7 @@ zu (`gewBeiAenderung`) und zeichnen sich neu.
 
 **Jedes Konto bekommt Gewohnheiten und Timer** (Hendriks Entscheidung,
 gefragt). Die Endpunkte pruefen `todo_zugang` ueber `_lib/zugang.js` wie alles
-hier, `users.fokus_zugang` liest keiner von ihnen mehr. Ein neues Konto sieht
+hier, `users.fokus_zugang` ist seit dem 21.11.2026 geloescht. Ein neues Konto sieht
 im Abschnitt einen Leerzustand mit "＋ Gewohnheit anlegen" (`aktive: 0` in der
 Antwort von `gewohnheiten/heute`).
 

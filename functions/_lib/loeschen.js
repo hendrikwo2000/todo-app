@@ -40,10 +40,8 @@ export async function loescheKonto(env, nutzer) {
     // Meine Mitgliedschaften in fremden Listen loesen (die Listen bleiben).
     env.DB.prepare("DELETE FROM board_members WHERE user_id = ?").bind(nutzer.id),
     // Gewohnheiten und Timer - seit Oktober 2026 Teil dieser App statt der
-    // eigenen Fokus-App. fokus_push_subscriptions fehlt hier bewusst: die
-    // Tabelle ist seit der Fusion ungenutzt und steht nicht in schema-fokus.sql,
-    // ein DELETE darauf liesse in einer frischen Datenbank den ganzen Batch
-    // scheitern. Ihre Zeilen raeumt der Fremdschluessel auf users mit ab.
+    // eigenen Fokus-App. Deren alte Tabelle fokus_push_subscriptions ist seit
+    // dem 21.11.2026 geloescht, hier gibt es also nichts mehr aufzuraeumen.
     env.DB.prepare(
       "DELETE FROM gewohnheit_logs WHERE gewohnheit_id IN (SELECT id FROM gewohnheiten WHERE user_id = ?)"
     ).bind(nutzer.id),
