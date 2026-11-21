@@ -102,8 +102,8 @@ Escape. Auf dem Handy füllt der Kalender den ganzen Bildschirm.
 ## Gewohnheiten
 
 Gehören seit Oktober 2026 fest zur App, für jedes Konto. Der frühere
-Fokus-Tracker (fokus.it-wolf.org) ist hier aufgegangen — die Adresse leitet
-hierher weiter, deine Gewohnheiten und Sitzungen sind dieselben.
+Fokus-Tracker (fokus.it-wolf.org) ist hier aufgegangen — die alte Adresse gibt
+es nicht mehr, deine Gewohnheiten und Sitzungen sind dieselben.
 
 **Gewohnheiten** stehen dort, wo der Tag steht - zum Abhaken (Haken rechts, bei
 Mengen **− Zahl +**), mit der **Flamme** (wie viele Tage erledigt sind). Der **✎**
