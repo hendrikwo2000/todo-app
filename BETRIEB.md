@@ -49,10 +49,13 @@ abgegriffenes Token wird damit ebenfalls ungültig.
 ### Cookie gilt für die ganze Domain
 
 Das Sitzungscookie ist auf `Domain=.it-wolf.org` gesetzt, nicht auf
-`todo.it-wolf.org`. Nur dadurch sieht das **Schul-Dashboard** (eigenes
-Pages-Projekt, gleiche D1) dieselbe Anmeldung — der geteilte Login hängt allein
+`todo.it-wolf.org`. Nur dadurch sieht **Tageswerte** (`werte.it-wolf.org`, eigenes
+Pages-Projekt, liest diese D1 mit) dieselbe Anmeldung — der geteilte Login hängt allein
 an diesem Attribut, nicht am Hosting-Ort. Bis Oktober 2026 galt dasselbe für
 die eigene Fokus-App (fokus.it-wolf.org); die ist in dieser App aufgegangen.
+Bis November 2026 hing auch das Schul-Dashboard (`schule.it-wolf.org`) daran;
+es ist eingestellt und samt Tabelle `dashboard_daten` und Spalte
+`users.dashboard_zugang` geloescht.
 
 Die Domain wird **nur auf it-wolf.org-Hosts** gesetzt (`domainFlag` in
 `_lib/session.js`). Auf `127.0.0.1` und den `*.pages.dev`-Vorschauadressen würde
@@ -119,9 +122,10 @@ Testen; der Datensatz muss von Hand in `login_codes`.
 
 ### Rückkehr nach der Anmeldung (`?weiter=`)
 
-Diese App ist seit dem 12.08.2026 die **Anmeldestelle für alle drei Apps**.
-Das Schul-Dashboard (`schule.it-wolf.org`) hat bewusst keine eigene
-Anmeldemaske: wer dort nicht angemeldet ist, landet hier mit
+Diese App ist seit dem 12.08.2026 die **Anmeldestelle** auch für andere Apps
+auf it-wolf.org (gebaut fürs inzwischen eingestellte Schul-Dashboard).
+Tageswerte (`werte.it-wolf.org`) hat bewusst keine eigene Anmeldemaske:
+wer dort nicht angemeldet ist, landet hier mit
 `?weiter=<seine Adresse>` und soll danach von selbst zurückkommen.
 
 Das steckt in `app.js` direkt über `init()` (`merkeWeiter` /
@@ -167,7 +171,7 @@ wurde. Höchstens `MAX_KONTEN` = 5.
 
 **Server** (`functions/_lib/session.js`):
 
-- Das erste Konto bleibt in `todo_session` (domainweit — das Schul-Dashboard
+- Das erste Konto bleibt in `todo_session` (domainweit — Tageswerte
   sieht nur dieses). Alle weiteren Token stehen mit Punkt getrennt in
   `todo_weitere` (HttpOnly, host-only).
 - Welches Konto ein Tab meint, kommt als Header `X-Konto: <user_id>`, bei

@@ -209,7 +209,7 @@ export async function onRequestGet({ request, env }) {
     },
     200,
     // Beilaeufig das Sitzungs-Cookie auf die ganze Domain umstellen, damit
-    // andere Subdomains (Schul-Dashboard) dieselbe Anmeldung sehen. Passiert genau hier, weil
+    // andere Subdomains (Tageswerte) dieselbe Anmeldung sehen. Passiert genau hier, weil
     // die App diesen Endpunkt beim Start ohnehin immer aufruft - so merkt
     // niemand etwas vom Umstieg. Kein Datenbankzugriff, kein Neuanmelden.
     umstiegAufDomainCookie(request));

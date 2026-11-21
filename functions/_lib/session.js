@@ -8,8 +8,8 @@
 export const COOKIE_NAME = "todo_session";
 
 // Mehrere Konten im selben Browser, je Tab eines (gedacht fuer Admin +
-// Testkonto). Das erste Konto bleibt in COOKIE_NAME - das sehen auch das
-// Schul-Dashboard und alles, was von Mehrkonten nichts weiss. Alle weiteren
+// Testkonto). Das erste Konto bleibt in COOKIE_NAME - das sehen auch
+// Tageswerte und alles, was von Mehrkonten nichts weiss. Alle weiteren
 // Sitzungstoken stehen mit Punkt getrennt in diesem zweiten Cookie (base64url
 // kennt keinen Punkt). Host-only, weil nur die ToDo-Liste sie lesen muss.
 export const WEITERE_COOKIE = "todo_weitere";
@@ -22,8 +22,8 @@ const KONTO_HEADER = "X-Konto";
 
 // Das Sitzungs-Cookie gilt fuer die ganze Domain, nicht nur fuer
 // todo.it-wolf.org. Nur so sieht eine zweite App auf einer eigenen Subdomain
-// (heute das Schul-Dashboard auf schule.it-wolf.org, bis Oktober 2026 auch die
-// eigene Fokus-App) dieselbe Anmeldung - der geteilte Login haengt allein an
+// (heute Tageswerte auf werte.it-wolf.org, frueher auch das Schul-Dashboard
+// und die eigene Fokus-App) dieselbe Anmeldung - der geteilte Login haengt allein an
 // diesem Attribut, nicht am Hosting-Ort.
 const COOKIE_DOMAIN = ".it-wolf.org";
 

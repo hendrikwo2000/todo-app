@@ -4657,7 +4657,7 @@ window.addEventListener("focus", ladeFrischNach);
 
 // ---------- Rueckkehr nach der Anmeldung (?weiter=) ----------
 /**
- * Das Schul-Dashboard (schule.it-wolf.org) hat keine eigene Anmeldemaske. Wer
+ * Tageswerte (werte.it-wolf.org) hat keine eigene Anmeldemaske. Wer
  * dort nicht angemeldet ist, wird hierher geschickt und soll danach von selbst
  * zurueckkommen - dafuer haengt es `?weiter=<seine Adresse>` an.
  *
