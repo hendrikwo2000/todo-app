@@ -20,7 +20,8 @@
 
    Unterpunkte gelten sofort (abhaken, loeschen, hinzufuegen) wie in der
    alten Zeile; Titel, Notiz, Bereich, Thema, Datum und Vorlauf erst mit
-   "Fertig". Abbrechen verwirft nur diese.
+   "Fertig" - oder (seit 23.11.2026) mit einem Klick neben das Fenster.
+   Abbrechen, ✕ und Escape verwerfen nur diese.
 
    Bearbeitet wird immer ein ToDo der AKTIVEN Liste (state): wer aus Kalender
    oder Heute kommt, landet ueber springeZuToDo erst in der richtigen Liste.
@@ -224,7 +225,10 @@ document.getElementById("bearbeitenLoeschen").addEventListener("click", async ()
   schliesseBearbeiten();
   deleteTodo(id);
 });
-bearbeitenPopup.addEventListener("click", e => { if (e.target === bearbeitenPopup) { schliesseBearbeiten(); render(); } });
+// Ein Klick neben das Fenster speichert (seit 23.11.2026, Hendriks Wunsch:
+// vorher ging es zu und die Aenderung war weg). Abbrechen, ✕ und Escape
+// verwerfen weiter. Ohne Titel bleibt es offen und springt ins Titelfeld.
+bearbeitenPopup.addEventListener("click", e => { if (e.target === bearbeitenPopup) speichereBearbeiten(); });
 bearbeitenBereich.addEventListener("change", () => zeigeBearbeitenThema(""));
 bearbeitenBis.addEventListener("input", zeigeBearbeitenBis);
 bearbeitenBis.addEventListener("change", zeigeBearbeitenBis);

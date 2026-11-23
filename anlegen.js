@@ -13,15 +13,20 @@
    - ein Popup "wie bei Bereich", ToDo immer vorgewaehlt;
    - Umschalter ToDo | Termin - "ich verwende viel ToDo und Termin, Bereich
      kaum": ein neuer Bereich ist nur noch der kleine Link unten;
-   - ToDo: Titel, Bereich, (Thema, wenn der Bereich welche hat), bis;
+   - ToDo: Titel, Bereich, Thema (sobald ein echter Bereich gewaehlt ist), bis;
+   - ein neuer Bereich bzw. ein neues Thema entsteht seit 23.11.2026 gleich in
+     der Zeile ueber ein kleines ＋ (Hendrik: "am Handy im Bereich und vielleicht
+     auch bei Thema ein kleines Plus") - es fragt per textEingabe nach dem Namen
+     und waehlt das Neue aus; der Link "Neuer Bereich" unten und der eigene
+     Bereich-Modus des Fensters sind damit entfallen. Aus dem Kalender heraus
+     (vorgabe.ohneBereich) gibt es das ＋ am Bereich weiterhin nicht - Hendriks
+     Wahl vom 19.11.: dort ergibt ein neuer Bereich keinen Sinn.
    - Termin: seit 19.11.2026 gleich mit ALLEN Feldern (Hendrik: "wenn ich auf
      Termin gehe, sollen direkt alle Optionen sein, und ganz oben Titel und
      Notiz, 1 zu 1 wie bei ToDo"). Dafuer uebernimmt das volle
      Termin-Formular (kalender.js) an genau derselben Stelle, mit demselben
      Kopf und Umschalter (f.ausNeu, Klasse .wie-neu) - "ToDo" dort fuehrt
      hierher zurueck. Vorher gab es hier eine Kurzform und "Mehr".
-   - Von "Neuer Bereich" fuehrt der Umschalter zurueck (seit 19.11.2026):
-     dort erscheint er mit drittem Feld "Bereich".
    Termin gibt es nur mit Schreibrecht bei Google (sonst endete es in einem
    403 - dieselbe Bedingung wie am runden Plus der Tages-Karte); ohne bleibt
    nur ToDo und der Umschalter verschwindet.
@@ -29,35 +34,29 @@
    Vorbelegung: steht der Kalender offen, gilt sein gewaehlter Tag fuer den
    Termin; in der Kalenderansicht am Handy zusaetzlich als "bis" des ToDos.
 
-   Braucht aus app.js: state, aktiveListe, addTodoTo, ohneBereichId,
-   istOhneBereich, OHNE_NAME, themenIn, uid, render, save, snackInfo,
-   todayStr. Aus kalender.js: kalOffen, kalAuswahl, googleZustand, istSplit,
+   Braucht aus app.js: state, aktiveListe, addTodoTo, addThema, textEingabe,
+   ohneBereichId, istOhneBereich, OHNE_NAME, themenIn, uid, render, save,
+   snackInfo, todayStr. Aus kalender.js: kalOffen, kalAuswahl, googleZustand, istSplit,
    oeffneTerminFormular, formularFelder, zeichneTerminPopup, kalTerminBox.
    ==================================================================== */
 
 const anlegenPopup       = document.getElementById("anlegenPopup");
 const anlegenForm        = document.getElementById("anlegenForm");
 const anlegenReiter      = document.getElementById("anlegenReiter");
-const anlegenUeberschrift = document.getElementById("anlegenUeberschrift");
 const anlegenTitel       = document.getElementById("anlegenTitel");
 const anlegenNotiz       = document.getElementById("anlegenNotiz");
 const anlegenKopfTitel   = document.getElementById("anlegenKopfTitel");
 const anlegenBereich     = document.getElementById("anlegenBereich");
+const anlegenBereichPlus = document.getElementById("anlegenBereichPlus");
 const anlegenThemaZeile  = document.getElementById("anlegenThemaZeile");
 const anlegenThema       = document.getElementById("anlegenThema");
+const anlegenThemaPlus   = document.getElementById("anlegenThemaPlus");
 const anlegenBis         = document.getElementById("anlegenBis");
 const anlegenBisWeg      = document.getElementById("anlegenBisWeg");
 const anlegenOk          = document.getElementById("anlegenOk");
-const anlegenBereichLink = document.getElementById("anlegenBereichLink");
 
-const ANLEGEN_PLATZHALTER = {
-  todo: "Was ist zu tun?",
-  bereich: "Name, z. B. Haushalt oder Arbeit",
-};
-
-let anlegenArt = "todo";
 // Was beim Oeffnen mitkam (seit 19.11.2026): tag = Tag aus der Tageskarte
-// (Termin-Beginn bzw. "bis"), ohneBereich = kein Link "Neuer Bereich" (aus dem
+// (Termin-Beginn bzw. "bis"), ohneBereich = kein ＋ am Bereich (aus dem
 // Kalender heraus ergibt ein neuer Bereich keinen Sinn - Hendriks Wahl).
 let anlegenVorgabe = {};
 
@@ -90,6 +89,7 @@ function oeffneAnlegen(vorgabe = {}) {
 
   anlegenTitel.value = vorgabe.titel || "";
   anlegenNotiz.value = vorgabe.notiz || "";
+  anlegenBereichPlus.hidden = anlegenVorgabe.ohneBereich;
   fuelleAnlegenBereiche();
   if (vorgabe.bereich && !istOhneBereich(vorgabe.bereich)
       && state.categories.some(c => c.id === vorgabe.bereich)) {
@@ -119,24 +119,16 @@ function waehleAnlegenArt(art) {
   // Termin: das volle Formular uebernimmt (kalender.js), mit dem, was schon
   // getippt ist.
   if (art === "termin") { anlegenZumTermin(anlegenTitel.value, anlegenNotiz.value); return; }
-  anlegenArt = art;
-  const bereich = art === "bereich";
-  // Der Umschalter: ToDo | Termin (Termin nur mit Schreibrecht bei Google),
-  // bei "Neuer Bereich" zusaetzlich "Bereich" als gewaehltes Feld - so sieht
-  // man, wo man ist, und kommt per Tipp zurueck.
+  // Der Umschalter: ToDo | Termin (Termin nur mit Schreibrecht bei Google).
   for (const k of anlegenReiter.children) {
     k.setAttribute("aria-selected", String(k.dataset.art === art));
     if (k.dataset.art === "termin") k.hidden = !anlegenTerminMoeglich();
-    if (k.dataset.art === "bereich") k.hidden = !bereich;
   }
   anlegenReiter.hidden = [...anlegenReiter.children].filter(k => !k.hidden).length < 2;
-  anlegenUeberschrift.hidden = true;
-  anlegenKopfTitel.textContent = bereich ? "Neuer Bereich" : "Neu";
-  anlegenNotiz.hidden = bereich;
-  anlegenTitel.placeholder = ANLEGEN_PLATZHALTER[art];
+  anlegenKopfTitel.textContent = "Neu";
+  anlegenTitel.placeholder = "Was ist zu tun?";
   for (const z of anlegenForm.querySelectorAll("[data-fuer]")) z.hidden = z.dataset.fuer !== art;
   zeigeAnlegenThema();
-  anlegenBereichLink.hidden = art !== "todo" || anlegenVorgabe.ohneBereich;
   anlegenTitel.focus();
 }
 
@@ -147,14 +139,16 @@ function anlegenZumTermin(titel, notiz) {
   if (!formularFelder) return;
   Object.assign(formularFelder, {
     titel: titel.trim(), notiz: notiz || "", ausNeu: true,
-    // Fuer den Rueckweg zu "ToDo": Tag und "ohne Neuer Bereich" bleiben.
+    // Fuer den Rueckweg zu "ToDo": Tag und "ohne ＋ am Bereich" bleiben.
     neuVorgabe: { ...anlegenVorgabe },
   });
   zeichneTerminPopup();
-  // Wie beim Formular selbst: von allein ins Titelfeld nur am Rechner (am
-  // Handy schoebe die Tastatur das halbe Fenster weg).
+  // Ins Titelfeld springen, damit die Tastatur gleich offen ist - auch am
+  // Handy (seit 23.11.2026, Hendriks Wunsch; vorher nur am Rechner, weil die
+  // Tastatur das halbe Fenster wegschob). Laeuft noch im selben Tipp, den iOS
+  // fuer eine Tastatur braucht.
   const feld = kalTerminBox.querySelector(".kal-form-titel");
-  if (feld && !("ontouchstart" in window)) feld.focus();
+  if (feld) feld.focus();
 }
 
 // "Ohne Bereich" zuerst, dann die Bereiche der aktiven Liste in ihrer
@@ -168,12 +162,45 @@ function fuelleAnlegenBereiche() {
   anlegenBereich.value = "";
 }
 
-// Themen gibt es nur in manchen Bereichen - die Zeile erscheint nur dann.
-function zeigeAnlegenThema() {
-  const themen = anlegenArt === "todo" && anlegenBereich.value ? themenIn(anlegenBereich.value) : [];
-  anlegenThemaZeile.hidden = !themen.length;
+// Die Zeile "Thema" gibt es, sobald ein echter Bereich gewaehlt ist - auch ohne
+// vorhandene Themen, damit sich das erste gleich hier anlegen laesst (seit
+// 23.11.2026; vorher nur mit vorhandenen Themen). "wahl" waehlt eins vor.
+function zeigeAnlegenThema(wahl = "") {
+  const bereich = anlegenBereich.value;
+  const themen = bereich ? themenIn(bereich) : [];
+  anlegenThemaZeile.hidden = !bereich;
   anlegenThema.replaceChildren(new Option("Ohne Thema", ""), ...themen.map(th => new Option(th.name, th.id)));
-  anlegenThema.value = "";
+  anlegenThema.value = themen.some(th => th.id === wahl) ? wahl : "";
+}
+
+// Das ＋ am Bereich: Namen erfragen, Bereich anlegen und gleich auswaehlen. Das
+// Fenster bleibt offen, was schon getippt ist, bleibt stehen.
+async function neuerBereichImFenster() {
+  const name = await textEingabe({
+    titel: "Neuer Bereich",
+    platzhalter: "z. B. Haushalt oder Arbeit",
+    okText: "Anlegen",
+    icon: "＋",
+  });
+  // Inzwischen zu (z. B. die Liste gewechselt): nichts mehr tun.
+  if (!name || anlegenPopup.hidden) return;
+  const id = uid();
+  state.categories.push({ id, name });
+  render();
+  save();
+  fuelleAnlegenBereiche();
+  anlegenBereich.value = id;
+  zeigeAnlegenThema();
+}
+
+// Das ＋ am Thema: ein neues Thema im gewaehlten Bereich (addThema fragt nach
+// dem Namen) und gleich auswaehlen.
+async function neuesThemaImFenster() {
+  const bereich = anlegenBereich.value;
+  if (!bereich) return;
+  const id = await addThema(bereich);
+  if (!id || anlegenPopup.hidden || anlegenBereich.value !== bereich) return;
+  zeigeAnlegenThema(id);
 }
 
 function setzeAnlegenBis(wert) {
@@ -191,15 +218,6 @@ function zeigeAnlegenBis() {
 async function legeAusFensterAn() {
   const text = anlegenTitel.value.trim();
   if (!text) { anlegenTitel.focus(); return; }
-
-  if (anlegenArt === "bereich") {
-    state.categories.push({ id: uid(), name: text });
-    schliesseAnlegen();
-    render();
-    save();
-    snackInfo(`Bereich „${text}“ angelegt`);
-    return;
-  }
 
   let bereich = anlegenBereich.value;
   if (!bereich || !state.categories.some(c => c.id === bereich)) {
@@ -226,9 +244,10 @@ for (const k of anlegenReiter.children) {
 anlegenForm.addEventListener("submit", e => { e.preventDefault(); legeAusFensterAn(); });
 document.getElementById("anlegenAbbrechen").addEventListener("click", schliesseAnlegen);
 document.getElementById("anlegenKopfZu").addEventListener("click", schliesseAnlegen);
-anlegenBereichLink.addEventListener("click", () => waehleAnlegenArt("bereich"));
+anlegenBereichPlus.addEventListener("click", neuerBereichImFenster);
+anlegenThemaPlus.addEventListener("click", neuesThemaImFenster);
 anlegenPopup.addEventListener("click", e => { if (e.target === anlegenPopup) schliesseAnlegen(); });
-anlegenBereich.addEventListener("change", zeigeAnlegenThema);
+anlegenBereich.addEventListener("change", () => zeigeAnlegenThema());
 anlegenBis.addEventListener("input", zeigeAnlegenBis);
 anlegenBis.addEventListener("change", zeigeAnlegenBis);
 anlegenNotiz.addEventListener("input", () => passeNotizHoeheAn(anlegenNotiz));
@@ -237,6 +256,9 @@ anlegenBisWeg.addEventListener("click", () => setzeAnlegenBis(""));
 // kalender.js haengen ihre Escape-Handler an denselben Knoten, der des
 // Kalenders klappte im selben Druck sonst die ganze Kalenderansicht zu.
 document.addEventListener("keydown", e => {
+  // Eine Eingabe darueber (Name fuer einen neuen Bereich/ein neues Thema)
+  // schliesst sich selbst zuerst - sonst ginge mit ihr das ganze Fenster zu.
+  if (document.querySelector(".eingabe-popup")) return;
   if (e.key === "Escape" && schliesseAnlegen()) { e.preventDefault(); e.stopImmediatePropagation(); }
 }, true);
 

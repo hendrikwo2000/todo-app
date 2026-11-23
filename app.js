@@ -2789,8 +2789,9 @@ function startEdit(id) {
 }
 
 // ---------- Aktionen: Bereiche ----------
-// Neue Bereiche legt seit 15.11.2026 das Anlegen-Fenster an (anlegen.js,
-// Link "Neuer Bereich") - addCategory mit eigenem Dialog ist entfallen.
+// Neue Bereiche legt seit 15.11.2026 das Anlegen-Fenster an (anlegen.js, seit
+// 23.11.2026 ueber das kleine ＋ in der Zeile "Bereich") - addCategory mit
+// eigenem Dialog ist entfallen.
 
 // Bereichsname per Doppelklick direkt in der Ueberschrift bearbeiten.
 function startRenameCategory(catId) {
@@ -2849,10 +2850,13 @@ async function addThema(catId) {
     okText: "Anlegen",
     icon: "＋",
   });
-  if (!name) return;
-  state.themen.push({ id: uid(), categoryId: catId, name: name });
+  if (!name) return null;
+  const id = uid();
+  state.themen.push({ id, categoryId: catId, name: name });
   render();
   save();
+  // Das Neu-Fenster (anlegen.js) waehlt das neue Thema gleich aus.
+  return id;
 }
 
 // Themen-Name per Doppelklick direkt in der Ueberschrift bearbeiten.

@@ -3898,3 +3898,51 @@ ohne Zugangsdaten). Im Test mit HTTP/1.1 kam die späte Start-Antwort erst nach
 gut 30 s, weil sie hinter den Hintergrund-Abrufen des Service Workers im Pool
 von sechs Verbindungen wartete. Live läuft HTTP/2, dort gibt es diese Grenze
 nicht; um die Bandbreite konkurrieren die Abrufe trotzdem (wie vorher auch).
+
+## Neu-Fenster: Plus, deckungsgleich, Klick daneben (seit 23.11.2026)
+
+Vier Wünsche von Hendrik in einer Runde (Handy/PC, mit Screenshot der beiden
+Neu-Fenster):
+
+- **Kleines ＋ bei Bereich und Thema** (`anlegen.js`, Markup in `index.html`):
+  tippt man es, fragt `textEingabe` nach dem Namen, legt den Bereich bzw. das
+  Thema an und wählt es gleich aus - das Fenster bleibt offen, Titel und Notiz
+  bleiben stehen. Gilt auf allen Geräten; der Link „Neuer Bereich“ unten und
+  der ganze Bereich-Modus des Fensters (Reiter „Bereich“, `anlegenArt`) sind
+  entfallen. Die Zeile „Thema“ erscheint jetzt, sobald ein echter Bereich
+  gewählt ist - auch ohne vorhandene Themen, sonst ließe sich das erste hier nie
+  anlegen. `addThema` (app.js) gibt dafür die neue id zurück. Aus dem Kalender
+  heraus (`vorgabe.ohneBereich`) fehlt das ＋ am Bereich weiterhin (Hendriks Wahl
+  vom 19.11.: dort ergibt ein neuer Bereich keinen Sinn). Escape in der Eingabe
+  schließt nur sie, nicht das Fenster dahinter (Guard auf `.eingabe-popup`, wie
+  in `bearbeiten.js`).
+- **Tastatur bei neuem Termin am Handy**: `anlegenZumTermin` und
+  `oeffneTerminFormular` springen jetzt auch am Touchgerät ins Titelfeld (vorher
+  nur am Rechner - „die Tastatur schöbe das halbe Fenster weg“). iOS öffnet die
+  Tastatur nur, wenn `focus()` noch im selben Tipp läuft; das tut es (Tipp auf
+  „Termin“ bzw. auf das runde ＋ → synchron bis `focus()`). Nur für NEUE Termine,
+  nicht beim Ansehen/Bearbeiten.
+- **ToDo ↔ Termin deckungsgleich**: Das Neu-Fenster und das Termin-Formular sind
+  zwei Fenster (`#anlegenPopup`, `#kalTerminPopup.wie-neu`). Im Termin saßen Kopf
+  und Umschalter 12 px höher (`.anlegen-box > .blatt-kopf { margin: 12px 0 -2px }`
+  greift nur beim direkten Kind, der Termin-Kopf steckt in `.kal-form-inhalt`),
+  und die Knopfreihe klebte 10 px statt 26 px unter der letzten Gruppe. Zwei
+  Regeln am Ende von `style.css` gleichen das an; gemessen jetzt identisch bei
+  1440 px und 375 px (Kopf, Umschalter, Titelfeld). Die Höhe richtet sich weiter
+  nach dem Inhalt (Hendriks Wahl). Rest: 0,5 px bei der Notiz-Höhe, nicht sichtbar.
+- **Klick neben das Fenster speichert** (statt zu verwerfen): `ToDo bearbeiten`
+  (`bearbeiten.js`, ruft `speichereBearbeiten`) und `Termin bearbeiten`
+  (`kalender.js`, nur im Modus „bearbeiten“, ruft `speichereTermin`). Bei leerem
+  Titel bleibt das Fenster offen. ✕, Abbrechen und Escape verwerfen weiter; das
+  Neu-Fenster und die reine Termin-Ansicht schließen beim Klick daneben nur - ein
+  Versehen legte sonst einen ToDo oder einen Google-Termin an.
+
+**Lokal getestet** (`wrangler pages dev`, Browser-Pane 1440 px und 375 px mit
+Touch): Plus am Bereich und am Thema (Dialog, Auswahl, Titel bleibt, ToDo landet
+im neuen Bereich/Thema), Escape im Dialog, Klick daneben in allen
+Bearbeiten-Fällen (speichert / leerer Titel / Abbrechen / Escape / Klick ins
+Fenster), Termin mit gestubbtem `terminAnfrage` (bearbeiten → PUT, neu/Ansicht
+schließen nur, ohne Titel offen), Lage der beiden Fenster per
+`getBoundingClientRect`. **Ungeprüft:** ob die Tastatur am echten iPhone
+tatsächlich aufgeht (im Test-Browser nur `document.activeElement` geprüft) und
+der echte Google-Speichern-Weg beim Klick daneben.

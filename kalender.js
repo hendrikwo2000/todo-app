@@ -1982,10 +1982,11 @@ function oeffneTerminFormular(tag, termin) {
   zeichneTerminPopup();
   if (termin && termin.serieId) ladeRegel(formularFelder, termin.serieId);
   const feld = kalTerminBox.querySelector(".kal-form-titel");
-  // Nur am Rechner und nur bei einem NEUEN Termin von selbst ins Feld
-  // springen: am Handy schoebe die Tastatur den halben Dialog aus dem Bild,
-  // und beim blossen Ansehen saehe ein blinkender Cursor nach Bearbeiten aus.
-  if (feld && formularFelder.modus === "neu" && !("ontouchstart" in window)) feld.focus();
+  // Bei einem NEUEN Termin von selbst ins Feld springen - auch am Handy, damit
+  // die Tastatur gleich offen ist (seit 23.11.2026, Hendriks Wunsch; vorher nur
+  // am Rechner, weil die Tastatur den halben Dialog aus dem Bild schob). Beim
+  // blossen Ansehen saehe ein blinkender Cursor nach Bearbeiten aus.
+  if (feld && formularFelder.modus === "neu") feld.focus();
 }
 
 // Die Regel einer Serie holen. Google liefert sie bei den aufgeloesten
@@ -4151,7 +4152,18 @@ function zelleUnter(x, y) {
 // Klick neben den Kasten schliesst - am Handy fuellt er den Bildschirm, dort
 // bleibt nur die ✕ im Kopf.
 kalWahl.addEventListener("click", e => { if (e.target === kalWahl) schliesseWahl(); });
-kalTerminPopup.addEventListener("click", e => { if (e.target === kalTerminPopup) schliesseTerminFormular(); });
+// Ein Klick neben das Fenster speichert, wenn ein bestehender Termin gerade
+// bearbeitet wird (seit 23.11.2026, Hendriks Wunsch: vorher ging das Fenster zu
+// und die Aenderung war weg). Beim Ansehen und beim NEUEN Termin schliesst es
+// nur - ein Versehen legte sonst einen Termin bei Google an. Abbrechen, ✕ und
+// Escape verwerfen weiter. Ohne Titel bleibt es offen (speichereTermin sagt, was
+// fehlt).
+kalTerminPopup.addEventListener("click", e => {
+  if (e.target !== kalTerminPopup) return;
+  const f = formularFelder;
+  if (f && f.modus === "bearbeiten") speichereTermin(formularTermin);
+  else schliesseTerminFormular();
+});
 // Ein Tipp neben das Farbmenue schliesst nur das Menue - in der Einfangphase,
 // damit ein Tipp auf den Hintergrund nicht gleich das ganze Formular zumacht.
 // Anderswo im Formular geht der Tipp danach normal weiter.

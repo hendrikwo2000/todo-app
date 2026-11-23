@@ -17,7 +17,7 @@
    auf dem alten Stand haengen (activate() raeumt den alten Cache nur auf,
    wenn sich der Name aendert). Siehe BETRIEB.md.
    ==================================================================== */
-const CACHE_NAME = "todo-shell-v83";
+const CACHE_NAME = "todo-shell-v84";
 
 // Jede Datei hier MUSS es geben: die Installation bricht bei einem einzigen 404
 // komplett ab, und dann gibt es gar keinen Offline-Start mehr. fokus.js fehlte

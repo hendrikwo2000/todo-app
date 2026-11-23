@@ -6974,3 +6974,40 @@ html.breit.kopf-klein .topbar > .save-status { opacity: 0; }
   .zt-seite-zeile:hover,
   .zt-wahl-zeile:hover { background: var(--hover); }
 }
+
+
+/* ===================== Neu-Fenster: ToDo und Termin deckungsgleich, Plus (seit 23.11.2026) =====================
+   Hendrik: "Der Wechsel zwischen ToDo und Termin ist etwas komisch". Beide sind
+   zwei verschiedene Fenster (#anlegenPopup und #kalTerminPopup.wie-neu), die
+   sich als eins ausgeben - und im Termin sassen Kopf und Umschalter 12 px
+   hoeher (das Neu-Fenster rueckt seinen Kopf per .anlegen-box > .blatt-kopf
+   ein, der Termin steckt eine Ebene tiefer und bekam das nicht), und die
+   Knopfreihe klebte nur 10 px unter der letzten Gruppe statt 26. Jetzt stehen
+   Kopf, Umschalter und Titelfeld auf den Pixel an derselben Stelle; nur die
+   Hoehe richtet sich nach dem Inhalt (der Termin hat mehr Zeilen). */
+#kalTerminPopup.wie-neu .kal-form-inhalt > .blatt-kopf { margin: 12px 0 -2px; }
+#kalTerminPopup.wie-neu .kal-form-fuss { margin-top: 26px; }
+
+/* Das kleine Plus in den Zeilen Bereich und Thema: runde Flaeche in der Farbe
+   der anderen Kopf-Knoepfe, die Tippflaeche reicht ueber den Rand hinaus
+   (44 px, Apple HIG), ohne die Zeile hoeher zu machen. */
+.anlegen-plus {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--fuellung);
+  color: var(--accent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.anlegen-plus::after { content: ""; position: absolute; inset: -7px; }
+.anlegen-plus svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+.anlegen-plus[hidden] { display: none; }
+.anlegen-plus:active { opacity: .55; }
+@media (hover: hover) { .anlegen-plus:hover { background: var(--fuellung3); } }

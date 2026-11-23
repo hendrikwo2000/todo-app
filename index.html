@@ -228,12 +228,7 @@
       <div id="anlegenReiter" class="anlegen-reiter" role="tablist" aria-label="Was anlegen?">
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="todo">ToDo</button>
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="termin">Termin</button>
-        <!-- Nur bei "Neuer Bereich" sichtbar (seit 19.11.2026): dann steht
-             man dort und kommt per Tipp auf ToDo oder Termin zurueck. -->
-        <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="bereich" hidden>Bereich</button>
       </div>
-      <!-- Nur fuer "Neuer Bereich": dort gibt es keinen Umschalter. -->
-      <h2 id="anlegenUeberschrift" class="anlegen-ueberschrift" hidden>Neuer Bereich</h2>
       <div class="anlegen-gruppe anlegen-textgruppe">
         <input type="text" id="anlegenTitel" class="eingabe-feld anlegen-titel" autocomplete="off"
                enterkeyhint="done" aria-label="Titel">
@@ -242,16 +237,22 @@
       </div>
       <div class="anlegen-gruppe anlegen-felder">
 
-      <!-- ToDo -->
-      <label class="anlegen-zeile" data-fuer="todo">
-        <span class="anlegen-etikett">Bereich</span>
+      <!-- ToDo. Das kleine Plus rechts legt gleich hier einen neuen Bereich bzw.
+           ein neues Thema an und waehlt es aus (seit 23.11.2026; vorher der Link
+           "Neuer Bereich" ganz unten). Die Zeilen sind div statt label, damit ein
+           Tipp auf das Plus nicht das Auswahlfeld mitoeffnet. -->
+      <div class="anlegen-zeile" data-fuer="todo">
+        <label class="anlegen-etikett" for="anlegenBereich">Bereich</label>
         <select id="anlegenBereich" class="anlegen-wahl"></select>
-      </label>
-      <!-- Nur, wenn der gewaehlte Bereich Themen hat. -->
-      <label id="anlegenThemaZeile" class="anlegen-zeile" hidden>
-        <span class="anlegen-etikett">Thema</span>
+        <button type="button" id="anlegenBereichPlus" class="anlegen-plus" aria-label="Neuer Bereich" title="Neuer Bereich"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg></button>
+      </div>
+      <!-- Sobald ein echter Bereich gewaehlt ist (auch ohne vorhandene Themen -
+           sonst liesse sich das erste hier nie anlegen). -->
+      <div id="anlegenThemaZeile" class="anlegen-zeile" hidden>
+        <label class="anlegen-etikett" for="anlegenThema">Thema</label>
         <select id="anlegenThema" class="anlegen-wahl"></select>
-      </label>
+        <button type="button" id="anlegenThemaPlus" class="anlegen-plus" aria-label="Neues Thema" title="Neues Thema"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg></button>
+      </div>
       <div class="anlegen-zeile" data-fuer="todo">
         <label class="anlegen-etikett" for="anlegenBis">bis</label>
         <!-- Leer zeigt das Feld "kein Datum" statt tt.mm.jjjj (am iPhone ist ein
@@ -263,9 +264,6 @@
         <button type="button" id="anlegenBisWeg" class="anlegen-bis-weg" aria-label="Datum entfernen" title="Datum entfernen" hidden>✕</button>
       </div>
 
-      </div>
-      <div class="anlegen-fuss">
-        <button type="button" id="anlegenBereichLink" class="lock-link anlegen-link">Neuer Bereich</button>
       </div>
       <div class="anlegen-knoepfe knopfreihe blatt-fuss">
         <button type="button" id="anlegenAbbrechen" class="btn">Abbrechen</button>
@@ -1073,7 +1071,7 @@
             <dl class="hilfe-zeilen hilfe-nummeriert">
               <div class="hilfe-zeile"><dt>Liste</dt><dd>„Erste Liste anlegen“ antippen</dd></div>
               <div class="hilfe-zeile"><dt>ToDo</dt><dd><span class="ohne-fuss">＋ neben „Meine ToDos“ oder „＋ ToDo“ am Bereich</span><span class="mit-fuss">„＋ Neu“ unten</span>, Titel, Enter</dd></div>
-              <div class="hilfe-zeile"><dt>Bereich</dt><dd>„＋ Neu“, dann unten „Neuer Bereich“</dd></div>
+              <div class="hilfe-zeile"><dt>Bereich</dt><dd>„＋ Neu“, bei „Bereich“ das kleine ＋</dd></div>
               <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kästchen antippen</dd></div>
               <div class="hilfe-zeile"><dt>Heute</dt><dd>Zeigt, was heute und bald fällig ist</dd></div>
               <div class="hilfe-zeile"><dt>Kalender</dt><dd><span class="ohne-fuss">Einstellungen › „Kalender anzeigen“, „Heute anzeigen“</span><span class="mit-fuss">Unten „ToDos“ oder „Kalender“</span></dd></div>
