@@ -9,21 +9,27 @@
    Strategie: network-first mit Cache-Fallback, nicht cache-first. Ein Push
    auf main deployt sofort live (kein Build-Schritt, keine gehashten
    Dateinamen) - so sieht "online" immer die neueste Version, "offline" die
-   zuletzt gecachte.
+   zuletzt gecachte. Seit 23.11.2026 mit Frist: antwortet das Netz nicht
+   binnen NETZ_FRIST, kommt die gecachte Fassung (siehe fetch unten).
 
    WICHTIG: Bei jeder Aenderung an einer der unten aufgelisteten Dateien
    diese Versionsnummer hochzaehlen, sonst bleibt ein wiederkehrender Nutzer
    auf dem alten Stand haengen (activate() raeumt den alten Cache nur auf,
    wenn sich der Name aendert). Siehe BETRIEB.md.
    ==================================================================== */
-const CACHE_NAME = "todo-shell-v82";
+const CACHE_NAME = "todo-shell-v83";
 
-// Jede Datei hier MUSS es geben: cache.addAll bricht bei einem einzigen 404
+// Jede Datei hier MUSS es geben: die Installation bricht bei einem einzigen 404
 // komplett ab, und dann gibt es gar keinen Offline-Start mehr. fokus.js fehlte
 // bis Oktober 2026 in der Liste - offline fehlten dann Gewohnheiten und Timer.
+//
+// Kein "/index.html" mehr (bis 23.11.2026 stand es hier): Cloudflare Pages
+// leitet es per 308 auf "/" um. cache.addAll legte die UMGELEITETE Antwort ab,
+// und Safari (Chrome ebenso) verwirft eine solche Antwort bei einer
+// Navigation - der Kaltstart vom Home-Bildschirm (start_url war
+// "./index.html") ging offline ins Leere. Die Seite ist "/".
 const SHELL_FILES = [
   "/",
-  "/index.html",
   "/style.css",
   "/konto.js",
   "/app.js",
@@ -42,12 +48,44 @@ const SHELL_FILES = [
   "/icon-512.png",
 ];
 
+// So lange wartet eine Anfrage aufs Netz, bevor die gecachte Fassung kommt.
+// Ohne Frist hing der Start bei schlechtem Netz (Funkloch, Bahn), bis das
+// Betriebssystem aufgab - das kann eine Minute dauern. Die Frist gilt fuer
+// den Kopf der Antwort, nicht fuer den ganzen Inhalt: ein langsamer, aber
+// laufender Abruf wird nicht abgeschnitten.
+const NETZ_FRIST = 3000;
+
+// Nur saubere Antworten in den Cache: 200er, eigene Herkunft, nicht
+// umgeleitet. Bis 23.11.2026 landete hier auch jeder 404/500 und hat die gute
+// gecachte Fassung ueberschrieben.
+function taugtFuerCache(antwort) {
+  return antwort && antwort.ok && antwort.type === "basic" && !antwort.redirected;
+}
+
+// Eine umgeleitete Antwort als NEUE Response ablegen: die traegt kein
+// redirected-Flag, und Safari nimmt sie auch fuer eine Navigation an.
+async function ohneUmleitung(antwort) {
+  if (!antwort.redirected) return antwort;
+  return new Response(await antwort.blob(), {
+    status: antwort.status,
+    statusText: antwort.statusText,
+    headers: antwort.headers,
+  });
+}
+
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(SHELL_FILES))
-      .then(() => self.skipWaiting())
-  );
+  // Statt cache.addAll: dieselbe Alles-oder-nichts-Regel, aber jede Antwort
+  // geht vorher durch ohneUmleitung().
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const antworten = await Promise.all(SHELL_FILES.map(async (pfad) => {
+      const antwort = await fetch(pfad, { cache: "no-cache" });
+      if (!antwort.ok) throw new Error(pfad + " antwortet mit " + antwort.status);
+      return [pfad, await ohneUmleitung(antwort)];
+    }));
+    await Promise.all(antworten.map(([pfad, antwort]) => cache.put(pfad, antwort)));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener("activate", (event) => {
@@ -104,22 +142,83 @@ self.addEventListener("notificationclick", (event) => {
   })());
 });
 
+// Gecachte Fassung einer Anfrage. Navigationen (das HTML der App) fallen
+// immer auf "/" zurueck - gleich, ob sie als "/", "/index.html" (alte
+// Home-Bildschirm-Symbole tragen das noch als Startadresse) oder mit
+// ?beitreten=/?weiter= kommen. ignoreVary, weil eine Navigation andere
+// Kopfzeilen schickt als der Abruf bei der Installation.
+async function ausCache(anfrage, istNavigation) {
+  const cache = await caches.open(CACHE_NAME);
+  const optionen = { ignoreSearch: true, ignoreVary: true };
+  const treffer = await cache.match(anfrage, optionen);
+  if (treffer && !treffer.redirected) return treffer;
+  return istNavigation ? cache.match("/", optionen) : undefined;
+}
+
+// Kam die Seite selbst gerade aus dem Cache (Netz weg oder zu langsam),
+// nehmen CSS und Skripte fuer kurze Zeit sofort ihre gecachte Fassung, statt
+// jede noch einmal NETZ_FRIST zu warten - sonst stand die App erst nach 6
+// statt 3 s da. Nebenbei passen HTML und Skripte so zum selben Stand. Der
+// Abruf im Hintergrund laeuft trotzdem und frischt den Cache auf. Geht der
+// Service Worker zwischendurch schlafen, ist der Wert weg - dann gilt eben
+// wieder die Frist.
+const CACHE_ZUERST_MS = 10000;
+let cacheZuerstBis = 0;
+
+function mitFrist(versprechen, ms) {
+  return new Promise((ok, fehler) => {
+    const uhr = setTimeout(() => fehler(new Error("Frist")), ms);
+    versprechen.then(
+      (wert) => { clearTimeout(uhr); ok(wert); },
+      (grund) => { clearTimeout(uhr); fehler(grund); });
+  });
+}
+
 self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
+  const anfrage = event.request;
+  const url = new URL(anfrage.url);
   // Nur eigene, statische GETs behandeln - /api/* und fremde Origins normal
   // durchlassen, damit app.js deren Fehlerbehandlung unveraendert greift.
-  if (event.request.method !== "GET") return;
+  if (anfrage.method !== "GET") return;
   if (url.origin !== location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
 
-  event.respondWith(
-    fetch(event.request)
-      .then((antwort) => {
-        const kopie = antwort.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, kopie));
-        return antwort;
-      })
-      .catch(() => caches.match(event.request)
-        .then((gecacht) => gecacht || caches.match("/index.html")))
-  );
+  const istNavigation = anfrage.mode === "navigate";
+  // Navigationen ohne ?-Teil ablegen, sonst sammelte jeder Einladungslink
+  // einen eigenen Eintrag.
+  const schluessel = istNavigation ? url.origin + url.pathname : anfrage;
+
+  let ablage = Promise.resolve();
+  const netz = fetch(anfrage).then((antwort) => {
+    // Eine Navigation auf /index.html bekommt hier den 308 als
+    // "opaqueredirect" - der geht unveraendert an den Browser, der ihm folgt,
+    // landet aber nicht im Cache (taugtFuerCache).
+    if (taugtFuerCache(antwort)) {
+      const kopie = antwort.clone();
+      ablage = caches.open(CACHE_NAME).then((cache) => cache.put(schluessel, kopie));
+    }
+    return antwort;
+  });
+  // Der Abruf darf zu Ende laufen und den Cache auffrischen, auch wenn die
+  // Seite nach der Frist schon die gecachte Fassung bekommen hat.
+  event.waitUntil(netz.then(() => ablage).catch(() => {}));
+
+  event.respondWith((async () => {
+    if (!istNavigation && Date.now() < cacheZuerstBis) {
+      const gecacht = await ausCache(anfrage, false);
+      if (gecacht) return gecacht;
+    }
+    try {
+      return await mitFrist(netz, NETZ_FRIST);
+    } catch (e) {
+      const gecacht = await ausCache(anfrage, istNavigation);
+      if (gecacht) {
+        if (istNavigation) cacheZuerstBis = Date.now() + CACHE_ZUERST_MS;
+        return gecacht;
+      }
+      // Nichts im Cache (erster Besuch bei langsamem Netz): weiter aufs Netz
+      // warten. Ist es ganz weg, scheitert das wie vor dem Service Worker.
+      return netz;
+    }
+  })());
 });

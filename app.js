@@ -2281,16 +2281,39 @@ function wiederherstellenAusCache() {
     : (listen.length ? listen[0].id : null);
 }
 
+// So lange wartet der Start auf GET /api/todos, bevor er den lokalen Stand
+// zeigt. Bis 23.11.2026 ohne Frist: bei schlechtem Netz (Funkloch, Bahn) blieb
+// die Seite weiss, bis die Antwort kam oder das Betriebssystem aufgab - auch
+// wenn der Service Worker die Huelle laengst aus dem Cache geliefert hatte.
+// Kommt die Antwort nach der Frist doch noch, setzt spaeteStartAntwort() sie
+// ein.
+const START_FRIST_MS = 5000;
+const FRIST_ABGELAUFEN = new Error("Frist abgelaufen");
+
+function mitFrist(versprechen, ms) {
+  return new Promise((ok, fehler) => {
+    const uhr = setTimeout(() => fehler(FRIST_ABGELAUFEN), ms);
+    versprechen.then(
+      (wert) => { clearTimeout(uhr); ok(wert); },
+      (grund) => { clearTimeout(uhr); fehler(grund); });
+  });
+}
+
 async function loadState() {
   while (true) {
     let res;
+    const anfrage = fetch(API_BASE, { cache: "no-store" });
     try {
-      res = await fetch(API_BASE, { cache: "no-store" });
+      // Frist nur mit lokalem Stand: ohne ihn gibt es nichts Besseres zu
+      // zeigen als zu warten - und die Anmeldemaske kommt erst mit der
+      // (401-)Antwort.
+      res = ladeCacheLokal() ? await mitFrist(anfrage, START_FRIST_MS) : await anfrage;
     } catch (e) {
       serverErreichbar = false;
       wiederherstellenAusCache();
       setStatus("Server nicht erreichbar", "err");
       zeigeAktiveListe();
+      if (e === FRIST_ABGELAUFEN) spaeteStartAntwort(anfrage, aenderungen);
       return;
     }
     if (res.status === 401) { await login(); continue; }
@@ -2322,6 +2345,42 @@ async function loadState() {
     zeigeAktiveListe();
     return;
   }
+}
+
+// Die Start-Antwort kam erst nach START_FRIST_MS - die App zeigt da schon den
+// lokalen Stand mit "Server nicht erreichbar". Dieselben Vorsichtsregeln wie
+// in ladeFrischNach: wurde inzwischen hier etwas geaendert, gespeichert oder
+// getippt, nicht ueberschreiben, sondern den ueblichen Weg gehen (erst
+// Liegengebliebenes hochladen, dann frisch nachladen). Eine Fehlerantwort
+// (401, 5xx) bleibt liegen - darum kuemmert sich der naechste Speicher- oder
+// Nachladeversuch, wie offline auch.
+async function spaeteStartAntwort(anfrage, zaehlerVorher) {
+  let antwort;
+  try {
+    const res = await anfrage;
+    if (!res.ok) return;
+    antwort = await res.json();
+  } catch (e) { return; }
+  if (!antwort || !Array.isArray(antwort.listen)) return;
+
+  serverErreichbar = true;
+  if (saveStatusEl.textContent === "Server nicht erreichbar") setStatus("", "");
+  zeigeHinweise();
+  if (aenderungen !== zaehlerVorher || saving || synchronisiereLaeuft || tipptGerade()) {
+    aktualisiereOfflineAnzeige();
+    versucheAusstehendeZuSynchronisieren();
+    ladeFrischNach();
+    return;
+  }
+  const warAktiv = aktiveListe;
+  uebernimmServerAntwort(antwort);
+  if (aktiveListe !== warAktiv) editingId = editingCat = addingCat = null;
+  zeigeAktiveListe();
+  zeichneListen();
+  aktualisiereMenue();
+  render();
+  aktualisiereOfflineAnzeige();
+  versucheAusstehendeZuSynchronisieren();
 }
 
 // Eine Antwort von GET /api/todos einsetzen - beim Start (loadState) und beim

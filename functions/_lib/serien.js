@@ -143,8 +143,10 @@ export async function legeAn(token, kalenderId, felder, regel) {
 export async function aendere(token, kalenderId, { id, serieId, umfang, felder, regel }) {
   if (!serieId) {
     // Einzeltermin. Bekommt er eine Wiederholung, wird er selbst zur Serie -
-    // Google macht das aus einem PATCH mit `recurrence`.
-    const rumpf = terminRumpf(felder);
+    // Google macht das aus einem PATCH mit `recurrence`. Bei jedem PATCH
+    // terminRumpf(..., true): sonst scheitert das Umstellen ganztaegig <->
+    // Uhrzeit, siehe dort.
+    const rumpf = terminRumpf(felder, true);
     if (regel) rumpf.recurrence = [passeUntilAn(regel, felder.ganztags)];
     return schreibeTermin("PATCH", token, kalenderId, id, rumpf);
   }
@@ -153,7 +155,7 @@ export async function aendere(token, kalenderId, { id, serieId, umfang, felder, 
   // Regel bleibt, wie sie ist - die App bietet diesen Weg gar nicht an, wenn
   // die Wiederholung geaendert wurde.
   if (umfang === "dieser") {
-    return schreibeTermin("PATCH", token, kalenderId, id, terminRumpf(felder));
+    return schreibeTermin("PATCH", token, kalenderId, id, terminRumpf(felder, true));
   }
 
   const serie = await holeTermin(token, kalenderId, serieId);
@@ -200,7 +202,7 @@ export async function aendere(token, kalenderId, { id, serieId, umfang, felder, 
   const verschiebung = tageZwischen(datumVon(ausgabeStart), felder.startDatum);
   const dauer = tageZwischen(felder.startDatum, felder.endDatum);
   const start = plusTage(datumVon(serie.start), verschiebung);
-  const rumpf = terminRumpf({ ...felder, startDatum: start, endDatum: plusTage(start, dauer) });
+  const rumpf = terminRumpf({ ...felder, startDatum: start, endDatum: plusTage(start, dauer) }, true);
   const zeile = regel !== undefined ? regel : alteZeile;
   if (zeile) rumpf.recurrence = ersetzeRegel(serie.recurrence, passeUntilAn(zeile, felder.ganztags), formatWechsel);
   return schreibeTermin("PATCH", token, kalenderId, serieId, rumpf);

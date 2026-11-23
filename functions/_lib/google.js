@@ -291,8 +291,15 @@ function tagPlusEins(iso) {
  * ganztaegigen erwartet es das Ende als ersten Tag DANACH (exklusiv). Genau
  * diese beiden Eigenheiten sind der Grund, warum das hier eine eigene
  * Funktion ist und nicht dreimal im Endpunkt steht.
+ *
+ * `fuerPatch`: PATCH fuehrt verschachtelte Objekte bei Google ZUSAMMEN, statt
+ * sie zu ersetzen. Ohne die null-Felder bliebe beim Umstellen das alte {date}
+ * neben dem neuen {dateTime} stehen (oder umgekehrt), und Google lehnt mit
+ * 400 "Invalid start time" ab - in der App "Google hat die Aenderung nicht
+ * angenommen" (bis 23.11.2026). null loescht ein Feld beim PATCH. Fuer POST
+ * nicht noetig, dort gibt es nichts Altes.
  */
-export function terminRumpf({ titel, ganztags, startDatum, endDatum, vonZeit, bisZeit, farbe, notiz, ort, zeitzone }) {
+export function terminRumpf({ titel, ganztags, startDatum, endDatum, vonZeit, bisZeit, farbe, notiz, ort, zeitzone }, fuerPatch = false) {
   const bis = endDatum || startDatum;
   const rumpf = {
     summary: titel,
@@ -303,6 +310,12 @@ export function terminRumpf({ titel, ganztags, startDatum, endDatum, vonZeit, bi
     start: ganztags ? { date: startDatum } : { dateTime: `${startDatum}T${vonZeit}:00`, timeZone: zeitzone },
     end:   ganztags ? { date: tagPlusEins(bis) } : { dateTime: `${bis}T${bisZeit}:00`, timeZone: zeitzone },
   };
+  if (fuerPatch) {
+    for (const zeit of [rumpf.start, rumpf.end]) {
+      if (ganztags) { zeit.dateTime = null; zeit.timeZone = null; }
+      else zeit.date = null;
+    }
+  }
   // colorId weglassen heisst "Farbe des Kalenders" - dafuer muss das Feld
   // explizit auf null, sonst bleibt beim Aendern die alte Farbe stehen.
   rumpf.colorId = farbe || null;
@@ -344,8 +357,9 @@ export function legeTerminAn(token, kalenderId, felder) {
 
 // PATCH statt PUT: was wir nicht schicken (Ort, Gaeste, Erinnerungen),
 // bleibt bei Google unangetastet. Ein PUT wuerde es stillschweigend loeschen.
+// Derzeit ohne Aufrufer - termin.js aendert ueber _lib/serien.js (aendere).
 export function aendereTermin(token, kalenderId, terminId, felder) {
-  return schreibeTermin("PATCH", token, kalenderId, terminId, terminRumpf(felder));
+  return schreibeTermin("PATCH", token, kalenderId, terminId, terminRumpf(felder, true));
 }
 
 export function loescheTermin(token, kalenderId, terminId) {

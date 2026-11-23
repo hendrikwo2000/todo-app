@@ -832,20 +832,50 @@ Gewohnheiten hat, bekommt die Meldung trotzdem. Rechnung in
 Die App funktioniert auch ohne Internet — vorausgesetzt, sie wurde auf dem
 Gerät mindestens einmal online geöffnet. Zwei getrennte Mechanismen:
 
-**App-Shell** (`sw.js`, Service Worker): cached `index.html`, `style.css`,
-`app.js`, `manifest.json` und die beiden Icons — nicht `/api/*`. Strategie
-network-first mit Cache-Fallback (nicht cache-first), damit ein Push auf
-`main` sofort bei jedem Online-Aufruf ankommt und nur der Offline-Fall die
-alte Version zeigt. **Wichtig:** Bei jeder Änderung an einer der gecachten
-Dateien die Konstante `CACHE_NAME` in `sw.js` hochzählen — sonst räumt
-`activate()` den alten Cache nicht auf und wiederkehrende Nutzer bleiben auf
-dem alten Stand hängen, ohne dass das irgendwo auffällt.
+**App-Shell** (`sw.js`, Service Worker): cached die Seite unter `/`, alle
+Skripte, `style.css`, `manifest.json` und die beiden Icons (Liste
+`SHELL_FILES`) — nicht `/api/*`. Strategie network-first mit Cache-Fallback
+(nicht cache-first), damit ein Push auf `main` sofort bei jedem
+Online-Aufruf ankommt und nur der Offline-Fall die alte Version zeigt.
+**Wichtig:** Bei jeder Änderung an einer der gecachten Dateien die Konstante
+`CACHE_NAME` in `sw.js` hochzählen — sonst räumt `activate()` den alten Cache
+nicht auf und wiederkehrende Nutzer bleiben auf dem alten Stand hängen, ohne
+dass das irgendwo auffällt.
+
+Seit 23.11.2026 (v83) gelten dabei drei Regeln:
+
+* **Kein `/index.html` im Cache.** Cloudflare Pages leitet `/index.html` per
+  308 auf `/` um. `cache.addAll` legte die umgeleitete Antwort ab, und eine
+  Antwort mit `redirected` lehnen Safari und Chrome bei einer Navigation ab.
+  Die Installation holt die Dateien deshalb selbst und legt eine umgeleitete
+  Antwort als neue `Response` ab (`ohneUmleitung()`); in den Cache kommen nur
+  200er ohne Umleitung (`taugtFuerCache()`). Vorher landeten dort auch 404 und
+  500 und überschrieben die gute Fassung.
+* **Navigationen fallen auf `/` zurück**, mit `ignoreSearch` und
+  `ignoreVary`. Das deckt alte Home-Bildschirm-Symbole ab, die noch
+  `./index.html` als Startadresse tragen (iOS liest das Manifest nur beim
+  Hinzufügen), und Adressen mit `?beitreten=`/`?weiter=`. `start_url` im
+  Manifest ist jetzt `/`.
+* **Frist von 3 s** (`NETZ_FRIST`): antwortet das Netz bis dahin nicht, kommt
+  die gecachte Fassung, der Abruf läuft im Hintergrund weiter und frischt den
+  Cache auf. Kam die Seite selbst aus dem Cache, holen CSS und Skripte zehn
+  Sekunden lang sofort ihre gecachte Fassung (`cacheZuerstBis`). Sonst wartete
+  jede noch einmal 3 s, und HTML und Skripte könnten aus verschiedenen
+  Ständen stammen. Ohne Frist hing der Start bei schlechtem Netz, bis das
+  Betriebssystem aufgab.
 
 **Daten** (`app.js`, kein Backend-Zugriff nötig): `localStorage` spiegelt
 unter dem Schlüssel `todoCache` die letzte erfolgreiche Antwort von
 `GET /api/todos` (siehe `speichereCacheLokal()`/`ladeCacheLokal()`). Schlägt
 ein Request fehl (`loadState()`/`save()`), wird daraus statt aus einem
-geleerten Board wiederhergestellt. Änderungen, die offline nicht gespeichert
+geleerten Board wiederhergestellt. Seit 23.11.2026 wartet `loadState()`
+höchstens 5 s (`START_FRIST_MS`), wenn es einen lokalen Stand gibt; danach
+zeigt die App ihn mit „Server nicht erreichbar“. Kommt die Antwort später
+doch, setzt `spaeteStartAntwort()` sie ein, mit denselben Vorsichtsregeln wie
+`ladeFrischNach()` (wurde inzwischen etwas geändert, gespeichert oder
+getippt, wird nichts überschrieben). Ohne lokalen Stand gibt es keine Frist:
+dann ist nichts zu zeigen, und die Anmeldemaske braucht ohnehin die
+(401-)Antwort. Änderungen, die offline nicht gespeichert
 werden konnten, landen zusätzlich unter `todoPending` — verschachtelt pro
 Konto (`eigeneEmail`), damit auf einem gemeinsam genutzten Gerät ein
 Kontowechsel nicht fremde, noch nicht hochgeladene Änderungen verwirft.
@@ -1195,7 +1225,8 @@ Umbruch-Regeln) stehen noch und greifen ins Leere - beim nächsten Aufräumen
 löschen.
 
 **Am Handy** ist die Kopfzeile einzeilig (Listenname links, „Gespeichert“
-rechts), `.kal-ansicht-zeile` fällt ganz weg, und Kalender-Panel, Snackbar und
+rechts; seit 18.11.2026 bis 560 px nur mit mehreren Listen, siehe „Drei
+Fehler am 23.11.2026“), `.kal-ansicht-zeile` fällt ganz weg, und Kalender-Panel, Snackbar und
 der Platz unter dem Board enden über der Leiste. Die Leiste steht **außerhalb
 von `.app`**, weil die Kalenderansicht `.app` ausblendet.
 
@@ -3073,7 +3104,16 @@ Googles Palette, Ort, Notiz und seit dem 24.09.2026 die Wiederholung ab
 was das Formular nicht kennt (Ort, Gäste, Erinnerungen), bleibt damit stehen
 statt still gelöscht zu werden. Zwei Eigenheiten stecken in `terminRumpf()`:
 ganztägig braucht `{date}` mit dem Ende als erstem Tag DANACH, terminiert
-`{dateTime}` samt Zeitzone (die schickt der Browser mit). Die Beschreibung
+`{dateTime}` samt Zeitzone (die schickt der Browser mit). Eine dritte kam am
+23.11.2026 dazu: PATCH führt `start`/`end` bei Google zusammen, statt sie zu
+ersetzen. Beim Umstellen ganztägig ↔ Uhrzeit blieb so das alte `date` neben
+dem neuen `dateTime` stehen (oder umgekehrt), Google antwortete mit
+„Invalid start time“, die App mit „Google hat die Änderung nicht
+angenommen“. `terminRumpf(felder, true)` setzt für PATCH das jeweils andere
+Feld auf `null` (bei Uhrzeit `date`, bei ganztägig `dateTime` und
+`timeZone`); so löscht Google es. Gilt für `aendereTermin()` und alle
+PATCH-Wege in `aendere()` (`serien.js`: Einzeltermin, „dieser“, „alle“). POST
+bleibt ohne die `null`-Felder. Die Beschreibung
 wird beim LESEN großzügig gekappt (8000 Zeichen), nicht knapp — sie geht beim
 Bearbeiten wieder zurück an Google, und was hier fehlte, wäre dort weg.
 Dafür trägt `SCOPES` zusätzlich `calendar.events`. **Wer vor dieser
@@ -3805,3 +3845,56 @@ Fenster beim ersten echten Klick aufs Dropdown zu - danach nicht mehr
 nachstellbar, auch nicht mit Protokoll aller Klick- und popstate-Ereignisse.
 Vermutlich der vorher abgebrochene Klick des Test-Werkzeugs; falls es live
 auftritt: hier weitersuchen.
+
+## Drei Fehler am 23.11.2026
+
+**Google-Termin ganztägig ↔ Uhrzeit** ließ sich nicht umstellen. Ursache und
+Lösung stehen unter „Google Kalender“ (PATCH führt `start`/`end` zusammen).
+
+**„Gespeichert ✓“ lag am iPhone auf dem Kopf der Heute-Kachel.** Die Regel
+`.topbar > .save-status { position: absolute; top: 100% }` (vom 18.11.2026,
+gedacht für den PC) galt überall. Am Handy ist die Kopfzeile bei nur einer
+Liste 0 px hoch, weil der Listenname ausgeblendet ist; „unter der Kopfzeile“
+war damit mitten im Titel „Heute“. Jetzt:
+
+* Ab 1000 px (`html.breit`, dort stehen `.kopf-knoepfe`) bleibt der Text
+  absolut unter dem Listennamen, wie bisher.
+* Darunter steht er rechts in der Titelzeile (Regel „Kopfzeile: nur
+  Listenname und Gespeichert“ in `max-width: 999px`).
+* Bis 560 px ohne sichtbaren Listennamen zeigt die Zeile nur Fehler
+  („Server nicht erreichbar“, „Nicht gespeichert“). Hendriks Wahl: „Gespeichert
+  ✓“ und „Speichere …“ hätten dort nur Platz bekommen, indem die ganze Seite bei
+  jedem Abhaken 1,8 s lang um 18 px nach unten und zurück springt. Mit mehreren
+  Listen steht der Name als Umschalter da, dann erscheint auch „Gespeichert ✓“.
+
+**Offline-Kaltstart vom Home-Bildschirm** ging nicht, wenn die App vorher ganz
+geschlossen war. `curl -I https://todo.it-wolf.org/index.html` bestätigt den
+`308` auf `/`. Ursache und Lösung unter „Offline“ (App-Shell und Daten).
+
+**Lokal getestet** (`wrangler pages dev`, Chromium per Playwright, iPhone-13-Format):
+
+* Google: `aendere()` und `aendereTermin()` gegen ein nachgebautes Google, das
+  PATCH wie Google zusammenführt und `null` als Löschen versteht. Alter Stand:
+  alle sieben Umstellungen (Einzeltermin, Einzeltermin mit neuer
+  Wiederholung, „dieser“ und „alle“ jeweils in beide Richtungen,
+  `aendereTermin`) mit 400. Neuer Stand: alle durch; die Gegenproben ohne
+  Typwechsel laufen wie vorher.
+* Kopfzeile: iPhone mit einer und mit zwei Listen, iPad 820 px, PC 1200 px
+  (Lage am PC pixelgleich mit vorher).
+* Offline-Kaltstart: Service Worker online installiert, alle Tabs zu,
+  HTTP-Cache geleert (sonst kennt Chromium den 308 schon), dann neu geöffnet.
+  Mit v82: `/index.html` und `/?beitreten=…` scheitern ohne Netz mit
+  `net::ERR_FAILED`, bei hängendem Netz kommt nach 15 s nichts. Mit v83: ohne
+  Netz alle drei Adressen in unter 0,1 s mit den ToDos aus dem lokalen Stand,
+  bei hängendem Netz die Hülle nach 3,1 s, die ToDos 5 s später.
+* Langsames Netz (jede Antwort 9 s verzögert): erst der lokale Stand mit
+  „Server nicht erreichbar“, nach Eintreffen der Antwort ein inzwischen auf dem
+  Server angelegtes ToDo, Meldung und Banner weg. Ohne lokalen Stand keine
+  Leermeldung zwischendurch.
+
+**Ungeprüft:** Safari selbst (hier gibt es nur Chromium) und der echte
+Kaltstart vom Home-Bildschirm am iPhone; der echte Google-Rundlauf (lokal
+ohne Zugangsdaten). Im Test mit HTTP/1.1 kam die späte Start-Antwort erst nach
+gut 30 s, weil sie hinter den Hintergrund-Abrufen des Service Workers im Pool
+von sechs Verbindungen wartete. Live läuft HTTP/2, dort gibt es diese Grenze
+nicht; um die Bandbreite konkurrieren die Abrufe trotzdem (wie vorher auch).

@@ -1,7 +1,7 @@
 {
   "name": "ToDo-Liste",
   "short_name": "ToDo",
-  "start_url": "./index.html",
+  "start_url": "/",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f2f2f7",

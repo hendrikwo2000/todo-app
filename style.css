@@ -4969,6 +4969,12 @@ body:has(#timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fuss-knopf.time
      Titel. Ausser es gibt mehrere Listen: dann ist er der Umschalter. */
   .topbar h1:not(.titel-schaltbar) { display: none; }
   .topbar { margin-bottom: 0; min-height: 0; }
+  /* Ohne Listennamen ist die Kopfzeile damit 0 px hoch. "Gespeichert ✓" und
+     "Speichere …" bekaemen dort nur Platz, indem die ganze Seite bei jedem
+     Abhaken kurz um eine Zeile nach unten und wieder zurueck springt - am
+     Handy bleiben deshalb nur Fehler sichtbar (Hendrik, 23.11.2026). Mit
+     mehreren Listen steht der Name als Umschalter da, dann gilt das nicht. */
+  .topbar:has(> h1:not(.titel-schaltbar)) > #saveStatus:not(.err) { display: none; }
 }
 
 /* ===================== Heute ===================== */
@@ -5917,8 +5923,13 @@ html.kal-split .kal-popup-kopf .kal-schliessen {
 :root[data-theme="dark"] .column[data-farbe] .col-koerper .todo:not(.is-done):has(.edit-row) { background: rgba(118, 118, 128, .18); }
 
 /* "Gespeichert ✓" nimmt in der Kopfzeile keinen Platz: sonst schob es am PC
-   das Zahnrad aus der Leiste. Es steht klein unter dem Listennamen. */
-.topbar > .save-status { position: absolute; left: 2px; top: 100%; margin: 0; font-size: 12px; white-space: nowrap; }
+   das Zahnrad aus der Leiste. Es steht klein unter dem Listennamen.
+   NUR am PC (html.breit, ab 1000 px - dort, wo .kopf-knoepfe stehen). Bis
+   23.11.2026 galt die Regel ueberall: am iPhone ist die Kopfzeile 0 px hoch
+   (Listenname ausgeblendet, siehe max-width 560px), "top: 100%" legte den
+   Text damit mitten auf den Kopf der Heute-Kachel. Unter 1000 px gilt die
+   Regel "Kopfzeile: nur Listenname und Gespeichert" (max-width 999px). */
+html.breit .topbar > .save-status { position: absolute; left: 2px; top: 100%; margin: 0; font-size: 12px; white-space: nowrap; }
 body.verwaltung .topbar > .save-status { position: static; }
 
 /* ---------- Restliche Flaechen mit altem 1px-Rand (Runde 3, Durchsicht) ----------
