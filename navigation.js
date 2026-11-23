@@ -26,8 +26,16 @@ navLeiste.classList.add("unten");
 
 // Kopfzeile am PC: sobald die Seite gescrollt ist, wird sie zur schmalen,
 // durchscheinenden Leiste (style.css, html.kopf-klein; seit 19.11.2026).
+// Dazu (seit 23.11.2026, Liquid Glass): die schwebende Leiste unten wird beim
+// Runterscrollen schmaler (nur Symbole, html.leiste-klein) und beim
+// Hochscrollen wieder voll - wie die Tab-Leiste in iOS 26.
+let navLetztesY = window.scrollY;
 function navKopfKlein() {
-  document.documentElement.classList.toggle("kopf-klein", window.scrollY > 4);
+  const y = window.scrollY;
+  document.documentElement.classList.toggle("kopf-klein", y > 4);
+  if (Math.abs(y - navLetztesY) < 8) return;
+  document.documentElement.classList.toggle("leiste-klein", y > navLetztesY && y > 60);
+  navLetztesY = y;
 }
 window.addEventListener("scroll", navKopfKlein, { passive: true });
 navKopfKlein();

@@ -3946,3 +3946,44 @@ schließen nur, ohne Titel offen), Lage der beiden Fenster per
 `getBoundingClientRect`. **Ungeprüft:** ob die Tastatur am echten iPhone
 tatsächlich aufgeht (im Test-Browser nur `document.activeElement` geprüft) und
 der echte Google-Speichern-Weg beim Klick daneben.
+
+## Liquid Glass, Fenster „Bereich“, ＋ an Bereich und Thema (seit 23.11.2026, abends)
+
+Hendrik wählte aus den Entwürfen in `Documents/Claude-Code/ToDo-Entwurf-Liquid-Glass`
+(Jetzt | Idee A | Idee B) **Idee A** (gleicher Aufbau, Glas-Material) plus einzelne
+Stücke aus B, dazu zwei eigene Wünsche:
+
+- **Glas-Block am Ende von `style.css`** („Liquid Glass“): Glas nur in der
+  Bedienebene (schwebende Leiste unten, Kopf-Knöpfe, Fenster/Blätter, Knöpfe,
+  Umschalter mit heller „Linse“), Inhalt bleibt feste Fläche, rundere Formen
+  (Inhalt 22 px, Gruppen 20 px, Fenster 30 px, Handy-Blätter 40 px oben). Alle Werte
+  als Variablen mit eigenem Satz für `data-theme="dark"`. Mit „Transparenz
+  reduzieren“ (`prefers-reduced-transparency`) feste Flächen. Die Leiste wird beim
+  Runterscrollen schmaler (`html.leiste-klein`, `navKopfKlein` in navigation.js).
+  Die Einstellungs-/Zeit-/Hilfe-Fenster reichen am Handy jetzt bis unten
+  (z-index 57, unter der Leiste), damit der Inhalt unter dem Glas durchscrollt.
+- **Fenster „Bereich“** (`bereichFenster` in app.js): Name, 12 Farben + keine,
+  bei bestehenden „Bereich löschen“ (mit der Rückfrage aus `deleteCategory`).
+  Öffnet sich am ＋ der Zeile „Bereich“ im Neu- UND Bearbeiten-Fenster und mit einem
+  Klick auf den Bereichsnamen. Dafür entfallen die aufklappende Werkzeugzeile
+  (Farbpunkt, „＋ Thema“, `toggleThemaWerkzeuge`) und das Umbenennen per Doppelklick.
+  Themen: ＋ der Zeile „Thema“ im Neu- und Bearbeiten-Fenster; umbenennen/auflösen
+  weiter per Doppelklick auf den Thema-Namen.
+- **Rundes ＋ rechts oben** im Bereichskopf (jetzt auch am Handy) und im Thema-Kopf
+  (vorher ausgeblendet): Neu-Fenster mit Bereich bzw. Bereich + Thema vorgewählt
+  (`oeffneAnlegen({ bereich, thema })`).
+- **Schnellwahl „Heute · Morgen · Am Wochenende“** unter den Zeilen im Neu-Fenster
+  (setzt „bis“, erneut tippen nimmt es zurück; Wochenende = nächster Samstag).
+- **Aus Idee B:** am Handy der Listen-Umschalter („Meine Liste ▾“, nur bei mehreren
+  Listen) als Glas-Kapsel, „Heute“ mit Überschriften und zwei Gruppen statt EIN Block
+  (Reihenfolge ToDos vor Terminen bleibt, siehe Kommentar in `zeichneTagesliste`).
+  Gewohnheiten, Zeit-Statistik und Hilfe: Glas-Knopf „‹ Einstellungen / ‹ Zeit /
+  ‹ Heute“ oben links und großer Titel statt „Fertig“ (`setzeZurueck` in app.js).
+
+**Lokal getestet** (`wrangler pages dev`, 1440 px und 375/390 px, hell und dunkel,
+Aufnahmen aller Bildschirme per `ToDo-Entwurf-Liquid-Glass/werkzeug/aufnahme.mjs
+--aus=nachher`): Bereich bearbeiten (Name, Farbe, Spaltenfarbe), neuer Bereich aus
+Neu- und Bearbeiten-Fenster samt Farbe und Auswahl, neues Thema aus dem
+Bearbeiten-Fenster, Löschen mit Rückfrage, ＋ am Thema-Kopf (Bereich + Thema
+vorgewählt), Schnellwahl. **Ungeprüft:** echtes iPhone (Unschärfe-Leistung,
+Schmalerwerden beim Scrollen mit Gummiband-Effekt), echte Maus-Hover.

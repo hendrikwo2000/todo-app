@@ -100,6 +100,8 @@ function oeffneAnlegen(vorgabe = {}) {
   const kalAnsicht = kalOffen && !istSplit();
   setzeAnlegenBis(anlegenVorgabe.tag || (kalAnsicht ? anlegenStartTag() : ""));
   waehleAnlegenArt("todo");
+  // Vom ＋ einer Thema-Zeile auf dem Board: das Thema gleich mit (seit 23.11.2026).
+  if (vorgabe.thema) zeigeAnlegenThema(vorgabe.thema);
   anlegenPopup.hidden = false;
   passeNotizHoeheAn(anlegenNotiz);
   anlegenTitel.focus();
@@ -176,18 +178,10 @@ function zeigeAnlegenThema(wahl = "") {
 // Das ＋ am Bereich: Namen erfragen, Bereich anlegen und gleich auswaehlen. Das
 // Fenster bleibt offen, was schon getippt ist, bleibt stehen.
 async function neuerBereichImFenster() {
-  const name = await textEingabe({
-    titel: "Neuer Bereich",
-    platzhalter: "z. B. Haushalt oder Arbeit",
-    okText: "Anlegen",
-    icon: "＋",
-  });
+  // Seit 23.11.2026 das Fenster "Bereich" (app.js) - Name UND Farbe.
+  const id = await bereichFenster(null);
   // Inzwischen zu (z. B. die Liste gewechselt): nichts mehr tun.
-  if (!name || anlegenPopup.hidden) return;
-  const id = uid();
-  state.categories.push({ id, name });
-  render();
-  save();
+  if (!id || anlegenPopup.hidden) return;
   fuelleAnlegenBereiche();
   anlegenBereich.value = id;
   zeigeAnlegenThema();
@@ -213,7 +207,23 @@ function zeigeAnlegenBis() {
   const hat = !!anlegenBis.value;
   anlegenBis.parentElement.classList.toggle("hat-wert", hat);
   anlegenBisWeg.hidden = !hat;
+  for (const k of anlegenSchnell.children) k.setAttribute("aria-pressed", String(!!hat && schnellTag(k.dataset.schnell) === anlegenBis.value));
 }
+
+// Schnellwahl "Heute / Morgen / Am Wochenende" (seit 23.11.2026). Wochenende =
+// der naechste Samstag; ist schon Samstag oder Sonntag, dann heute.
+const anlegenSchnell = document.getElementById("anlegenSchnell");
+function schnellTag(art) {
+  if (art !== "we") return addDaysStr(Number(art));
+  const wt = new Date().getDay();   // 0 So ... 6 Sa
+  return addDaysStr(wt === 6 || wt === 0 ? 0 : 6 - wt);
+}
+anlegenSchnell.addEventListener("click", e => {
+  const k = e.target.closest("[data-schnell]");
+  if (!k) return;
+  const tag = schnellTag(k.dataset.schnell);
+  setzeAnlegenBis(anlegenBis.value === tag ? "" : tag);
+});
 
 async function legeAusFensterAn() {
   const text = anlegenTitel.value.trim();

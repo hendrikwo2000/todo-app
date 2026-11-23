@@ -265,6 +265,13 @@
       </div>
 
       </div>
+      <!-- Schnellwahl fuer "bis" (seit 23.11.2026, aus Idee B der Liquid-Glass-
+           Entwuerfe): ein Tipp statt Datumsfeld. Erneut tippen nimmt es zurueck. -->
+      <div id="anlegenSchnell" class="anlegen-schnell" data-fuer="todo" role="group" aria-label="bis">
+        <button type="button" data-schnell="0">Heute</button>
+        <button type="button" data-schnell="1">Morgen</button>
+        <button type="button" data-schnell="we">Am Wochenende</button>
+      </div>
       <div class="anlegen-knoepfe knopfreihe blatt-fuss">
         <button type="button" id="anlegenAbbrechen" class="btn">Abbrechen</button>
         <button type="submit" id="anlegenOk" class="btn primary">Anlegen</button>
@@ -300,14 +307,18 @@
         <textarea id="bearbeitenNotiz" class="anlegen-notiz" rows="2" placeholder="Notiz" aria-label="Notiz"></textarea>
       </div>
       <div class="anlegen-gruppe anlegen-felder">
-        <label class="anlegen-zeile">
-          <span class="anlegen-etikett">Bereich</span>
+        <!-- Mit ＋ wie im Neu-Fenster (seit 23.11.2026): neuer Bereich (Fenster
+             "Bereich" mit Farbe) bzw. neues Thema, gleich ausgewaehlt. -->
+        <div class="anlegen-zeile">
+          <label class="anlegen-etikett" for="bearbeitenBereich">Bereich</label>
           <select id="bearbeitenBereich" class="anlegen-wahl"></select>
-        </label>
-        <label id="bearbeitenThemaZeile" class="anlegen-zeile" hidden>
-          <span class="anlegen-etikett">Thema</span>
+          <button type="button" id="bearbeitenBereichPlus" class="anlegen-plus" aria-label="Neuer Bereich" title="Neuer Bereich"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg></button>
+        </div>
+        <div id="bearbeitenThemaZeile" class="anlegen-zeile" hidden>
+          <label class="anlegen-etikett" for="bearbeitenThema">Thema</label>
           <select id="bearbeitenThema" class="anlegen-wahl"></select>
-        </label>
+          <button type="button" id="bearbeitenThemaPlus" class="anlegen-plus" aria-label="Neues Thema" title="Neues Thema"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg></button>
+        </div>
         <div class="anlegen-zeile">
           <label class="anlegen-etikett" for="bearbeitenBis">bis</label>
           <span class="anlegen-datum">
@@ -1070,8 +1081,8 @@
           <div class="ein-inhalt hilfe-text">
             <dl class="hilfe-zeilen hilfe-nummeriert">
               <div class="hilfe-zeile"><dt>Liste</dt><dd>„Erste Liste anlegen“ antippen</dd></div>
-              <div class="hilfe-zeile"><dt>ToDo</dt><dd><span class="ohne-fuss">＋ neben „Meine ToDos“ oder „＋ ToDo“ am Bereich</span><span class="mit-fuss">„＋ Neu“ unten</span>, Titel, Enter</dd></div>
-              <div class="hilfe-zeile"><dt>Bereich</dt><dd>„＋ Neu“, bei „Bereich“ das kleine ＋</dd></div>
+              <div class="hilfe-zeile"><dt>ToDo</dt><dd><span class="ohne-fuss">＋ oben</span><span class="mit-fuss">„＋ Neu“ unten</span> oder das ＋ rechts am Bereich/Thema, Titel, Enter</dd></div>
+              <div class="hilfe-zeile"><dt>Bereich</dt><dd>„＋ Neu“, bei „Bereich“ das kleine ＋ (Name und Farbe)</dd></div>
               <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kästchen antippen</dd></div>
               <div class="hilfe-zeile"><dt>Heute</dt><dd>Zeigt, was heute und bald fällig ist</dd></div>
               <div class="hilfe-zeile"><dt>Kalender</dt><dd><span class="ohne-fuss">Einstellungen › „Kalender anzeigen“, „Heute anzeigen“</span><span class="mit-fuss">Unten „ToDos“ oder „Kalender“</span></dd></div>
@@ -1133,10 +1144,10 @@
           </summary>
           <div class="ein-inhalt hilfe-text">
             <dl class="hilfe-zeilen">
-              <div class="hilfe-zeile"><dt>Einfärben</dt><dd>Namen antippen, dann den Punkt <span class="hilfe-punkt" aria-hidden="true"></span> antippen und eine Farbe wählen</dd></div>
-              <div class="hilfe-zeile"><dt>Thema anlegen</dt><dd>Namen antippen, „+ Thema“</dd></div>
-              <div class="hilfe-zeile"><dt>Umbenennen</dt><dd>Namen 2× antippen</dd></div>
-              <div class="hilfe-zeile"><dt>Löschen</dt><dd>Namen 2× antippen, dann Papierkorb</dd></div>
+              <div class="hilfe-zeile"><dt>Anlegen</dt><dd>Im Neu- oder Bearbeiten-Fenster das kleine ＋ bei „Bereich“ bzw. „Thema“</dd></div>
+              <div class="hilfe-zeile"><dt>Name &amp; Farbe</dt><dd>Bereichsnamen antippen</dd></div>
+              <div class="hilfe-zeile"><dt>Bereich löschen</dt><dd>Bereichsnamen antippen, „Bereich löschen“</dd></div>
+              <div class="hilfe-zeile"><dt>Thema ändern</dt><dd>Thema-Namen 2× antippen (umbenennen, Papierkorb löst auf)</dd></div>
               <div class="hilfe-zeile"><dt>Reihenfolge</dt><dd>Am Namen ziehen</dd></div>
             </dl>
             <details class="hilfe-mehr">
@@ -1184,7 +1195,7 @@
           <div class="ein-inhalt hilfe-text">
             <p class="hilfe-zwischen">Die Farbe eines Bereichs</p>
             <dl class="hilfe-zeilen">
-              <div class="hilfe-zeile"><dt>Einstellen</dt><dd>Namen antippen, dann den Punkt <span class="hilfe-punkt" aria-hidden="true"></span> antippen und eine Farbe wählen</dd></div>
+              <div class="hilfe-zeile"><dt>Einstellen</dt><dd>Bereichsnamen antippen und eine Farbe wählen – oder gleich beim Anlegen</dd></div>
               <div class="hilfe-zeile"><dt>Bedeutung</dt><dd>Keine, sie ist frei gewählt</dd></div>
             </dl>
             <p class="hilfe-zwischen">Der Streifen links am ToDo</p>

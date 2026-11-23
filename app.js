@@ -142,18 +142,29 @@ const einKnoepfe = [...document.querySelectorAll(".ein-knopf")];
 // ich nicht wieder in die normalen Einstellungen". Der Knopf links oben im
 // Fenster zeigt sich nur, wenn es aus den Einstellungen kam, und stellt sie so
 // wieder her, wie man sie verlassen hat (Reiter, offener Abschnitt).
-function einstellungenVerlassenFuer(fenster) {
+//
+// Seit 23.11.2026 (aus Idee B der Liquid-Glass-Entwuerfe) steht der Knopf IMMER
+// da, als Glas-Kapsel "‹ Ziel" oben links ueber dem grossen Titel, und ersetzt
+// "Fertig": "‹ Einstellungen" stellt die Einstellungen wieder her, "‹ Zeit"
+// fuehrt zum Zeit-Fenster darunter zurueck, "‹ Heute" schliesst einfach.
+function einstellungenVerlassenFuer(fenster, sonst = "Heute") {
   const ausEinstellungen = !einstellungenPopup.hidden;
   einstellungenPopup.hidden = true;
-  const zurueck = fenster.querySelector(".ein-zurueck");
-  if (zurueck) zurueck.hidden = !ausEinstellungen;
+  setzeZurueck(fenster, ausEinstellungen ? "Einstellungen" : sonst);
+}
+function setzeZurueck(fenster, ziel) {
+  const k = fenster.querySelector(".ein-zurueck");
+  if (!k) return;
+  k.hidden = false;
+  k.dataset.ziel = ziel;
+  k.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg><span>${ziel}</span>`;
 }
 for (const k of document.querySelectorAll(".ein-zurueck")) {
   k.addEventListener("click", () => {
     // Ueber den eigenen Schliessen-Knopf: der raeumt auf, was das Fenster
     // beim Schliessen sonst noch tut.
     k.closest(".admin-popup").querySelector(".ein-schliessen").click();
-    einstellungenPopup.hidden = false;
+    if (k.dataset.ziel === "Einstellungen") einstellungenPopup.hidden = false;
   });
 }
 function zeigeEinstellungenKnopf() {
@@ -1808,6 +1819,97 @@ function textEingabe(optionen) {
   });
 }
 
+// Fenster "Bereich" (seit 23.11.2026): Name und Farbe an einer Stelle - fuer
+// neue Bereiche (das ＋ im Neu- und im Bearbeiten-Fenster) und bestehende (ein
+// Klick auf den Bereichsnamen). Hendrik: "da moechte ich auch die Farbe vom
+// Bereich einstellen, somit kann beim Klick auf Bereich das Thema und Farbe
+// weg". Vorher: Klick auf den Namen klappte Farbpunkt + "＋ Thema" auf,
+// Doppelklick benannte um, Loeschen stand im Umbenennen-Modus.
+// Promise: id des Bereichs, null bei Abbrechen/Loeschen. Loeschen nur bei einem
+// bestehenden Bereich (mit der Rueckfrage aus deleteCategory).
+function bereichFenster(cat = null) {
+  return new Promise(resolve => {
+    let farbe = cat ? (cat.farbe || "") : "";
+    const overlay = document.createElement("div");
+    overlay.className = "admin-popup eingabe-popup bereich-fenster";
+    const box = document.createElement("div");
+    box.className = "admin-popup-box";
+    box.setAttribute("role", "dialog");
+    box.setAttribute("aria-label", cat ? "Bereich bearbeiten" : "Neuer Bereich");
+    box.innerHTML = `
+      <h2>${cat ? "Bereich bearbeiten" : "Neuer Bereich"}</h2>
+      <input type="text" class="eingabe-feld" autocomplete="off" aria-label="Name"
+             placeholder="Name, z. B. Haushalt oder Arbeit">
+      <div class="bereich-farben" role="radiogroup" aria-label="Farbe">
+        ${FARBEN.map(f => `<button type="button" class="farbe-swatch farbe-${f.id}" data-farbe="${f.id}" role="radio" title="${f.name}" aria-label="${f.name}"></button>`).join("")}
+        <button type="button" class="farbe-swatch farbe-keine" data-farbe="" role="radio" title="Keine Farbe" aria-label="Keine Farbe">✕</button>
+      </div>
+      ${cat ? `<button type="button" class="bereich-loeschen">Bereich löschen</button>` : ""}
+      <div class="knopfreihe">
+        <button type="button" class="btn bereich-ab">Abbrechen</button>
+        <button type="button" class="btn primary bereich-ok">${cat ? "Fertig" : "Anlegen"}</button>
+      </div>`;
+    overlay.appendChild(box);
+    const feld = box.querySelector(".eingabe-feld");
+    feld.value = cat ? cat.name : "";
+    const zeigeFarbe = () => {
+      for (const s of box.querySelectorAll("[data-farbe]")) {
+        const an = s.dataset.farbe === farbe;
+        s.classList.toggle("aktiv", an);
+        s.setAttribute("aria-checked", String(an));
+      }
+    };
+    zeigeFarbe();
+    box.querySelector(".bereich-farben").addEventListener("click", e => {
+      const s = e.target.closest("[data-farbe]");
+      if (!s) return;
+      farbe = s.dataset.farbe;
+      zeigeFarbe();
+    });
+
+    let fertig = false;
+    const schliess = (ergebnis) => {
+      if (fertig) return;
+      fertig = true;
+      document.removeEventListener("keydown", aufTaste, true);
+      overlay.remove();
+      resolve(ergebnis);
+    };
+    const nimm = () => {
+      const name = feld.value.trim();
+      if (!name) { feld.focus(); return; }
+      let id;
+      if (cat) {
+        cat.name = name;
+        cat.farbe = farbe || null;
+        id = cat.id;
+      } else {
+        id = uid();
+        state.categories.push({ id, name, farbe: farbe || null });
+      }
+      render();
+      save();
+      schliess(id);
+    };
+    const aufTaste = e => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); schliess(null); }
+      else if (e.key === "Enter" && e.target === feld) { e.preventDefault(); e.stopPropagation(); nimm(); }
+    };
+    document.addEventListener("keydown", aufTaste, true);
+    box.querySelector(".bereich-ok").addEventListener("click", nimm);
+    box.querySelector(".bereich-ab").addEventListener("click", () => schliess(null));
+    const loeschen = box.querySelector(".bereich-loeschen");
+    if (loeschen) loeschen.addEventListener("click", () => { schliess(null); deleteCategory(cat.id); });
+    overlay.addEventListener("click", e => { if (e.target === overlay) schliess(null); });
+
+    document.body.appendChild(overlay);
+    // Ein neuer Bereich beginnt beim Namen; beim Bearbeiten nicht - sonst ginge
+    // am Handy die Tastatur auf, obwohl man meist nur die Farbe aendert.
+    if (!cat) feld.focus();
+  });
+}
+window.bereichFenster = bereichFenster;
+
 // Eigener Rueckfrage-Dialog als Ersatz fuer das nackte confirm() des Browsers.
 // Gibt ein Promise<boolean> zurueck. Selber Kasten wie textEingabe(), nur ohne
 // Eingabefeld und mit "gefahr"-Knopf statt "primary" (`neutral: true` nimmt
@@ -3309,23 +3411,14 @@ function renderColumn(cat) {
           <span class="col-count ${countCls}">${open.length}</span>
         </h2>`;
 
-      // Spalte am Titel anfassen und umsortieren; Klick zeigt Farbe/Thema-
-      // Werkzeuge, Doppelklick benennt um - Timer trennt die drei wie schon
-      // beim Thema-Kopf (toggle in renderThemaGruppe).
+      // Spalte am Titel anfassen und umsortieren; ein Klick oeffnet seit
+      // 23.11.2026 das Fenster "Bereich" (Name, Farbe, Loeschen) - die
+      // aufklappende Zeile mit Farbpunkt und "＋ Thema" und das Umbenennen per
+      // Doppelklick sind darin aufgegangen.
       const title = head.querySelector(".col-title");
       title.draggable = true;
-      title.title = "Klick: Farbe & Thema · Doppelklick: umbenennen · ziehen: verschieben";
-      let titelKlickTimer = null;
-      title.addEventListener("click", () => {
-        clearTimeout(titelKlickTimer);
-        titelKlickTimer = setTimeout(() => toggleThemaWerkzeuge(cat.id), 220);
-      });
-      const bereichUmbenennen = () => {
-        clearTimeout(titelKlickTimer);
-        startRenameCategory(cat.id);
-      };
-      title.addEventListener("dblclick", bereichUmbenennen);
-      doppeltippAuf(title, "bereich:" + cat.id, bereichUmbenennen);
+      title.title = "Klick: Name & Farbe · ziehen: verschieben";
+      title.addEventListener("click", () => bereichFenster(cat));
       title.addEventListener("dragstart", e => {
         draggedCat = cat.id;
         e.dataTransfer.effectAllowed = "move";
@@ -3338,8 +3431,7 @@ function renderColumn(cat) {
         render();
       });
 
-      // ＋ ToDo steht immer da; Farbe und ＋ Thema nur nach Klick auf den
-      // Titel (siehe toggleThemaWerkzeuge) - beides braucht man seltener.
+      // Rechts oben das ＋ fuer ein neues ToDo in diesem Bereich.
       if (!(addingCat === cat.id && addingThema === null)) {
         head.appendChild(baueAddKnopfzeile(cat));
       }
@@ -3577,10 +3669,13 @@ function renderThemaGruppe(cat, th, open) {
 
     const plus = document.createElement("button");
     plus.type = "button";
-    plus.className = "thema-add";
-    plus.textContent = "＋";
-    plus.title = "ToDo in diesem Thema";
-    plus.addEventListener("click", () => openAdd(cat.id, th.id));
+    // Seit 23.11.2026 sichtbar (vorher ausgeblendet) und wie das ＋ im
+    // Bereichskopf: Neu-Fenster mit Bereich UND Thema vorgewaehlt.
+    plus.className = "thema-add kopf-plus";
+    plus.title = `Neues ToDo in „${th.name}“`;
+    plus.setAttribute("aria-label", plus.title);
+    plus.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg>`;
+    plus.addEventListener("click", () => oeffneAnlegen({ bereich: cat.id, thema: th.id }));
     head.appendChild(plus);
   }
   gruppe.appendChild(head);
@@ -3617,86 +3712,22 @@ function toggleThemaCollapse(themaId) {
   render();
 }
 
-// Werkzeugzeile am Spaltenkopf: neues freies ToDo bzw. neues Ueber-Thema. Nur
-// fuer echte Bereiche - "Ohne Bereich" hat keine eigene Werkzeugzeile.
-// Klick auf den Bereichstitel oeffnet/schliesst die Werkzeugzeile mit
-// Farbpunkt und "+Thema" (siehe baueAddKnopfzeile). Farbauswahl geht beim
-// Umschalten immer zu, sonst koennte sie beim naechsten Oeffnen der
-// Werkzeugzeile ungefragt schon wieder offenstehen.
-function toggleThemaWerkzeuge(catId) {
-  themaWerkzeugeFuer = themaWerkzeugeFuer === catId ? null : catId;
-  farbePickerFuer = null;
-  render();
-}
-
+// Rechts oben im Bereichskopf ein rundes ＋ (seit 23.11.2026 auf allen Geraeten,
+// Hendrik: "im Bereich rechts oben + und auch bei dem Thema, ist einfacher").
+// Es oeffnet das Neu-Fenster mit diesem Bereich vorgewaehlt. Farbe und neue
+// Themen gibt es seitdem im Fenster "Bereich" bzw. am ＋ der Thema-Zeile im
+// Neu-/Bearbeiten-Fenster - die aufklappende Werkzeugzeile ist entfallen.
 function baueAddKnopfzeile(cat) {
   const zeile = document.createElement("div");
   zeile.className = "col-tools";
-
-  // Farbe, ＋ Thema, ＋ ToDo - in dieser Reihenfolge. Farbe und ＋ Thema
-  // stehen seltener im Weg als ein ToDo - deshalb nur sichtbar, solange fuer
-  // DIESEN Bereich die Werkzeuge aufgeklappt sind.
-  //
-  // ＋ ToDo steht ganz RECHTS, nicht in der Mitte: die Zeile sitzt rechtsbuendig
-  // neben dem Bereichsnamen, also bleibt nur der letzte Knopf beim Auf- und
-  // Zuklappen an Ort und Stelle. Waere es der mittlere, rueckte der Knopf, den
-  // man taeglich braucht, bei jedem Klick auf den Titel unter dem Finger weg.
-  const farbeOffen = themaWerkzeugeFuer === cat.id && farbePickerFuer === cat.id;
-  if (themaWerkzeugeFuer === cat.id) {
-    const farbeBtn = document.createElement("button");
-    farbeBtn.type = "button";
-    farbeBtn.className = "farbe-punkt" + (cat.farbe ? " farbe-" + cat.farbe : "");
-    farbeBtn.dataset.farbeFuer = cat.id;
-    farbeBtn.title = "Bereichsfarbe";
-    farbeBtn.addEventListener("click", e => {
-      e.stopPropagation();
-      farbePickerFuer = farbeOffen ? null : cat.id;
-      render();
-    });
-    zeile.appendChild(farbeBtn);
-
-    if (farbeOffen) {
-      const popup = document.createElement("div");
-      popup.className = "farbe-popup";
-      popup.dataset.farbeFuer = cat.id;
-      popup.innerHTML = FARBEN.map(f => `<button type="button"
-            class="farbe-swatch farbe-${f.id}${cat.farbe === f.id ? " aktiv" : ""}"
-            data-farbe-wahl="${f.id}" title="${f.name}"></button>`).join("") +
-        `<button type="button" class="farbe-swatch farbe-keine${!cat.farbe ? " aktiv" : ""}"
-                data-farbe-wahl="" title="Keine Farbe">✕</button>`;
-      popup.querySelectorAll("[data-farbe-wahl]").forEach(sw => {
-        sw.addEventListener("click", e => {
-          e.stopPropagation();
-          cat.farbe = sw.dataset.farbeWahl || null;
-          farbePickerFuer = null;
-          render();
-          save();
-        });
-      });
-      zeile.appendChild(popup);
-    }
-  }
-
-  if (themaWerkzeugeFuer === cat.id) {
-    const themaBtn = document.createElement("button");
-    themaBtn.type = "button";
-    themaBtn.className = "col-thema-btn";
-    themaBtn.textContent = "＋ Thema";
-    themaBtn.title = "Über-Thema anlegen — eine Gruppe innerhalb des Bereichs";
-    themaBtn.addEventListener("click", () => addThema(cat.id));
-    zeile.appendChild(themaBtn);
-  }
-
   const todoBtn = document.createElement("button");
   todoBtn.type = "button";
-  todoBtn.className = "col-add-btn";
-  todoBtn.textContent = "＋ ToDo";
-  // Seit 15.11.2026 das Anlegen-Fenster mit diesem Bereich vorgewaehlt (Hendriks
-  // Wahl) statt des Eingabefelds im Bereich. Am Handy ist der Knopf ausgeblendet,
-  // dort legt das ＋ der Leiste an.
+  todoBtn.className = "col-add-btn kopf-plus";
+  todoBtn.title = `Neues ToDo in „${cat.name}“`;
+  todoBtn.setAttribute("aria-label", todoBtn.title);
+  todoBtn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg>`;
   todoBtn.addEventListener("click", () => oeffneAnlegen({ bereich: cat.id }));   // anlegen.js
   zeile.appendChild(todoBtn);
-
   return zeile;
 }
 

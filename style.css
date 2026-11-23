@@ -7011,3 +7011,353 @@ html.breit.kopf-klein .topbar > .save-status { opacity: 0; }
 .anlegen-plus[hidden] { display: none; }
 .anlegen-plus:active { opacity: .55; }
 @media (hover: hover) { .anlegen-plus:hover { background: var(--fuellung3); } }
+
+/* ===================== Liquid Glass (seit 23.11.2026, "Idee A") =====================
+   Hendriks Wahl aus den Entwuerfen (Documents/Claude-Code/ToDo-Entwurf-Liquid-Glass):
+   gleicher Aufbau, aber das Material nach Apples Liquid-Glass-Regeln:
+   1. Zwei Ebenen: Glas nur fuer Bedienung und Navigation (Leiste, Kopf-Knoepfe,
+      Fenster/Blaetter, Knoepfe, Umschalter). Inhalt (Bereiche, ToDos, Raster,
+      Gruppen IN den Fenstern) bleibt feste Flaeche - nie Glas auf Glas.
+   2. Konzentrische Rundungen (aussen minus Abstand = innen).
+   3. Farbe sparsam: Blau toent nur die Hauptaktion und das gewaehlte Feld.
+   4. Die Leiste unten schwebt als Kapsel, Inhalt scrollt darunter durch; beim
+      Runterscrollen wird sie schmaler (html.leiste-klein, navigation.js).
+   Im Browser ist das eine Nachbildung (backdrop-filter), nicht Apples Material.
+   Mit "Transparenz reduzieren" (iOS/macOS) faellt alles auf feste Flaechen. */
+:root {
+  --glas-fuell: linear-gradient(180deg, rgba(255,255,255,.74) 0%, rgba(255,255,255,.50) 100%);
+  --glas-unscharf: blur(26px) saturate(190%);
+  --glas-glanz: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(255,255,255,.30), inset 0 0 0 .5px rgba(255,255,255,.65);
+  --glas-schatten: 0 12px 32px rgba(24,32,64,.16), 0 2px 8px rgba(24,32,64,.08);
+  --glas-schatten-klein: 0 4px 14px rgba(24,32,64,.14), 0 1px 3px rgba(24,32,64,.08);
+  --glas-linse: linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.82));
+  --glas-linse-schatten: 0 3px 10px rgba(24,32,64,.16), inset 0 1px 0 #fff;
+  --glas-spur: rgba(120,120,128,.16);
+  --blatt-fuell: rgba(244,244,249,.80);
+  --blatt-fuell-dicht: rgba(244,244,249,.975);
+  --blatt-glanz: inset 0 1px 0 rgba(255,255,255,.9), inset 0 0 0 .5px rgba(255,255,255,.6);
+  --blatt-schatten: 0 24px 70px rgba(20,28,60,.32), 0 4px 14px rgba(20,28,60,.12);
+  --glas-abdunkeln: rgba(28,34,60,.26);
+  --glas-alert: rgba(250,250,253,.86);
+  --glas-gruppe: rgba(255,255,255,.88);
+  --glas-leiste-text: #55565c;
+  --glas-kopf-klein: linear-gradient(180deg, rgba(242,242,247,.86), rgba(242,242,247,.55));
+  --rund-inhalt: 22px;
+  --rund-gruppe: 20px;
+}
+:root[data-theme="dark"] {
+  --glas-fuell: linear-gradient(180deg, rgba(64,64,68,.72) 0%, rgba(38,38,42,.58) 100%);
+  --glas-glanz: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -1px 0 rgba(255,255,255,.04), inset 0 0 0 .5px rgba(255,255,255,.12);
+  --glas-schatten: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.35);
+  --glas-schatten-klein: 0 4px 14px rgba(0,0,0,.45);
+  --glas-linse: linear-gradient(180deg, rgba(118,118,124,.95), rgba(92,92,98,.9));
+  --glas-linse-schatten: 0 3px 10px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.18);
+  --glas-spur: rgba(118,118,128,.26);
+  --blatt-fuell: rgba(28,28,30,.82);
+  --blatt-fuell-dicht: rgba(8,8,10,.96);
+  --blatt-glanz: inset 0 1px 0 rgba(255,255,255,.14), inset 0 0 0 .5px rgba(255,255,255,.1);
+  --blatt-schatten: 0 24px 70px rgba(0,0,0,.6);
+  --glas-abdunkeln: rgba(0,0,0,.55);
+  --glas-alert: rgba(44,44,46,.88);
+  --glas-gruppe: var(--row);
+  --glas-leiste-text: var(--tab-aus);
+  --glas-kopf-klein: linear-gradient(180deg, rgba(0,0,0,.82), rgba(0,0,0,.5));
+}
+
+/* ---------- Glas-Bausteine ---------- */
+.fusszeile.unten:not([hidden]),
+html.breit .kopf-knoepfe,
+.kopf-rund:not(.kopf-ok),
+.kopf-korb,
+.kopf-text:not(.kopf-ok),
+.ein-zurueck,
+.topbar h1.titel-schaltbar {
+  background: var(--glas-fuell);
+  -webkit-backdrop-filter: var(--glas-unscharf);
+  backdrop-filter: var(--glas-unscharf);
+  box-shadow: var(--glas-glanz), var(--glas-schatten-klein);
+}
+
+/* ---------- Fenster und Blaetter: Glas mit grosser Rundung ---------- */
+.admin-popup { background: var(--glas-abdunkeln); }
+.admin-popup-box,
+.kal-popup-box {
+  border: 0 !important;
+  border-radius: 30px !important;
+  background: var(--blatt-fuell) !important;
+  -webkit-backdrop-filter: blur(44px) saturate(200%);
+  backdrop-filter: blur(44px) saturate(200%);
+  box-shadow: var(--blatt-glanz), var(--blatt-schatten) !important;
+}
+/* Grosse und Formular-Blaetter dichter - bei voller Hoehe wird Glas
+   undurchsichtiger, der Text darin muss lesbar bleiben. */
+.admin-popup-box.einstellungen,
+.admin-popup-box.gw-box,
+.admin-popup-box.timer-box,
+.admin-popup-box.anlegen-box,
+.kal-popup-box { background: var(--blatt-fuell-dicht) !important; }
+/* Rueckfragen, Eingaben, Fenster "Bereich": wie ein Alert - rund, kompakt. */
+.eingabe-popup .admin-popup-box { border-radius: 34px !important; background: var(--glas-alert) !important; }
+
+/* Inhaltsebene in den Blaettern: feste Gruppen, konzentrisch zur Blatt-Rundung */
+.anlegen-gruppe,
+.ein-gruppe,
+.kal-form-gruppe,
+.kal-form-textgruppe {
+  background: var(--glas-gruppe) !important;
+  border-radius: var(--rund-gruppe) !important;
+}
+
+/* ---------- Knoepfe: Kapseln, Hauptaktion als getoentes Glas ---------- */
+.btn {
+  border-radius: 999px !important;
+  background: var(--glas-fuell) !important;
+  -webkit-backdrop-filter: var(--glas-unscharf);
+  backdrop-filter: var(--glas-unscharf);
+  box-shadow: var(--glas-glanz), var(--glas-schatten-klein);
+  color: var(--accent);
+}
+.btn.primary,
+.kopf-rund.kopf-ok,
+.kopf-text.kopf-ok {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 84%, #fff) 0%, var(--accent) 100%) !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(0,0,0,.12), 0 6px 16px color-mix(in srgb, var(--accent) 38%, transparent);
+}
+.btn.gefahr { color: var(--red); }
+@media (hover: none), (pointer: coarse) {
+  .kopf-rund, .kopf-korb { width: 44px !important; height: 44px !important; }
+  .kopf-korb { color: var(--red); }
+}
+
+/* ---------- Umschalter (ToDo | Termin, Reiter, Zeitraeume): Spur und Linse ---------- */
+.anlegen-reiter,
+.gw-pillen,
+.ein-reiter {
+  border-radius: 999px !important;
+  padding: 3px !important;
+  background: var(--glas-spur) !important;
+  border: 0 !important;
+}
+.anlegen-reiter-knopf,
+.gw-pillen button,
+.ein-reiter-seg { border-radius: 999px !important; }
+.anlegen-reiter-knopf[aria-selected="true"],
+.gw-pillen button[aria-selected="true"],
+.ein-reiter-seg[aria-selected="true"] {
+  background: var(--glas-linse) !important;
+  box-shadow: var(--glas-linse-schatten) !important;
+  color: var(--text) !important;
+}
+
+/* ---------- Eingabefelder ---------- */
+.eingabe-feld, input[type="text"], input[type="date"], select { border-radius: 14px; }
+
+/* ---------- Inhaltsebene: etwas runder ---------- */
+.col-koerper,
+.column.ohne-bereich .col-koerper { border-radius: var(--rund-inhalt) !important; }
+.tag-oben, #kalTagesliste .tag-gruppe, .kal-tagkarte { border-radius: var(--rund-inhalt); }
+
+/* ---------- PC: Kopf-Knoepfe als schwebende Glas-Gruppe ---------- */
+html.breit .kopf-knoepfe { padding: 4px !important; gap: 2px !important; border-radius: 999px; }
+html.breit .kopf-knopf { width: 38px; height: 38px; border-radius: 50%; }
+@media (hover: hover) { html.breit .kopf-knopf:hover { background: var(--glas-spur); } }
+html.breit.kopf-klein .topbar {
+  background: var(--glas-kopf-klein) !important;
+  -webkit-backdrop-filter: var(--glas-unscharf);
+  backdrop-filter: var(--glas-unscharf);
+}
+
+/* ---------- Handy / iPad hoch: schwebende Leiste ---------- */
+@media (max-width: 999px) {
+  .fusszeile.unten:not([hidden]) {
+    left: 14px !important;
+    right: 14px !important;
+    bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+    height: 66px !important;
+    padding: 5px !important;
+    border: 0 !important;
+    border-radius: 33px;
+    box-shadow: var(--glas-glanz), var(--glas-schatten);
+    transition: height .22s ease;
+  }
+  .fuss-knopf { border-radius: 28px; padding: 5px 0 3px !important; color: var(--glas-leiste-text); }
+  .fuss-ansicht[aria-pressed="true"],
+  body:has(#einstellungenPopup:not([hidden]), #gewFenster:not([hidden]), #hilfeFenster:not([hidden])) .fuss-knopf.ein-knopf,
+  body:has(#timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fuss-knopf.timer-knopf {
+    background: var(--glas-linse);
+    box-shadow: var(--glas-linse-schatten);
+  }
+  body:has(#einstellungenPopup:not([hidden]), #gewFenster:not([hidden]), #hilfeFenster:not([hidden]), #timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fuss-ansicht[aria-pressed="true"] { background: none; box-shadow: none; }
+  /* Beim Runterscrollen schmaler: nur noch die Symbole (wie iOS 26). */
+  html.leiste-klein .fusszeile.unten:not([hidden]) { height: 50px !important; }
+  html.leiste-klein .fuss-text { display: none; }
+  .app { padding-bottom: calc(var(--fuss-hoehe) + 52px + env(safe-area-inset-bottom)) !important; }
+  .snackbar { bottom: calc(var(--fuss-hoehe) + 28px + env(safe-area-inset-bottom)) !important; }
+  .kalender { bottom: 0 !important; }
+  .kal-raster { padding-bottom: 92px; }
+  /* Die Ansichts-Fenster reichen bis unten, die Leiste schwebt darueber (z-index
+     unter ihr, ueber dem Kalender) - der Inhalt scrollt unter dem Glas durch. */
+  #einstellungenPopup, #gewFenster, #hilfeFenster, #timerPopup, #zeitFenster { bottom: 0 !important; z-index: 57 !important; }
+  .ein-blaettern, .gw-blaettern { padding-bottom: 104px !important; }
+}
+@media (prefers-reduced-motion: reduce) { .fusszeile.unten { transition: none !important; } }
+
+/* ---------- Handy: Blaetter fast vollhoch, oben ein Streifen Hintergrund ---------- */
+@media (max-width: 560px) {
+  #anlegenPopup .admin-popup-box.anlegen-box,
+  #kalTerminPopup.wie-neu .kal-popup-box,
+  #bearbeitenPopup .admin-popup-box.anlegen-box {
+    height: calc(100% - 12px) !important;
+    margin-top: 12px;
+    border-radius: 40px 40px 0 0 !important;
+  }
+  /* Einstellungen & Co. sind am Handy "Ansichten" (Hendriks Wahl) - kein Blatt,
+     sondern eine Seite; Glas gibt es dort in der Leiste und den Knoepfen. */
+  #einstellungenPopup .admin-popup-box.einstellungen,
+  #gewFenster .admin-popup-box.gw-box,
+  #zeitFenster .admin-popup-box.gw-box,
+  #hilfeFenster .admin-popup-box.gw-box,
+  #timerPopup .admin-popup-box.timer-box,
+  #kalTerminPopup:not(.wie-neu) .kal-popup-box {
+    border-radius: 0 !important;
+    background: var(--bg) !important;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    box-shadow: none !important;
+  }
+  #einstellungenPopup, #gewFenster, #hilfeFenster, #zeitFenster { background: var(--bg); }
+
+  /* Heute (aus Idee B): Listen-Umschalter als Glas-Kapsel, ToDos und Termine
+     als zwei Gruppen mit Ueberschrift statt EIN Block (Hendriks Wahl 23.11.2026;
+     die Reihenfolge ToDos vor Terminen bleibt - "was muss ich heute tun" zuerst). */
+  .topbar h1.titel-schaltbar {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    flex: none;
+    max-width: max-content;
+    margin: 4px 0 10px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-size: 17px;
+    font-weight: 600;
+  }
+  #tagOben .kal-gruppe { display: flex; }
+  #tagOben .kal-gruppe:has(+ .tag-gruppe:not(:has(> :not(.kal-leer-todos)))) { display: none; }
+  #tagOben > .tag-gruppe,
+  #tagOben > .tag-gruppe ~ .tag-gruppe,
+  #tagOben > .tag-gruppe:not(.tag-gruppe ~ .tag-gruppe),
+  #tagOben > .tag-gruppe:not(:has(~ .tag-gruppe)):not(:has(~ .fok-oben:not([hidden]))) {
+    border-radius: var(--rund-gruppe);
+    border-top: 0;
+  }
+  #tagOben > .tag-gruppe ~ .fok-oben { margin-top: 14px; border-top: 0; border-radius: var(--rund-gruppe); }
+  .fok-oben { border-radius: var(--rund-gruppe); }
+}
+
+/* ---------- Zurueck-Knopf statt "Fertig" (Gewohnheiten, Zeit-Statistik, Hilfe) ---------- */
+.gw-kopfzeile { flex-wrap: wrap; justify-content: flex-start !important; row-gap: 12px; }
+.gw-kopfzeile .ein-schliessen { display: none !important; }
+.ein-zurueck {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+  padding: 0 16px 0 9px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--accent);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ein-zurueck svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.ein-zurueck[hidden] { display: none; }
+.gw-box .gw-kopfzeile h2.gw-titel,
+.gw-kopfzeile:has(.ein-zurueck:not([hidden])) .gw-titel {
+  flex: 1 0 100%;
+  order: 2;
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: .005em;
+  text-align: left;
+}
+
+/* ---------- Bereichs- und Thema-Kopf: rundes ＋ rechts oben (alle Geraete) ---------- */
+.kopf-plus {
+  position: relative;
+  display: grid !important;
+  place-items: center;
+  flex: none;
+  width: 30px !important;
+  height: 30px;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: color-mix(in srgb, var(--row) 55%, transparent) !important;
+  color: var(--accent) !important;
+  cursor: pointer;
+}
+.kopf-plus::after { content: ""; position: absolute; inset: -7px; }
+.kopf-plus svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+.thema-head .thema-add.kopf-plus { width: 26px !important; height: 26px; margin-left: auto; }
+.thema-head .thema-add.kopf-plus svg { width: 14px; height: 14px; }
+.kopf-plus:active { opacity: .55; }
+@media (hover: hover) { .kopf-plus:hover { background: var(--row) !important; } }
+
+/* ---------- Fenster "Bereich": Name, Farbe, Loeschen ---------- */
+.bereich-fenster .admin-popup-box { width: min(360px, 100%); gap: 14px; text-align: left; }
+.bereich-fenster h2 { margin: 0; font-size: 18px; text-align: center; }
+.bereich-farben { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; justify-items: center; }
+.bereich-farben .farbe-swatch { width: 32px; height: 32px; border-width: 3px; }
+.bereich-farben .farbe-swatch.aktiv { border-color: var(--text); box-shadow: inset 0 0 0 2px var(--row); }
+.bereich-loeschen { align-self: center; border: 0; background: none; color: var(--red); font: inherit; font-size: 15px; padding: 4px 8px; cursor: pointer; }
+
+/* ---------- Schnellwahl "bis" im Neu-Fenster ---------- */
+.anlegen-schnell { display: flex; flex-wrap: wrap; gap: 8px; }
+.anlegen-schnell[hidden] { display: none; }
+.anlegen-schnell button {
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--glas-gruppe);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.anlegen-schnell button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, var(--row)); color: var(--accent); font-weight: 600; }
+
+/* ---------- Anmeldemaske: Glas-Karte auf farbigem Grund ---------- */
+.lock { background: radial-gradient(120% 80% at 15% 10%, #dfe9ff 0%, #f2f2f7 55%, #ecdfff 100%) !important; }
+:root[data-theme="dark"] .lock { background: radial-gradient(120% 80% at 15% 10%, #14213f 0%, #000 55%, #2a1740 100%) !important; }
+.lock-box {
+  border: 0 !important;
+  border-radius: 34px !important;
+  background: color-mix(in srgb, var(--row) 60%, transparent) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  backdrop-filter: blur(40px) saturate(200%);
+  box-shadow: var(--blatt-glanz), 0 24px 60px rgba(20,28,60,.18) !important;
+}
+.lock-box input { border-radius: 14px; }
+.lock-box .btn.primary { min-height: 48px; }
+
+/* ---------- "Transparenz reduzieren": feste Flaechen statt Glas ---------- */
+@media (prefers-reduced-transparency: reduce) {
+  :root, :root[data-theme="dark"] {
+    --glas-fuell: var(--row);
+    --blatt-fuell: var(--bg);
+    --blatt-fuell-dicht: var(--bg);
+    --glas-alert: var(--bg);
+  }
+  .fusszeile.unten, html.breit .kopf-knoepfe, .kopf-rund, .kopf-korb, .kopf-text, .ein-zurueck,
+  .topbar h1.titel-schaltbar, .admin-popup-box, .kal-popup-box, .btn, .lock-box, html.breit.kopf-klein .topbar {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}

@@ -897,8 +897,9 @@ document.getElementById("ztStarten").addEventListener("click", ztStarte);
 ztHeuteKopf.addEventListener("click", () => { ztHeuteOffen = !ztHeuteOffen; ztZeichneHeute(); });
 document.getElementById("ztNachtragen").addEventListener("click", () => ztOeffneDialog(null));
 document.getElementById("ztStatistikOeffnen").addEventListener("click", () => {
-  // Aus dem Zeit-Fenster heraus gibt es kein "‹ Einstellungen".
-  ztFenster.querySelector(".ein-zurueck").hidden = true;
+  // Aus dem Zeit-Fenster heraus fuehrt "‹ Zeit" dorthin zurueck (es bleibt
+  // darunter offen).
+  setzeZurueck(ztFenster, "Zeit");
   ztOeffneStatistik();
 });
 document.getElementById("ztStatistikEinstellungen").addEventListener("click", () => {

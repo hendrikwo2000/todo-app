@@ -60,12 +60,7 @@ function oeffneBearbeiten(id) {
 
   // Bereiche: "Ohne Bereich" zuerst, dann die der Liste in ihrer Reihenfolge
   // (wie im Neu-Fenster).
-  const optionen = [new Option(OHNE_NAME, "")];
-  for (const c of state.categories) {
-    if (!istOhneBereich(c.id)) optionen.push(new Option(c.name, c.id));
-  }
-  bearbeitenBereich.replaceChildren(...optionen);
-  bearbeitenBereich.value = istOhneBereich(t.categoryId) ? "" : t.categoryId;
+  fuelleBearbeitenBereiche(istOhneBereich(t.categoryId) ? "" : t.categoryId);
   zeigeBearbeitenThema(t.themaId || "");
 
   bearbeitenVorlauf.replaceChildren(
@@ -92,11 +87,21 @@ function schliesseBearbeiten() {
   return true;
 }
 
-// Themen gibt es nur in manchen Bereichen - die Zeile erscheint nur dann.
+function fuelleBearbeitenBereiche(wahl) {
+  const optionen = [new Option(OHNE_NAME, "")];
+  for (const c of state.categories) {
+    if (!istOhneBereich(c.id)) optionen.push(new Option(c.name, c.id));
+  }
+  bearbeitenBereich.replaceChildren(...optionen);
+  bearbeitenBereich.value = wahl || "";
+}
+
+// Die Zeile "Thema" gibt es, sobald ein echter Bereich gewaehlt ist - auch ohne
+// vorhandene Themen, damit das ＋ das erste anlegen kann (seit 23.11.2026).
 function zeigeBearbeitenThema(wert) {
   const bereich = bearbeitenBereich.value;
   const themen = bereich ? themenIn(bereich) : [];
-  bearbeitenThemaZeile.hidden = !themen.length;
+  bearbeitenThemaZeile.hidden = !bereich;
   bearbeitenThema.replaceChildren(new Option("Ohne Thema", ""), ...themen.map(th => new Option(th.name, th.id)));
   bearbeitenThema.value = themen.some(th => th.id === wert) ? wert : "";
 }
@@ -230,6 +235,21 @@ document.getElementById("bearbeitenLoeschen").addEventListener("click", async ()
 // verwerfen weiter. Ohne Titel bleibt es offen und springt ins Titelfeld.
 bearbeitenPopup.addEventListener("click", e => { if (e.target === bearbeitenPopup) speichereBearbeiten(); });
 bearbeitenBereich.addEventListener("change", () => zeigeBearbeitenThema(""));
+// Die ＋ wie im Neu-Fenster (seit 23.11.2026). Das Neue gilt sofort (Bereich
+// bzw. Thema stehen dann auf dem Board), dem ToDo zugeordnet erst mit "Fertig".
+document.getElementById("bearbeitenBereichPlus").addEventListener("click", async () => {
+  const id = await bereichFenster(null);
+  if (!id || !bearbeitenOffen()) return;
+  fuelleBearbeitenBereiche(id);
+  zeigeBearbeitenThema("");
+});
+document.getElementById("bearbeitenThemaPlus").addEventListener("click", async () => {
+  const bereich = bearbeitenBereich.value;
+  if (!bereich) return;
+  const id = await addThema(bereich);
+  if (!id || !bearbeitenOffen() || bearbeitenBereich.value !== bereich) return;
+  zeigeBearbeitenThema(id);
+});
 bearbeitenBis.addEventListener("input", zeigeBearbeitenBis);
 bearbeitenBis.addEventListener("change", zeigeBearbeitenBis);
 bearbeitenBisWeg.addEventListener("click", () => setzeBearbeitenBis(""));
