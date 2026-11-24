@@ -131,6 +131,12 @@ function schalterPruefe(z, sofort) {
   const knoepfe = schalterKnoepfe(z);
   const k = schalterAktiv(z, knoepfe);
   if (!k) return;
+  // Die Groesse, bei der die Linse gelegt wurde: der ResizeObserver meldet beim
+  // ersten Beobachten IMMER eine "Aenderung" (0 -> Groesse) und wuerde sonst die
+  // Linse mitten im Gleiten ans Ziel springen lassen (so ging das Gleiten
+  // zwischen ToDo und Termin verloren, 24.11.2026).
+  z.breite = beh.offsetWidth;
+  z.hoehe = beh.offsetHeight;
   if (!z.sichtbar) {
     z.sichtbar = true;
     const von = schalterGeber(z);
@@ -224,7 +230,7 @@ function schalterBinde(beh, leiste) {
   const z = {
     beh, leiste: !!leiste,
     schluessel: beh.dataset.schalter || beh.id || beh.getAttribute("aria-label") || "",
-    sichtbar: false, verborgenUm: 0, index: null, zieht: false, weg: 0,
+    sichtbar: false, verborgenUm: 0, index: null, zieht: false, weg: 0, breite: 0, hoehe: 0,
   };
   beh._schalter = z;
   // Verwaiste Schalter (ihr Fenster wurde neu gezeichnet) nach einer Sekunde vergessen.
@@ -241,7 +247,13 @@ function schalterBinde(beh, leiste) {
 }
 
 const groessenBeobachter = new ResizeObserver(eintraege => {
-  for (const e of eintraege) if (e.target._schalter) schalterPruefe(e.target._schalter, true);
+  for (const e of eintraege) {
+    const z = e.target._schalter;
+    if (!z) continue;
+    // Nur wenn sich die Groesse seit dem Legen wirklich geaendert hat.
+    if (z.sichtbar && e.target.offsetWidth === z.breite && e.target.offsetHeight === z.hoehe) continue;
+    schalterPruefe(z, true);
+  }
 });
 
 function schalterPruefeAlle() {

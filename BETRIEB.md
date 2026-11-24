@@ -4028,6 +4028,9 @@ seine Wahl = meine Empfehlung):
   Titelfeld Text markiert und neben dem Fenster loslässt, bekommt kein ungewolltes ToDo.
   **Beim Termin bleibt es beim Schließen** (er landete sonst sofort bei Google); der
   Klick-daneben-speichert-Fall beim Bearbeiten (23.11.) gilt unverändert.
+  **Korrigiert am selben Tag (Runde 2):** Hendrik wollte es auch beim Termin - jetzt
+  speichert ein Klick daneben auch den NEUEN Termin (`kalTerminPopup`, kalender.js; mit
+  Titel; ohne Titel schließt er nur, beim Bearbeiten bleibt das Fenster offen).
 - **Termin = ToDo-Optik**: die Knopfreihe des Termin-Formulars (`.kal-fuss-knopf`) war flach
   grau/blau, die des ToDos (`.btn`) Glas mit Leuchten - jetzt gleich. Fenstergröße und
   Lage waren schon deckungsgleich (gemessen: 420 px breit, gleiche Oberkante).
@@ -4046,6 +4049,21 @@ seine Wahl = meine Empfehlung):
   `#2c2c2e` (innerhalb `.admin-popup-box`/`.kal-popup-box`). Die ganzseitigen Ansichten am
   Handy (Einstellungen, Gewohnheiten, Zeit, Hilfe) bleiben bei `#1c1c1e` auf Schwarz.
   Grautöne von Gewohnheiten/Zeit-Statistik neutral statt bläulich (`#3a3a3c`, `#98989f`).
+
+**Runde 2 (24.11.2026, nach Hendriks Bildern):**
+- **Gleiten zwischen ToDo und Termin ging nicht**, überall sonst schon. Ursache: der
+  `ResizeObserver` meldet beim ersten Beobachten eines neuen Schalters immer „Größe
+  geändert“ (0 → Größe) und setzte die Linse per `sofort` ans Ziel - mitten im Gleiten.
+  Der Termin-Schalter ist als einziger neu gebaut, die anderen stehen schon. Jetzt merkt sich
+  `schalterPruefe` die Größe (`z.breite/z.hoehe`), und der Beobachter greift nur bei einer
+  echten Änderung. **Wichtig beim Testen:** nachgebaute `.click()` zeigten es nicht
+  (der Beobachter feuert erst im Render-Schritt) - erst echte Mausklicks (`computer`), mit
+  `requestAnimationFrame`-Messung (3 → 195 px mit Überschwingen auf 202, hin und zurück).
+- **Termin dunkler**: das Blatt war gleich (gemessen 242/243/248), aber die Abdunkelung
+  HINTER dem Termin-Fenster war schwarz (`rgba(0,0,0,.35)`) statt des Blaugraus des
+  ToDo-Fensters (`--glas-abdunkeln`). Jetzt für alle `.kal-popup` gleich.
+- **Termin: Klick daneben speichert** (siehe oben), mit demselben Schutz wie beim ToDo
+  (`kalTerminDruckDraussen`).
 
 **Lokal getestet** (`wrangler pages dev`, 1500/1000/820/390 px, hell und dunkel): Linse
 unter allen Schaltern (Positionen/Startwerte per `getComputedStyle`, Übergabe zwischen den

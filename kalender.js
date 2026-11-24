@@ -4157,14 +4157,22 @@ function zelleUnter(x, y) {
 kalWahl.addEventListener("click", e => { if (e.target === kalWahl) schliesseWahl(); });
 // Ein Klick neben das Fenster speichert, wenn ein bestehender Termin gerade
 // bearbeitet wird (seit 23.11.2026, Hendriks Wunsch: vorher ging das Fenster zu
-// und die Aenderung war weg). Beim Ansehen und beim NEUEN Termin schliesst es
-// nur - ein Versehen legte sonst einen Termin bei Google an. Abbrechen, ✕ und
-// Escape verwerfen weiter. Ohne Titel bleibt es offen (speichereTermin sagt, was
-// fehlt).
+// und die Aenderung war weg) - und seit 24.11.2026 auch beim NEUEN Termin
+// (Hendrik: "beim Termin soll ein Klick daneben auch speichern"; vorher schloss
+// es dort nur, aus Angst vor einem Versehen bei Google). Beim NEUEN Termin
+// schliesst ein Klick daneben ohne Titel nur; beim Bearbeiten bleibt das
+// Fenster ohne Titel offen (speichereTermin sagt, was fehlt). Beim Ansehen
+// schliesst es nur. Abbrechen, ✕ und Escape verwerfen weiter.
+// Es zaehlt nur, wenn auch das Druecken draussen begann: wer im Titelfeld Text
+// markiert und die Maus daneben loslaesst, legt sonst ungewollt einen Termin an.
+let kalTerminDruckDraussen = false;
+kalTerminPopup.addEventListener("pointerdown", e => { kalTerminDruckDraussen = e.target === kalTerminPopup; });
 kalTerminPopup.addEventListener("click", e => {
-  if (e.target !== kalTerminPopup) return;
+  if (e.target !== kalTerminPopup || !kalTerminDruckDraussen) return;
+  kalTerminDruckDraussen = false;
   const f = formularFelder;
   if (f && f.modus === "bearbeiten") speichereTermin(formularTermin);
+  else if (f && f.modus === "neu" && f.titel.trim()) speichereTermin(formularTermin);
   else schliesseTerminFormular();
 });
 // Ein Tipp neben das Farbmenue schliesst nur das Menue - in der Einfangphase,

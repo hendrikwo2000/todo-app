@@ -7589,3 +7589,13 @@ html.breit body:not(.verwaltung) .topbar h1 { max-width: calc(100% - 150px); }
    Apple (#2c2c2e, #98989f) sah das fremd aus. */
 :root[data-theme="dark"] .gw-fenster,
 :root[data-theme="dark"] .gw-dialog { --gw-leer: #3a3a3c; --muted: #98989f; }
+
+/* ===================== Termin-Fenster: gleicher Hintergrund wie ToDo (seit 24.11.2026) =====================
+   Hendrik: "Neu ToDo und Termin sehen noch nicht gleich von der Farbe aus, Termin
+   irgendwie dunkler". Gemessen an seinen Bildern: das Blatt selbst war gleich
+   (242/243/248), aber die Abdunkelung HINTER dem Termin-Fenster war schwarz
+   (rgba(0,0,0,.35) bzw. .45) statt des blaugrauen Schleiers des ToDo-Fensters
+   (var(--glas-abdunkeln)) - die Seite dahinter wirkte grau und dunkler. Jetzt
+   dieselbe Abdunkelung fuer alle Kalender-Fenster (.kal-popup). */
+.kal-popup,
+#kalTerminPopup.wie-neu { background: var(--glas-abdunkeln); }
