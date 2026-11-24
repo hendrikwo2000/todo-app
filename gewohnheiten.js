@@ -174,10 +174,17 @@ function gewZeichneVerlauf() {
   if (!gewVerlauf.monat) gewVerlauf.monat = gewBestand.heute.slice(0, 7);
 
   const [jahr, monat] = gewVerlauf.monat.split("-").map(Number);
-  monatText.textContent = aktive.length
-    ? new Date(Date.UTC(jahr, monat - 1, 1))
-      .toLocaleDateString("de-DE", { month: "long", year: "numeric", timeZone: "UTC" })
-    : "";
+  // Monat fett, Jahr hell dahinter - wie die Kopfzeile des Hauptkalenders
+  // (seit 24.11.2026).
+  monatText.replaceChildren();
+  if (aktive.length) {
+    const monatsName = new Date(Date.UTC(jahr, monat - 1, 1))
+      .toLocaleDateString("de-DE", { month: "long", timeZone: "UTC" });
+    const jahrText = document.createElement("span");
+    jahrText.className = "gw-kal-jahr";
+    jahrText.textContent = String(jahr);
+    monatText.append(monatsName + " ", jahrText);
+  }
   zurueck.disabled = !aktive.length || gewVerlauf.monat <= gewBestand.historieAb.slice(0, 7);
   vor.disabled = !aktive.length || gewVerlauf.monat >= gewBestand.heute.slice(0, 7);
 

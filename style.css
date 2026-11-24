@@ -5922,14 +5922,30 @@ html.kal-split .kal-popup-kopf .kal-schliessen {
 :root[data-theme="dark"] .todo:has(.edit-row),
 :root[data-theme="dark"] .column[data-farbe] .col-koerper .todo:not(.is-done):has(.edit-row) { background: rgba(118, 118, 128, .18); }
 
-/* "Gespeichert ✓" nimmt in der Kopfzeile keinen Platz: sonst schob es am PC
-   das Zahnrad aus der Leiste. Es steht klein unter dem Listennamen.
+/* "Gespeichert ✓" steht am PC rechtsbuendig LINKS NEBEN der Knopfgruppe (seit
+   24.11.2026; Hendrik: "verbugt, rechtsbuendig machen"). Bis dahin klebte es
+   absolut links unter dem Listennamen und lag dort halb auf dem ersten
+   Bereich. Jetzt ist es ein normales Feld der Kopfzeile, das sich nach dem
+   Platz richtet (min-width 0, Ellipse) - das Zahnrad schiebt es nicht aus der
+   Leiste, was die alte Absolut-Loesung verhindern sollte.
    NUR am PC (html.breit, ab 1000 px - dort, wo .kopf-knoepfe stehen). Bis
    23.11.2026 galt die Regel ueberall: am iPhone ist die Kopfzeile 0 px hoch
    (Listenname ausgeblendet, siehe max-width 560px), "top: 100%" legte den
    Text damit mitten auf den Kopf der Heute-Kachel. Unter 1000 px gilt die
    Regel "Kopfzeile: nur Listenname und Gespeichert" (max-width 999px). */
-html.breit .topbar > .save-status { position: absolute; left: 2px; top: 100%; margin: 0; font-size: 12px; white-space: nowrap; }
+html.breit .topbar > .save-status {
+  position: static;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 40%;
+  margin: 0 14px 0 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+html.breit .topbar > .save-status ~ .kopf-knoepfe { margin-left: 0; }
 body.verwaltung .topbar > .save-status { position: static; }
 
 /* ---------- Restliche Flaechen mit altem 1px-Rand (Runde 3, Durchsicht) ----------
@@ -6573,37 +6589,43 @@ html.breit.kopf-klein .topbar > .save-status { opacity: 0; }
    Nach links wischen schiebt die Zeile zur Seite, rechts kommen die Knoepfe
    als farbige Felder ueber die volle Hoehe hervor - wie in Apples Erinnerungen.
    Breite je Knopf: WISCH_KNOPF in app.js. --wisch setzt app.js beim Ziehen,
-   offen steht die Zeile um die Breite aller Knoepfe (--aktionen) versetzt. */
+   offen steht die Zeile um die Breite aller Knoepfe (--aktionen) versetzt.
+   Seit 24.11.2026 (Hendrik: "die Animation beim ToDo wischen" noch kantig):
+   die Knoepfe sind runde Kapseln mit Abstand wie in iOS 26 statt eckiger
+   Farbfelder ueber die volle Hoehe, und die Zeile faehrt auf der Feder
+   (--feder, schalter.js) ein - mit Ueberschwingen, und app.js entscheidet beim
+   Loslassen nach dem Tempo des Fingers und zieht jenseits des Endes ein
+   Gummiband statt einer Wand. */
 @media (hover: none) {
-  #board .todo { overflow: hidden; --wisch-offen: calc(var(--aktionen, 2) * -64px); }
+  #board .todo { overflow: hidden; --wisch-offen: calc(var(--aktionen, 2) * -52px - 10px); }
   #board .todo.werkzeuge-offen:not(.wischt) { --wisch: var(--wisch-offen); }
   #board .todo > .check-tap,
   #board .todo > .todo-main {
     transform: translateX(var(--wisch, 0px));
-    transition: transform .25s cubic-bezier(.32, .72, 0, 1);
+    transition: transform var(--feder-dauer) var(--feder);
   }
   #board .todo .actions {
     top: 0;
     bottom: 0;
     right: 0;
     display: flex;
-    gap: 0;
-    padding: 0;
+    gap: 6px;
+    padding: 6px 10px 6px 6px;
     background: none;
     opacity: 1;
     pointer-events: none;
     transform: translateX(calc(100% + var(--wisch, 0px)));
-    transition: transform .25s cubic-bezier(.32, .72, 0, 1);
+    transition: transform var(--feder-dauer) var(--feder);
   }
   #board .todo.werkzeuge-offen .actions { pointer-events: auto; }
   #board .todo.wischt > .check-tap,
   #board .todo.wischt > .todo-main,
   #board .todo.wischt .actions { transition: none; }
   #board .todo .actions .act {
-    width: 64px;
+    width: 46px;
     height: auto;
     align-self: stretch;
-    border-radius: 0;
+    border-radius: 999px;
     background: #8e8e93;
     color: #fff;
   }
@@ -7356,8 +7378,214 @@ html.breit.kopf-klein .topbar {
     --glas-alert: var(--bg);
   }
   .fusszeile.unten, html.breit .kopf-knoepfe, .kopf-rund, .kopf-korb, .kopf-text, .ein-zurueck,
-  .topbar h1.titel-schaltbar, .admin-popup-box, .kal-popup-box, .btn, .lock-box, html.breit.kopf-klein .topbar {
+  .topbar h1, .admin-popup-box, .kal-popup-box, .btn, .lock-box, html.breit.kopf-klein .topbar {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }
 }
+
+/* ===================== Gleitende Schalter-Linse (seit 24.11.2026) =====================
+   Hendrik: die Schalter sind "noch kantig" - die helle Flaeche soll wie bei
+   Apple unter den Knoepfen gleiten (Tippen) und dem Finger folgen (Ziehen).
+   schalter.js haengt .hat-linse an den Behaelter und setzt --lx/--lb/--lt/--lh
+   (Lage, Breite, Oberkante, Hoehe des gewaehlten Knopfs); die Flaeche ist sein
+   ::before. Der gewaehlte Knopf selbst ist dann flaechenlos. Ohne das Skript
+   bleibt die alte Optik (Flaeche am Knopf) stehen.
+   Die Feder (--feder) ersetzt schalter.js durch eine echte Schwingkurve; der
+   cubic-bezier hier ist der Rueckfall fuer Browser ohne linear(). Dieselbe
+   Feder nimmt das Wischen am ToDo (Wischen am Finger, weiter unten). */
+:root { --feder: cubic-bezier(.32, .72, 0, 1); --feder-dauer: .5s; }
+@media (prefers-reduced-motion: reduce) { :root { --feder-dauer: .01s; } }
+
+.hat-linse { isolation: isolate; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.hat-linse:not(.fusszeile) { position: relative; }
+.hat-linse > button, .hat-linse .fuss-knopf { position: relative; z-index: 1; }
+.hat-linse::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  top: var(--lt, 0px);
+  width: var(--lb, 0px);
+  height: var(--lh, 0px);
+  transform: translateX(var(--lx, 0px)) scale(var(--ls, 1));
+  border-radius: 999px;
+  background: var(--glas-linse);
+  box-shadow: var(--glas-linse-schatten);
+  pointer-events: none;
+  transition: transform var(--feder-dauer) var(--feder), width var(--feder-dauer) var(--feder),
+              top var(--feder-dauer) var(--feder), height var(--feder-dauer) var(--feder);
+}
+/* Nur die Groesse hat sich geaendert: mitspringen statt gleiten. */
+.hat-linse.linse-sofort::before { transition: none !important; }
+/* Waehrend des Ziehens folgt sie dem Finger ohne Verzoegerung, wird einen Hauch
+   groesser (wie der Schieber bei iOS) und passt nur ihre Breite sanft an. */
+.hat-linse.linse-zieht::before {
+  transition: width var(--feder-dauer) var(--feder), height var(--feder-dauer) var(--feder);
+}
+
+/* Der gewaehlte Knopf traegt keine Flaeche mehr - das ist jetzt die Linse. */
+.hat-linse.hat-linse > [aria-selected="true"],
+.hat-linse.hat-linse > [aria-pressed="true"],
+.fusszeile.hat-linse .fuss-knopf {
+  background: none !important;
+  box-shadow: none !important;
+}
+/* Die Zeitraum-Pillen waren einzelne Kapseln; auf der Spur ist nur noch die Linse eine. */
+.gw-pillen.hat-linse { gap: 2px; }
+.gw-pillen.hat-linse > button { background: none !important; box-shadow: none !important; border: 0 !important; }
+.hat-linse > button { transition: color .25s ease; }
+
+/* Die Leiste legt Oberkante und Hoehe selbst fest: sie folgt so der Hoehe der
+   Leiste, wenn die beim Scrollen schmaler wird. */
+.fusszeile.hat-linse::before {
+  top: 5px;
+  bottom: 5px;
+  height: auto;
+  border-radius: 28px;
+}
+
+/* ===================== Titel als Glas-Kapsel (seit 24.11.2026) =====================
+   Hendrik: "Der Titel der ToDo-Liste wie das Einstellungs-Icon" - am PC und iPad
+   (ab 561 px) steht der Listenname in derselben Glas-Kapsel und Hoehe wie die
+   Knopfgruppe daneben, auch bei nur EINER Liste (dann ist sie nur Anzeige, nicht
+   antippbar - sein Wunsch "immer Kapsel", meine Empfehlung). Mit mehreren
+   Listen ist sie wie bisher der Umschalter. Am Handy bleibt es beim bisherigen
+   Aussehen (Kapsel nur beim Umschalter). Bis dahin hatte der Umschalter am PC
+   ein eckiges Glas-Rechteck - die Rundung gab es nur unter 561 px. */
+@media (min-width: 561px) {
+  body:not(.verwaltung) .topbar h1 {
+    box-sizing: border-box;
+    height: 46px;
+    padding: 0 22px;
+    flex: none;
+    border-radius: 999px;
+    background: var(--glas-fuell);
+    -webkit-backdrop-filter: var(--glas-unscharf);
+    backdrop-filter: var(--glas-unscharf);
+    box-shadow: var(--glas-glanz), var(--glas-schatten-klein);
+  }
+  body:not(.verwaltung) .topbar h1:not(.titel-schaltbar) { cursor: default; }
+  /* Beim Umbenennen sitzt das Feld in der Kapsel. */
+  body:not(.verwaltung) .topbar h1 .titel-edit { height: 34px; padding: 0 10px; border-radius: 17px; }
+}
+
+/* ===================== Zeiterfassung: Titel mit Luft (seit 24.11.2026) =====================
+   Hendrik: "Der Titel bei der Zeiterfassung hat sehr wenig Platz". Das Fenster
+   hatte oben 4 px Polster (Runde 19.11., Einstellungen-Look) - der Titel klebte
+   am Rand und war kleiner als die Titel der anderen Fenster. */
+.admin-popup-box.timer-box { padding-top: max(24px, var(--oben)); }
+.timer-kopfzeile { padding: 0 2px 10px; }
+.admin-popup-box.timer-box h2.timer-titel { font-size: 26px; font-weight: 800; letter-spacing: .005em; }
+
+/* ===================== Gewohnheiten-Kalender schoener (seit 24.11.2026) =====================
+   Hendrik: "bei dem Kalender schoener machen". Der Monatskopf war ein eckiger
+   weisser Balken ueber die ganze Breite mit Pfeil-Quadraten, die Gewohnheiten
+   darunter nur durch Linien getrennt. Jetzt: Monat links gross (Jahr hell wie im
+   Hauptkalender), die Pfeile rechts als runde Glas-Knoepfe, der Kopf klebt als
+   durchscheinende Flaeche (die Tage laufen weich darunter weg), und jede
+   Gewohnheit ist eine eigene weisse Gruppe wie in den Einstellungen. */
+#gewVerlauf .gw-kal-kopf {
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(18px) saturate(180%);
+}
+#gewVerlauf .gw-kal-monat { order: -1; flex: 1; min-width: 0; text-align: left; font-size: 24px; font-weight: 800; letter-spacing: .005em; }
+.gw-kal-jahr { font-weight: 300; color: var(--muted); }
+.gw-pfeil {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--glas-fuell);
+  -webkit-backdrop-filter: var(--glas-unscharf);
+  backdrop-filter: var(--glas-unscharf);
+  box-shadow: var(--glas-glanz), var(--glas-schatten-klein);
+  color: var(--accent);
+  font-size: 22px;
+  padding: 0 0 2px;
+}
+@media (hover: hover) { .gw-pfeil:hover:not(:disabled) { border-color: transparent; color: var(--accent); filter: brightness(.96); } }
+.gw-kal-liste { gap: 14px; }
+.gw-kal-block,
+.gw-kal-block:first-child {
+  gap: 10px;
+  padding: 14px 14px 16px;
+  border-radius: var(--rund-gruppe);
+  background: var(--glas-gruppe);
+}
+.gw-kal-block + .gw-kal-block { border-top: 0; }
+.gw-zelle { border-radius: 13px; }
+.gw-zelle.heute { box-shadow: 0 0 0 2px var(--glas-gruppe), 0 0 0 4px var(--accent); }
+
+/* ===================== Termin-Fenster: dieselben Knoepfe wie ToDo (seit 24.11.2026) =====================
+   Hendrik: "Warum hat Neu ToDo und Termin ein anderes Farbschema, bitte alles
+   wie bei ToDo." Die Knopfreihe des Termin-Formulars (.kal-fuss-knopf, kalender.js)
+   war flach grau/blau, die des ToDos (.btn) Glas mit Leuchten - jetzt dasselbe. */
+.kal-fuss-knopf {
+  background: var(--glas-fuell) !important;
+  -webkit-backdrop-filter: var(--glas-unscharf);
+  backdrop-filter: var(--glas-unscharf);
+  box-shadow: var(--glas-glanz), var(--glas-schatten-klein);
+}
+.kal-fuss-knopf.primaer {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 84%, #fff) 0%, var(--accent) 100%) !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(0,0,0,.12), 0 6px 16px color-mix(in srgb, var(--accent) 38%, transparent);
+}
+.kal-fuss-knopf.gefahr { color: var(--red); }
+
+/* Der Kasten hat rechts nur 2 px Polster (Platz fuer die Bildlaufleiste), der klebende Monatskopf
+   ragt mit seinem negativen Rand darueber hinaus: ohne das hier erschien eine waagerechte
+   Bildlaufleiste. Waagerecht gibt es dort nichts zu scrollen. */
+#gewFenster .gw-blaettern { overflow-x: hidden; }
+
+/* ===================== Titel-Kapsel: Breite (seit 24.11.2026) ===================== */
+/* Am PC teilt sich der Titel die Zeile mit der Knopfgruppe (~150 px samt Abstand);
+   die alten 40 % schnitten "Meine Liste" in der schmalen Spalte neben Heute und
+   Kalender zu "Mein..." ab. */
+html.breit body:not(.verwaltung) .topbar h1 { max-width: calc(100% - 150px); }
+@media (min-width: 561px) and (max-width: 999px) { body:not(.verwaltung) .topbar h1 { max-width: 70%; } }
+
+/* ===================== Darkmode: Blaetter wie bei Apple (seit 24.11.2026) =====================
+   Hendrik: "Im Darkmode alles noch nicht so schoen". Die Blaetter (Neu, Bearbeiten,
+   Gewohnheiten, Zeit, Einstellungen am PC) waren fast schwarz (rgba(8,8,10,.96)) mit
+   Unschaerfe darunter: auf dem schwarzen Grund verschwanden sie, und der Hintergrund
+   schimmerte als blasse Geisterform durch. Apple macht erhoehte Flaechen im Dunkeln HELLER
+   als den Grund (#1c1c1e) und die Gruppen darin noch eine Stufe heller (#2c2c2e) - so
+   entsteht Tiefe statt eines schwarzen Lochs. Darum: Blatt fast deckend #1c1c1e, und
+   innerhalb jedes Blatts ist --row (Karten, Gruppen, Zeilen) die naechste Stufe. */
+:root[data-theme="dark"] { --blatt-fuell-dicht: rgba(28, 28, 30, .985); }
+:root[data-theme="dark"] :is(.admin-popup-box, .kal-popup-box) {
+  --row: #2c2c2e;
+  --glas-gruppe: #2c2c2e;
+}
+/* Der klebende Monatskopf im Gewohnheiten-Blatt hat die Farbe des Blatts. */
+#gewVerlauf .gw-kal-kopf { background: color-mix(in srgb, var(--blatt-fuell-dicht) 92%, transparent); }
+/* Die Ansichten am Handy (Einstellungen & Co.) sind keine Blaetter, sondern ganze
+   Seiten auf schwarzem Grund - dort bleiben die Gruppen bei #1c1c1e. */
+@media (max-width: 560px) {
+  :root[data-theme="dark"] :is(
+    #einstellungenPopup .admin-popup-box,
+    #gewFenster .admin-popup-box,
+    #zeitFenster .admin-popup-box,
+    #hilfeFenster .admin-popup-box,
+    #timerPopup .admin-popup-box,
+    #kalTerminPopup:not(.wie-neu) .kal-popup-box
+  ) {
+    --row: #1c1c1e;
+    --glas-gruppe: #1c1c1e;
+  }
+  /* Der klebende Monatskopf deckt in diesen Ansichten mit dem schwarzen Grund. */
+  #gewVerlauf .gw-kal-kopf { background: color-mix(in srgb, var(--bg) 90%, transparent); }
+}
+/* Gewohnheiten und Zeit-Statistik im Dunkeln: die Grautoene stammen noch aus der
+   Fokus-App und waren blaeulich (#313641, #8b93a5) - neben den neutralen Grau von
+   Apple (#2c2c2e, #98989f) sah das fremd aus. */
+:root[data-theme="dark"] .gw-fenster,
+:root[data-theme="dark"] .gw-dialog { --gw-leer: #3a3a3c; --muted: #98989f; }

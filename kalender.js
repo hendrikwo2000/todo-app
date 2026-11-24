@@ -2344,6 +2344,9 @@ function baueNeuKopf(f) {
   if (!aktiveListe) return teile;   // ohne Liste gibt es kein ToDo zum Umschalten
   const reiter = document.createElement("div");
   reiter.className = "anlegen-reiter";
+  // Gleicher Schluessel wie #anlegenReiter: schalter.js laesst die Linse beim
+  // Wechsel zwischen den beiden Fenstern hinueber gleiten.
+  reiter.dataset.schalter = "anlegen";
   reiter.setAttribute("role", "tablist");
   reiter.setAttribute("aria-label", "Was anlegen?");
   for (const [art, text] of [["todo", "ToDo"], ["termin", "Termin"]]) {

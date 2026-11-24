@@ -3987,3 +3987,74 @@ Neu- und Bearbeiten-Fenster samt Farbe und Auswahl, neues Thema aus dem
 Bearbeiten-Fenster, Löschen mit Rückfrage, ＋ am Thema-Kopf (Bereich + Thema
 vorgewählt), Schnellwahl. **Ungeprüft:** echtes iPhone (Unschärfe-Leistung,
 Schmalerwerden beim Scrollen mit Gummiband-Effekt), echte Maus-Hover.
+
+## Gleitende Schalter, Wischen mit Schwung, Titel-Kapsel, Darkmode (seit 24.11.2026)
+
+Hendriks Liste vom 24.11. (sieben Bilder, Rückfragen per AskUserQuestion; jedes Mal
+seine Wahl = meine Empfehlung):
+
+- **Schalter-Linse gleitet** (`schalter.js`, neu; Block „Gleitende Schalter-Linse“ am
+  Ende von `style.css`). Behälter: `.anlegen-reiter` (Neu: ToDo | Termin), `.ein-reiter`
+  (Einstellungen, Gewohnheiten), `.gw-pillen` (Zeiträume der Statistiken) und die Leiste
+  `#fusszeile`. Die helle Fläche war der Hintergrund des gewählten Knopfs (sprang); jetzt
+  ist sie das `::before` des Behälters (Klasse `.hat-linse`), dessen Lage `--lx/--lb/--lt/--lh`
+  das Skript setzt. **Pseudo-Element statt echtem Kind**, weil `anlegen.js` & Co. über
+  `.children` laufen und ein Extra-Kind mitzählen würde. Tippen = gleiten auf der Feder
+  (`--feder`: gedämpfte Schwingung, ~4 % Überschwingen, als `linear()` zur Laufzeit
+  berechnet; Rückfall `cubic-bezier`); Ziehen = Linse folgt dem Finger (wächst etwas),
+  beim Loslassen wählt der nächste Knopf (`.click()`, den Nachklick des Browsers
+  schluckt `schalterKlickSperre`). In der Leiste zieht nur, wer auf ToDos/Kalender/Zeit/
+  Einstellungen beginnt, nicht auf „Neu“; welcher Knopf gilt, entscheidet dasselbe wie
+  das CSS (offenes Fenster vor Ansicht).
+- **ToDo ↔ Termin sind zwei Fenster** (`#anlegenPopup`, `#kalTerminPopup.wie-neu`) mit je
+  eigenem Schalter. Damit die Linse trotzdem hinübergleitet, tragen beide
+  `data-schalter="anlegen"`: der neue Schalter startet dort, wo der verschwundene seine
+  Linse hatte (`schalterGeber`, Spender-Index `z.index`; nach einem Zug der Zielknopf).
+- **Wischen am ToDo** (Finger): Knöpfe sind runde Kapseln mit Abstand (46 px + 6 px, links 6,
+  rechts 10 px Rand; JS-Konstanten `WISCH_KNOPF`/`WISCH_RAND_ZU` müssen dazu passen),
+  die Zeile fährt auf der Feder ein, beim Loslassen entscheidet ab 0,3 px/ms das Tempo
+  (kurzer schneller Strich öffnet/schließt), sonst die Stelle (halb offen); jenseits des
+  Endes zieht ein Gummiband (`gummiband()`, 55 %-Kurve) statt 30 %-linear.
+- **Titel als Glas-Kapsel** am PC/iPad (ab 561 px), 46 px hoch wie die Knopfgruppe, auch bei
+  einer einzigen Liste (dann nur Anzeige). Bis dahin hatte der Umschalter am PC ein
+  eckiges Rechteck (die Rundung galt nur unter 561 px). Breite am PC `100% − 150 px`
+  (die alten 40 % schnitten „Meine Liste“ in der schmalen Spalte zu „Mein…“ ab).
+- **„Gespeichert ✓“** am PC jetzt ein normales Feld der Kopfzeile, rechtsbündig links neben
+  der Knopfgruppe (`html.breit .topbar > .save-status`, `flex: 0 1 auto`, Ellipse); die
+  alte Absolut-Lösung (`left: 2px; top: 100%`) lag halb auf dem ersten Bereich.
+- **Zeiterfassung**: Titel 26 px/800 mit 24 px Luft oben (vorher 4 px Polster, 20 px Titel).
+- **Neu-Fenster: Klick daneben legt das ToDo an** (Titel nötig; leer = nur schließen). Es
+  zählt nur, wenn schon das Drücken draußen begann (`anlegenDruckDraussen`) - wer im
+  Titelfeld Text markiert und neben dem Fenster loslässt, bekommt kein ungewolltes ToDo.
+  **Beim Termin bleibt es beim Schließen** (er landete sonst sofort bei Google); der
+  Klick-daneben-speichert-Fall beim Bearbeiten (23.11.) gilt unverändert.
+- **Termin = ToDo-Optik**: die Knopfreihe des Termin-Formulars (`.kal-fuss-knopf`) war flach
+  grau/blau, die des ToDos (`.btn`) Glas mit Leuchten - jetzt gleich. Fenstergröße und
+  Lage waren schon deckungsgleich (gemessen: 420 px breit, gleiche Oberkante).
+- **„Gewohnheiten ›“** (Kachel am Handy, Spalte am PC) öffnet jetzt das Fenster Gewohnheiten
+  im **Verlauf** (zum Nachtragen) statt der Einstellungen (Hendriks Wahl Verlauf statt
+  Statistik: dort lässt sich nichts eintragen). Anlegen/Ordnen bleibt unter Einstellungen ›
+  Gewohnheiten; Hilfetext angepasst. Die Entscheidung vom 10.11. („nur in den
+  Einstellungen“) ist damit überholt.
+- **Gewohnheiten-Kalender schöner**: Monat links groß mit hellem Jahr, Pfeile als runde
+  Glas-Knöpfe, der klebende Kopf durchscheinend statt weißem Balken, jede Gewohnheit eine
+  eigene Gruppe, Tage rund 13 px, „heute“ mit Doppelring. Waagerechter Bildlauf im Kasten
+  aus (der Kopf ragte per negativem Rand über das 2-px-Polster hinaus).
+- **Darkmode**: die Blätter (`--blatt-fuell-dicht`) waren fast schwarz mit Unschärfe, der
+  Hintergrund schimmerte als Geisterform durch. Jetzt wie bei Apple: Blatt `#1c1c1e` fast
+  deckend, darin ist `--row` (Karten, Gruppen, Zeilen) und `--glas-gruppe` die nächste Stufe
+  `#2c2c2e` (innerhalb `.admin-popup-box`/`.kal-popup-box`). Die ganzseitigen Ansichten am
+  Handy (Einstellungen, Gewohnheiten, Zeit, Hilfe) bleiben bei `#1c1c1e` auf Schwarz.
+  Grautöne von Gewohnheiten/Zeit-Statistik neutral statt bläulich (`#3a3a3c`, `#98989f`).
+
+**Lokal getestet** (`wrangler pages dev`, 1500/1000/820/390 px, hell und dunkel): Linse
+unter allen Schaltern (Positionen/Startwerte per `getComputedStyle`, Übergabe zwischen den
+beiden Neu-Fenstern: Startwert = ToDo-Platz), Zug per nachgebauten Pointer-Ereignissen
+(Leiste: Zug zum Kalender wählt ihn, Zug zurück auf den Start ändert nichts, Zug auf „Neu“
+startet keinen; Einstellungen-Reiter mit Maus), Wischen per nachgebauten TouchEvents
+(schneller Strich links/rechts, langsam bei −60 px schließt, Gummiband −260 → −221 px),
+Klick daneben (leer / Druck drinnen + Loslassen draußen / Druck draußen), Gewohnheiten-Link,
+Kopfzeile. **Ungeprüft:** echtes iPhone/iPad (Gefühl der Feder, Zug mit echtem Finger,
+`touch-action` auf Leiste und Reitern), die Animation selbst nur in Zwischenwerten per
+`getComputedStyle` geprüft (Startwert beim Übergang stimmt, z. B. 16 px nach 50 ms),
+nicht mit dem Auge.

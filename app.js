@@ -4420,10 +4420,21 @@ function zeigeWerkzeuge(id) {
   }
 }
 
-const WISCH_KNOPF = 64;      // px je Knopf - gehoert zu den Wisch-Knoepfen in style.css
+// Die Knoepfe sind seit 24.11.2026 runde Kapseln mit Abstand (iOS 26) statt
+// eckiger Farbfelder: je Knopf 46 px + 6 px Luft, links 6 px und rechts 10 px
+// Rand - die Zahlen gehoeren zu den Wisch-Knoepfen in style.css.
+const WISCH_KNOPF = 52;      // px je Knopf samt Abstand
+const WISCH_RAND_ZU = 10;    // px Rand rechts und links der Knoepfe zusammen (6 + 10, abzueglich eines Abstands)
 const WISCH_SCHWELLE = 8;    // px, ab denen sich waagerecht gegen senkrecht entscheidet
 const WISCH_RAND = 24;       // px am rechten Rand: dort beginnt die Kalender-Geste
-let wisch = null;            // { id, karte, x, y, achse, offen, breite, pos, bewegt }
+const WISCH_SCHWUNG = 0.3;   // px/ms: so schnell geflickt entscheidet das Tempo, nicht die Stelle
+let wisch = null;            // { id, karte, x, y, achse, offen, breite, pos, bewegt, spur }
+
+// Zug ueber das Ende hinaus: je weiter, desto zaeher - Apples Gummiband. "spanne"
+// ist die Strecke, der sich der Zug asymptotisch naehert.
+function gummiband(ueberhang, spanne = 90) {
+  return spanne * (1 - 1 / (ueberhang * 0.55 / spanne + 1));
+}
 
 board.addEventListener("touchstart", e => {
   wisch = null;
@@ -4437,8 +4448,9 @@ board.addEventListener("touchstart", e => {
   const aktionen = karte.querySelector(".actions");
   wisch = {
     id: karte.dataset.id, karte, x: t.clientX, y: t.clientY, achse: null, offen,
-    breite: (aktionen ? aktionen.children.length : 0) * WISCH_KNOPF,
+    breite: aktionen && aktionen.children.length ? aktionen.children.length * WISCH_KNOPF + WISCH_RAND_ZU : 0,
     pos: offen ? -1 : 0, bewegt: false,
+    spur: [{ t: e.timeStamp, x: t.clientX }],   // die letzten Fingerpositionen fuer das Tempo
   };
 }, { passive: true });
 
@@ -4459,9 +4471,11 @@ document.addEventListener("touchmove", e => {
   e.preventDefault();   // die Seite bleibt stehen, solange gewischt wird
   let pos = Math.min(0, (wisch.offen ? -wisch.breite : 0) + dx);
   // Ueber die Knoepfe hinaus geht es nur zaeh weiter, wie bei iOS.
-  if (pos < -wisch.breite) pos = -wisch.breite + (pos + wisch.breite) * 0.3;
+  if (pos < -wisch.breite) pos = -wisch.breite - gummiband(-wisch.breite - pos);
   wisch.pos = pos;
   wisch.karte.style.setProperty("--wisch", pos + "px");
+  wisch.spur.push({ t: e.timeStamp, x: t.clientX });
+  if (wisch.spur.length > 6) wisch.spur.shift();
 }, { passive: false });
 
 board.addEventListener("touchend", e => {
@@ -4475,7 +4489,15 @@ board.addEventListener("touchend", e => {
     e.preventDefault();
     w.karte.classList.remove("wischt");
     w.karte.style.removeProperty("--wisch");
-    zeigeWerkzeuge(w.pos < -w.breite / 2 ? w.id : null);
+    // Ein schneller Strich entscheidet nach Richtung, ein langsamer nach der
+    // Stelle: halb offen oder weiter heisst offen.
+    const spur = w.spur.filter(p => e.timeStamp - p.t < 120);
+    let tempo = 0;
+    if (spur.length >= 2 && spur[spur.length - 1].t > spur[0].t) {
+      tempo = (spur[spur.length - 1].x - spur[0].x) / (spur[spur.length - 1].t - spur[0].t);
+    }
+    const offen = Math.abs(tempo) > WISCH_SCHWUNG ? tempo < 0 : w.pos < -w.breite / 2;
+    zeigeWerkzeuge(offen ? w.id : null);
     return;
   }
   // Gescrollt, nicht getippt.

@@ -256,7 +256,20 @@ document.getElementById("anlegenAbbrechen").addEventListener("click", schliesseA
 document.getElementById("anlegenKopfZu").addEventListener("click", schliesseAnlegen);
 anlegenBereichPlus.addEventListener("click", neuerBereichImFenster);
 anlegenThemaPlus.addEventListener("click", neuesThemaImFenster);
-anlegenPopup.addEventListener("click", e => { if (e.target === anlegenPopup) schliesseAnlegen(); });
+// Ein Klick neben das Fenster legt das ToDo an, wenn schon ein Titel dasteht
+// (Hendrik, 24.11.2026: "beim Anlegen soll es gespeichert werden, wenn man
+// ausserhalb des Fensters klickt"); ohne Titel schliesst er nur. Es zaehlt nur,
+// wenn auch das Druecken draussen begann: wer im Titelfeld Text markiert und
+// die Maus daneben loslaesst, bekommt sonst ein ungewolltes ToDo.
+// Der Termin bleibt beim Schliessen - er wuerde sofort bei Google landen.
+let anlegenDruckDraussen = false;
+anlegenPopup.addEventListener("pointerdown", e => { anlegenDruckDraussen = e.target === anlegenPopup; });
+anlegenPopup.addEventListener("click", e => {
+  if (e.target !== anlegenPopup || !anlegenDruckDraussen) return;
+  anlegenDruckDraussen = false;
+  if (anlegenTitel.value.trim()) legeAusFensterAn();
+  else schliesseAnlegen();
+});
 anlegenBereich.addEventListener("change", () => zeigeAnlegenThema());
 anlegenBis.addEventListener("input", zeigeAnlegenBis);
 anlegenBis.addEventListener("change", zeigeAnlegenBis);

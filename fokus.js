@@ -448,13 +448,17 @@ window.fokusOben = function (an, host) {
 };
 
 // Ein Tipp auf "Gewohnheiten ›" (Kopf in der Kachel bzw. Ueberschrift in der
-// Heute-Spalte) fuehrt in die Einstellungen auf den Reiter Gewohnheiten, alle
-// Abschnitte zu (Hendrik am 10.11.2026 - erst mit aufgeklappter Liste, gleich
-// danach: "nur in den Einstellungen Gewohnheiten, nicht Gewohnheiten neu
-// oeffnen"). Klappen tut nur noch der Rest des Kopfes.
+// Heute-Spalte) oeffnet das Fenster "Gewohnheiten" gleich im Verlauf - dem
+// Kalender, in dem sich vergangene Tage nachtragen lassen (Hendrik am
+// 24.11.2026: "auf Gewohnheiten klicken, direkt zum Nachtragen"; seine Wahl
+// Verlauf statt Statistik, dort laesst sich nichts eintragen). Bis dahin fuehrte
+// der Tipp in die Einstellungen auf den Reiter Gewohnheiten (10.11.2026); die
+// Verwaltung (neu anlegen, Flamme, Anzeige) bleibt ueber das Zahnrad erreichbar,
+// neu anlegen auch ueber "＋ Gewohnheit anlegen" in der Liste. Klappen tut nur
+// der Rest des Kopfes.
 for (const id of ["fokObenEinstellungen", "fokHeuteEinstellungen"]) {
   document.getElementById(id).addEventListener("click", () => {
-    window.oeffneEinstellungenBei?.("gewohnheiten");
+    window.gewFensterOeffnen?.("verlauf");
   });
 }
 

@@ -110,11 +110,12 @@
          Abschnitt danach neu hinein (fokusOben in fokus.js). Am PC stehen die
          Gewohnheiten stattdessen in der Heute-Spalte (#fokHeute). -->
     <!-- Der Kopf hat seit 10.11.2026 zwei Knoepfe (Hendriks Wahl): das Wort
-         "Gewohnheiten ›" fuehrt in die Einstellungen (Reiter Gewohnheiten, alles
-         zu), der Rest mit Bilanz und Pfeil klappt auf und zu. -->
+         "Gewohnheiten ›" oeffnet seit 24.11.2026 das Fenster Gewohnheiten im
+         Verlauf (zum Nachtragen; bis dahin die Einstellungen, Reiter
+         Gewohnheiten), der Rest mit Bilanz und Pfeil klappt auf und zu. -->
     <section id="fokOben" class="fok-oben zu" aria-label="Gewohnheiten heute" hidden>
       <div class="fok-oben-kopfzeile">
-        <button type="button" id="fokObenEinstellungen" class="fok-titel-knopf" title="Gewohnheiten einstellen">
+        <button type="button" id="fokObenEinstellungen" class="fok-titel-knopf" title="Gewohnheiten: Verlauf und Nachtragen">
           <svg class="flamme-symbol" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path class="voll" d="M12 21.5c-3.7 0-6.2-2.5-6.2-5.8 0-3.6 2.7-5.4 3.7-8.7.4 1.9 1.7 2.9 2.7 3.3.5-2.6 1.5-5.3 1.1-7.6 3.5 2.3 5 6.2 5 10.2 0 5.9-2.6 8.6-6.3 8.6z"/></svg>
           <span>Gewohnheiten</span>
           <span class="fok-titel-pfeil" aria-hidden="true">›</span>
@@ -225,7 +226,7 @@
           <button type="submit" class="kopf-rund kopf-ok" aria-label="Anlegen" title="Anlegen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
         </div>
       </div>
-      <div id="anlegenReiter" class="anlegen-reiter" role="tablist" aria-label="Was anlegen?">
+      <div id="anlegenReiter" class="anlegen-reiter" role="tablist" aria-label="Was anlegen?" data-schalter="anlegen">
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="todo">ToDo</button>
         <button type="button" class="anlegen-reiter-knopf" role="tab" data-art="termin">Termin</button>
       </div>
@@ -376,11 +377,11 @@
     <div id="kalHeuteSpalte" class="kal-liste">
       <div id="kalTagesliste" class="kal-tagblock"></div>
       <section id="fokHeute" class="fok-heute" aria-label="Gewohnheiten heute" hidden>
-        <!-- "Gewohnheiten ›" fuehrt in die Einstellungen, wie am Handy
-             (10.11.2026). -->
+        <!-- "Gewohnheiten ›" oeffnet das Fenster Gewohnheiten im Verlauf, wie am
+             Handy (24.11.2026; bis dahin die Einstellungen). -->
         <h3 class="kal-gruppe">
           <span class="kal-gruppe-text">
-            <button type="button" id="fokHeuteEinstellungen" class="fok-titel-knopf" title="Gewohnheiten einstellen">
+            <button type="button" id="fokHeuteEinstellungen" class="fok-titel-knopf" title="Gewohnheiten: Verlauf und Nachtragen">
               <span class="kal-gruppe-symbol" aria-hidden="true"><svg class="flamme-symbol" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path class="voll" d="M12 21.5c-3.7 0-6.2-2.5-6.2-5.8 0-3.6 2.7-5.4 3.7-8.7.4 1.9 1.7 2.9 2.7 3.3.5-2.6 1.5-5.3 1.1-7.6 3.5 2.3 5 6.2 5 10.2 0 5.9-2.6 8.6-6.3 8.6z"/></svg></span>Gewohnheiten
               <span class="fok-titel-pfeil" aria-hidden="true">›</span>
             </button>
@@ -1262,9 +1263,9 @@
             <dl class="hilfe-zeilen">
               <div class="hilfe-zeile"><dt>Abhaken</dt><dd>Kreis rechts antippen</dd></div>
               <div class="hilfe-zeile"><dt>Flamme</dt><dd>Zählt deine erledigten Tage</dd></div>
-              <div class="hilfe-zeile"><dt>Tag nachtragen</dt><dd>Namen antippen, dann den Tag</dd></div>
+              <div class="hilfe-zeile"><dt>Tag nachtragen</dt><dd>Überschrift „Gewohnheiten ›“ oder den Namen antippen, dann den Tag</dd></div>
               <div class="hilfe-zeile"><dt>Ändern</dt><dd>Namen antippen, dann den Stift</dd></div>
-              <div class="hilfe-zeile"><dt>Anlegen, ordnen</dt><dd>Überschrift „Gewohnheiten ›“ antippen</dd></div>
+              <div class="hilfe-zeile"><dt>Anlegen, ordnen</dt><dd>Einstellungen › Gewohnheiten</dd></div>
               <div class="hilfe-zeile"><dt>Zeit messen</dt><dd>Am ToDo die Uhr (wischen bzw. Maus darüber)</dd></div>
               <div class="hilfe-zeile"><dt>Fokus</dt><dd>Läuft die Uhr: Zeit und ToDo groß, „Ausblenden“ oben links</dd></div>
               <div class="hilfe-zeile"><dt>Auswertung</dt><dd>Einstellungen › Zeit › Statistik</dd></div>
@@ -1576,5 +1577,6 @@
   <script src="anlegen.js"></script>
   <script src="bearbeiten.js"></script>
   <script src="navigation.js"></script>
+  <script src="schalter.js"></script>
 </body>
 </html>
