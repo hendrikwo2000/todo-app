@@ -4076,3 +4076,70 @@ Kopfzeile. **Ungeprüft:** echtes iPhone/iPad (Gefühl der Feder, Zug mit echtem
 `touch-action` auf Leiste und Reitern), die Animation selbst nur in Zwischenwerten per
 `getComputedStyle` geprüft (Startwert beim Übergang stimmt, z. B. 16 px nach 50 ms),
 nicht mit dem Auge.
+
+## Liquid Glass reagiert + Darkmode Runde 2 (seit 27.11.2026)
+
+Hendrik: „Alle Buttons haben keine schöne Hover- und Aktiv-Wirkung, soll wie Apples Liquid
+Glass aussehen“ und „Der Darkmode gefällt mir noch nicht, der aktivierte sieht nicht so gut aus“.
+Seine Wahlen (AskUserQuestion): **alle Bedienelemente** (ToDo-Zeilen und Kalender-Tage nur
+sanft getönt, kein Glas auf Inhalt); im Dunkeln stören **alle vier** Dinge (aktiver Tab/Schalter,
+Bereiche und Karten, Gesamtstimmung zu flach, Glas trüb); die aktive Linse soll **helles Glas
+mit hellblauer Schrift** sein. Alles in einem Block am Ende von `style.css` („Liquid Glass reagiert
++ Darkmode Runde 2“) plus `glas.js` (neu, in `index.html` nach `schalter.js`, `sw.js` v88).
+
+**Hover und Druck (Hell wie Dunkel):** bis dahin war Hover fast überall nur „Deckkraft runter“
+(`opacity: .7`), Druck gab es kaum. Jetzt je Gruppe:
+- *Glas-Kapseln und -Kreise* (`.btn`, `.kopf-rund/-korb/-text`, `.ein-zurueck`, `.kal-fuss-knopf`,
+  `.gw-pfeil`, Titel-Kapsel, PC-Kopf-Knöpfe): Maus drüber = Fläche heller, Schatten hebt sich, ein
+  **Lichtfleck folgt dem Zeiger**; Druck = quillt federnd auf (`scale` mit `--feder`, je Knopf
+  `--druck`: 1,035 Kapsel … 1,12 Kreis), heller, innen leuchtend. Hauptknöpfe (blau) genauso mit
+  hellerem Blau und Blauschein.
+- *Kleine Kreise/Plus* (`.kopf-plus`, `.anlegen-plus`, `.act`, …): Hover = Akzent-Tönung + Ring,
+  Druck = aufquellen. *Abhak-Kreise*: Hover/Druck mit Blau-Füllung, auch über die ganze Tippfläche
+  (`.check-tap`). *Reiter/Chips*: Waschfläche, Druck aufquellen. *Leiste unten*: Waschfläche, Druck
+  `scale 1,08`. *Kalender-Kopf* (‹ › Filter, Monat): Waschfläche statt Abdunkeln. *Zeilen*
+  (Einstellungen, Zeit, Menüs): nur Tönung beim Druck. *Textlinks*: behalten ihr Abdunkeln, dazu Druck.
+  *Ein/Aus-Schalter*: Knopf wird beim Druck breiter wie bei iOS.
+- **`glas.js`** macht nur zwei Dinge, die CSS nicht kann: `--mx/--my` (Zeigerlage im Knopf, für den
+  Lichtfleck) und das Attribut **`data-druck`** bei `pointerdown`, mindestens 170 ms gehalten (bei einem
+  kurzen Tipp am Handy dauert `:active` nur wenige ms, die Feder bliebe unsichtbar). Das CSS behandelt
+  `:active` und `[data-druck]` gleich. Es fängt keinen Klick ab. Dazu der iOS-Kniff `touchstart`-Zuhörer.
+- Hover nur mit echter Maus (`@media (hover: hover)` - am Touchscreen fräße ein Hover den ersten Tipp), Druck überall.
+  „Bewegung reduzieren“ schaltet `scale` ab, es bleibt die Aufhellung.
+
+**Fallen (alle am Bildschirm gemessen):**
+- **`--glas-licht` (der Lichtfleck-Verlauf) muss AM ELEMENT deklariert werden**, nicht an `:root`: eine
+  Variable mit `var()` darin löst sich dort auf, wo sie steht - an `:root` kannte sie weder `--mx` noch
+  `--licht` des Knopfs, der Fleck blieb unsichtbar. Dazu das `@property --licht` (Zahl), damit er weich ein-
+  und ausblendet; Fallbacks `var(--licht, 0)`, damit Browser ohne `@property` (iOS < 16.4) die Fläche
+  nicht verlieren (sonst wäre `background` „ungültig zur Berechnungszeit“).
+- Die alten Regeln setzen `background:` als Kurzform (z. B. `html.breit .kopf-knopf:hover`) und löschen
+  damit den Lichtfleck - die neuen Regeln haben dieselbe Spezifität und `!important` am `background-image`.
+  Die alten `opacity`-/`filter`-Hover der Glas-Gruppen sind per `!important` übersteuert.
+- `.btn.gefahr:hover` färbte die Schrift weiß auf Glas (alte Regel) - jetzt bleibt sie rot.
+- Hell ist der Lichtfleck ein zarter **Blauschimmer** (weiß auf weißem Glas wäre unsichtbar), dunkel
+  weiß; bei Hauptknöpfen weiß und schwächer (stärker verbrannte der Text).
+- **Testen im Browser-Pane:** unter 768 px Breite emuliert `resize_window` ein Touch-Gerät, dann gilt
+  `(hover: hover)` NICHT - Hover also bei ≥ 768 px prüfen (900/1400), danach `resize`-Ereignis auslösen.
+  Laufende Übergänge bleiben auf dem Startwert; zum Messen
+  `html *:not(#a):not(#b):not(#c){transition:none !important}` einhängen (ein einfaches `*` verliert gegen die
+  `!important`-Regeln dieses Blocks). Den Druck lässt sich per `el.setAttribute("data-druck","")` nachstellen.
+
+**Darkmode Runde 2:**
+- *Glas glasig statt trüb*: Füllung viel durchsichtiger (Weiß 18 → 7 % statt grauem Verlauf 72 → 58 %),
+  `brightness(1.12)`, heller Lichtrand rundum (`--glas-glanz`), Schatten kräftiger.
+- *Aktive Linse*: hellere, leicht kühle Glaskapsel mit Lichtrand (`--glas-linse`), Symbol/Schrift in
+  **`--akzent-auf-glas` = #66b6ff** (Systemblau #0a84ff war auf hellerem Glas zu kontrastarm). Gilt für Leiste
+  (inkl. „Einstellungen/Zeit“ bei offenem Fenster, laufender Timer) und alle Schalter-Linsen.
+- *Gesamtstimmung*: Grund `#05060a` mit drei sehr zarten Farbschleiern (blau links oben, violett rechts oben,
+  türkis unten) als festes `body::before` (nicht `background-attachment: fixed`, das ignoriert iOS-Safari).
+  Glas hat so etwas zu brechen. Nur Dunkel; die Vollbild-Ansichten am Handy bleiben einfarbig.
+- *Karten*: feiner Lichtrand (`inset 0 0 0 .5px`) an Bereichen, Gruppen, Heute-Kacheln.
+- *Bereichs-Köpfe*: 44 → 30 % Farbe mit Verlauf (vorher flach 19 %), Lichtkante oben; ＋ dort weiße
+  Glasscheibe statt Blau auf Farbe.
+- *Blätter*: `rgba(30,30,38,.92)` mit Lichtrand statt fast deckendem #1c1c1e; Kalender-Spalte am PC
+  halbdurchsichtig (deckte mit Schwarz über den Grund).
+
+**Ungeprüft:** echtes iPhone/iPad (Gefühl der Feder beim Tippen, `:active`-Verhalten, ob `data-druck` bei
+schnellem Tippen sichtbar genug ist), Safari-Darstellung von `backdrop-filter` mit `brightness`, Hover mit
+echter Maus nur über Pane-Hover gemessen, nicht mit dem Auge in Bewegung.

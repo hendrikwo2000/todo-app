@@ -7599,3 +7599,395 @@ html.breit body:not(.verwaltung) .topbar h1 { max-width: calc(100% - 150px); }
    dieselbe Abdunkelung fuer alle Kalender-Fenster (.kal-popup). */
 .kal-popup,
 #kalTerminPopup.wie-neu { background: var(--glas-abdunkeln); }
+
+/* ===================== Liquid Glass reagiert + Darkmode Runde 2 (seit 27.11.2026) =====================
+   Hendrik: "Alle Buttons haben keine schoenen Hover- und Aktiv-Effekte, soll wie Apples
+   Liquid Glass aussehen" und "Der Darkmode gefaellt mir noch nicht, der aktivierte sieht nicht
+   so gut aus". Seine Wahlen (Rueckfrage): ALLE Bedienelemente (ToDo-Zeilen und Kalender-Tage nur
+   sanfte Toenung, kein Glas auf Inhalt); im Dunkeln stoert ihn der aktive Tab/Schalter, die
+   Bereiche/Karten, die Gesamtstimmung (zu flach) UND das truebe Glas; aktive Linse = helles Glas
+   mit hellblauer Schrift.
+
+   Bis hierher war "Hover" fast ueberall nur Deckkraft runter (opacity .7), und es gab kaum einen
+   Druck-Zustand. Jetzt reagiert das Glas wie bei Apple (interaktives Glas, "bounce und shimmer"):
+   - Maus drueber: Flaeche wird heller, der Schatten hebt sich, ein Lichtfleck folgt dem Zeiger
+     (glas.js setzt --mx/--my; --licht blendet ihn weich ein, dafuer das @property).
+   - Druck (:active, bei kurzem Tippen von glas.js als [data-druck] etwas laenger gehalten): das
+     Glas quillt federnd ein Stueck auf (scale mit der Feder aus schalter.js), wird heller und
+     leuchtet innen. Beim Loslassen schwingt es zurueck.
+   - Ohne Bewegung ("reduzierte Bewegung") bleibt nur die Aufhellung.
+   Die alten Hover-Regeln (Deckkraft, Filter) werden fuer diese Elemente per !important
+   uebersteuert; Textlinks behalten ihr Abdunkeln und bekommen nur den Druck dazu. */
+@property --licht { syntax: "<number>"; inherits: false; initial-value: 0; }
+
+:root {
+  --licht-farbe: 90, 150, 255;   /* hell: zarter Blauschimmer unter dem Zeiger (Weiss waere auf Weiss unsichtbar) */
+  --licht-staerke: .17;
+  --glas-heller: inset 0 0 0 999px rgba(255,255,255,.34);
+  --glas-heller-druck: inset 0 0 0 999px rgba(255,255,255,.5), inset 0 0 18px rgba(255,255,255,.75);
+  --glas-schatten-hover: 0 8px 22px rgba(24,32,64,.20), 0 2px 6px rgba(24,32,64,.10);
+  --glas-schatten-druck: 0 3px 10px rgba(24,32,64,.16);
+  --glas-wasch: rgba(255,255,255,.55);
+  --glas-wasch-druck: rgba(255,255,255,.82);
+  --zeile-druck: rgba(120,120,128,.2);
+  --akzent-auf-glas: var(--accent);
+}
+:root[data-theme="dark"] {
+  /* Dunkles Glas: viel durchsichtiger (der Grund scheint durch), dafuer ein heller Lichtrand
+     rundum - nicht mehr graue, milchige Flaeche. */
+  --glas-fuell: linear-gradient(180deg, rgba(255,255,255,.18) 0%, rgba(255,255,255,.07) 100%);
+  --glas-unscharf: blur(24px) saturate(190%) brightness(1.12);
+  --glas-glanz: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -1px 0 rgba(255,255,255,.08), inset 0 0 0 .5px rgba(255,255,255,.26), inset 0 0 18px rgba(255,255,255,.045);
+  --glas-schatten: 0 14px 34px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.4);
+  --glas-schatten-klein: 0 4px 14px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4);
+  /* Aktive Linse: hellere Glaskapsel mit feinem Lichtrand, nicht mehr flach grau. */
+  --glas-linse: linear-gradient(180deg, rgba(200,222,255,.34), rgba(160,196,255,.16));
+  --glas-linse-schatten: 0 2px 10px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.55), inset 0 0 0 .5px rgba(255,255,255,.28), inset 0 -8px 14px rgba(255,255,255,.05);
+  --glas-spur: rgba(255,255,255,.1);
+  --glas-leiste-text: rgba(235,235,245,.62);
+  --blatt-fuell: rgba(34,34,42,.76);
+  --blatt-fuell-dicht: rgba(30,30,38,.92);
+  --blatt-glanz: inset 0 1px 0 rgba(255,255,255,.3), inset 0 0 0 .5px rgba(255,255,255,.16);
+  --blatt-schatten: 0 24px 70px rgba(0,0,0,.65), 0 4px 14px rgba(0,0,0,.35);
+  --glas-alert: rgba(40,40,48,.9);
+  --glas-kopf-klein: linear-gradient(180deg, rgba(8,9,14,.86), rgba(8,9,14,.5));
+  --licht-farbe: 255, 255, 255;
+  --licht-staerke: .2;
+  --glas-heller: inset 0 0 0 999px rgba(255,255,255,.05);
+  --glas-heller-druck: inset 0 0 0 999px rgba(255,255,255,.11), inset 0 0 16px rgba(255,255,255,.16);
+  --glas-schatten-hover: 0 10px 26px rgba(0,0,0,.62), 0 2px 8px rgba(0,0,0,.4);
+  --glas-schatten-druck: 0 3px 10px rgba(0,0,0,.5);
+  --glas-wasch: rgba(255,255,255,.1);
+  --glas-wasch-druck: rgba(255,255,255,.2);
+  --zeile-druck: rgba(255,255,255,.12);
+  --akzent-auf-glas: #66b6ff;
+}
+
+/* ---------- Dunkelmodus: Grund, Karten, Bereichs-Koepfe ---------- */
+/* Der Grund war reines Schwarz - Glas hat darauf nichts, was es brechen koennte, und alles
+   wirkte flach. Jetzt ein sehr dunkler Blau-Schwarz-Ton mit ganz zarten Farbschleiern (blau
+   links oben, violett rechts oben, tuerkis unten), fest hinter dem Inhalt. */
+:root[data-theme="dark"] {
+  --bg: #05060a;
+  --glas-grund:
+    radial-gradient(1100px 720px at 6% -10%, rgba(10,132,255,.14), transparent 62%),
+    radial-gradient(900px 640px at 104% 2%, rgba(191,90,242,.10), transparent 60%),
+    radial-gradient(1000px 700px at 48% 114%, rgba(48,209,214,.07), transparent 60%);
+}
+/* Als festes Pseudo-Element statt background-attachment: fixed - das ignoriert iOS-Safari. */
+html[data-theme="dark"] body { background: transparent; }
+html[data-theme="dark"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--glas-grund);
+  pointer-events: none;
+}
+
+/* Karten: feiner Lichtrand statt nacktem Grau auf Schwarz - das gibt Kante und Tiefe. */
+:root[data-theme="dark"] :is(.column, .tag-gruppe, .fok-oben, .hinweis, .offline-banner, .ein-gruppe, .anlegen-gruppe, .kal-form-gruppe, .kal-form-textgruppe, .gw-kal-block) {
+  box-shadow: inset 0 0 0 .5px rgba(255,255,255,.085), inset 0 1px 0 rgba(255,255,255,.065);
+}
+/* Bereichs-Kopf: satter und mit leichtem Verlauf wie beleuchtetes Glas (vorher 19 % Farbe, dumpf). */
+:root[data-theme="dark"] .column[data-farbe] {
+  --kopf-ton: linear-gradient(180deg,
+    color-mix(in srgb, var(--col-farbe) 44%, #1c1c1e) 0%,
+    color-mix(in srgb, var(--col-farbe) 30%, #1c1c1e) 100%);
+}
+:root[data-theme="dark"] .column[data-farbe] .col-head { box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 -.5px 0 rgba(255,255,255,.07); }
+:root[data-theme="dark"] .col-head .col-count:not(.urgent) { color: rgba(255,255,255,.72); }
+/* ＋ im Kopf: helle Glasscheibe auf der Farbe, weisses Zeichen (Blau auf Blau ging unter). */
+:root[data-theme="dark"] .kopf-plus {
+  background-color: rgba(255,255,255,.15) !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 0 0 .5px rgba(255,255,255,.2);
+}
+/* Der klebende Monatskopf im Gewohnheiten-Blatt folgt der neuen Blatt-Farbe. */
+:root[data-theme="dark"] #gewVerlauf .gw-kal-kopf { background: color-mix(in srgb, var(--blatt-fuell-dicht) 92%, transparent); }
+/* Die Kalender-Spalte am PC deckte mit Schwarz ueber dem Hintergrund. */
+:root[data-theme="dark"] .kalender { background: rgba(0,0,0,.34); }
+
+/* ---------- Dunkelmodus: aktiver Tab / aktive Schalter-Linse ---------- */
+/* Helles Glas (siehe --glas-linse), Symbol und Schrift in hellem Blau - gut lesbar darauf. */
+:root[data-theme="dark"] :is(
+  .fuss-ansicht[aria-pressed="true"],
+  body:has(#einstellungenPopup:not([hidden]), #gewFenster:not([hidden]), #hilfeFenster:not([hidden])) .fuss-knopf.ein-knopf,
+  body:has(#timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fuss-knopf.timer-knopf,
+  .fuss-knopf.timer-knopf.laeuft
+) { color: var(--akzent-auf-glas) !important; }
+:root[data-theme="dark"] body:has(#einstellungenPopup:not([hidden]), #gewFenster:not([hidden]), #hilfeFenster:not([hidden]), #timerPopup:not([hidden]), #zeitFenster:not([hidden])) .fuss-ansicht[aria-pressed="true"]:not(.ein-knopf):not(.timer-knopf) { color: var(--glas-leiste-text) !important; }
+:root[data-theme="dark"] .fusszeile.hat-linse .fuss-symbol { background: none !important; }
+:root[data-theme="dark"] :is(
+  .anlegen-reiter-knopf[aria-selected="true"],
+  .ein-reiter-seg[aria-selected="true"],
+  .gw-pillen button[aria-selected="true"],
+  .gw-pillen button[aria-pressed="true"]
+) { color: var(--akzent-auf-glas) !important; }
+/* Glas-Knoepfe: hellblaue Schrift statt dunklem Systemblau auf hellerem Glas. */
+:root[data-theme="dark"] :is(
+  .btn:not(.primary):not(.gefahr),
+  .kopf-text:not(.kopf-ok),
+  .kopf-rund:not(.kopf-ok),
+  .ein-zurueck,
+  .kal-fuss-knopf:not(.primaer):not(.gefahr),
+  .gw-pfeil
+) { color: var(--akzent-auf-glas); }
+
+/* ---------- Reaktion Stufe 1: Glas-Kapseln und -Kreise ---------- */
+/* Der Lichtfleck wird AM ELEMENT deklariert: eine Variable mit var() darin loest sich dort auf,
+   wo sie steht - an :root kennt sie weder --mx noch --licht des Knopfs. */
+:is(.btn, .kopf-rund, .kopf-korb, .kopf-text, .ein-zurueck, .kal-fuss-knopf, .gw-pfeil, .topbar h1.titel-schaltbar, html.breit .kopf-knopf) {
+  --glas-licht: radial-gradient(circle 84px at var(--mx, 50%) var(--my, 0%), rgba(var(--licht-farbe, 90, 150, 255), calc(var(--licht, 0) * var(--licht-staerke, .17))) 0%, rgba(var(--licht-farbe, 90, 150, 255), 0) 100%);
+}
+:is(.btn:not(.primary), .kopf-rund:not(.kopf-ok), .kopf-korb, .kopf-text:not(.kopf-ok),
+    .ein-zurueck, .kal-fuss-knopf:not(.primaer), .gw-pfeil, .topbar h1.titel-schaltbar) {
+  background: var(--glas-licht), var(--glas-fuell) !important;
+  transition: scale var(--feder-dauer) var(--feder), box-shadow .3s ease, --licht .35s ease, color .2s ease !important;
+}
+.btn, .kal-fuss-knopf { --druck: 1.035; }
+.kopf-rund, .kopf-korb, .gw-pfeil { --druck: 1.12; }
+.ein-zurueck { --druck: 1.06; }
+.topbar h1.titel-schaltbar { --druck: 1.035; }
+
+/* ---------- Reaktion Stufe 2: gefuellte Hauptknoepfe ---------- */
+:is(.btn.primary, .kopf-rund.kopf-ok, .kopf-text.kopf-ok, .kal-fuss-knopf.primaer) {
+  background: var(--glas-licht), linear-gradient(180deg, color-mix(in srgb, var(--accent) 84%, #fff) 0%, var(--accent) 100%) !important;
+  transition: scale var(--feder-dauer) var(--feder), box-shadow .3s ease, --licht .35s ease, color .2s ease !important;
+  --druck: 1.04;
+  --licht-farbe: 255, 255, 255;
+  --licht-staerke: .24;
+}
+.kopf-rund.kopf-ok { --druck: 1.12; }
+
+@media (hover: hover) {
+  :is(.btn:not(.primary), .kopf-rund:not(.kopf-ok), .kopf-korb, .kopf-text:not(.kopf-ok),
+      .ein-zurueck, .kal-fuss-knopf:not(.primaer), .gw-pfeil, .topbar h1.titel-schaltbar):hover:not(:disabled):not([data-druck]):not(:active) {
+    --licht: 1;
+    box-shadow: var(--glas-glanz), var(--glas-heller), var(--glas-schatten-hover) !important;
+    opacity: 1 !important;
+    filter: none !important;
+    border-color: transparent !important;
+  }
+  :is(.btn.primary, .kopf-rund.kopf-ok, .kopf-text.kopf-ok, .kal-fuss-knopf.primaer):hover:not(:disabled):not([data-druck]):not(:active) {
+    --licht: 1;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -1px 0 rgba(0,0,0,.1), inset 0 0 0 999px rgba(255,255,255,.12), 0 8px 22px color-mix(in srgb, var(--accent) 52%, transparent) !important;
+    opacity: 1 !important;
+    filter: none !important;
+    color: #fff !important;
+  }
+}
+:is(.btn:not(.primary), .kopf-rund:not(.kopf-ok), .kopf-korb, .kopf-text:not(.kopf-ok),
+    .ein-zurueck, .kal-fuss-knopf:not(.primaer), .gw-pfeil, .topbar h1.titel-schaltbar):is(:active, [data-druck]):not(:disabled) {
+  --licht: 1.7;
+  scale: var(--druck, 1.05);
+  box-shadow: var(--glas-glanz), var(--glas-heller-druck), var(--glas-schatten-druck) !important;
+  opacity: 1 !important;
+  filter: none !important;
+  transition: scale .16s cubic-bezier(.2, .9, .3, 1), box-shadow .12s ease-out, --licht .12s ease-out, color .2s ease !important;
+}
+:is(.btn.primary, .kopf-rund.kopf-ok, .kopf-text.kopf-ok, .kal-fuss-knopf.primaer):is(:active, [data-druck]):not(:disabled) {
+  --licht: 1.3;
+  scale: var(--druck, 1.05);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 0 0 999px rgba(255,255,255,.08), inset 0 0 14px rgba(255,255,255,.28), 0 3px 10px color-mix(in srgb, var(--accent) 45%, transparent) !important;
+  opacity: 1 !important;
+  filter: none !important;
+  color: #fff !important;
+  transition: scale .16s cubic-bezier(.2, .9, .3, 1), box-shadow .12s ease-out, --licht .12s ease-out !important;
+}
+/* Rote Knoepfe bleiben rot - die alte Hover-Regel faerbte die Schrift weiss auf Glas. */
+.btn.gefahr:hover:not(:disabled), .btn.gefahr:is(:active, [data-druck]):not(:disabled) { color: var(--red) !important; }
+:root[data-theme="dark"] .btn:not(.primary):not(.gefahr):hover:not(:disabled),
+:root[data-theme="dark"] .kal-fuss-knopf:not(.primaer):not(.gefahr):hover:not(:disabled) { color: var(--akzent-auf-glas) !important; }
+:root:not([data-theme="dark"]) .btn:not(.primary):not(.gefahr):hover:not(:disabled),
+:root:not([data-theme="dark"]) .kal-fuss-knopf:not(.primaer):not(.gefahr):hover:not(:disabled) { color: var(--accent) !important; }
+
+/* ---------- Reaktion: Kopf-Knoepfe in der Glas-Gruppe (PC) ---------- */
+/* Die aelteren Regeln (html.breit .kopf-knopf:not([hidden]) und :hover mit "background:") setzen
+   das ganze background zurueck - daher dieselbe Spezifitaet und der Lichtfleck mit !important. */
+html.breit .kopf-knopf:not([hidden]) {
+  background-color: transparent;
+  background-image: var(--glas-licht) !important;
+  transition: scale var(--feder-dauer) var(--feder), background-color .2s ease, --licht .3s ease !important;
+  --druck: 1.14;
+}
+@media (hover: hover) {
+  html.breit .kopf-knopf:not([hidden]):hover:not([data-druck]):not(:active) { --licht: 1; background-color: var(--glas-wasch) !important; background-image: var(--glas-licht) !important; opacity: 1 !important; }
+}
+html.breit .kopf-knopf:not([hidden]):is(:active, [data-druck]) {
+  --licht: 1.7;
+  scale: var(--druck);
+  background-color: var(--glas-wasch-druck) !important;
+  background-image: var(--glas-licht) !important;
+  opacity: 1 !important;
+  transition: scale .16s cubic-bezier(.2, .9, .3, 1), background-color .1s ease-out, --licht .12s ease-out !important;
+}
+
+/* ---------- Reaktion: die Leiste unten ---------- */
+@media (max-width: 999px) {
+  .fusszeile .fuss-knopf {
+    transition: scale var(--feder-dauer) var(--feder), background-color .2s ease, color .25s ease !important;
+    --druck: 1.08;
+  }
+  .fusszeile .fuss-symbol { transition: background .15s, color .15s; }
+}
+@media (hover: hover) {
+  .fusszeile.hat-linse .fuss-knopf:hover:not([aria-pressed="true"]):not([data-druck]):not(:active) { background-color: var(--glas-wasch) !important; color: var(--text); }
+}
+.fusszeile.hat-linse .fuss-knopf:is(:active, [data-druck]) {
+  scale: var(--druck);
+  transition: scale .16s cubic-bezier(.2, .9, .3, 1), background-color .1s ease-out, color .2s ease !important;
+}
+.fusszeile.hat-linse .fuss-knopf:is(:active, [data-druck]):not([aria-pressed="true"]) { background-color: var(--glas-wasch-druck) !important; }
+
+/* ---------- Reaktion Stufe 3: kleine Kreise und Plus auf dem Inhalt ---------- */
+:is(.kopf-plus, .anlegen-plus, .kal-gruppe-plus, .kal-tagkarte-plus, .thema-add, .act, .fok-menge button, .gw-menge button, .gw-stift, .add-icon) {
+  transition: scale var(--feder-dauer) var(--feder), background-color .2s ease, box-shadow .25s ease, color .2s ease, border-color .2s ease !important;
+  --druck: 1.14;
+}
+@media (hover: hover) {
+  :is(.kopf-plus, .anlegen-plus, .kal-gruppe-plus, .kal-tagkarte-plus, .thema-add, .gw-menge button, .gw-stift, .add-icon):hover:not(:disabled):not([data-druck]):not(:active) {
+    background-color: color-mix(in srgb, var(--accent) 17%, var(--glas-gruppe, var(--row))) !important;
+    color: var(--accent) !important;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent), 0 4px 12px color-mix(in srgb, var(--accent) 24%, transparent);
+    opacity: 1 !important;
+  }
+  :root[data-theme="dark"] .kopf-plus:hover:not([data-druck]):not(:active) {
+    background-color: rgba(255,255,255,.28) !important;
+    color: #fff !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 0 0 .5px rgba(255,255,255,.3), 0 4px 12px rgba(0,0,0,.35);
+  }
+  .act:hover:not([data-druck]):not(:active) { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
+  .act.del:hover:not([data-druck]):not(:active) { box-shadow: 0 0 0 1px color-mix(in srgb, var(--red) 36%, transparent); }
+}
+:is(.kopf-plus, .anlegen-plus, .kal-gruppe-plus, .kal-tagkarte-plus, .thema-add, .act, .fok-menge button, .gw-menge button, .gw-stift, .add-icon):is(:active, [data-druck]):not(:disabled) {
+  scale: var(--druck);
+  background-color: color-mix(in srgb, var(--accent) 30%, var(--glas-gruppe, var(--row))) !important;
+  color: var(--accent) !important;
+  opacity: 1 !important;
+  transition: scale .16s cubic-bezier(.2, .9, .3, 1), background-color .1s ease-out, box-shadow .12s ease-out !important;
+}
+.act.del:is(:active, [data-druck]) { background-color: var(--del-soft) !important; color: var(--red) !important; }
+:root[data-theme="dark"] .kopf-plus:is(:active, [data-druck]) { background-color: rgba(255,255,255,.38) !important; color: #fff !important; }
+
+/* ---------- Reaktion Stufe 4: Abhak-Kreise ---------- */
+.check { transition: scale var(--feder-dauer) var(--feder), background-color .15s, border-color .15s, box-shadow .15s !important; }
+@media (hover: hover) {
+  .check:not(:checked):hover,
+  .check-tap:hover .check:not(:checked) { background-color: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
+}
+.check-tap:is(:active, [data-druck]) .check,
+.zf-up:is(:active, [data-druck]) .check,
+.check:active {
+  scale: 1.2;
+  transition: scale .16s cubic-bezier(.2, .9, .3, 1), background-color .1s, border-color .1s !important;
+}
+.check:not(:checked):active,
+.check-tap:is(:active, [data-druck]) .check:not(:checked) { background-color: color-mix(in srgb, var(--accent) 24%, transparent); border-color: var(--accent); }
+:is(.kal-haken, .fok-haken) { transition: scale var(--feder-dauer) var(--feder), background-color .15s, border-color .15s, color .15s; }
+:is(.kal-haken, .fok-haken):is(:active, [data-druck]) { scale: 1.2; transition: scale .16s cubic-bezier(.2, .9, .3, 1), background-color .1s, border-color .1s; }
+
+/* ---------- Reaktion Stufe 5: Reiter, Schalter, Wahl-Chips ---------- */
+:is(.anlegen-reiter-knopf, .ein-reiter-seg, .gw-pillen button, .ansicht-seg, .kal-schalter) {
+  transition: scale var(--feder-dauer) var(--feder), background-color .2s ease, color .25s ease !important;
+  --druck: 1.05;
+}
+@media (hover: hover) {
+  :is(.anlegen-reiter-knopf, .ein-reiter-seg, .gw-pillen button):not([aria-selected="true"]):not([aria-pressed="true"]):hover:not(:disabled):not([data-druck]):not(:active) {
+    background-color: var(--glas-wasch) !important;
+    color: var(--text) !important;
+  }
+}
+:is(.anlegen-reiter-knopf, .ein-reiter-seg, .gw-pillen button, .ansicht-seg, .kal-schalter):is(:active, [data-druck]):not(:disabled) {
+  scale: var(--druck);
+  transition: scale .16s cubic-bezier(.2, .9, .3, 1), background-color .1s ease-out !important;
+}
+:is(.anlegen-reiter-knopf, .ein-reiter-seg, .gw-pillen button):not([aria-selected="true"]):not([aria-pressed="true"]):is(:active, [data-druck]):not(:disabled) { background-color: var(--glas-wasch-druck) !important; }
+
+:is(.anlegen-schnell button, .zt-chip, .gw-wahl button, .kal-form-wahl) {
+  transition: scale var(--feder-dauer) var(--feder), background-color .2s ease, color .2s ease, box-shadow .25s ease !important;
+  --druck: 1.07;
+}
+@media (hover: hover) {
+  :is(.anlegen-schnell button, .gw-wahl button):not([aria-pressed="true"]):hover:not(:disabled):not([data-druck]):not(:active) {
+    background-color: color-mix(in srgb, var(--accent) 13%, var(--glas-gruppe, var(--row))) !important;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+}
+:is(.anlegen-schnell button, .zt-chip, .gw-wahl button):is(:active, [data-druck]):not(:disabled) {
+  scale: var(--druck);
+  background-color: color-mix(in srgb, var(--accent) 24%, var(--glas-gruppe, var(--row))) !important;
+  transition: scale .16s cubic-bezier(.2, .9, .3, 1), background-color .1s ease-out !important;
+}
+
+/* ---------- Reaktion Stufe 6: Zeilen und Karten (Inhalt - nur sanft getoent, kein Glas) ---------- */
+:is(.ein-zeile-knopf, .ein-kopf, .zt-zeile, .zt-wahl-zeile, .zt-seite-zeile, .menue-eintrag, .listen-zeile.waehlbar,
+    .kal-filter-zeile, .kal-termin-zeile, .kal-wdh-zeile, .kal-form-reihe, .kal-form-wahl, .hilfe-mehr > summary,
+    .tag-gruppe .kal-todo-zeile, .kal-tag) {
+  transition: background-color .18s ease;
+}
+:is(.ein-zeile-knopf, .ein-kopf, .zt-zeile, .zt-wahl-zeile, .zt-seite-zeile, .menue-eintrag, .listen-zeile.waehlbar,
+    .kal-filter-zeile, .kal-termin-zeile, .kal-wdh-zeile, .kal-form-reihe, .kal-form-wahl, .hilfe-mehr > summary,
+    .tag-gruppe .kal-todo-zeile, .kal-tag):is(:active, [data-druck]):not(:disabled) {
+  background-color: var(--zeile-druck) !important;
+  transition: background-color .08s ease-out;
+}
+.kal-eintrag { transition: scale var(--feder-dauer) var(--feder), border-color .2s ease; }
+.kal-eintrag:is(:active, [data-druck]) { scale: .975; transition: scale .12s ease-out; }
+
+/* ---------- Reaktion: Kalender-Kopf (Pfeile, Filter, Monatsname) - helle Waschflaeche ---------- */
+:is(.kal-pfeil, .kal-monat) {
+  border-radius: 10px;
+  transition: scale var(--feder-dauer) var(--feder), background-color .2s ease, color .2s ease !important;
+  --druck: 1.1;
+}
+@media (hover: hover) {
+  :is(.kal-pfeil, .kal-monat):hover:not(:disabled):not([data-druck]):not(:active) { background-color: var(--glas-wasch) !important; opacity: 1 !important; }
+}
+:is(.kal-pfeil, .kal-monat):is(:active, [data-druck]):not(:disabled) {
+  scale: var(--druck);
+  background-color: var(--glas-wasch-druck) !important;
+  opacity: 1 !important;
+  transition: scale .16s cubic-bezier(.2, .9, .3, 1), background-color .1s ease-out !important;
+}
+
+/* ---------- Reaktion Stufe 7: Textlinks - behalten ihr Abdunkeln, dazu der Druck ---------- */
+:is(.lock-link, .snack-undo, .bereich-loeschen, .hinweis button, .zf-textknopf,
+    .thema-toggle, .done-toggle, .bearbeiten-up-weg, .zt-seite-zurueck, .anlegen-bis-weg, .kal-schliessen, .ein-schliessen) {
+  transition: scale var(--feder-dauer) var(--feder), opacity .18s ease, color .18s ease !important;
+}
+:is(.lock-link, .snack-undo, .bereich-loeschen, .hinweis button, .zf-textknopf,
+    .thema-toggle, .done-toggle, .bearbeiten-up-weg, .zt-seite-zurueck, .anlegen-bis-weg, .kal-schliessen, .ein-schliessen):is(:active, [data-druck]):not(:disabled) {
+  opacity: .5 !important;
+  scale: .96;
+  transition: scale .12s ease-out, opacity .08s ease-out !important;
+}
+
+/* ---------- Grosse Aktionsknoepfe im Fokus-Bildschirm (Stoppen / Erledigt) ---------- */
+.zf-knopf { transition: scale var(--feder-dauer) var(--feder), box-shadow .25s ease !important; }
+@media (hover: hover) {
+  .zf-knopf:hover { opacity: 1 !important; box-shadow: inset 0 0 0 999px rgba(255,255,255,.1), 0 6px 18px rgba(0,0,0,.18); }
+}
+.zf-knopf:is(:active, [data-druck]) {
+  scale: 1.03;
+  box-shadow: inset 0 0 0 999px rgba(255,255,255,.18), inset 0 0 16px rgba(255,255,255,.3);
+  transition: scale .16s cubic-bezier(.2, .9, .3, 1), box-shadow .12s ease-out !important;
+}
+
+/* ---------- Schalter (Ein/Aus): Knopf quillt beim Druck auf wie bei iOS ---------- */
+.switch-thumb { transition: transform .35s var(--feder), width .25s var(--feder), background .2s; }
+.switch:is(:active, [data-druck]) .switch-thumb { width: 34px; }
+.switch:is(:active, [data-druck]) input:checked ~ .switch-track .switch-thumb { transform: translateX(13px); }
+
+/* ---------- Ruhige Bewegung / reduzierte Transparenz ---------- */
+@media (prefers-reduced-motion: reduce) {
+  * { scale: none !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root, :root[data-theme="dark"] {
+    --glas-fuell: var(--row);
+    --blatt-fuell: var(--bg);
+    --blatt-fuell-dicht: var(--bg);
+    --glas-alert: var(--bg);
+  }
+}
